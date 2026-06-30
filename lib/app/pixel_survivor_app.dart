@@ -12,7 +12,7 @@ class PixelSurvivorApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xff3fbf7f)),
         splashFactory: NoSplash.splashFactory,
-        useMaterial3: true,
+        useMaterial3: false,
       ),
       home: const MainMenuScreen(),
     );

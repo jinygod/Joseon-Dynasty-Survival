@@ -16,6 +16,32 @@ flutter --version
 flutter doctor
 ```
 
+If Flutter web run/build crashes while compiling `ink_sparkle.frag`, expose the
+Flutter SDK through an ASCII drive letter before running Flutter commands:
+
+```powershell
+subst F: "$env:USERPROFILE\source\flutter"
+$env:Path = "F:\bin;$env:Path"
+```
+
+The workspace path also contains Korean characters. For the most reliable local
+test/build commands on this Windows machine, map the worktree to an ASCII drive
+letter and use an ASCII temp directory:
+
+```powershell
+New-Item -ItemType Directory -Force -Path C:\codex-tmp | Out-Null
+$env:TEMP = "C:\codex-tmp"
+$env:TMP = "C:\codex-tmp"
+subst P: "C:\Users\전성진\Documents\뱀서라이크게임\.worktrees\pixel-survivor-mvp"
+Push-Location P:\
+dart analyze
+flutter test
+flutter build web
+Pop-Location
+subst P: /D
+subst F: /D
+```
+
 Verified on 2026-06-30:
 
 - Flutter 3.44.4 stable
