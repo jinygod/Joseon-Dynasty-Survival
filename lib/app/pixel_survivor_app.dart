@@ -11,6 +11,7 @@ class PixelSurvivorApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xff3fbf7f)),
+        splashFactory: NoSplash.splashFactory,
         useMaterial3: true,
       ),
       home: const MainMenuScreen(),
