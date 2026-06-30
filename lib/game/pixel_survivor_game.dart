@@ -1,6 +1,9 @@
 import 'package:flame/components.dart';
+import 'package:flame/events.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/painting.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart' show KeyEventResult;
 
 import 'components/enemy_component.dart';
 import 'components/experience_gem_component.dart';
@@ -9,12 +12,14 @@ import 'content/augment_definitions.dart';
 import 'content/character_definitions.dart';
 import 'content/enemy_definitions.dart';
 import 'content/ids.dart';
+import 'content/weapon_definitions.dart';
 import 'models/player_slot.dart';
+import 'models/vector_input.dart';
 import 'systems/level_up_system.dart';
 import 'systems/spawn_system.dart';
 import 'systems/weapon_system.dart';
 
-class PixelSurvivorGame extends FlameGame {
+class PixelSurvivorGame extends FlameGame with KeyboardEvents {
   PixelSurvivorGame({required List<PlayerSlot> playerSlots})
     : playerSlots = List.unmodifiable(playerSlots) {
     if (this.playerSlots.isEmpty) {
@@ -35,12 +40,43 @@ class PixelSurvivorGame extends FlameGame {
   final Set<AugmentId> unlockedAugmentIds = {};
   final Map<AugmentId, int> augmentLevels = {};
 
+  VectorInput movementInput = VectorInput.zero;
+
   double _elapsedSeconds = 0;
   double _spawnTimer = 0;
   int _spawnCursor = 0;
 
+  double get elapsedSeconds => _elapsedSeconds;
+
+  int get enemyCount => children
+      .whereType<EnemyComponent>()
+      .where((enemy) => !enemy.isDead)
+      .length;
+
+  String get currentWeaponLabel {
+    if (weaponSystem.levels.isEmpty) {
+      return 'Weapon Lv 0';
+    }
+
+    final entry = weaponSystem.levels.entries.first;
+    final definition = weaponDefinitions.firstWhere(
+      (definition) => definition.id == entry.key,
+      orElse: () => weaponDefinitions.first,
+    );
+    return '${definition.name} Lv ${entry.value}';
+  }
+
   @override
   Color backgroundColor() => const Color(0xff101820);
+
+  @override
+  KeyEventResult onKeyEvent(
+    KeyEvent event,
+    Set<LogicalKeyboardKey> keysPressed,
+  ) {
+    movementInput = _movementInputFromKeys(keysPressed);
+    return KeyEventResult.handled;
+  }
 
   @override
   Future<void> onLoad() async {
@@ -74,6 +110,8 @@ class PixelSurvivorGame extends FlameGame {
     _elapsedSeconds += dt;
     _spawnTimer += dt;
 
+    _updatePlayerMovement(dt);
+
     if (_spawnTimer >= 3) {
       _spawnTimer = 0;
       _addDebugEnemy();
@@ -81,6 +119,10 @@ class PixelSurvivorGame extends FlameGame {
 
     _updateWeapons(dt);
     _dropExperienceForDeadEnemies();
+  }
+
+  void updateMovementInput(VectorInput input) {
+    movementInput = input;
   }
 
   Future<void> _addActivePlayers() async {
@@ -143,6 +185,12 @@ class PixelSurvivorGame extends FlameGame {
     );
     for (final projectile in result.projectiles) {
       add(projectile);
+    }
+  }
+
+  void _updatePlayerMovement(double dt) {
+    for (final player in activePlayers.where((player) => player.isMounted)) {
+      player.applyInput(movementInput, dt, bounds: size);
     }
   }
 
@@ -224,5 +272,29 @@ class PixelSurvivorGame extends FlameGame {
       2 => Vector2(0, -halfHeight - 24),
       _ => Vector2(0, halfHeight + 24),
     };
+  }
+
+  VectorInput _movementInputFromKeys(Set<LogicalKeyboardKey> keysPressed) {
+    var x = 0.0;
+    var y = 0.0;
+
+    if (keysPressed.contains(LogicalKeyboardKey.keyA) ||
+        keysPressed.contains(LogicalKeyboardKey.arrowLeft)) {
+      x -= 1;
+    }
+    if (keysPressed.contains(LogicalKeyboardKey.keyD) ||
+        keysPressed.contains(LogicalKeyboardKey.arrowRight)) {
+      x += 1;
+    }
+    if (keysPressed.contains(LogicalKeyboardKey.keyW) ||
+        keysPressed.contains(LogicalKeyboardKey.arrowUp)) {
+      y -= 1;
+    }
+    if (keysPressed.contains(LogicalKeyboardKey.keyS) ||
+        keysPressed.contains(LogicalKeyboardKey.arrowDown)) {
+      y += 1;
+    }
+
+    return VectorInput(x, y);
   }
 }

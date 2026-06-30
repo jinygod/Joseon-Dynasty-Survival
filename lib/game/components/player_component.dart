@@ -24,13 +24,27 @@ class PlayerComponent extends PositionComponent {
   double currentHealth;
   final double moveSpeed;
 
-  void applyInput(VectorInput input, double dt) {
+  void applyInput(VectorInput input, double dt, {Vector2? bounds}) {
     final direction = Vector2(input.x, input.y);
     if (direction.length2 > 1) {
       direction.normalize();
     }
 
     position.add(direction * moveSpeed * dt);
+    if (bounds != null) {
+      final minX = size.x / 2;
+      final minY = size.y / 2;
+      final maxX = bounds.x - minX;
+      final maxY = bounds.y - minY;
+
+      position
+        ..x = maxX < minX
+            ? bounds.x / 2
+            : position.x.clamp(minX, maxX).toDouble()
+        ..y = maxY < minY
+            ? bounds.y / 2
+            : position.y.clamp(minY, maxY).toDouble();
+    }
   }
 
   @override
