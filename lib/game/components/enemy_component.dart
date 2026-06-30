@@ -12,6 +12,7 @@ class EnemyComponent extends PositionComponent {
     required this.maxHealth,
     required this.moveSpeed,
     required this.damage,
+    this.experienceValue = 1,
     this.targetPositionProvider,
     double? currentHealth,
     Vector2? position,
@@ -28,6 +29,7 @@ class EnemyComponent extends PositionComponent {
   double currentHealth;
   final double moveSpeed;
   final double damage;
+  final int experienceValue;
   final TargetPositionProvider? targetPositionProvider;
 
   bool get isDead => currentHealth <= 0;

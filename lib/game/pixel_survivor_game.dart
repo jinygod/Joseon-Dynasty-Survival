@@ -3,12 +3,14 @@ import 'package:flame/game.dart';
 import 'package:flutter/painting.dart';
 
 import 'components/enemy_component.dart';
+import 'components/experience_gem_component.dart';
 import 'components/player_component.dart';
 import 'content/character_definitions.dart';
 import 'content/enemy_definitions.dart';
 import 'content/ids.dart';
 import 'models/player_slot.dart';
 import 'systems/spawn_system.dart';
+import 'systems/weapon_system.dart';
 
 class PixelSurvivorGame extends FlameGame {
   PixelSurvivorGame({required List<PlayerSlot> playerSlots})
@@ -24,7 +26,9 @@ class PixelSurvivorGame extends FlameGame {
 
   final List<PlayerSlot> playerSlots;
   final SpawnSystem spawnSystem = const SpawnSystem();
+  final WeaponSystem weaponSystem = WeaponSystem();
   final List<PlayerComponent> activePlayers = [];
+  final Set<WeaponId> unlockedWeaponIds = {};
 
   double _elapsedSeconds = 0;
   double _spawnTimer = 0;
@@ -68,6 +72,9 @@ class PixelSurvivorGame extends FlameGame {
       _spawnTimer = 0;
       _addDebugEnemy();
     }
+
+    _updateWeapons(dt);
+    _dropExperienceForDeadEnemies();
   }
 
   Future<void> _addActivePlayers() async {
@@ -84,6 +91,11 @@ class PixelSurvivorGame extends FlameGame {
         moveSpeed: character.moveSpeed,
         position: Vector2(startX + (i * spacing), size.y / 2),
       );
+
+      unlockedWeaponIds.add(character.startingWeaponId);
+      if (weaponSystem.levelOf(character.startingWeaponId) == 0) {
+        weaponSystem.upgrade(character.startingWeaponId, unlockedWeaponIds);
+      }
 
       activePlayers.add(player);
       await add(player);
@@ -103,10 +115,42 @@ class PixelSurvivorGame extends FlameGame {
         maxHealth: enemyDefinition.maxHealth,
         moveSpeed: enemyDefinition.moveSpeed,
         damage: enemyDefinition.damage,
+        experienceValue: enemyDefinition.experience,
         position: Vector2(size.x / 2, size.y / 2) + offset,
         targetPositionProvider: _nearestActivePlayerPosition,
       ),
     );
+  }
+
+  void _updateWeapons(double dt) {
+    final player = activePlayers.where((player) => player.isMounted).firstOrNull;
+    if (player == null) {
+      return;
+    }
+
+    final result = weaponSystem.tick(
+      dt: dt,
+      origin: player.position,
+      enemies: children.whereType<EnemyComponent>(),
+    );
+    for (final projectile in result.projectiles) {
+      add(projectile);
+    }
+  }
+
+  void _dropExperienceForDeadEnemies() {
+    final deadEnemies = children.whereType<EnemyComponent>().where(
+      (enemy) => enemy.isDead,
+    );
+    for (final enemy in deadEnemies.toList()) {
+      add(
+        ExperienceGemComponent(
+          experienceValue: enemy.experienceValue,
+          position: enemy.position.clone(),
+        ),
+      );
+      enemy.removeFromParent();
+    }
   }
 
   CharacterDefinition _characterDefinitionFor(CharacterId characterId) {
