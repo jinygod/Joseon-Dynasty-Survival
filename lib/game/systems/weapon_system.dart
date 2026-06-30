@@ -51,6 +51,7 @@ class WeaponSystem {
     required double dt,
     required Vector2 origin,
     required Iterable<EnemyComponent> enemies,
+    double damageMultiplier = 1,
   }) {
     final aliveEnemies = enemies.where((enemy) => !enemy.isDead).toList();
     final projectiles = <ProjectileComponent>[];
@@ -62,7 +63,7 @@ class WeaponSystem {
       _damageNearestEnemy(
         origin: origin,
         enemies: aliveEnemies,
-        damage: 6 + levelOf(hwandoSlash) * 2,
+        damage: _scaledDamage(6 + levelOf(hwandoSlash) * 2, damageMultiplier),
         maxRange: 52,
       );
     }
@@ -72,7 +73,7 @@ class WeaponSystem {
         weaponId: gakgungShot,
         origin: origin,
         enemies: aliveEnemies,
-        damage: 5 + levelOf(gakgungShot) * 2,
+        damage: _scaledDamage(5 + levelOf(gakgungShot) * 2, damageMultiplier),
         speed: 220,
       );
       if (projectile != null) {
@@ -85,7 +86,10 @@ class WeaponSystem {
         weaponId: talismanThrow,
         origin: origin,
         enemies: aliveEnemies,
-        damage: 7 + levelOf(talismanThrow) * 2,
+        damage: _scaledDamage(
+          7 + levelOf(talismanThrow) * 2,
+          damageMultiplier,
+        ),
         speed: 120,
         size: Vector2.all(10),
       );
@@ -98,12 +102,19 @@ class WeaponSystem {
       damageEnemiesNear(
         center: _bombCenter(origin, aliveEnemies),
         enemies: aliveEnemies,
-        damage: 8 + levelOf(thunderCrashBomb) * 3,
+        damage: _scaledDamage(
+          8 + levelOf(thunderCrashBomb) * 3,
+          damageMultiplier,
+        ),
         radius: 72,
       );
     }
 
     return WeaponTickResult(projectiles: projectiles);
+  }
+
+  double _scaledDamage(num baseDamage, double damageMultiplier) {
+    return baseDamage * damageMultiplier;
   }
 
   void damageEnemiesNear({

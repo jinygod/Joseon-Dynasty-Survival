@@ -16,6 +16,16 @@ void main() {
   }
 
   group('PixelSurvivorGame run loop progression', () {
+    test('starts each run with all globally unlocked weapons and augments', () {
+      final game = newGame();
+
+      expect(game.unlockedWeaponIds, containsAll([hwandoSlash, gakgungShot]));
+      expect(
+        game.unlockedAugmentIds,
+        containsAll([martialTraining, quickStep]),
+      );
+    });
+
     test('gainExperience queues level-up choices after crossing threshold', () {
       final game = newGame()
         ..unlockedWeaponIds.add(hwandoSlash)

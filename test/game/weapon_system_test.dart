@@ -42,6 +42,26 @@ void main() {
         isNot(contains(talismanThrow)),
       );
     });
+
+    test('tick applies damage multiplier to weapon damage', () {
+      final system = WeaponSystem(initialLevels: const {hwandoSlash: 1});
+      final enemy = EnemyComponent(
+        enemyId: 'test_enemy',
+        maxHealth: 20,
+        moveSpeed: 0,
+        damage: 1,
+        position: Vector2(20, 0),
+      );
+
+      system.tick(
+        dt: 1,
+        origin: Vector2.zero(),
+        enemies: [enemy],
+        damageMultiplier: 2,
+      );
+
+      expect(enemy.currentHealth, 4);
+    });
   });
 
   group('ProjectileComponent', () {

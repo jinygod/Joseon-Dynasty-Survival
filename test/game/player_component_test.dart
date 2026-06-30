@@ -17,6 +17,18 @@ void main() {
       expect(player.position.length, closeTo(100, 0.0001));
     });
 
+    test('applies move speed multiplier to movement distance', () {
+      final player = PlayerComponent(
+        slotIndex: 0,
+        maxHealth: 100,
+        moveSpeed: 100,
+      )..moveSpeedMultiplier = 1.5;
+
+      player.applyInput(const VectorInput(1, 0), 1);
+
+      expect(player.position.x, 150);
+    });
+
     test('clamps movement so the full player stays inside bounds', () {
       final player = PlayerComponent(
         slotIndex: 0,

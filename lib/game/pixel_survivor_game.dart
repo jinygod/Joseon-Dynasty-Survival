@@ -37,6 +37,8 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
         'must not be empty',
       );
     }
+
+    _addStartingRunUnlocks();
   }
 
   final List<PlayerSlot> playerSlots;
@@ -186,6 +188,7 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
         if (currentLevel < definition.maxLevel) {
           augmentLevels[augmentId] = currentLevel + 1;
         }
+        _applyAugmentEffects();
     }
 
     _pendingLevelUpChoices = const [];
@@ -226,6 +229,7 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
       activePlayers.add(player);
       await add(player);
     }
+    _applyAugmentEffects();
   }
 
   void _addDebugEnemy() {
@@ -260,6 +264,7 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
       dt: dt,
       origin: player.position,
       enemies: children.whereType<EnemyComponent>(),
+      damageMultiplier: _weaponDamageMultiplier,
     );
     for (final projectile in result.projectiles) {
       add(projectile);
@@ -379,6 +384,15 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
     );
   }
 
+  void _addStartingRunUnlocks() {
+    unlockedWeaponIds.addAll(
+      weaponDefinitions
+          .where((definition) => definition.startsUnlocked)
+          .map((definition) => definition.id),
+    );
+    _addStartingAugments();
+  }
+
   void _queueLevelUpChoices() {
     final choices = levelUpChoices();
     if (choices.isEmpty) {
@@ -390,6 +404,24 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
       pauseEngine();
       overlays.add(levelUpOverlayId);
     }
+  }
+
+  void _applyAugmentEffects() {
+    final speedMultiplier = _moveSpeedMultiplier;
+    for (final player in activePlayers) {
+      player.moveSpeedMultiplier = speedMultiplier;
+    }
+  }
+
+  double get _weaponDamageMultiplier {
+    final martialTrainingLevel = augmentLevels[martialTraining] ?? 0;
+    final heavyStrikeLevel = augmentLevels[heavyStrike] ?? 0;
+    return 1 + (martialTrainingLevel * 0.12) + (heavyStrikeLevel * 0.18);
+  }
+
+  double get _moveSpeedMultiplier {
+    final quickStepLevel = augmentLevels[quickStep] ?? 0;
+    return 1 + (quickStepLevel * 0.08);
   }
 
   void _finishRun() {

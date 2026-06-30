@@ -23,6 +23,7 @@ class PlayerComponent extends PositionComponent {
   final double maxHealth;
   double currentHealth;
   final double moveSpeed;
+  double moveSpeedMultiplier = 1;
 
   bool get isAlive => currentHealth > 0;
 
@@ -48,7 +49,7 @@ class PlayerComponent extends PositionComponent {
       direction.normalize();
     }
 
-    position.add(direction * moveSpeed * dt);
+    position.add(direction * moveSpeed * moveSpeedMultiplier * dt);
     if (bounds != null) {
       final minX = size.x / 2;
       final minY = size.y / 2;
