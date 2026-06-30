@@ -1,7 +1,6 @@
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flame/game.dart';
-import 'package:flutter/painting.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart' show KeyEventResult;
 
@@ -114,21 +113,6 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
     await super.onLoad();
 
     camera.viewfinder.anchor = Anchor.center;
-
-    await add(
-      TextComponent(
-        text: 'Joseon Dynasty Survival',
-        anchor: Anchor.center,
-        position: Vector2(size.x / 2, 32),
-        textRenderer: TextPaint(
-          style: const TextStyle(
-            color: Color(0xfff4ead2),
-            fontSize: 28,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
-    );
 
     await _addActivePlayers();
     _addStartingAugments();
