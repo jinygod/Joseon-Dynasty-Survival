@@ -41,6 +41,7 @@ The MVP does not include:
 - Multiple biomes.
 - Complex story scenes.
 - Procedural map generation.
+- Two-player co-op gameplay.
 
 ## Core Game Loop
 
@@ -240,6 +241,24 @@ Initial unlock goals:
 
 The game should show locked content with clear requirements. Requirements should be specific, measurable, and stored in save data.
 
+## Future Co-op Mode
+
+Two-player play is possible, but it should not be part of the first MVP. The recommended first co-op version is same-device local co-op rather than online multiplayer. Online co-op requires networking, synchronization, matchmaking, latency handling, reconnect behavior, and more QA than the first release should carry.
+
+The MVP architecture should still keep a future co-op path open:
+
+- Player logic should support multiple player entities instead of assuming only one global player forever.
+- Input should be routed through a player input abstraction so a second joystick, controller, or touch region can be added later.
+- Enemy targeting should be able to choose from a list of active players.
+- Progression should remain account/save based, while run stats can record whether the run was solo or co-op.
+
+Future local co-op concept:
+
+- Solo and two-player runs share the same unlock collection.
+- Both players can level up the shared run, or each player can receive alternating level-up choices after playtesting.
+- Enemy count and boss health scale up when two players are active.
+- Co-op unlock goals can be added after the solo loop is stable.
+
 ## Progression Data
 
 Persistent local save data should track:
@@ -412,5 +431,6 @@ Expected early commits:
 - Whether the first build targets Android only or Android plus iOS.
 - Which four weapons are implemented first.
 - Which local save package is used.
+- Whether two-player local co-op enters the second milestone or waits until after the first public test build.
 
 These decisions do not block the design. They should be finalized in the implementation plan.
