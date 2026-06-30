@@ -5,10 +5,12 @@ import 'package:flutter/painting.dart';
 import 'components/enemy_component.dart';
 import 'components/experience_gem_component.dart';
 import 'components/player_component.dart';
+import 'content/augment_definitions.dart';
 import 'content/character_definitions.dart';
 import 'content/enemy_definitions.dart';
 import 'content/ids.dart';
 import 'models/player_slot.dart';
+import 'systems/level_up_system.dart';
 import 'systems/spawn_system.dart';
 import 'systems/weapon_system.dart';
 
@@ -27,8 +29,11 @@ class PixelSurvivorGame extends FlameGame {
   final List<PlayerSlot> playerSlots;
   final SpawnSystem spawnSystem = const SpawnSystem();
   final WeaponSystem weaponSystem = WeaponSystem();
+  final LevelUpSystem levelUpSystem = const LevelUpSystem();
   final List<PlayerComponent> activePlayers = [];
   final Set<WeaponId> unlockedWeaponIds = {};
+  final Set<AugmentId> unlockedAugmentIds = {};
+  final Map<AugmentId, int> augmentLevels = {};
 
   double _elapsedSeconds = 0;
   double _spawnTimer = 0;
@@ -59,6 +64,7 @@ class PixelSurvivorGame extends FlameGame {
     );
 
     await _addActivePlayers();
+    _addStartingAugments();
   }
 
   @override
@@ -123,7 +129,9 @@ class PixelSurvivorGame extends FlameGame {
   }
 
   void _updateWeapons(double dt) {
-    final player = activePlayers.where((player) => player.isMounted).firstOrNull;
+    final player = activePlayers
+        .where((player) => player.isMounted)
+        .firstOrNull;
     if (player == null) {
       return;
     }
@@ -151,6 +159,23 @@ class PixelSurvivorGame extends FlameGame {
       );
       enemy.removeFromParent();
     }
+  }
+
+  List<LevelUpChoice> levelUpChoices() {
+    return levelUpSystem.choices(
+      unlockedWeaponIds: unlockedWeaponIds,
+      unlockedAugmentIds: unlockedAugmentIds,
+      currentWeaponLevels: weaponSystem.levels,
+      currentAugmentLevels: augmentLevels,
+    );
+  }
+
+  void _addStartingAugments() {
+    unlockedAugmentIds.addAll(
+      augmentDefinitions
+          .where((definition) => definition.startsUnlocked)
+          .map((definition) => definition.id),
+    );
   }
 
   CharacterDefinition _characterDefinitionFor(CharacterId characterId) {
