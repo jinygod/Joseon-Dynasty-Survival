@@ -44,5 +44,19 @@ void main() {
 
       expect(player.position, Vector2(12, 50));
     });
+
+    test('takeDamage clamps health at zero and exposes alive state', () {
+      final player = PlayerComponent(
+        slotIndex: 0,
+        maxHealth: 100,
+        moveSpeed: 100,
+      );
+
+      player.takeDamage(125);
+
+      expect(player.currentHealth, 0);
+      expect(player.isAlive, isFalse);
+      expect(player.healthFraction, 0);
+    });
   });
 }

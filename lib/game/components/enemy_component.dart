@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 
 import '../content/ids.dart';
+import 'player_component.dart';
 
 typedef TargetPositionProvider = Vector2? Function(Vector2 enemyPosition);
 
@@ -36,6 +37,11 @@ class EnemyComponent extends PositionComponent {
 
   void takeDamage(double amount) {
     currentHealth = (currentHealth - amount).clamp(0, maxHealth).toDouble();
+  }
+
+  bool overlapsPlayer(PlayerComponent player) {
+    final hitRadius = (size.x + player.size.x) / 2;
+    return position.distanceToSquared(player.position) < hitRadius * hitRadius;
   }
 
   void moveToward(Vector2 target, double dt) {

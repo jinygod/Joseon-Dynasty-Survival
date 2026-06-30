@@ -88,12 +88,14 @@ class _StatusBar extends StatelessWidget {
             runSpacing: 6,
             children: [
               _HudValue(label: 'Time', value: '$minutes:$seconds'),
+              _HudValue(label: 'HP', value: game.playerHealthLabel),
               _HudValue(label: 'Level', value: '${game.playerLevel}'),
               _HudValue(
                 label: 'XP',
                 value: '${game.currentExperience}/${game.experienceToNextLevel}',
               ),
               _HudValue(label: 'Enemies', value: '${game.enemyCount}'),
+              _HudValue(label: 'Kills', value: '${game.kills}'),
               _HudValue(label: 'Weapon', value: game.currentWeaponLabel),
             ],
           ),

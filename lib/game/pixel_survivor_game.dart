@@ -15,17 +15,21 @@ import 'content/enemy_definitions.dart';
 import 'content/ids.dart';
 import 'content/weapon_definitions.dart';
 import 'models/player_slot.dart';
+import 'models/run_result.dart';
 import 'models/vector_input.dart';
 import 'systems/level_up_system.dart';
 import 'systems/run_progression_system.dart';
+import 'systems/run_stats_tracker.dart';
 import 'systems/spawn_system.dart';
 import 'systems/weapon_system.dart';
 
 class PixelSurvivorGame extends FlameGame with KeyboardEvents {
   static const levelUpOverlayId = 'levelUp';
 
-  PixelSurvivorGame({required List<PlayerSlot> playerSlots})
-    : playerSlots = List.unmodifiable(playerSlots) {
+  PixelSurvivorGame({
+    required List<PlayerSlot> playerSlots,
+    this.onRunEnded,
+  }) : playerSlots = List.unmodifiable(playerSlots) {
     if (this.playerSlots.isEmpty) {
       throw ArgumentError.value(
         playerSlots,
@@ -36,10 +40,12 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
   }
 
   final List<PlayerSlot> playerSlots;
+  final void Function(RunResult result)? onRunEnded;
   final SpawnSystem spawnSystem = const SpawnSystem();
   final WeaponSystem weaponSystem = WeaponSystem();
   final LevelUpSystem levelUpSystem = const LevelUpSystem();
   final RunProgressionSystem runProgression = RunProgressionSystem();
+  final RunStatsTracker runStats = RunStatsTracker();
   final List<PlayerComponent> activePlayers = [];
   final Set<WeaponId> unlockedWeaponIds = {};
   final Set<AugmentId> unlockedAugmentIds = {};
@@ -51,14 +57,25 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
   double _elapsedSeconds = 0;
   double _spawnTimer = 0;
   int _spawnCursor = 0;
+  bool _isGameOver = false;
 
   double get elapsedSeconds => _elapsedSeconds;
   int get playerLevel => runProgression.level;
   int get currentExperience => runProgression.currentExperience;
   int get experienceToNextLevel => runProgression.experienceToNextLevel;
+  int get kills => runStats.kills;
+  bool get isGameOver => _isGameOver;
   bool get isLevelUpPending => _pendingLevelUpChoices.isNotEmpty;
   List<LevelUpChoice> get pendingLevelUpChoices =>
       List.unmodifiable(_pendingLevelUpChoices);
+  String get playerHealthLabel {
+    final player = activePlayers.where((player) => player.isMounted).firstOrNull;
+    if (player == null) {
+      return '--';
+    }
+
+    return '${player.currentHealth.ceil()}/${player.maxHealth.ceil()}';
+  }
 
   int get enemyCount => children
       .whereType<EnemyComponent>()
@@ -118,11 +135,15 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
   @override
   void update(double dt) {
     super.update(dt);
+    if (_isGameOver) {
+      return;
+    }
 
     _elapsedSeconds += dt;
     _spawnTimer += dt;
 
     _updatePlayerMovement(dt);
+    _applyEnemyContactDamage(dt);
 
     if (_spawnTimer >= 3) {
       _spawnTimer = 0;
@@ -172,6 +193,14 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
       overlays.remove(levelUpOverlayId);
       resumeEngine();
     }
+  }
+
+  RunResult currentRunResult() {
+    return runStats.toRunResult(
+      survivalSeconds: _elapsedSeconds.floor(),
+      level: playerLevel,
+      wonWithLowHealth: false,
+    );
   }
 
   Future<void> _addActivePlayers() async {
@@ -274,6 +303,8 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
       (enemy) => enemy.isDead,
     );
     for (final enemy in deadEnemies.toList()) {
+      final enemyDefinition = _enemyDefinitionFor(enemy.enemyId);
+      runStats.recordEnemyDefeat(isBoss: enemyDefinition.isBoss);
       add(
         ExperienceGemComponent(
           experienceValue: enemy.experienceValue,
@@ -281,6 +312,35 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
         ),
       );
       enemy.removeFromParent();
+    }
+  }
+
+  void _applyEnemyContactDamage(double dt) {
+    final alivePlayers = activePlayers
+        .where((player) => player.isMounted && player.isAlive)
+        .toList(growable: false);
+    if (alivePlayers.isEmpty) {
+      _finishRun();
+      return;
+    }
+
+    final enemies = children
+        .whereType<EnemyComponent>()
+        .where((enemy) => !enemy.isDead)
+        .toList(growable: false);
+    for (final enemy in enemies) {
+      for (final player in alivePlayers) {
+        if (enemy.overlapsPlayer(player)) {
+          player.takeDamage(enemy.damage * dt);
+        }
+      }
+    }
+
+    final hasAlivePlayer = activePlayers.any(
+      (player) => player.isMounted && player.isAlive,
+    );
+    if (!hasAlivePlayer) {
+      _finishRun();
     }
   }
 
@@ -330,6 +390,20 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
       pauseEngine();
       overlays.add(levelUpOverlayId);
     }
+  }
+
+  void _finishRun() {
+    if (_isGameOver) {
+      return;
+    }
+
+    _isGameOver = true;
+    _pendingLevelUpChoices = const [];
+    if (isMounted) {
+      overlays.remove(levelUpOverlayId);
+      pauseEngine();
+    }
+    onRunEnded?.call(currentRunResult());
   }
 
   CharacterDefinition _characterDefinitionFor(CharacterId characterId) {

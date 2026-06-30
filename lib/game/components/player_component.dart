@@ -24,6 +24,24 @@ class PlayerComponent extends PositionComponent {
   double currentHealth;
   final double moveSpeed;
 
+  bool get isAlive => currentHealth > 0;
+
+  double get healthFraction {
+    if (maxHealth <= 0) {
+      return 0;
+    }
+
+    return (currentHealth / maxHealth).clamp(0, 1).toDouble();
+  }
+
+  void takeDamage(double amount) {
+    if (amount <= 0) {
+      return;
+    }
+
+    currentHealth = (currentHealth - amount).clamp(0, maxHealth).toDouble();
+  }
+
   void applyInput(VectorInput input, double dt, {Vector2? bounds}) {
     final direction = Vector2(input.x, input.y);
     if (direction.length2 > 1) {
