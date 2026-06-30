@@ -1,0 +1,918 @@
+Joseon Dynasty Survival Manual QA Test Cases
+Last updated: 2026-07-01
+Branch: codex/pixel-survivor-mvp
+
+Purpose
+이 문서는 플레이어가 대충 한 판 해보는 것이 아니라, 현재 구현된 MVP 기능을 하나씩 확인하기 위한 수동 테스트 케이스다.
+자동 단위 테스트로 이미 커버되는 항목은 "자동 매핑"에 테스트 파일을 적었다.
+
+Current Build Notes
+- 현재 그래픽은 최종 도트 이미지가 아니라 Flame 기본 도형/임시 UI 기반이다.
+- 현재 기본 플레이어는 Rookie Constable 1명이다.
+- 현재 시작 무기는 Hwando Slash이며, Gakgung Shot은 시작 해금 상태라 레벨업 선택 후보로 나온다.
+- 현재 시작 증강은 Martial Training, Quick Step, Inner Breath, Jangseung Blessing, Hawk Eye, Herbal Tonic이다.
+- 적은 3초마다 1마리씩 스폰된다.
+- 0초 이상 60초 미만: Plague Rat Swarm
+- 60초 이상 120초 미만: Plague Rat Swarm, Bandit
+- 120초 이상 300초 미만: Plague Rat Swarm, Bandit, Dokkaebi, Vengeful Spirit
+- 300초 이상: Fallen General
+- 첫 레벨업 요구 XP는 3이다. 이후 요구 XP는 5, 7, 9처럼 2씩 증가한다.
+- 장기 해금 목표: 180초 생존 Talisman Throw, 누적 300킬 Thunder Crash Bomb, 런 레벨 10 Jangseung Ward/Rapid Reload, Fallen General 처치 Exorcist Dosa, 300초 생존 Goblin Fire, 무기 3개 해금 Powder Mastery, 누적 500킬 Singijeon Volley.
+
+Stable Windows Test Commands
+PowerShell에서 아래 절차로 실행한다. F: 또는 P:가 이미 사용 중이면 다른 ASCII 드라이브 문자로 바꾼다.
+
+New-Item -ItemType Directory -Force -Path C:\codex-tmp | Out-Null
+$env:TEMP = "C:\codex-tmp"
+$env:TMP = "C:\codex-tmp"
+subst F: "$env:USERPROFILE\source\flutter"
+$env:Path = "F:\bin;$env:Path"
+subst P: "C:\Users\전성진\Documents\뱀서라이크게임\.worktrees\pixel-survivor-mvp"
+Push-Location P:\
+flutter pub get
+dart analyze
+flutter test
+flutter build web
+
+Optional local web playtest:
+python -m http.server 8765 --bind 127.0.0.1 --directory build\web
+Open http://127.0.0.1:8765/
+
+Result Symbols
+[ ] Not tested by user
+[PASS] Passed
+[FAIL] Failed
+[N/A] Not applicable in this environment
+
+===============================================================================
+1. Environment And Build
+===============================================================================
+
+TC-ENV-001 Latest branch checkout
+Priority: Critical
+Automatic mapping: none
+Steps:
+1. Open PowerShell in the worktree.
+2. Run "git branch --show-current".
+3. Run "git status --short --branch".
+Expected:
+- Current branch is codex/pixel-survivor-mvp.
+- Status shows no uncommitted files before testing.
+User result: [ ]
+Notes:
+
+TC-ENV-002 Dependency restore
+Priority: Critical
+Automatic mapping: pubspec.yaml dependency resolution
+Steps:
+1. Run the stable Windows setup commands through "Push-Location P:\".
+2. Run "flutter pub get".
+Expected:
+- Command exits successfully.
+- No dependency resolution error appears.
+User result: [ ]
+Notes:
+
+TC-ENV-003 Static analysis
+Priority: Critical
+Automatic mapping: dart analyze
+Steps:
+1. Run "dart analyze".
+Expected:
+- Output contains "No issues found!".
+User result: [ ]
+Notes:
+
+TC-ENV-004 Automated unit/widget tests
+Priority: Critical
+Automatic mapping: all files under test/
+Steps:
+1. Run "flutter test".
+Expected:
+- All tests pass.
+- Current expected count is 47 passing tests.
+User result: [ ]
+Notes:
+
+TC-ENV-005 Web build
+Priority: Critical
+Automatic mapping: flutter build web
+Steps:
+1. Run "flutter build web".
+Expected:
+- Build succeeds.
+- build\web is generated.
+- A Flutter icon/font tree-shaking warning may appear; that is acceptable if exit code is 0.
+User result: [ ]
+Notes:
+
+TC-ENV-006 Local web server
+Priority: High
+Automatic mapping: browser smoke check
+Steps:
+1. Run "python -m http.server 8765 --bind 127.0.0.1 --directory build\web".
+2. Open http://127.0.0.1:8765/.
+Expected:
+- Browser shows the game main menu.
+- No browser console error appears.
+User result: [ ]
+Notes:
+
+===============================================================================
+2. Main Menu And First Screen
+===============================================================================
+
+TC-MENU-001 Main title
+Priority: Critical
+Automatic mapping: test/main_menu_screen_test.dart
+Steps:
+1. Open the app.
+2. Observe the first screen.
+Expected:
+- "Joseon Dynasty Survival" title is visible.
+- The title is centered and not clipped.
+User result: [ ]
+Notes:
+
+TC-MENU-002 Start Run button
+Priority: Critical
+Automatic mapping: test/main_menu_screen_test.dart
+Steps:
+1. On the main menu, locate "Start Run".
+2. Press/click it once.
+Expected:
+- The app transitions to the game screen.
+- The game screen does not reload repeatedly.
+User result: [ ]
+Notes:
+
+TC-MENU-003 Game screen initial state
+Priority: Critical
+Automatic mapping: browser smoke check
+Steps:
+1. Start a run.
+2. Immediately observe the screen.
+Expected:
+- Dark playfield appears.
+- Player appears near center as a blue circular placeholder.
+- Left-bottom D-pad appears.
+- Top-right HUD appears.
+- No large title overlaps the HUD.
+User result: [ ]
+Notes:
+
+TC-MENU-004 Landscape composition
+Priority: High
+Automatic mapping: lib/main.dart orientation lock
+Steps:
+1. Test in a wide browser window or landscape phone/emulator.
+2. Observe layout.
+Expected:
+- Playfield is landscape-first.
+- HUD remains readable at top-right.
+- D-pad stays at bottom-left.
+User result: [ ]
+Notes:
+
+TC-MENU-005 Repeated start button click
+Priority: Medium
+Automatic mapping: none
+Steps:
+1. Return to menu if possible.
+2. Click Start Run once.
+3. Do not double-click.
+4. If accidental double-click happens, observe result.
+Expected:
+- Normal single click starts one run.
+- There should not be obvious duplicate HUD layers.
+User result: [ ]
+Notes:
+
+===============================================================================
+3. Player Movement And Bounds
+===============================================================================
+
+TC-CTRL-001 Keyboard right movement
+Priority: Critical
+Automatic mapping: test/game/player_component_test.dart
+Steps:
+1. Start a run in browser/desktop.
+2. Press and hold D or Right Arrow for 1 second.
+Expected:
+- Player moves right.
+- HUD remains fixed.
+User result: [ ]
+Notes:
+
+TC-CTRL-002 Keyboard left movement
+Priority: Critical
+Automatic mapping: test/game/player_component_test.dart
+Steps:
+1. Press and hold A or Left Arrow for 1 second.
+Expected:
+- Player moves left.
+User result: [ ]
+Notes:
+
+TC-CTRL-003 Keyboard up/down movement
+Priority: Critical
+Automatic mapping: test/game/player_component_test.dart
+Steps:
+1. Press W or Up Arrow.
+2. Press S or Down Arrow.
+Expected:
+- Player moves up, then down.
+User result: [ ]
+Notes:
+
+TC-CTRL-004 Diagonal movement normalization
+Priority: High
+Automatic mapping: test/game/player_component_test.dart
+Steps:
+1. Hold D only for about 1 second and mentally note movement speed.
+2. Hold D+S for about 1 second.
+Expected:
+- Diagonal movement should not be dramatically faster than straight movement.
+- Player should move diagonally at a controlled speed.
+User result: [ ]
+Notes:
+
+TC-CTRL-005 D-pad drag movement
+Priority: Critical
+Automatic mapping: browser smoke check
+Steps:
+1. Drag the bottom-left D-pad knob to the right.
+2. Drag it up-left.
+3. Release it.
+Expected:
+- Player moves in the dragged direction.
+- Player stops moving after release.
+User result: [ ]
+Notes:
+
+TC-CTRL-006 Movement bounds right/bottom
+Priority: High
+Automatic mapping: test/game/player_component_test.dart
+Steps:
+1. Move player toward the right edge until it cannot go farther.
+2. Move player toward the bottom edge until it cannot go farther.
+Expected:
+- Player stays fully inside the playfield.
+- Player center/shape does not disappear beyond the edge.
+User result: [ ]
+Notes:
+
+TC-CTRL-007 Movement bounds left/top
+Priority: High
+Automatic mapping: test/game/player_component_test.dart
+Steps:
+1. Move player toward the left edge.
+2. Move player toward the top edge.
+Expected:
+- Player stays fully inside the playfield.
+User result: [ ]
+Notes:
+
+TC-CTRL-008 Quick Step movement effect
+Priority: Medium
+Automatic mapping: test/game/player_component_test.dart
+Steps:
+1. Level up until Quick Step appears.
+2. Select Quick Step.
+3. Move horizontally for roughly 1 second and compare with pre-upgrade feel.
+Expected:
+- Player movement should feel slightly faster.
+- Effect is subtle per level, not a huge teleport-like speed jump.
+User result: [ ]
+Notes:
+
+===============================================================================
+4. HUD
+===============================================================================
+
+TC-HUD-001 Initial HUD values
+Priority: Critical
+Automatic mapping: browser smoke check
+Steps:
+1. Start a run.
+2. Read the top-right HUD.
+Expected:
+- Time starts near 00:00.
+- HP starts at 105/105.
+- Level starts at 1.
+- XP starts at 0/3.
+- Enemies starts at 0.
+- Kills starts at 0.
+- Weapon shows Hwando Slash Lv 1.
+User result: [ ]
+Notes:
+
+TC-HUD-002 Time increments
+Priority: High
+Automatic mapping: browser smoke check
+Steps:
+1. Start a run.
+2. Wait 5 seconds.
+Expected:
+- Time increases.
+- Time format remains mm:ss.
+User result: [ ]
+Notes:
+
+TC-HUD-003 Enemy count changes
+Priority: High
+Automatic mapping: browser smoke check
+Steps:
+1. Start a run.
+2. Wait until at least one enemy spawns.
+3. Observe Enemies value.
+Expected:
+- Enemies increases when enemies are alive.
+- Enemies decreases after enemies are killed.
+User result: [ ]
+Notes:
+
+TC-HUD-004 Kills and XP update
+Priority: Critical
+Automatic mapping: test/game/run_stats_tracker_test.dart, test/game/run_progression_system_test.dart
+Steps:
+1. Let Hwando Slash kill an enemy.
+2. Move onto the dropped blue XP gem if it is not auto-collected.
+Expected:
+- Kills increases by 1 after enemy death.
+- XP increases after gem pickup.
+User result: [ ]
+Notes:
+
+TC-HUD-005 HUD overlap regression
+Priority: Critical
+Automatic mapping: browser screenshot check
+Steps:
+1. Start a run.
+2. Observe top-center and top-right.
+Expected:
+- There is no large in-game title overlapping the HUD.
+- HUD text remains readable.
+User result: [ ]
+Notes:
+
+===============================================================================
+5. Enemy Spawn And Enemy Behavior
+===============================================================================
+
+TC-SPAWN-001 First spawn timing
+Priority: Critical
+Automatic mapping: test/game/spawn_system_test.dart
+Steps:
+1. Start a run.
+2. Watch until around 3 seconds.
+Expected:
+- First enemy appears at an edge/outside-edge position and moves inward.
+User result: [ ]
+Notes:
+
+TC-SPAWN-002 Spawn cadence
+Priority: High
+Automatic mapping: runtime behavior in PixelSurvivorGame.update
+Steps:
+1. Start a run.
+2. Observe enemy count from 0 to 15 seconds.
+Expected:
+- New enemies appear about every 3 seconds.
+- Enemy count may go up or down depending on kills.
+User result: [ ]
+Notes:
+
+TC-SPAWN-003 Early enemy type
+Priority: High
+Automatic mapping: test/game/spawn_system_test.dart
+Steps:
+1. Play before 60 seconds.
+2. Observe enemy placeholders.
+Expected:
+- Early enemies use the low-health red square placeholder for Plague Rat Swarm.
+- Exact enemy names are not visible in current UI, so verify by behavior/automated test mapping.
+User result: [ ]
+Notes:
+
+TC-SPAWN-004 60 second spawn pool
+Priority: Medium
+Automatic mapping: test/game/spawn_system_test.dart
+Steps:
+1. Survive past 60 seconds.
+2. Observe that enemies continue spawning.
+Expected:
+- Spawn pool includes Plague Rat Swarm and Bandit according to automated test.
+- Manual UI currently does not show names, so this is mainly automated-verified.
+User result: [ ]
+Notes:
+
+TC-SPAWN-005 120 second spawn pool
+Priority: Medium
+Automatic mapping: test/game/spawn_system_test.dart
+Steps:
+1. Survive past 120 seconds.
+Expected:
+- Spawn pool includes Plague Rat Swarm, Bandit, Dokkaebi, Vengeful Spirit.
+- Manual UI currently does not show names.
+User result: [ ]
+Notes:
+
+TC-SPAWN-006 300 second boss spawn
+Priority: Medium
+Automatic mapping: test/game/spawn_system_test.dart
+Steps:
+1. Survive past 300 seconds.
+Expected:
+- Spawn pool switches to Fallen General boss according to automated test.
+- Manual UI currently uses placeholder rendering, so treat visual name confirmation as future work.
+User result: [ ]
+Notes:
+
+TC-SPAWN-007 Enemy chase behavior
+Priority: High
+Automatic mapping: EnemyComponent movement implementation
+Steps:
+1. Let an enemy spawn.
+2. Move away from it.
+3. Observe enemy movement.
+Expected:
+- Enemy moves toward the player.
+- Enemy does not stand still unless blocked by death/gameover.
+User result: [ ]
+Notes:
+
+===============================================================================
+6. Combat, Weapons, Projectiles, XP
+===============================================================================
+
+TC-COMBAT-001 Hwando Slash auto attack
+Priority: Critical
+Automatic mapping: test/game/weapon_system_test.dart
+Steps:
+1. Start a run.
+2. Let an enemy approach close to the player.
+3. Do not press an attack button.
+Expected:
+- Hwando Slash attacks automatically.
+- Nearby enemy eventually dies.
+User result: [ ]
+Notes:
+
+TC-COMBAT-002 Kill counter
+Priority: Critical
+Automatic mapping: test/game/run_stats_tracker_test.dart
+Steps:
+1. Let one enemy die.
+Expected:
+- Kills increases from 0 to 1.
+User result: [ ]
+Notes:
+
+TC-COMBAT-003 XP gem drop
+Priority: Critical
+Automatic mapping: test/game/weapon_system_test.dart
+Steps:
+1. After an enemy dies, look near its death position.
+Expected:
+- A small blue XP gem appears.
+User result: [ ]
+Notes:
+
+TC-COMBAT-004 XP gem pickup
+Priority: Critical
+Automatic mapping: test/game/weapon_system_test.dart, test/game/run_progression_system_test.dart
+Steps:
+1. Move player onto or near the blue gem.
+Expected:
+- Gem disappears.
+- XP in HUD increases.
+User result: [ ]
+Notes:
+
+TC-COMBAT-005 First level-up threshold
+Priority: Critical
+Automatic mapping: test/game/run_progression_system_test.dart
+Steps:
+1. Collect XP until HUD reaches 3/3 or crosses the threshold.
+Expected:
+- Player level becomes 2.
+- Level Up overlay appears.
+- Current XP carries overflow correctly if more than 3 XP was collected at once.
+User result: [ ]
+Notes:
+
+TC-COMBAT-006 Gakgung Shot selection
+Priority: High
+Automatic mapping: test/game/pixel_survivor_game_loop_test.dart
+Steps:
+1. On Level Up overlay, choose Gakgung Shot if it appears.
+2. Continue playing with enemies nearby.
+Expected:
+- Weapon upgrade is applied.
+- HUD can show current first weapon label, but projectile behavior should still activate if Gakgung is selected.
+- Yellow/oval projectile placeholder travels toward enemies.
+User result: [ ]
+Notes:
+
+TC-COMBAT-007 Projectile hit and expiry
+Priority: High
+Automatic mapping: test/game/weapon_system_test.dart
+Steps:
+1. Select Gakgung Shot through level-up.
+2. Watch projectiles near enemies.
+Expected:
+- Projectile moves toward enemy.
+- On hit, enemy takes damage and projectile disappears.
+- If it misses, it expires after its lifetime/offscreen cleanup.
+User result: [ ]
+Notes:
+
+TC-COMBAT-008 Martial Training damage effect
+Priority: Medium
+Automatic mapping: test/game/weapon_system_test.dart
+Steps:
+1. Choose Martial Training on a level-up.
+2. Continue fighting the same early enemies.
+Expected:
+- Weapon damage multiplier increases slightly.
+- The effect is subtle but should not reduce damage.
+User result: [ ]
+Notes:
+
+TC-COMBAT-009 Locked weapon cannot be upgraded
+Priority: High
+Automatic mapping: test/game/weapon_system_test.dart
+Steps:
+1. Before completing unlock goals, open several level-up choices.
+Expected:
+- Locked weapons such as Talisman Throw should not appear until unlocked by progression.
+User result: [ ]
+Notes:
+
+===============================================================================
+7. Level Up And Augment Choices
+===============================================================================
+
+TC-LEVEL-001 Level Up overlay visual
+Priority: Critical
+Automatic mapping: test/game/level_up_system_test.dart
+Steps:
+1. Collect enough XP for level 2.
+Expected:
+- A dark overlay appears.
+- "Level Up" title appears.
+- Up to 3 selectable cards/buttons appear.
+User result: [ ]
+Notes:
+
+TC-LEVEL-002 Game pause during selection
+Priority: High
+Automatic mapping: PixelSurvivorGame levelUp overlay behavior
+Steps:
+1. Trigger Level Up overlay.
+2. Do not select anything for 3 seconds.
+Expected:
+- Game action should be paused while choosing.
+- Enemy movement/spawn should not visibly continue under the overlay.
+User result: [ ]
+Notes:
+
+TC-LEVEL-003 Weapon upgrade card
+Priority: Critical
+Automatic mapping: test/game/pixel_survivor_game_loop_test.dart
+Steps:
+1. Select a weapon card such as Hwando Slash or Gakgung Shot.
+Expected:
+- Overlay closes.
+- Game resumes.
+- Weapon level increases internally.
+- If Gakgung Shot was selected, projectile behavior becomes visible later.
+User result: [ ]
+Notes:
+
+TC-LEVEL-004 Augment upgrade card
+Priority: Critical
+Automatic mapping: test/game/pixel_survivor_game_loop_test.dart
+Steps:
+1. Select an augment card such as Martial Training or Quick Step.
+Expected:
+- Overlay closes.
+- Game resumes.
+- Augment level increases internally.
+- Matching gameplay effect is applied if currently implemented.
+User result: [ ]
+Notes:
+
+TC-LEVEL-005 Max level filtering
+Priority: Medium
+Automatic mapping: test/game/level_up_system_test.dart, test/game/weapon_system_test.dart
+Steps:
+1. This is difficult to exhaust manually in one short session.
+2. Rely on automated tests or long-play until a weapon maxes.
+Expected:
+- Max-level weapons/augments no longer appear as level-up choices.
+User result: [ ]
+Notes:
+
+TC-LEVEL-006 Deterministic choice count
+Priority: Medium
+Automatic mapping: test/game/level_up_system_test.dart
+Steps:
+1. Trigger a level-up.
+Expected:
+- Up to 3 choices appear.
+- If fewer than 3 upgradeable choices exist later, fewer choices are acceptable.
+User result: [ ]
+Notes:
+
+TC-LEVEL-007 Overlay closes after one choice
+Priority: High
+Automatic mapping: test/game/pixel_survivor_game_loop_test.dart
+Steps:
+1. Trigger level-up.
+2. Click one card once.
+Expected:
+- Overlay closes immediately.
+- It should not apply multiple choices from one level-up.
+User result: [ ]
+Notes:
+
+===============================================================================
+8. Damage, Death, Game Over, Run Summary
+===============================================================================
+
+TC-DAMAGE-001 Contact damage
+Priority: Critical
+Automatic mapping: test/game/enemy_component_test.dart, test/game/player_component_test.dart
+Steps:
+1. Let an enemy touch the player.
+2. Observe HUD HP.
+Expected:
+- HP decreases gradually while in contact.
+User result: [ ]
+Notes:
+
+TC-DAMAGE-002 No instant death from first rat
+Priority: High
+Automatic mapping: enemy definition values
+Steps:
+1. Let the first early enemy touch the player briefly.
+Expected:
+- HP decreases but does not instantly drop from 105 to 0.
+User result: [ ]
+Notes:
+
+TC-DAMAGE-003 Player death
+Priority: Critical
+Automatic mapping: PixelSurvivorGame run end behavior
+Steps:
+1. Intentionally stop moving and let enemies keep touching the player.
+2. Wait until HP reaches 0.
+Expected:
+- Game stops.
+- Run Summary screen opens.
+User result: [ ]
+Notes:
+
+TC-SUMMARY-001 Summary stats
+Priority: Critical
+Automatic mapping: test/game/run_summary_progression_test.dart
+Steps:
+1. Reach Run Summary after death.
+Expected:
+- Survived time is shown.
+- Kills are shown.
+- Level is shown.
+- New Unlocks section is shown.
+User result: [ ]
+Notes:
+
+TC-SUMMARY-002 Start from summary
+Priority: High
+Automatic mapping: RunSummaryScreen callbacks
+Steps:
+1. On Run Summary, press Start.
+Expected:
+- A new run starts.
+- HUD resets to Level 1 and XP 0/3.
+User result: [ ]
+Notes:
+
+TC-SUMMARY-003 Menu from summary
+Priority: High
+Automatic mapping: RunSummaryScreen callbacks
+Steps:
+1. On Run Summary, press Menu.
+Expected:
+- App returns to the main menu.
+User result: [ ]
+Notes:
+
+TC-SUMMARY-004 Progression save after run
+Priority: High
+Automatic mapping: test/game/save_system_test.dart, test/game/progression_system_test.dart
+Steps:
+1. Finish any run.
+2. Start another run or reopen app if practical.
+Expected:
+- Save system should keep progression statistics.
+- Unlocks should be derived from completed goals.
+User result: [ ]
+Notes:
+
+===============================================================================
+9. Long-Run Progression Unlocks
+===============================================================================
+
+TC-PROG-001 Talisman Throw unlock
+Priority: Medium
+Automatic mapping: test/game/progression_system_test.dart
+Steps:
+1. Survive at least 180 seconds.
+2. End the run.
+Expected:
+- Run Summary should list a new weapon unlock: talisman_throw.
+User result: [ ]
+Notes:
+
+TC-PROG-002 Thunder Crash Bomb unlock
+Priority: Low
+Automatic mapping: unlock_definitions.dart, progression tests
+Steps:
+1. Accumulate 300 total kills across runs.
+Expected:
+- thunder_crash_bomb unlocks.
+User result: [ ]
+Notes:
+
+TC-PROG-003 Level 10 unlock
+Priority: Medium
+Automatic mapping: unlock_definitions.dart, progression tests
+Steps:
+1. Reach level 10 in one run.
+2. End the run.
+Expected:
+- jangseung_ward and rapid_reload unlock.
+User result: [ ]
+Notes:
+
+TC-PROG-004 Fallen General unlock
+Priority: Low
+Automatic mapping: test/game/progression_system_test.dart
+Steps:
+1. Survive to 300 seconds.
+2. Defeat Fallen General.
+3. End run.
+Expected:
+- exorcist_dosa unlocks.
+User result: [ ]
+Notes:
+
+TC-PROG-005 Five minute unlock
+Priority: Low
+Automatic mapping: unlock_definitions.dart
+Steps:
+1. Survive 300 seconds.
+2. End run.
+Expected:
+- goblin_fire unlocks.
+User result: [ ]
+Notes:
+
+===============================================================================
+10. Regression And Stability
+===============================================================================
+
+TC-REG-001 No console errors during short play
+Priority: Critical
+Automatic mapping: browser smoke check
+Steps:
+1. Start local web build.
+2. Play or watch for at least 15 seconds.
+3. Check browser console.
+Expected:
+- No error-level console logs.
+User result: [ ]
+Notes:
+
+TC-REG-002 HUD remains readable after enemies spawn
+Priority: High
+Automatic mapping: browser screenshot check
+Steps:
+1. Start a run.
+2. Wait at least 15 seconds.
+Expected:
+- HUD remains readable.
+- Enemy/player placeholders do not cover HUD in normal play.
+User result: [ ]
+Notes:
+
+TC-REG-003 No crash during level-up selection
+Priority: Critical
+Automatic mapping: test/game/pixel_survivor_game_loop_test.dart
+Steps:
+1. Trigger level-up.
+2. Wait 2 seconds.
+3. Select a card.
+Expected:
+- No crash.
+- Overlay closes.
+- Game resumes.
+User result: [ ]
+Notes:
+
+TC-REG-004 Repeated run restart
+Priority: Medium
+Automatic mapping: none
+Steps:
+1. Finish a run.
+2. Press Start on summary.
+3. Finish or exit another run.
+Expected:
+- New run starts cleanly.
+- Old HUD/game state does not visually duplicate.
+User result: [ ]
+Notes:
+
+===============================================================================
+Codex Verification Record
+===============================================================================
+
+These are the verification results performed by Codex against this same test file.
+
+COD-VERIFY-001 Automated validation
+Command:
+- dart analyze
+- flutter test
+- flutter build web
+Result: PASS on 2026-07-01
+Evidence:
+- dart analyze: No issues found.
+- flutter test: 47 tests passed.
+- flutter build web: Built build\web successfully.
+
+COD-VERIFY-002 Browser smoke: menu and Start Run
+Method:
+- Local web server on http://127.0.0.1:8765/
+- Browser screenshot/console check
+Mapped cases:
+- TC-ENV-006
+- TC-MENU-001
+- TC-MENU-002
+- TC-MENU-003
+- TC-HUD-001
+- TC-HUD-005
+Result: PASS on 2026-07-01
+Evidence:
+- Menu displayed "Joseon Dynasty Survival" and "Start Run".
+- Start Run opened the game screen.
+- Initial game screen showed player, D-pad, HUD, HP 105/105, Level 1, XP 0/3, Weapon Hwando Slash Lv 1.
+- No error-level browser console logs.
+
+COD-VERIFY-003 Browser smoke: spawn, kill, XP
+Method:
+- Start run and observe at least 15 seconds
+- Browser screenshot/console check
+Mapped cases:
+- TC-HUD-002
+- TC-HUD-003
+- TC-HUD-004
+- TC-SPAWN-001
+- TC-SPAWN-002
+- TC-COMBAT-001
+- TC-COMBAT-002
+- TC-COMBAT-003
+- TC-COMBAT-004
+- TC-REG-001
+- TC-REG-002
+Result: PASS on 2026-07-01
+Evidence:
+- At 00:16, HUD showed HP 98/105, XP 2/3, Enemies 3, Kills 2.
+- Red enemy placeholders were visible.
+- Combat and XP pickup progressed without player attack input.
+- No error-level browser console logs.
+
+COD-VERIFY-004 Browser smoke: level-up and choice application
+Method:
+- Continue the same browser run until first level-up.
+- Click the middle Level Up card.
+Mapped cases:
+- TC-COMBAT-005
+- TC-COMBAT-006
+- TC-COMBAT-007
+- TC-LEVEL-001
+- TC-LEVEL-002
+- TC-LEVEL-003
+- TC-LEVEL-007
+- TC-REG-003
+Result: PASS on 2026-07-01
+Evidence:
+- Level Up overlay appeared at Level 2 with three cards: Hwando Slash, Gakgung Shot, Martial Training.
+- After selecting Gakgung Shot, overlay closed and gameplay resumed.
+- Projectile placeholder appeared during continued play.
+- No error-level browser console logs.
+
+Known Not Fully Verified By Codex Browser Smoke
+- Long-run manual progression goals TC-PROG-001 through TC-PROG-005 were verified by automated progression tests where available, not by waiting through full 3-5 minute browser sessions.
+- Mobile physical-device orientation and touch feel should be rechecked on Android/iOS hardware later.
