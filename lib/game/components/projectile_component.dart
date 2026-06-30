@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:flame/components.dart';
 
+import 'enemy_component.dart';
 import '../content/ids.dart';
 
 class ProjectileComponent extends PositionComponent {
@@ -10,6 +11,7 @@ class ProjectileComponent extends PositionComponent {
     required this.damage,
     required Vector2 position,
     required this.velocity,
+    this.lifetime = 2.2,
     Vector2? size,
   }) : super(
          position: position,
@@ -20,12 +22,25 @@ class ProjectileComponent extends PositionComponent {
   final WeaponId weaponId;
   final double damage;
   final Vector2 velocity;
+  final double lifetime;
+  double _age = 0;
+
+  bool get isExpired => _age >= lifetime;
+
+  bool overlapsEnemy(EnemyComponent enemy) {
+    final hitRadius = (size.x + enemy.size.x) / 2;
+    return position.distanceToSquared(enemy.position) < hitRadius * hitRadius;
+  }
 
   @override
   void update(double dt) {
     super.update(dt);
 
+    _age += dt;
     position.add(velocity * dt);
+    if (isExpired) {
+      removeFromParent();
+    }
   }
 
   @override

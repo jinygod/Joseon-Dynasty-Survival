@@ -1,5 +1,6 @@
 import 'package:flame/components.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pixel_survivor/game/components/enemy_component.dart';
 import 'package:pixel_survivor/game/components/experience_gem_component.dart';
 import 'package:pixel_survivor/game/components/player_component.dart';
 import 'package:pixel_survivor/game/components/projectile_component.dart';
@@ -56,6 +57,53 @@ void main() {
 
       expect(projectile.position.x, 12);
       expect(projectile.position.y, 19);
+    });
+
+    test('expires after its lifetime elapses', () {
+      final projectile = ProjectileComponent(
+        weaponId: gakgungShot,
+        damage: 3,
+        position: Vector2.zero(),
+        velocity: Vector2.zero(),
+        lifetime: 0.2,
+      );
+
+      projectile.update(0.1);
+
+      expect(projectile.isExpired, isFalse);
+
+      projectile.update(0.1);
+
+      expect(projectile.isExpired, isTrue);
+    });
+
+    test('detects overlap with enemies using component sizes', () {
+      final projectile = ProjectileComponent(
+        weaponId: gakgungShot,
+        damage: 3,
+        position: Vector2.zero(),
+        velocity: Vector2.zero(),
+        size: Vector2.all(8),
+      );
+      final nearEnemy = EnemyComponent(
+        enemyId: 'test_enemy',
+        maxHealth: 10,
+        moveSpeed: 0,
+        damage: 1,
+        position: Vector2(12, 0),
+        size: Vector2.all(18),
+      );
+      final farEnemy = EnemyComponent(
+        enemyId: 'test_enemy',
+        maxHealth: 10,
+        moveSpeed: 0,
+        damage: 1,
+        position: Vector2(14, 0),
+        size: Vector2.all(18),
+      );
+
+      expect(projectile.overlapsEnemy(nearEnemy), isTrue);
+      expect(projectile.overlapsEnemy(farEnemy), isFalse);
     });
   });
 

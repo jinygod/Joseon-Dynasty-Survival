@@ -8,6 +8,7 @@ import 'package:flutter/widgets.dart' show KeyEventResult;
 import 'components/enemy_component.dart';
 import 'components/experience_gem_component.dart';
 import 'components/player_component.dart';
+import 'components/projectile_component.dart';
 import 'content/augment_definitions.dart';
 import 'content/character_definitions.dart';
 import 'content/enemy_definitions.dart';
@@ -16,10 +17,13 @@ import 'content/weapon_definitions.dart';
 import 'models/player_slot.dart';
 import 'models/vector_input.dart';
 import 'systems/level_up_system.dart';
+import 'systems/run_progression_system.dart';
 import 'systems/spawn_system.dart';
 import 'systems/weapon_system.dart';
 
 class PixelSurvivorGame extends FlameGame with KeyboardEvents {
+  static const levelUpOverlayId = 'levelUp';
+
   PixelSurvivorGame({required List<PlayerSlot> playerSlots})
     : playerSlots = List.unmodifiable(playerSlots) {
     if (this.playerSlots.isEmpty) {
@@ -35,10 +39,12 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
   final SpawnSystem spawnSystem = const SpawnSystem();
   final WeaponSystem weaponSystem = WeaponSystem();
   final LevelUpSystem levelUpSystem = const LevelUpSystem();
+  final RunProgressionSystem runProgression = RunProgressionSystem();
   final List<PlayerComponent> activePlayers = [];
   final Set<WeaponId> unlockedWeaponIds = {};
   final Set<AugmentId> unlockedAugmentIds = {};
   final Map<AugmentId, int> augmentLevels = {};
+  List<LevelUpChoice> _pendingLevelUpChoices = const [];
 
   VectorInput movementInput = VectorInput.zero;
 
@@ -47,6 +53,12 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
   int _spawnCursor = 0;
 
   double get elapsedSeconds => _elapsedSeconds;
+  int get playerLevel => runProgression.level;
+  int get currentExperience => runProgression.currentExperience;
+  int get experienceToNextLevel => runProgression.experienceToNextLevel;
+  bool get isLevelUpPending => _pendingLevelUpChoices.isNotEmpty;
+  List<LevelUpChoice> get pendingLevelUpChoices =>
+      List.unmodifiable(_pendingLevelUpChoices);
 
   int get enemyCount => children
       .whereType<EnemyComponent>()
@@ -118,11 +130,48 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
     }
 
     _updateWeapons(dt);
+    _applyProjectileHits();
     _dropExperienceForDeadEnemies();
+    _collectExperienceGems();
   }
 
   void updateMovementInput(VectorInput input) {
     movementInput = input;
+  }
+
+  bool gainExperience(int amount) {
+    final leveledUp = runProgression.addExperience(amount);
+    if (leveledUp && !isLevelUpPending) {
+      _queueLevelUpChoices();
+    }
+
+    return leveledUp;
+  }
+
+  void applyLevelUpChoice(LevelUpChoice choice) {
+    switch (choice.type) {
+      case LevelUpChoiceType.weapon:
+        final weaponId = choice.id;
+        unlockedWeaponIds.add(weaponId);
+        weaponSystem.upgrade(weaponId, unlockedWeaponIds);
+      case LevelUpChoiceType.augment:
+        final augmentId = choice.id;
+        unlockedAugmentIds.add(augmentId);
+        final definition = augmentDefinitions.firstWhere(
+          (definition) => definition.id == augmentId,
+          orElse: () => augmentDefinitions.first,
+        );
+        final currentLevel = augmentLevels[augmentId] ?? 0;
+        if (currentLevel < definition.maxLevel) {
+          augmentLevels[augmentId] = currentLevel + 1;
+        }
+    }
+
+    _pendingLevelUpChoices = const [];
+    if (isMounted) {
+      overlays.remove(levelUpOverlayId);
+      resumeEngine();
+    }
   }
 
   Future<void> _addActivePlayers() async {
@@ -194,6 +243,32 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
     }
   }
 
+  void _applyProjectileHits() {
+    final enemies = children
+        .whereType<EnemyComponent>()
+        .where((enemy) => !enemy.isDead)
+        .toList(growable: false);
+    if (enemies.isEmpty) {
+      return;
+    }
+
+    final projectiles = children.whereType<ProjectileComponent>().toList();
+    for (final projectile in projectiles) {
+      if (projectile.isExpired || _isProjectileOutsideBounds(projectile)) {
+        projectile.removeFromParent();
+        continue;
+      }
+
+      for (final enemy in enemies) {
+        if (!enemy.isDead && projectile.overlapsEnemy(enemy)) {
+          enemy.takeDamage(projectile.damage);
+          projectile.removeFromParent();
+          break;
+        }
+      }
+    }
+  }
+
   void _dropExperienceForDeadEnemies() {
     final deadEnemies = children.whereType<EnemyComponent>().where(
       (enemy) => enemy.isDead,
@@ -206,6 +281,24 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
         ),
       );
       enemy.removeFromParent();
+    }
+  }
+
+  void _collectExperienceGems() {
+    final alivePlayers = activePlayers
+        .where((player) => player.isMounted && player.currentHealth > 0)
+        .toList(growable: false);
+    if (alivePlayers.isEmpty) {
+      return;
+    }
+
+    final gems = children.whereType<ExperienceGemComponent>().toList();
+    for (final gem in gems) {
+      final canPickup = alivePlayers.any(gem.canBePickedUpBy);
+      if (canPickup) {
+        gainExperience(gem.experienceValue);
+        gem.removeFromParent();
+      }
     }
   }
 
@@ -222,8 +315,21 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
     unlockedAugmentIds.addAll(
       augmentDefinitions
           .where((definition) => definition.startsUnlocked)
-          .map((definition) => definition.id),
+      .map((definition) => definition.id),
     );
+  }
+
+  void _queueLevelUpChoices() {
+    final choices = levelUpChoices();
+    if (choices.isEmpty) {
+      return;
+    }
+
+    _pendingLevelUpChoices = choices;
+    if (isMounted) {
+      pauseEngine();
+      overlays.add(levelUpOverlayId);
+    }
   }
 
   CharacterDefinition _characterDefinitionFor(CharacterId characterId) {
@@ -272,6 +378,14 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
       2 => Vector2(0, -halfHeight - 24),
       _ => Vector2(0, halfHeight + 24),
     };
+  }
+
+  bool _isProjectileOutsideBounds(ProjectileComponent projectile) {
+    const margin = 64.0;
+    return projectile.position.x < -margin ||
+        projectile.position.y < -margin ||
+        projectile.position.x > size.x + margin ||
+        projectile.position.y > size.y + margin;
   }
 
   VectorInput _movementInputFromKeys(Set<LogicalKeyboardKey> keysPressed) {
