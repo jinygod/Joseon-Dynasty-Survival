@@ -1,24 +1,24 @@
 import 'ids.dart';
 import 'weapon_definitions.dart';
 
-const apprenticeWanderer = 'apprentice_wanderer';
-const ironPilgrim = 'iron_pilgrim';
+const rookieConstable = 'rookie_constable';
+const exorcistDosa = 'exorcist_dosa';
 
 const characterDefinitions = <CharacterDefinition>[
   CharacterDefinition(
-    id: apprenticeWanderer,
-    name: 'Apprentice Wanderer',
-    maxHealth: 100,
-    moveSpeed: 130,
+    id: rookieConstable,
+    name: 'Rookie Constable',
+    maxHealth: 105,
+    moveSpeed: 125,
     damageMultiplier: 1,
-    startingWeaponId: magicBolt,
+    startingWeaponId: hwandoSlash,
   ),
   CharacterDefinition(
-    id: ironPilgrim,
-    name: 'Iron Pilgrim',
-    maxHealth: 140,
-    moveSpeed: 105,
-    damageMultiplier: 0.95,
-    startingWeaponId: bladeArc,
+    id: exorcistDosa,
+    name: 'Exorcist Dosa',
+    maxHealth: 85,
+    moveSpeed: 115,
+    damageMultiplier: 1.12,
+    startingWeaponId: talismanThrow,
   ),
 ];

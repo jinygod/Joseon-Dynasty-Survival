@@ -1,88 +1,88 @@
 import 'ids.dart';
 
-const attackUp = 'attack_up';
-const haste = 'haste';
-const swiftFeet = 'swift_feet';
-const vitality = 'vitality';
-const magnetSense = 'magnet_sense';
-const recovery = 'recovery';
-const extraProjectile = 'extra_projectile';
-const criticalSpark = 'critical_spark';
-const elementFocus = 'element_focus';
-const desperation = 'desperation';
-const evolutionShortcut = 'evolution_shortcut';
-const heavyImpact = 'heavy_impact';
+const martialTraining = 'martial_training';
+const quickStep = 'quick_step';
+const innerBreath = 'inner_breath';
+const jangseungBlessing = 'jangseung_blessing';
+const hawkEye = 'hawk_eye';
+const herbalTonic = 'herbal_tonic';
+const rapidReload = 'rapid_reload';
+const goblinFire = 'goblin_fire';
+const powderMastery = 'powder_mastery';
+const lastStand = 'last_stand';
+const ritualShortcut = 'ritual_shortcut';
+const heavyStrike = 'heavy_strike';
 
 const augmentDefinitions = <AugmentDefinition>[
   AugmentDefinition(
-    id: attackUp,
-    name: 'Attack Up',
+    id: martialTraining,
+    name: 'Martial Training',
     maxLevel: 5,
     startsUnlocked: true,
   ),
   AugmentDefinition(
-    id: haste,
-    name: 'Haste',
+    id: quickStep,
+    name: 'Quick Step',
     maxLevel: 5,
     startsUnlocked: true,
   ),
   AugmentDefinition(
-    id: swiftFeet,
-    name: 'Swift Feet',
+    id: innerBreath,
+    name: 'Inner Breath',
     maxLevel: 5,
     startsUnlocked: true,
   ),
   AugmentDefinition(
-    id: vitality,
-    name: 'Vitality',
+    id: jangseungBlessing,
+    name: 'Jangseung Blessing',
     maxLevel: 5,
     startsUnlocked: true,
   ),
   AugmentDefinition(
-    id: magnetSense,
-    name: 'Magnet Sense',
+    id: hawkEye,
+    name: 'Hawk Eye',
     maxLevel: 5,
     startsUnlocked: true,
   ),
   AugmentDefinition(
-    id: recovery,
-    name: 'Recovery',
+    id: herbalTonic,
+    name: 'Herbal Tonic',
     maxLevel: 5,
     startsUnlocked: true,
   ),
   AugmentDefinition(
-    id: extraProjectile,
-    name: 'Extra Projectile',
+    id: rapidReload,
+    name: 'Rapid Reload',
     maxLevel: 1,
     startsUnlocked: false,
   ),
   AugmentDefinition(
-    id: criticalSpark,
-    name: 'Critical Spark',
+    id: goblinFire,
+    name: 'Goblin Fire',
     maxLevel: 5,
     startsUnlocked: false,
   ),
   AugmentDefinition(
-    id: elementFocus,
-    name: 'Element Focus',
+    id: powderMastery,
+    name: 'Powder Mastery',
     maxLevel: 5,
     startsUnlocked: false,
   ),
   AugmentDefinition(
-    id: desperation,
-    name: 'Desperation',
+    id: lastStand,
+    name: 'Last Stand',
     maxLevel: 3,
     startsUnlocked: false,
   ),
   AugmentDefinition(
-    id: evolutionShortcut,
-    name: 'Evolution Shortcut',
+    id: ritualShortcut,
+    name: 'Ritual Shortcut',
     maxLevel: 1,
     startsUnlocked: false,
   ),
   AugmentDefinition(
-    id: heavyImpact,
-    name: 'Heavy Impact',
+    id: heavyStrike,
+    name: 'Heavy Strike',
     maxLevel: 5,
     startsUnlocked: false,
   ),

@@ -7,7 +7,7 @@ class PixelSurvivorApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Pixel Survivor',
+      title: 'Joseon Dynasty Survival',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xff3fbf7f)),

@@ -1,52 +1,52 @@
 import 'ids.dart';
 
-const magicBolt = 'magic_bolt';
-const bladeArc = 'blade_arc';
-const orbitingDagger = 'orbiting_dagger';
-const lightningStrike = 'lightning_strike';
-const flameField = 'flame_field';
-const iceShard = 'ice_shard';
+const hwandoSlash = 'hwando_slash';
+const gakgungShot = 'gakgung_shot';
+const talismanThrow = 'talisman_throw';
+const thunderCrashBomb = 'thunder_crash_bomb';
+const jangseungWard = 'jangseung_ward';
+const singijeonVolley = 'singijeon_volley';
 
 const weaponDefinitions = <WeaponDefinition>[
   WeaponDefinition(
-    id: magicBolt,
-    name: 'Magic Bolt',
+    id: hwandoSlash,
+    name: 'Hwando Slash',
+    element: ElementType.physical,
+    maxLevel: 5,
+    startsUnlocked: true,
+  ),
+  WeaponDefinition(
+    id: gakgungShot,
+    name: 'Gakgung Shot',
+    element: ElementType.physical,
+    maxLevel: 5,
+    startsUnlocked: true,
+  ),
+  WeaponDefinition(
+    id: talismanThrow,
+    name: 'Talisman Throw',
     element: ElementType.magic,
     maxLevel: 5,
-    startsUnlocked: true,
-  ),
-  WeaponDefinition(
-    id: bladeArc,
-    name: 'Blade Arc',
-    element: ElementType.physical,
-    maxLevel: 5,
-    startsUnlocked: true,
-  ),
-  WeaponDefinition(
-    id: orbitingDagger,
-    name: 'Orbiting Dagger',
-    element: ElementType.physical,
-    maxLevel: 5,
     startsUnlocked: false,
   ),
   WeaponDefinition(
-    id: lightningStrike,
-    name: 'Lightning Strike',
-    element: ElementType.lightning,
-    maxLevel: 5,
-    startsUnlocked: false,
-  ),
-  WeaponDefinition(
-    id: flameField,
-    name: 'Flame Field',
+    id: thunderCrashBomb,
+    name: 'Thunder Crash Bomb',
     element: ElementType.fire,
     maxLevel: 5,
     startsUnlocked: false,
   ),
   WeaponDefinition(
-    id: iceShard,
-    name: 'Ice Shard',
-    element: ElementType.ice,
+    id: jangseungWard,
+    name: 'Jangseung Ward',
+    element: ElementType.magic,
+    maxLevel: 5,
+    startsUnlocked: false,
+  ),
+  WeaponDefinition(
+    id: singijeonVolley,
+    name: 'Singijeon Volley',
+    element: ElementType.fire,
     maxLevel: 5,
     startsUnlocked: false,
   ),

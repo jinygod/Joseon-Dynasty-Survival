@@ -1,4 +1,4 @@
-# Pixel Survivor Design
+# Joseon Dynasty Survival Design
 
 Date: 2026-06-30
 Status: Approved for planning
@@ -6,7 +6,11 @@ Target: Flutter mobile game using Flame
 
 ## Goal
 
-Build a small but expandable Vampire Survivors-like mobile game in Flutter. The first playable version should be simple enough to finish quickly, but it must already include a reason to keep playing: unlockable weapons, augments, characters, and progression goals.
+Build a small but expandable Joseon-era folk-fantasy auto-battler survival roguelite in Flutter. The first playable version should be simple enough to finish quickly, but it must already include a reason to keep playing: unlockable weapons, augments, characters, and progression goals.
+
+Working title: Joseon Dynasty Survival.
+Korean concept name: 조선 생존록.
+Genre: 조선시대 민속 판타지 자동전투 생존 로그라이트.
 
 The first release target is a 5 to 8 minute survival run with one starting character, one stage, several enemy types, automatic weapons, level-up choices, and persistent unlock progress.
 
@@ -16,7 +20,7 @@ The first release target is a 5 to 8 minute survival run with one starting chara
 - Automatic combat: the player focuses on movement, positioning, and build choices.
 - Unlock momentum: each run should make progress toward at least one visible goal.
 - Pixel identity: characters, monsters, weapons, stage tiles, and UI icons use AI-generated pixel art.
-- Mobile-first controls: the game is designed around a virtual joystick and touch-friendly choices.
+- Landscape-first mobile controls: the game is designed around a wide mobile screen, with a virtual joystick in the lower-left area and touch-friendly combat, status, and level-up UI arranged for landscape play.
 
 ## MVP Scope
 
@@ -73,13 +77,15 @@ Failure condition:
 
 ## Characters
 
-### Starting Character: Apprentice Wanderer
+### Starting Character: Rookie Constable
 
-Role: balanced beginner character.
+Korean name: 수습 포졸.
+
+Role: balanced beginner character who patrols a haunted district office site.
 
 Initial weapon:
 
-- Magic Bolt.
+- 환도 베기.
 
 Base stats:
 
@@ -88,9 +94,11 @@ Base stats:
 - Medium attack power.
 - No special mechanic in the first implementation.
 
-### Unlock Character: Iron Pilgrim
+### Unlock Character: Exorcist Taoist
 
-Role: slower but sturdier character.
+Korean name: 퇴마 도사.
+
+Role: ritual specialist with stronger talisman and ward synergy.
 
 Unlock condition:
 
@@ -98,9 +106,9 @@ Unlock condition:
 
 Base stats:
 
-- Higher health.
-- Lower movement speed.
-- Small damage resistance bonus.
+- Lower health than the constable.
+- Medium movement speed.
+- Small cooldown or elemental-effect bonus.
 
 The unlock character can be data-defined in the MVP even if the first implementation only fully supports the starting character.
 
@@ -108,53 +116,53 @@ The unlock character can be data-defined in the MVP even if the first implementa
 
 Six weapons are part of the design. The first playable build should implement at least four.
 
-### Magic Bolt
+### 환도 베기
 
-Fires a projectile at the nearest enemy.
-
-- Starts unlocked.
-- Clear beginner weapon.
-- Upgrades improve damage, cooldown, and projectile speed.
-
-### Blade Arc
-
-Creates a short-range slash toward nearby enemies.
+Creates a close-range sword slash toward nearby enemies.
 
 - Starts unlocked.
-- Rewards close-range positioning.
+- Clear beginner weapon for the 수습 포졸.
 - Upgrades improve damage, arc size, and cooldown.
 
-### Orbiting Dagger
+### 각궁 사격
 
-Creates one or more daggers that rotate around the player.
+Fires an arrow at the nearest enemy.
+
+- Starts unlocked.
+- Gives the starter build a readable ranged option.
+- Upgrades improve damage, cooldown, and projectile speed.
+
+### 부적 투척
+
+Throws talismans that seek or pierce nearby spirits.
 
 - Unlock condition: survive for 3 minutes once.
-- Defensive and consistent.
-- Upgrades improve dagger count, radius, and damage.
+- Flexible anti-spirit weapon.
+- Upgrades improve talisman count, pierce, and damage.
 
-### Lightning Strike
+### 비격진천뢰
 
-Periodically strikes random enemies.
+Launches a delayed explosive shell at clustered enemies.
 
 - Unlock condition: defeat 300 monsters total.
-- Good for scattered enemies.
+- Strong against dense waves.
 - Upgrades improve strike count, damage, and cooldown.
 
-### Flame Field
+### 장승 결계
 
-Creates temporary damaging zones on the ground.
+Creates temporary ward zones around carved village guardians.
 
 - Unlock condition: defeat 500 monsters total.
-- Area-control weapon.
+- Area-control and defensive weapon.
 - Upgrades improve field duration, area, and damage.
 
-### Ice Shard
+### 신기전 세례
 
-Fires piercing shards that slow enemies.
+Fires a volley of rocket arrows across the screen.
 
 - Unlock condition: reach level 10 in one run.
-- Crowd-control weapon.
-- Upgrades improve pierce count, slow strength, and damage.
+- High-pressure late unlock for wide wave clearing.
+- Upgrades improve volley count, pierce, and damage.
 
 ## Augments
 
@@ -162,48 +170,48 @@ Augments appear as three choices on level-up. Early augments are simple stat imp
 
 ### Starting Augments
 
-- Attack Up: increases all weapon damage.
-- Haste: reduces weapon cooldowns.
-- Swift Feet: increases movement speed.
-- Vitality: increases max health.
-- Magnet Sense: increases experience pickup range.
-- Recovery: improves healing effects.
+- 무예 단련: increases all weapon damage.
+- 내공 순환: reduces weapon cooldowns.
+- 속보: increases movement speed.
+- 장승의 가호: increases max health.
+- 매의 눈: increases experience pickup range.
+- 탕약: improves healing effects.
 
 ### Unlockable Advanced Augments
 
-- Extra Projectile: adds one projectile to compatible weapons.
-- Critical Spark: adds critical hit chance.
-- Element Focus: improves fire, ice, and lightning effects.
-- Desperation: increases damage while health is low.
-- Evolution Shortcut: reduces requirements for weapon evolution.
-- Heavy Impact: increases knockback or stagger on compatible attacks.
+- 연발 장전: adds one projectile to compatible weapons.
+- 도깨비불: adds critical hit chance or elemental amplification.
+- 화약 장인: improves 비격진천뢰 and 신기전 세례 effects.
+- 배수진: increases damage while health is low.
+- 퇴마 의식: reduces requirements for weapon evolution.
+- 육중한 일격: increases knockback or stagger on compatible attacks.
 
 Advanced augment unlock examples:
 
-- Reach level 10 in one run: unlock Extra Projectile.
-- Survive 5 minutes once: unlock Critical Spark.
-- Unlock three weapons: unlock Element Focus.
-- Win with less than 30 percent health remaining: unlock Desperation.
+- Reach level 10 in one run: unlock 연발 장전.
+- Survive 5 minutes once: unlock 도깨비불.
+- Unlock three weapons: unlock 화약 장인.
+- Win with less than 30 percent health remaining: unlock 배수진.
 
 ## Monsters
 
-### Slime
+### 역병 쥐떼
 
-Basic slow enemy. Introduced immediately.
+Basic swarm enemy. Introduced immediately.
 
-### Bat
+### 산적
 
-Fast but fragile enemy. Introduced after the first minute.
+Human raider enemy. Introduced after the first minute.
 
-### Armored Husk
+### 도깨비
 
-Slow durable enemy. Introduced around the second minute.
+Durable trickster enemy. Introduced around the second minute.
 
-### Spitter
+### 원혼
 
-Ranged or semi-ranged enemy. Introduced later in the run after basic movement is understood.
+Drifting spirit enemy. Introduced later in the run after basic movement is understood.
 
-### Boss: Grave Golem
+### Boss: 원혼 장군
 
 Large enemy with high health. Appears at the final timer mark.
 
@@ -211,7 +219,7 @@ The first boss can start as a simple high-health enemy with a contact damage pat
 
 ## Stage
 
-The first stage is a ruined grassland with scattered stone ruins.
+The first stage is 달빛 폐관아, an abandoned district office yard under moonlight.
 
 Gameplay requirements:
 
@@ -230,14 +238,14 @@ The unlock system should make the player feel progress even after a failed run.
 
 Initial unlock goals:
 
-- Survive 3 minutes once: unlock Orbiting Dagger.
-- Defeat 300 monsters total: unlock Lightning Strike.
-- Reach level 10 in one run: unlock Ice Shard and Extra Projectile.
-- Defeat the first boss once: unlock Iron Pilgrim.
-- Survive 5 minutes once: unlock Critical Spark.
-- Unlock three weapons: unlock Element Focus.
-- Defeat 500 monsters total: unlock Flame Field.
-- Win a run with low health: unlock Desperation.
+- Survive 3 minutes once: unlock 부적 투척.
+- Defeat 300 monsters total: unlock 비격진천뢰.
+- Reach level 10 in one run: unlock 신기전 세례 and 연발 장전.
+- Defeat the first boss once: unlock 퇴마 도사.
+- Survive 5 minutes once: unlock 도깨비불.
+- Unlock three weapons: unlock 화약 장인.
+- Defeat 500 monsters total: unlock 장승 결계.
+- Win a run with low health: unlock 배수진.
 
 The game should show locked content with clear requirements. Requirements should be specific, measurable, and stored in save data.
 
@@ -255,6 +263,7 @@ The MVP architecture should still keep a future co-op path open:
 Future local co-op concept:
 
 - Solo and two-player runs share the same unlock collection.
+- Landscape orientation gives two same-device players more usable thumb space than portrait, especially for role pairings such as 포졸 plus 도사 for front-line control and exorcism, or 무사 plus 의원 for damage and sustain.
 - Both players can level up the shared run, or each player can receive alternating level-up choices after playtesting.
 - Enemy count and boss health scale up when two players are active.
 - Co-op unlock goals can be added after the solo loop is stable.
@@ -288,6 +297,7 @@ Primary units:
 - Augment system: level-up choices and stat modifiers.
 - Progression system: unlock goals, save data, post-run updates.
 - Asset catalog: maps logical asset ids to generated pixel-art files.
+- Orientation and HUD layout: locks mobile builds to landscape and reserves the lower-left area for movement input while status, skill, and level-up UI use the extra horizontal space.
 
 Each gameplay system should be data-driven where practical. Weapons, augments, monsters, characters, and unlock goals should be defined as data objects instead of hard-coded directly into one large game loop.
 
@@ -347,13 +357,13 @@ Each asset should have:
 
 The first asset batch should include:
 
-- Starting character idle and walk frames.
-- Slime, bat, armored husk, spitter, and boss sprites.
+- 수습 포졸 idle and walk frames.
+- 역병 쥐떼, 산적, 도깨비, 원혼, and 원혼 장군 sprites.
 - Icons for six weapons.
 - Icons for starting and advanced augments.
 - Experience gem.
 - Health pickup.
-- Ruined grassland ground tile.
+- 달빛 폐관아 ground tile.
 
 ## Difficulty
 
@@ -426,11 +436,12 @@ Expected early commits:
 
 ## Open Decisions For Implementation Planning
 
-- Final Korean or English game title.
+- Final Korean subtitle: 조선 생존록 or 조선 서바이벌.
 - Exact package name for Android and iOS.
-- Whether the first build targets Android only or Android plus iOS.
+- Whether the first build targets Android only or Android plus iOS. Android builds can be produced on Windows with Android Studio, the Android SDK, and signing keys; iOS App Store or TestFlight builds require a Mac with Xcode.
 - Which four weapons are implemented first.
 - Which local save package is used.
 - Whether two-player local co-op enters the second milestone or waits until after the first public test build.
+- Docker does not solve iOS signing or App Store build requirements; keeping Flutter versioning fixed and GitHub branches synchronized is more important for release reliability.
 
 These decisions do not block the design. They should be finalized in the implementation plan.

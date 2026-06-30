@@ -1,8 +1,8 @@
-# Pixel Survivor Implementation Plan
+# Joseon Dynasty Survival Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build the first Flutter + Flame playable MVP for Pixel Survivor with solo survival, unlockable progression, AI pixel-art asset structure, and architecture that keeps same-device two-player co-op possible.
+**Goal:** Build the first Flutter + Flame playable MVP for Joseon Dynasty Survival, a 조선시대 민속 판타지 자동전투 생존 로그라이트, with solo survival, unlockable progression, AI pixel-art asset structure, and architecture that keeps same-device two-player co-op possible.
 
 **Architecture:** Flutter owns the app shell, menus, overlays, and persistence. Flame owns the real-time game world, components, collision, spawning, and weapon updates. Gameplay content is data-driven so weapons, augments, monsters, characters, unlock goals, and future co-op player entities can grow without rewriting the core loop.
 
@@ -12,7 +12,7 @@
 
 ## Scope Notes
 
-The first implemented game mode is solo. Two-player co-op is not implemented in this plan, but the player/input/enemy-targeting architecture must not assume there can only ever be one player.
+The first implemented game mode is solo. Two-player co-op is not implemented in this plan, but the player/input/enemy-targeting architecture must not assume there can only ever be one player. The MVP is landscape-first on mobile, which gives future same-device co-op more room for two thumb zones and shared combat information.
 
 Flutter is not currently available on PATH in this workspace. Task 1 installs or links Flutter before scaffolding the app.
 
@@ -30,7 +30,7 @@ Expected project files after scaffolding:
 - `lib/game/models/player_slot.dart`: player slot id and selected character.
 - `lib/game/components/player_component.dart`: player movement, health, pickup radius.
 - `lib/game/components/enemy_component.dart`: enemy movement, health, contact damage.
-- `lib/game/components/projectile_component.dart`: projectile behavior for Magic Bolt and Ice Shard.
+- `lib/game/components/projectile_component.dart`: projectile behavior for 각궁 사격, 부적 투척, and 신기전 세례.
 - `lib/game/components/experience_gem_component.dart`: pickup and level experience.
 - `lib/game/systems/spawn_system.dart`: timed enemy spawning.
 - `lib/game/systems/weapon_system.dart`: automatic weapon ticking and upgrades.
@@ -114,7 +114,7 @@ Expected: commit only when `docs/setup.md` exists.
 Run:
 
 ```powershell
-flutter create --project-name pixel_survivor --org com.pixel.survivor .
+flutter create --project-name pixel_survivor --org com.joseon.survival .
 ```
 
 Expected: `lib/main.dart`, `pubspec.yaml`, `android/`, `ios/`, `test/`, and platform files are created.
@@ -151,10 +151,15 @@ Use:
 
 ```dart
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'app/pixel_survivor_app.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+  ]);
   runApp(const PixelSurvivorApp());
 }
 ```
@@ -173,7 +178,7 @@ class PixelSurvivorApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Pixel Survivor',
+      title: 'Joseon Dynasty Survival',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xff3fbf7f)),
@@ -203,12 +208,9 @@ class MainMenuScreen extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Pixel Survivor', style: TextStyle(fontSize: 32)),
+              const Text('Joseon Dynasty Survival', style: TextStyle(fontSize: 32)),
               const SizedBox(height: 16),
-              FilledButton(
-                onPressed: () {},
-                child: const Text('Start Run'),
-              ),
+              FilledButton(onPressed: () {}, child: const Text('Start Run')),
             ],
           ),
         ),
@@ -218,7 +220,11 @@ class MainMenuScreen extends StatelessWidget {
 }
 ```
 
-- [ ] **Step 6: Verify**
+- [ ] **Step 6: Keep the app landscape-first**
+
+The Flutter app locks runtime orientation with `SystemChrome.setPreferredOrientations`. Native platform settings are finalized in Task 12 so Android and iOS launch directly into landscape.
+
+- [ ] **Step 7: Verify**
 
 Run:
 
@@ -228,7 +234,7 @@ flutter test
 
 Expected: default tests may need removal if they reference the old counter app. If so, delete the generated counter test and rerun until PASS.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```powershell
 git add .
@@ -258,7 +264,7 @@ typedef AugmentId = String;
 typedef EnemyId = String;
 typedef UnlockGoalId = String;
 
-enum ElementType { physical, magic, fire, ice, lightning }
+enum ElementType { physical, talisman, powder, ward }
 
 enum UnlockMetric {
   bestSurvivalSeconds,
@@ -366,20 +372,20 @@ Create definition files using the spec names:
 // lib/game/content/weapon_definitions.dart
 import 'ids.dart';
 
-const magicBolt = 'magic_bolt';
-const bladeArc = 'blade_arc';
-const orbitingDagger = 'orbiting_dagger';
-const lightningStrike = 'lightning_strike';
-const flameField = 'flame_field';
-const iceShard = 'ice_shard';
+const hwandoSlash = 'hwando_slash';
+const gakgungShot = 'gakgung_shot';
+const talismanThrow = 'talisman_throw';
+const explosiveShell = 'explosive_shell';
+const jangseungWard = 'jangseung_ward';
+const singijeonVolley = 'singijeon_volley';
 
 const weaponDefinitions = <WeaponDefinition>[
-  WeaponDefinition(id: magicBolt, name: 'Magic Bolt', element: ElementType.magic, maxLevel: 5, startsUnlocked: true),
-  WeaponDefinition(id: bladeArc, name: 'Blade Arc', element: ElementType.physical, maxLevel: 5, startsUnlocked: true),
-  WeaponDefinition(id: orbitingDagger, name: 'Orbiting Dagger', element: ElementType.physical, maxLevel: 5, startsUnlocked: false),
-  WeaponDefinition(id: lightningStrike, name: 'Lightning Strike', element: ElementType.lightning, maxLevel: 5, startsUnlocked: false),
-  WeaponDefinition(id: flameField, name: 'Flame Field', element: ElementType.fire, maxLevel: 5, startsUnlocked: false),
-  WeaponDefinition(id: iceShard, name: 'Ice Shard', element: ElementType.ice, maxLevel: 5, startsUnlocked: false),
+  WeaponDefinition(id: hwandoSlash, name: '환도 베기', element: ElementType.physical, maxLevel: 5, startsUnlocked: true),
+  WeaponDefinition(id: gakgungShot, name: '각궁 사격', element: ElementType.physical, maxLevel: 5, startsUnlocked: true),
+  WeaponDefinition(id: talismanThrow, name: '부적 투척', element: ElementType.talisman, maxLevel: 5, startsUnlocked: false),
+  WeaponDefinition(id: explosiveShell, name: '비격진천뢰', element: ElementType.powder, maxLevel: 5, startsUnlocked: false),
+  WeaponDefinition(id: jangseungWard, name: '장승 결계', element: ElementType.ward, maxLevel: 5, startsUnlocked: false),
+  WeaponDefinition(id: singijeonVolley, name: '신기전 세례', element: ElementType.powder, maxLevel: 5, startsUnlocked: false),
 ];
 ```
 
@@ -389,25 +395,25 @@ Create `lib/game/content/character_definitions.dart`:
 import 'ids.dart';
 import 'weapon_definitions.dart';
 
-const apprenticeWanderer = 'apprentice_wanderer';
-const ironPilgrim = 'iron_pilgrim';
+const rookieConstable = 'rookie_constable';
+const exorcistTaoist = 'exorcist_taoist';
 
 const characterDefinitions = <CharacterDefinition>[
   CharacterDefinition(
-    id: apprenticeWanderer,
-    name: 'Apprentice Wanderer',
+    id: rookieConstable,
+    name: '수습 포졸',
     maxHealth: 100,
     moveSpeed: 130,
     damageMultiplier: 1,
-    startingWeaponId: magicBolt,
+    startingWeaponId: hwandoSlash,
   ),
   CharacterDefinition(
-    id: ironPilgrim,
-    name: 'Iron Pilgrim',
-    maxHealth: 140,
-    moveSpeed: 105,
-    damageMultiplier: 0.95,
-    startingWeaponId: bladeArc,
+    id: exorcistTaoist,
+    name: '퇴마 도사',
+    maxHealth: 90,
+    moveSpeed: 125,
+    damageMultiplier: 1.05,
+    startingWeaponId: talismanThrow,
   ),
 ];
 ```
@@ -417,32 +423,32 @@ Create `lib/game/content/augment_definitions.dart`:
 ```dart
 import 'ids.dart';
 
-const attackUp = 'attack_up';
-const haste = 'haste';
-const swiftFeet = 'swift_feet';
-const vitality = 'vitality';
-const magnetSense = 'magnet_sense';
-const recovery = 'recovery';
-const extraProjectile = 'extra_projectile';
-const criticalSpark = 'critical_spark';
-const elementFocus = 'element_focus';
-const desperation = 'desperation';
-const evolutionShortcut = 'evolution_shortcut';
-const heavyImpact = 'heavy_impact';
+const martialTraining = 'martial_training';
+const innerFlow = 'inner_flow';
+const swiftStep = 'swift_step';
+const jangseungBlessing = 'jangseung_blessing';
+const hawkEye = 'hawk_eye';
+const tonic = 'tonic';
+const repeatLoading = 'repeat_loading';
+const dokkaebiFire = 'dokkaebi_fire';
+const powderArtisan = 'powder_artisan';
+const lastStand = 'last_stand';
+const exorcismRite = 'exorcism_rite';
+const heavyBlow = 'heavy_blow';
 
 const augmentDefinitions = <AugmentDefinition>[
-  AugmentDefinition(id: attackUp, name: 'Attack Up', maxLevel: 5, startsUnlocked: true),
-  AugmentDefinition(id: haste, name: 'Haste', maxLevel: 5, startsUnlocked: true),
-  AugmentDefinition(id: swiftFeet, name: 'Swift Feet', maxLevel: 5, startsUnlocked: true),
-  AugmentDefinition(id: vitality, name: 'Vitality', maxLevel: 5, startsUnlocked: true),
-  AugmentDefinition(id: magnetSense, name: 'Magnet Sense', maxLevel: 5, startsUnlocked: true),
-  AugmentDefinition(id: recovery, name: 'Recovery', maxLevel: 5, startsUnlocked: true),
-  AugmentDefinition(id: extraProjectile, name: 'Extra Projectile', maxLevel: 1, startsUnlocked: false),
-  AugmentDefinition(id: criticalSpark, name: 'Critical Spark', maxLevel: 5, startsUnlocked: false),
-  AugmentDefinition(id: elementFocus, name: 'Element Focus', maxLevel: 5, startsUnlocked: false),
-  AugmentDefinition(id: desperation, name: 'Desperation', maxLevel: 3, startsUnlocked: false),
-  AugmentDefinition(id: evolutionShortcut, name: 'Evolution Shortcut', maxLevel: 1, startsUnlocked: false),
-  AugmentDefinition(id: heavyImpact, name: 'Heavy Impact', maxLevel: 5, startsUnlocked: false),
+  AugmentDefinition(id: martialTraining, name: '무예 단련', maxLevel: 5, startsUnlocked: true),
+  AugmentDefinition(id: innerFlow, name: '내공 순환', maxLevel: 5, startsUnlocked: true),
+  AugmentDefinition(id: swiftStep, name: '속보', maxLevel: 5, startsUnlocked: true),
+  AugmentDefinition(id: jangseungBlessing, name: '장승의 가호', maxLevel: 5, startsUnlocked: true),
+  AugmentDefinition(id: hawkEye, name: '매의 눈', maxLevel: 5, startsUnlocked: true),
+  AugmentDefinition(id: tonic, name: '탕약', maxLevel: 5, startsUnlocked: true),
+  AugmentDefinition(id: repeatLoading, name: '연발 장전', maxLevel: 1, startsUnlocked: false),
+  AugmentDefinition(id: dokkaebiFire, name: '도깨비불', maxLevel: 5, startsUnlocked: false),
+  AugmentDefinition(id: powderArtisan, name: '화약 장인', maxLevel: 5, startsUnlocked: false),
+  AugmentDefinition(id: lastStand, name: '배수진', maxLevel: 3, startsUnlocked: false),
+  AugmentDefinition(id: exorcismRite, name: '퇴마 의식', maxLevel: 1, startsUnlocked: false),
+  AugmentDefinition(id: heavyBlow, name: '육중한 일격', maxLevel: 5, startsUnlocked: false),
 ];
 ```
 
@@ -451,18 +457,18 @@ Create `lib/game/content/enemy_definitions.dart`:
 ```dart
 import 'ids.dart';
 
-const slime = 'slime';
-const bat = 'bat';
-const armoredHusk = 'armored_husk';
-const spitter = 'spitter';
-const graveGolem = 'grave_golem';
+const plagueRats = 'plague_rats';
+const bandit = 'bandit';
+const dokkaebi = 'dokkaebi';
+const vengefulSpirit = 'vengeful_spirit';
+const spiritGeneral = 'spirit_general';
 
 const enemyDefinitions = <EnemyDefinition>[
-  EnemyDefinition(id: slime, name: 'Slime', maxHealth: 12, moveSpeed: 45, damage: 8, experience: 1),
-  EnemyDefinition(id: bat, name: 'Bat', maxHealth: 8, moveSpeed: 85, damage: 6, experience: 1),
-  EnemyDefinition(id: armoredHusk, name: 'Armored Husk', maxHealth: 35, moveSpeed: 32, damage: 12, experience: 3),
-  EnemyDefinition(id: spitter, name: 'Spitter', maxHealth: 20, moveSpeed: 38, damage: 10, experience: 2),
-  EnemyDefinition(id: graveGolem, name: 'Grave Golem', maxHealth: 650, moveSpeed: 28, damage: 18, experience: 20, isBoss: true),
+  EnemyDefinition(id: plagueRats, name: '역병 쥐떼', maxHealth: 12, moveSpeed: 45, damage: 8, experience: 1),
+  EnemyDefinition(id: bandit, name: '산적', maxHealth: 8, moveSpeed: 85, damage: 6, experience: 1),
+  EnemyDefinition(id: dokkaebi, name: '도깨비', maxHealth: 35, moveSpeed: 32, damage: 12, experience: 3),
+  EnemyDefinition(id: vengefulSpirit, name: '원혼', maxHealth: 20, moveSpeed: 38, damage: 10, experience: 2),
+  EnemyDefinition(id: spiritGeneral, name: '원혼 장군', maxHealth: 650, moveSpeed: 28, damage: 18, experience: 20, isBoss: true),
 ];
 ```
 
@@ -480,57 +486,57 @@ const unlockGoals = <UnlockGoalDefinition>[
     description: 'Survive for 3 minutes once.',
     metric: UnlockMetric.bestSurvivalSeconds,
     threshold: 180,
-    unlocksWeaponId: orbitingDagger,
+    unlocksWeaponId: talismanThrow,
   ),
   UnlockGoalDefinition(
     id: 'defeat_300_monsters',
     description: 'Defeat 300 monsters total.',
     metric: UnlockMetric.totalKills,
     threshold: 300,
-    unlocksWeaponId: lightningStrike,
+    unlocksWeaponId: explosiveShell,
   ),
   UnlockGoalDefinition(
     id: 'reach_level_10',
     description: 'Reach level 10 in one run.',
     metric: UnlockMetric.levelReachedInRun,
     threshold: 10,
-    unlocksWeaponId: iceShard,
-    unlocksAugmentId: extraProjectile,
+    unlocksWeaponId: singijeonVolley,
+    unlocksAugmentId: repeatLoading,
   ),
   UnlockGoalDefinition(
     id: 'defeat_first_boss',
     description: 'Defeat the first boss once.',
     metric: UnlockMetric.bossDefeats,
     threshold: 1,
-    unlocksCharacterId: ironPilgrim,
+    unlocksCharacterId: exorcistTaoist,
   ),
   UnlockGoalDefinition(
     id: 'survive_5_minutes',
     description: 'Survive for 5 minutes once.',
     metric: UnlockMetric.bestSurvivalSeconds,
     threshold: 300,
-    unlocksAugmentId: criticalSpark,
+    unlocksAugmentId: dokkaebiFire,
   ),
   UnlockGoalDefinition(
     id: 'unlock_three_weapons',
     description: 'Unlock three weapons.',
     metric: UnlockMetric.unlockedWeaponCount,
     threshold: 3,
-    unlocksAugmentId: elementFocus,
+    unlocksAugmentId: powderArtisan,
   ),
   UnlockGoalDefinition(
     id: 'defeat_500_monsters',
     description: 'Defeat 500 monsters total.',
     metric: UnlockMetric.totalKills,
     threshold: 500,
-    unlocksWeaponId: flameField,
+    unlocksWeaponId: jangseungWard,
   ),
   UnlockGoalDefinition(
     id: 'low_health_win',
     description: 'Win a run with less than 30 percent health remaining.',
     metric: UnlockMetric.lowHealthWinCount,
     threshold: 1,
-    unlocksAugmentId: desperation,
+    unlocksAugmentId: lastStand,
   ),
 ];
 ```
@@ -569,16 +575,16 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/systems/progression_system.dart';
 
 void main() {
-  test('surviving 180 seconds unlocks orbiting dagger', () {
+  test('surviving 180 seconds unlocks talisman throw', () {
     final save = SaveState.defaults().copyWith(bestSurvivalSeconds: 180);
     final result = ProgressionSystem().evaluate(save);
-    expect(result.unlockedWeaponIds, contains('orbiting_dagger'));
+    expect(result.unlockedWeaponIds, contains('talisman_throw'));
   });
 
-  test('defeating first boss unlocks iron pilgrim', () {
+  test('defeating first boss unlocks exorcist taoist', () {
     final save = SaveState.defaults().copyWith(bossDefeats: 1);
     final result = ProgressionSystem().evaluate(save);
-    expect(result.unlockedCharacterIds, contains('iron_pilgrim'));
+    expect(result.unlockedCharacterIds, contains('exorcist_taoist'));
   });
 }
 ```
@@ -599,7 +605,7 @@ Create `SaveState` with unlocked id sets and counters. Create `ProgressionSystem
 
 Required behavior:
 
-- Defaults unlock `apprentice_wanderer`, `magic_bolt`, `blade_arc`, and starting augments.
+- Defaults unlock `rookie_constable`, `hwando_slash`, `gakgung_shot`, and starting augments.
 - Unlock evaluation is repeatable and does not remove existing unlocks.
 - Counters are integers.
 
@@ -662,13 +668,17 @@ class VectorInput {
 
 - [ ] **Step 3: Create Flame game root**
 
-`PixelSurvivorGame` should extend `FlameGame` and accept `List<PlayerSlot> playerSlots`. The first run passes one active slot, but the list shape preserves the co-op path.
+`PixelSurvivorGame` should extend `FlameGame` and accept `List<PlayerSlot> playerSlots`. The first run passes one active slot, but the list shape preserves the co-op path. Size gameplay and HUD assumptions around a landscape viewport.
 
-- [ ] **Step 4: Add game screen**
+- [ ] **Step 4: Add landscape HUD zones**
+
+Reserve the lower-left area for the virtual joystick. Keep skill/status indicators along the lower-right or top edge, and make the level-up overlay use the horizontal width instead of stacking tall portrait cards.
+
+- [ ] **Step 5: Add game screen**
 
 Create a `GameWidget` wrapper and navigate to it from `Start Run`.
 
-- [ ] **Step 5: Verify**
+- [ ] **Step 6: Verify**
 
 Run:
 
@@ -679,7 +689,7 @@ flutter analyze
 
 Expected: PASS and no analyzer errors.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```powershell
 git add lib/app lib/game
@@ -696,16 +706,16 @@ git commit -m "feat: add Flame game shell"
 
 - [ ] **Step 1: Test spawn schedule**
 
-Create a test proving early seconds spawn slimes and later seconds include bats and armored husks.
+Create a test proving early seconds spawn 역병 쥐떼 and later seconds include 산적 and 도깨비.
 
 - [ ] **Step 2: Implement spawn system**
 
 `SpawnSystem.enemiesForSecond(int second)` returns enemy ids based on timer bands:
 
-- 0 to 59: `slime`
-- 60 to 119: `slime`, `bat`
-- 120 to 299: `slime`, `bat`, `armored_husk`, `spitter`
-- 300 and above: `grave_golem`
+- 0 to 59: `plague_rats`
+- 60 to 119: `plague_rats`, `bandit`
+- 120 to 299: `plague_rats`, `bandit`, `dokkaebi`, `vengeful_spirit`
+- 300 and above: `spirit_general`
 
 - [ ] **Step 3: Implement components**
 
@@ -747,22 +757,22 @@ git commit -m "feat: add player enemy spawning"
 
 - [ ] **Step 1: Test weapon upgrade caps**
 
-Test that Magic Bolt cannot exceed level 5 and locked weapons cannot be offered before unlock.
+Test that 환도 베기 cannot exceed level 5 and locked weapons cannot be offered before unlock.
 
 - [ ] **Step 2: Implement first four weapons**
 
 Implement:
 
-- Magic Bolt.
-- Blade Arc.
-- Orbiting Dagger.
-- Lightning Strike.
+- 환도 베기.
+- 각궁 사격.
+- 부적 투척.
+- 비격진천뢰.
 
 Use Flame rectangle or circle components as visible development fallback art if pixel sprites are not ready.
 
 - [ ] **Step 3: Implement experience gem pickup**
 
-Gems add experience when the player is within pickup radius. Magnet Sense modifies the radius.
+Gems add experience when the player is within pickup radius. 매의 눈 modifies the radius.
 
 - [ ] **Step 4: Verify**
 
@@ -883,18 +893,18 @@ Create the folders listed above.
 
 Document prompts for:
 
-- Apprentice Wanderer.
-- Iron Pilgrim.
-- Slime.
-- Bat.
-- Armored Husk.
-- Spitter.
-- Grave Golem.
+- 수습 포졸.
+- 퇴마 도사.
+- 역병 쥐떼.
+- 산적.
+- 도깨비.
+- 원혼.
+- 원혼 장군.
 - Six weapon icons.
 - Twelve augment icons.
 - Experience gem.
 - Health pickup.
-- Ruined grassland tile.
+- 달빛 폐관아 tile.
 
 - [ ] **Step 3: Register assets**
 
@@ -943,17 +953,17 @@ git commit -m "chore: add pixel art asset pipeline"
 
 Generate small pixel-art PNGs for the first playable set:
 
-- Apprentice Wanderer idle.
-- Slime.
-- Bat.
-- Armored Husk.
-- Grave Golem.
-- Magic Bolt icon.
-- Blade Arc icon.
-- Orbiting Dagger icon.
-- Lightning Strike icon.
+- 수습 포졸 idle.
+- 역병 쥐떼.
+- 산적.
+- 도깨비.
+- 원혼 장군.
+- 환도 베기 icon.
+- 각궁 사격 icon.
+- 부적 투척 icon.
+- 비격진천뢰 icon.
 - Experience gem.
-- Ruined grassland tile.
+- 달빛 폐관아 tile.
 
 - [ ] **Step 2: Update catalog paths**
 
@@ -986,9 +996,13 @@ git commit -m "art: add first pixel asset batch"
 
 - [ ] **Step 1: Set app identity**
 
-Use app label `Pixel Survivor` and package `com.pixel.survivor`.
+Use app label `Joseon Dynasty Survival` and package `com.joseon.survival`.
 
-- [ ] **Step 2: Add Android release checklist**
+- [ ] **Step 2: Lock mobile orientation to landscape**
+
+Set Android to landscape in `AndroidManifest.xml` or the relevant activity configuration, matching the runtime `SystemChrome.setPreferredOrientations` call from Task 2. Set iOS supported orientations in the Xcode deployment info or `Info.plist` so iPhone and iPad builds launch in landscape. The MVP HUD assumes lower-left joystick space and wide-screen skill/status/level-up placement.
+
+- [ ] **Step 3: Add Android release checklist**
 
 Include:
 
@@ -997,8 +1011,13 @@ Include:
 - Version name/code update.
 - Play Store graphics required.
 - Privacy policy decision required if analytics or ads are added.
+- Android release builds can be prepared on Windows when Android Studio, Android SDK, and signing keys are configured.
 
-- [ ] **Step 3: Build debug APK**
+- [ ] **Step 4: Add iOS release note**
+
+Document that iOS App Store and TestFlight builds require a Mac with Xcode. Docker is not an iOS build or signing solution; stable Flutter version pinning and synchronized GitHub branches matter more for repeatable mobile releases.
+
+- [ ] **Step 5: Build debug APK**
 
 Run:
 
@@ -1008,7 +1027,7 @@ flutter build apk --debug
 
 Expected: debug APK builds successfully.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 6: Commit**
 
 ```powershell
 git add android pubspec.yaml docs/release
@@ -1025,11 +1044,12 @@ Spec coverage:
 - More than two weapon designs: Task 3 defines six; Task 7 implements the first four.
 - AI pixel-art pipeline: Tasks 10 and 11.
 - Git history: every task ends with a commit.
-- Future two-player possibility: Tasks 5 and 6 use player slots, input abstractions, and nearest-active-player targeting.
+- Future two-player possibility: Tasks 5 and 6 use player slots, input abstractions, nearest-active-player targeting, and landscape-first HUD assumptions.
 - Mobile app release path: Task 12.
+- Landscape-first mobile orientation: Tasks 2, 5, and 12 cover runtime orientation, HUD layout, and platform-specific Android/iOS orientation settings.
 
 Known deferred work:
 
 - Online co-op is intentionally out of scope.
 - Same-device two-player gameplay is prepared architecturally but not implemented.
-- Flame Field and Ice Shard can be implemented after the first four weapons work.
+- 장승 결계 and 신기전 세례 can be implemented after the first four weapons work.

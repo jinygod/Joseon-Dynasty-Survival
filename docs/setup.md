@@ -25,3 +25,9 @@ Verified on 2026-06-30:
 
 - Android SDK is not installed or not configured.
 - Visual Studio is missing Windows desktop C++ components.
+
+## Mobile Release Notes
+
+The MVP is landscape-first. Flutter should lock runtime orientation with `SystemChrome.setPreferredOrientations`, and the platform projects should also declare landscape support for Android and iOS.
+
+Android builds can be prepared on Windows after Android Studio, the Android SDK, and release signing keys are configured. iOS App Store and TestFlight builds require a Mac with Xcode; Docker does not replace that requirement. For repeatable mobile releases, keep the Flutter version fixed and synchronize GitHub branches before building.

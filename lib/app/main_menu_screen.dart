@@ -11,12 +11,12 @@ class MainMenuScreen extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Pixel Survivor', style: TextStyle(fontSize: 32)),
-              const SizedBox(height: 16),
-              FilledButton(
-                onPressed: () {},
-                child: const Text('Start Run'),
+              const Text(
+                'Joseon Dynasty Survival',
+                style: TextStyle(fontSize: 32),
               ),
+              const SizedBox(height: 16),
+              FilledButton(onPressed: () {}, child: const Text('Start Run')),
             ],
           ),
         ),
