@@ -2,10 +2,27 @@ import 'dart:math';
 
 import '../content/ids.dart';
 import '../content/unlock_definitions.dart';
+import '../models/run_result.dart';
 import 'save_system.dart';
 
 class ProgressionSystem {
   const ProgressionSystem();
+
+  SaveState applyRunResult(SaveState save, RunResult result) {
+    final updated = save.copyWith(
+      bestSurvivalSeconds: max(
+        save.bestSurvivalSeconds,
+        result.survivalSeconds,
+      ),
+      totalKills: save.totalKills + result.kills,
+      levelReachedInRun: max(save.levelReachedInRun, result.level),
+      bossDefeats: save.bossDefeats + (result.bossDefeated ? 1 : 0),
+      lowHealthWinCount:
+          save.lowHealthWinCount + (result.wonWithLowHealth ? 1 : 0),
+    );
+
+    return evaluate(updated);
+  }
 
   SaveState evaluate(SaveState save) {
     final unlockedCharacterIds = Set<String>.of(save.unlockedCharacterIds);
@@ -68,5 +85,35 @@ class ProgressionSystem {
       ),
       UnlockMetric.lowHealthWinCount => save.lowHealthWinCount,
     };
+  }
+}
+
+class ProgressionUnlocks {
+  const ProgressionUnlocks({
+    this.characterIds = const [],
+    this.weaponIds = const [],
+    this.augmentIds = const [],
+  });
+
+  factory ProgressionUnlocks.diff(SaveState before, SaveState after) {
+    return ProgressionUnlocks(
+      characterIds: _newIds(
+        before.unlockedCharacterIds,
+        after.unlockedCharacterIds,
+      ),
+      weaponIds: _newIds(before.unlockedWeaponIds, after.unlockedWeaponIds),
+      augmentIds: _newIds(before.unlockedAugmentIds, after.unlockedAugmentIds),
+    );
+  }
+
+  final List<String> characterIds;
+  final List<String> weaponIds;
+  final List<String> augmentIds;
+
+  bool get isEmpty =>
+      characterIds.isEmpty && weaponIds.isEmpty && augmentIds.isEmpty;
+
+  static List<String> _newIds(Set<String> before, Set<String> after) {
+    return (after.difference(before).toList()..sort());
   }
 }
