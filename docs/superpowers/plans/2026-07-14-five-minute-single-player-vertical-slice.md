@@ -69,14 +69,17 @@
 - Create: `lib/game/models/run_outcome.dart`
 - Modify: `lib/game/models/run_result.dart`
 - Modify: `lib/game/pixel_survivor_game.dart`
+- Modify: `lib/game/systems/run_stats_tracker.dart`
 - Modify: `lib/app/game_screen.dart`
 - Modify: `test/game/pixel_survivor_game_loop_test.dart`
+- Modify: `test/game/run_stats_tracker_test.dart`
 - Modify: `test/game/run_summary_progression_test.dart`
 
 **Interfaces:**
 - Produces: `enum RunOutcome { inProgress, victory, defeat }`
 - Produces: `PixelSurvivorGame({required PlayerSlot playerSlot, required void Function(RunResult)? onRunEnded, Random? random})`
 - Produces: `RunResult.outcome`과 `RunResult.weaponLevels`
+- Produces: `RunStatsTracker.toRunResult({required RunOutcome outcome, required int survivalSeconds, required int level, required bool wonWithLowHealth, required Map<String, int> weaponLevels})`
 
 - [ ] **Step 1: 한 명만 받는 생성자와 결과 상태의 실패 테스트 작성**
 
@@ -141,6 +144,8 @@ class RunResult {
 
 `PixelSurvivorGame`의 `List<PlayerSlot>` 입력과 반복 생성을 `PlayerSlot playerSlot` 하나로 교체한다. `GameScreen`과 모든 테스트 픽스처도 새 생성자를 사용한다.
 
+`RunStatsTracker.toRunResult`는 호출자가 전달한 `outcome`과 `weaponLevels`를 `RunResult`에 그대로 복사한다. 기존 통계 테스트는 패배 결과와 빈 무기 레벨을 명시하고, 게임의 `currentRunResult`는 현재 런 상태와 `weaponSystem.levels`를 전달한다.
+
 - [ ] **Step 4: 관련 테스트와 전체 회귀 테스트 통과 확인**
 
 Run: `flutter test test/game/pixel_survivor_game_loop_test.dart test/game/run_summary_progression_test.dart`
@@ -152,7 +157,7 @@ Expected: 전체 테스트 PASS
 - [ ] **Step 5: 커밋과 푸시**
 
 ```powershell
-git add lib/game/models/run_outcome.dart lib/game/models/run_result.dart lib/game/pixel_survivor_game.dart lib/app/game_screen.dart test
+git add lib/game/models/run_outcome.dart lib/game/models/run_result.dart lib/game/pixel_survivor_game.dart lib/game/systems/run_stats_tracker.dart lib/app/game_screen.dart test
 git commit -m "refactor: enforce single-player run contract"
 git push origin codex/pixel-survivor-mvp
 ```
