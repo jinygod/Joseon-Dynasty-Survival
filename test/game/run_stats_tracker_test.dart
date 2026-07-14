@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
+import 'package:pixel_survivor/game/models/run_choice_record.dart';
 import 'package:pixel_survivor/game/models/run_outcome.dart';
 import 'package:pixel_survivor/game/systems/run_stats_tracker.dart';
 
@@ -25,6 +26,94 @@ void main() {
       expect(result.bossDefeated, isTrue);
       expect(result.weaponKillCounts, isEmpty);
       expect(result.weaponLevels, {hwandoSlash: 2});
+    });
+
+    test('accumulates effective damage and kills for the same weapon', () {
+      final tracker = RunStatsTracker()
+        ..recordWeaponDamage(weaponId: hwandoSlash, amount: 8.5)
+        ..recordWeaponDamage(weaponId: hwandoSlash, amount: 3.5)
+        ..recordEnemyDefeat(isBoss: false, weaponId: hwandoSlash)
+        ..recordEnemyDefeat(isBoss: false, weaponId: hwandoSlash);
+
+      final result = tracker.toRunResult(
+        outcome: RunOutcome.victory,
+        survivalSeconds: 300,
+        level: 10,
+        wonWithLowHealth: false,
+        weaponLevels: const {hwandoSlash: 5},
+      );
+
+      expect(result.weaponDamageTotals, {hwandoSlash: 12});
+      expect(result.weaponKillCounts, {hwandoSlash: 2});
+    });
+
+    test('preserves choice order time and selected level', () {
+      final tracker = RunStatsTracker()
+        ..recordChoice(
+          const RunChoiceRecord(
+            type: RunChoiceType.weapon,
+            contentId: hwandoSlash,
+            selectedAtSeconds: 20,
+            selectedLevel: 2,
+          ),
+        )
+        ..recordChoice(
+          const RunChoiceRecord(
+            type: RunChoiceType.augment,
+            contentId: 'inner_breath',
+            selectedAtSeconds: 45,
+            selectedLevel: 1,
+          ),
+        );
+
+      final result = tracker.toRunResult(
+        outcome: RunOutcome.defeat,
+        survivalSeconds: 100,
+        level: 4,
+        wonWithLowHealth: false,
+        weaponLevels: const {},
+      );
+
+      expect(result.choices.map((choice) => choice.contentId), [
+        hwandoSlash,
+        'inner_breath',
+      ]);
+      expect(result.choices.last.selectedAtSeconds, 45);
+      expect(result.choices.last.selectedLevel, 1);
+    });
+
+    test('tracks damage source and first lethal time', () {
+      final tracker = RunStatsTracker()
+        ..recordPlayerDamage(
+          amount: 12.5,
+          sourceId: 'plague_rat',
+          atSeconds: 80,
+          isLethal: false,
+        )
+        ..recordPlayerDamage(
+          amount: 20,
+          sourceId: 'vengeful_spirit',
+          atSeconds: 95,
+          isLethal: true,
+        )
+        ..recordPlayerDamage(
+          amount: 10,
+          sourceId: 'fallen_general',
+          atSeconds: 96,
+          isLethal: true,
+        );
+
+      final result = tracker.toRunResult(
+        outcome: RunOutcome.defeat,
+        survivalSeconds: 95,
+        level: 4,
+        wonWithLowHealth: false,
+        weaponLevels: const {},
+      );
+
+      expect(result.totalDamageTaken, 42.5);
+      expect(result.lastDamageSource, 'fallen_general');
+      expect(result.deathAtSeconds, 95);
     });
   });
 }

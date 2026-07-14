@@ -23,6 +23,7 @@ import 'content/ids.dart';
 import 'content/weapon_definitions.dart';
 import 'models/player_slot.dart';
 import 'models/damage_event.dart';
+import 'models/run_choice_record.dart';
 import 'models/run_result.dart';
 import 'models/run_outcome.dart';
 import 'models/vector_input.dart';
@@ -67,6 +68,7 @@ class PixelSurvivorGame extends FlameGame
   final Set<WeaponId> unlockedWeaponIds = {};
   final Set<AugmentId> unlockedAugmentIds = {};
   final Map<AugmentId, int> augmentLevels = {};
+  final Map<EnemyComponent, WeaponId> _lastWeaponHitByEnemy = {};
   List<LevelUpChoice> _pendingLevelUpChoices = const [];
 
   VectorInput movementInput = VectorInput.zero;
@@ -233,6 +235,17 @@ class PixelSurvivorGame extends FlameGame
   }
 
   void applyLevelUpChoice(LevelUpChoice choice) {
+    runStats.recordChoice(
+      RunChoiceRecord(
+        type: switch (choice.type) {
+          LevelUpChoiceType.weapon => RunChoiceType.weapon,
+          LevelUpChoiceType.augment => RunChoiceType.augment,
+        },
+        contentId: choice.id,
+        selectedAtSeconds: _elapsedSeconds.floor(),
+        selectedLevel: choice.nextLevel,
+      ),
+    );
     switch (choice.type) {
       case LevelUpChoiceType.weapon:
         final weaponId = choice.id;
@@ -441,7 +454,13 @@ class PixelSurvivorGame extends FlameGame
             (player) => player.isAlive,
           )) {
             if (attack.containsPlayer(player)) {
+              final healthBefore = player.currentHealth;
               player.takeDamage(attack.damage);
+              _recordPlayerDamage(
+                player: player,
+                healthBefore: healthBefore,
+                sourceId: _boss?.enemyId ?? 'boss_area_attack',
+              );
             }
           }
           attack.collectDamageEvents(const <EnemyComponent>[]);
@@ -455,7 +474,17 @@ class PixelSurvivorGame extends FlameGame
   void _applyDamageEvents(Iterable<DamageEvent> events) {
     for (final event in events) {
       if (event.target.isDead) continue;
+      final healthBefore = event.target.currentHealth;
       event.target.takeDamage(event.damage);
+      final effectiveDamage = healthBefore - event.target.currentHealth;
+      final weaponId = event.weaponId;
+      if (weaponId != null && effectiveDamage > 0) {
+        runStats.recordWeaponDamage(
+          weaponId: weaponId,
+          amount: effectiveDamage,
+        );
+        _lastWeaponHitByEnemy[event.target] = weaponId;
+      }
       event.target.registerHit(knockback: event.direction * event.knockback);
       _spawnDamageNumber(event);
     }
@@ -506,7 +535,10 @@ class PixelSurvivorGame extends FlameGame
     );
     for (final enemy in deadEnemies.toList()) {
       final enemyDefinition = _enemyDefinitionFor(enemy.enemyId);
-      runStats.recordEnemyDefeat(isBoss: enemyDefinition.isBoss);
+      runStats.recordEnemyDefeat(
+        isBoss: enemyDefinition.isBoss,
+        weaponId: _lastWeaponHitByEnemy.remove(enemy),
+      );
       combatSystem.forget(enemy);
       add(
         ExperienceGemComponent(
@@ -535,11 +567,19 @@ class PixelSurvivorGame extends FlameGame
         .toList(growable: false);
     for (final enemy in enemies) {
       for (final player in alivePlayers) {
-        combatSystem.applyContactDamage(
+        final healthBefore = player.currentHealth;
+        final applied = combatSystem.applyContactDamage(
           player: player,
           enemy: enemy,
           now: _elapsedSeconds,
         );
+        if (applied) {
+          _recordPlayerDamage(
+            player: player,
+            healthBefore: healthBefore,
+            sourceId: enemy.enemyId,
+          );
+        }
       }
     }
 
@@ -554,7 +594,10 @@ class PixelSurvivorGame extends FlameGame
   void _resolveBossVictoryBeforePlayerDefeat() {
     final boss = _boss;
     if (boss != null && boss.isDead && !runStats.bossDefeated) {
-      runStats.recordEnemyDefeat(isBoss: true);
+      runStats.recordEnemyDefeat(
+        isBoss: true,
+        weaponId: _lastWeaponHitByEnemy.remove(boss),
+      );
     }
     if (runStats.bossDefeated) {
       _finishRun(RunOutcome.victory);
@@ -582,6 +625,19 @@ class PixelSurvivorGame extends FlameGame
         gem.removeFromParent();
       }
     }
+  }
+
+  void _recordPlayerDamage({
+    required PlayerComponent player,
+    required double healthBefore,
+    required String sourceId,
+  }) {
+    runStats.recordPlayerDamage(
+      amount: healthBefore - player.currentHealth,
+      sourceId: sourceId,
+      atSeconds: _elapsedSeconds.floor(),
+      isLethal: !player.isAlive,
+    );
   }
 
   List<LevelUpChoice> levelUpChoices() {

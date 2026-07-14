@@ -1,11 +1,15 @@
 import 'dart:math';
 
 import 'package:flame/components.dart';
+import 'package:flame_test/flame_test.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pixel_survivor/game/components/enemy_component.dart';
+import 'package:pixel_survivor/game/components/projectile_component.dart';
 import 'package:pixel_survivor/game/content/augment_definitions.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
 import 'package:pixel_survivor/game/models/player_slot.dart';
+import 'package:pixel_survivor/game/models/run_choice_record.dart';
 import 'package:pixel_survivor/game/models/run_outcome.dart';
 import 'package:pixel_survivor/game/models/run_result.dart';
 import 'package:pixel_survivor/game/models/vector_input.dart';
@@ -19,6 +23,11 @@ void main() {
       onRunEnded: null,
     );
   }
+
+  final gameTester = FlameTester<PixelSurvivorGame>(
+    newGame,
+    gameSize: Vector2(960, 540),
+  );
 
   group('PixelSurvivorGame run loop progression', () {
     test('game accepts exactly one player slot', () {
@@ -114,6 +123,78 @@ void main() {
 
       expect(game.augmentLevels[martialTraining], 1);
     });
+
+    test('applyLevelUpChoice records selection order and game time', () {
+      final game = newGame()..debugAdvanceTo(42);
+      const choice = LevelUpChoice(
+        id: martialTraining,
+        displayName: '무예 단련',
+        effectDescription: '모든 무기 피해 +12%',
+        type: LevelUpChoiceType.augment,
+        currentLevel: 0,
+        nextLevel: 1,
+      );
+
+      game.applyLevelUpChoice(choice);
+
+      final recorded = game.currentRunResult().choices.single;
+      expect(recorded.type, RunChoiceType.augment);
+      expect(recorded.contentId, martialTraining);
+      expect(recorded.selectedAtSeconds, 42);
+      expect(recorded.selectedLevel, 1);
+    });
+
+    test('projectile overkill records only effective weapon damage', () async {
+      final game = newGame();
+      game.onGameResize(Vector2(960, 540));
+      await game.onLoad();
+      final enemy = EnemyComponent(
+        enemyId: 'telemetry_target',
+        maxHealth: 5,
+        moveSpeed: 0,
+        damage: 0,
+        position: Vector2(40, 40),
+      );
+      await game.add(enemy);
+      await game.add(
+        ProjectileComponent(
+          weaponId: talismanThrow,
+          damage: 50,
+          position: enemy.position.clone(),
+          velocity: Vector2.zero(),
+        ),
+      );
+
+      game.update(0);
+
+      final result = game.currentRunResult();
+      expect(result.weaponDamageTotals[talismanThrow], 5);
+      expect(result.weaponKillCounts[talismanThrow], 1);
+    });
+
+    gameTester.testGameWidget(
+      'contact damage records actual health loss and source',
+      setUp: (game, _) async {
+        final player = game.activePlayers.single;
+        await game.ensureAdd(
+          EnemyComponent(
+            enemyId: 'telemetry_enemy',
+            maxHealth: 10000,
+            moveSpeed: 0,
+            damage: 15,
+            position: player.position.clone(),
+          ),
+        );
+      },
+      verify: (game, _) async {
+        game.update(0.016);
+
+        final result = game.currentRunResult();
+        expect(result.totalDamageTaken, 15);
+        expect(result.lastDamageSource, 'telemetry_enemy');
+        expect(result.deathAtSeconds, isNull);
+      },
+    );
 
     test('augment levels expose combat and collection multipliers', () {
       final game = newGame();
