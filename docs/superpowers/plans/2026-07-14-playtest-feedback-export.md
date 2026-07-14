@@ -32,29 +32,29 @@
 - Produces: `RunTelemetry.copyWith(feedback:)` and optional `feedback` JSON field.
 - Produces: `TelemetryRepository.updateFeedback(runId, feedback) -> Future<bool>`.
 
-- [ ] **Step 1: Write failing feedback model tests**
+- [x] **Step 1: Write failing feedback model tests**
 
 Assert round trip, ratings outside 1–5 throw `ArgumentError`, comments are trimmed, comments over 200 characters throw, and old telemetry without feedback decodes null.
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
 Run: `flutter test test/game/run_telemetry_test.dart -r expanded`
 
 Expected: compilation fails because `RunFeedback` and the telemetry field do not exist.
 
-- [ ] **Step 3: Implement immutable validated feedback and telemetry copy**
+- [x] **Step 3: Implement immutable validated feedback and telemetry copy**
 
 Keep schema version 1 because the nullable field is backward compatible. Serialize feedback only as a JSON object or null.
 
-- [ ] **Step 4: Write failing repository update tests**
+- [x] **Step 4: Write failing repository update tests**
 
 Append two runs, update the second by ID, and assert order and first row remain unchanged. Updating an unknown ID returns false and performs no write.
 
-- [ ] **Step 5: Implement update and verify GREEN**
+- [x] **Step 5: Implement update and verify GREEN**
 
 Run both focused test files and expect all tests to pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```powershell
 git add lib/game/models lib/game/systems/telemetry_repository.dart test/game
@@ -73,21 +73,21 @@ git commit -m "feat: store run playtest feedback"
 - Produces: `copyRun(runId) -> Future<bool>` and `exportAll() -> Future<bool>`.
 - Injects: repository loader, clipboard writer, and JSON-file sharer for deterministic tests.
 
-- [ ] **Step 1: Write failing service tests**
+- [x] **Step 1: Write failing service tests**
 
 Assert copied JSON decodes to the requested run including feedback, missing run returns false without writing, all-history export uses `run-telemetry.json` and `application/json`, and empty history returns false without sharing.
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
 Run: `flutter test test/game/telemetry_export_service_test.dart -r expanded`
 
 Expected: compilation fails because the service does not exist.
 
-- [ ] **Step 3: Add `share_plus: ^13.2.0` and implement adapters**
+- [x] **Step 3: Add `share_plus: ^13.2.0` and implement adapters**
 
 Use indented `JsonEncoder.withIndent('  ')`. The default clipboard adapter calls `Clipboard.setData`; the default share adapter sends one in-memory UTF-8 JSON file with `SharePlus.instance.share`.
 
-- [ ] **Step 4: Verify GREEN and commit**
+- [x] **Step 4: Verify GREEN and commit**
 
 ```powershell
 git add pubspec.yaml pubspec.lock lib/game/systems/telemetry_export_service.dart test/game/telemetry_export_service_test.dart
@@ -104,23 +104,23 @@ git commit -m "feat: export local run telemetry"
 - Consumes callbacks: `onFeedbackSubmitted(RunFeedback)`, `onCopyRunJson()`, and `onExportAllJson()` returning `Future<bool>`.
 - Produces a saved state and `SnackBar` status without owning storage.
 
-- [ ] **Step 1: Write failing weapon metrics widget test**
+- [x] **Step 1: Write failing weapon metrics widget test**
 
 Provide levels, damage, and kills for two weapons. Assert each localized name and formatted `Lv`, rounded damage, and kill value appears.
 
-- [ ] **Step 2: Write failing feedback validation/submission test**
+- [x] **Step 2: Write failing feedback validation/submission test**
 
 Assert submit is disabled initially, choose fun 4, difficulty 3, retry Yes, enter a trimmed comment, submit, and verify the exact `RunFeedback` callback and saved confirmation.
 
-- [ ] **Step 3: Write failing copy/export action test**
+- [x] **Step 3: Write failing copy/export action test**
 
 Tap each button, assert callbacks fire once, and assert success SnackBars are visible. Add a false-return case for the no-data message.
 
-- [ ] **Step 4: Implement stateful form and metric rows**
+- [x] **Step 4: Implement stateful form and metric rows**
 
 Use compact choice chips/segmented controls suitable for the 560px constrained result view. Dispose the comment controller and guard async `setState`/SnackBars with `mounted`.
 
-- [ ] **Step 5: Verify GREEN and commit**
+- [x] **Step 5: Verify GREEN and commit**
 
 Run: `flutter test test/game/run_summary_progression_test.dart -r expanded`
 
@@ -144,24 +144,24 @@ git commit -m "feat: add result playtest feedback"
 - Changes: `RunTelemetryService.record(...) -> Future<RunTelemetry?>` while preserving failure isolation.
 - `GameScreen` wires repository feedback update and export actions for the exact saved `runId`.
 
-- [ ] **Step 1: Write failing service return and screen callback tests**
+- [x] **Step 1: Write failing service return and screen callback tests**
 
 Assert a successful record returns the exact telemetry and a failure returns null. In the screen test, finish a run and verify the summary receives enabled telemetry actions tied to the recorded run ID.
 
-- [ ] **Step 2: Implement integration and verify focused tests**
+- [x] **Step 2: Implement integration and verify focused tests**
 
 If initial telemetry recording returns null, show the summary normally with copy/export feedback actions reporting unavailable instead of throwing.
 
-- [ ] **Step 3: Write tester guide and CSV template**
+- [x] **Step 3: Write tester guide and CSV template**
 
 Document install/setup, fixed 5-minute protocol, local-data notice, feedback questions, JSON export handoff, and anonymous run ID/file naming. CSV columns: tester code, build, device, run ID, outcome, fun, difficulty, retry, notes.
 
-- [ ] **Step 4: Run full gate**
+- [x] **Step 4: Run full gate**
 
 Run: `.\tool\release_check.ps1`
 
 Expected: analysis clean, all tests pass, web release build succeeds.
 
-- [ ] **Step 5: Mark `TEL-008` through `TEL-012` complete and commit**
+- [x] **Step 5: Mark `TEL-008` through `TEL-012` complete and commit**
 
 Advance the next Codex queue to `UX-001`, record the new test count, and commit documentation evidence only after Step 4 succeeds.
