@@ -22,7 +22,7 @@ $env:TMP = "C:\codex-tmp"
 subst F: "$env:USERPROFILE\source\flutter"
 $env:Path = "F:\bin;$env:Path"
 
-subst P: "C:\Users\전성진\Documents\뱀서라이크게임\.worktrees\pixel-survivor-mvp"
+subst P: "C:\Users\전성진\Documents\뱀서라이크게임"
 Push-Location P:\
 
 flutter pub get
@@ -85,3 +85,31 @@ environment before building.
 9. 다시 시작했을 때 시간, 레벨, XP, 적, 처치 수, 보스 상태가 모두 초기화되는지 확인한다.
 
 세부 기록 양식은 `docs/testing/manual-qa-test-cases.txt`를 사용한다.
+
+## 5분 플레이테스트 프로토콜
+
+테스트 데이터는 기기에만 저장되며 서버로 전송되지 않는다. 이름, 이메일, 전화번호 등 개인 식별 정보는 의견란에 입력하지 않는다. 테스터 코드는 `T01`, `T02`처럼 별도로 부여한다.
+
+1. 빌드 버전과 Android 기기 모델을 `playtest-run-log.csv`에 기록한다.
+2. 새 런을 시작하고 도움 없이 이동·레벨업 선택·보스전을 진행한다.
+3. 사망하거나 보스를 처치할 때까지 플레이한다. 중도 종료도 그대로 한 런으로 기록한다.
+4. 결과 화면에서 재미 1~5, 난이도 1~5, 재도전 의사 예/아니오를 반드시 선택한다.
+5. 의견은 선택 사항이며 200자 이내로 가장 좋았던 점이나 불편했던 점 하나만 적는다.
+6. `피드백 저장`을 누른 뒤 `이 런 JSON 복사`로 단일 런 데이터가 생성되는지 확인한다.
+7. 테스트 세션이 끝나면 `전체 기록 JSON 내보내기`를 눌러 `run-telemetry.json`을 공유·저장한다.
+8. 파일명은 `build-테스터코드-날짜-run-telemetry.json` 형식으로 바꿔 전달한다. 예: `0.1.0+1-T01-20260714-run-telemetry.json`.
+
+## 필수 확인 항목
+
+- 런 ID와 앱 버전이 비어 있지 않다.
+- 결과, 생존 시간, 최종 레벨, 총 처치, 보스 결과가 화면과 일치한다.
+- 무기별 레벨·피해·처치가 결과 화면과 JSON에 존재한다.
+- 피드백 저장 후 복사한 단일 런 JSON에 `feedback`이 존재한다.
+- 전체 내보내기 파일은 최근 최대 50런을 오래된 순서부터 포함한다.
+- 피드백·복사·내보내기 실패 여부와 관계없이 다시 시작과 메인 메뉴 버튼이 동작한다.
+
+## 전달물
+
+- 작성한 `docs/testing/playtest-run-log.csv`
+- 내보낸 `run-telemetry.json`
+- 재현 가능한 진행 불가·입력 불가·보이지 않는 공격이 있으면 발생 시각과 재현 순서

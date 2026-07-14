@@ -1,0 +1,2 @@
+tester_code,build,device,run_id,outcome,fun_1_to_5,difficulty_1_to_5,retry_yes_no,notes
+T01,0.1.0+1,Android device,example-run-id,victory,4,3,yes,개인정보 없이 200자 이내
