@@ -1,11 +1,74 @@
 import 'dart:ui';
 
 import 'package:flame/components.dart';
+import 'package:flutter/foundation.dart';
 
 import '../models/vector_input.dart';
 import '../systems/combat_feedback_tuning.dart';
 
-class PlayerComponent extends PositionComponent {
+enum PlayerAnimationState { idle, walking, hit, death }
+
+abstract final class PlayerSpriteSheet {
+  static const assetKey = 'player/rookie_constable_player_32.png';
+  static final frameSize = Vector2.all(32);
+  static const walkFrames = [0, 1, 2, 3, 4, 5];
+  static const hitFrames = [6, 7];
+  static const deathFrames = [8, 9, 10, 11, 12, 13, 14, 15];
+  static const hitDurationSeconds = 0.20;
+
+  static Map<PlayerAnimationState, SpriteAnimation> animations(Image image) {
+    return {
+      PlayerAnimationState.idle: SpriteAnimation.fromFrameData(
+        image,
+        SpriteAnimationData.sequenced(
+          amount: 1,
+          stepTime: 1,
+          textureSize: frameSize,
+          loop: true,
+        ),
+      ),
+      PlayerAnimationState.walking: SpriteAnimation.fromFrameData(
+        image,
+        SpriteAnimationData.range(
+          start: walkFrames.first,
+          end: walkFrames.last,
+          amount: 16,
+          amountPerRow: 4,
+          stepTimes: List.filled(walkFrames.length, 0.11),
+          textureSize: frameSize,
+          loop: true,
+        ),
+      ),
+      PlayerAnimationState.hit: SpriteAnimation.fromFrameData(
+        image,
+        SpriteAnimationData.range(
+          start: hitFrames.first,
+          end: hitFrames.last,
+          amount: 16,
+          amountPerRow: 4,
+          stepTimes: List.filled(hitFrames.length, 0.10),
+          textureSize: frameSize,
+          loop: false,
+        ),
+      ),
+      PlayerAnimationState.death: SpriteAnimation.fromFrameData(
+        image,
+        SpriteAnimationData.range(
+          start: deathFrames.first,
+          end: deathFrames.last,
+          amount: 16,
+          amountPerRow: 4,
+          stepTimes: List.filled(deathFrames.length, 0.12),
+          textureSize: frameSize,
+          loop: false,
+        ),
+      ),
+    };
+  }
+}
+
+class PlayerComponent
+    extends SpriteAnimationGroupComponent<PlayerAnimationState> {
   PlayerComponent({
     required this.slotIndex,
     required this.maxHealth,
@@ -18,6 +81,7 @@ class PlayerComponent extends PositionComponent {
          position: position ?? Vector2.zero(),
          size: size ?? Vector2.all(24),
          anchor: Anchor.center,
+         autoResize: false,
        );
 
   final int slotIndex;
@@ -26,6 +90,9 @@ class PlayerComponent extends PositionComponent {
   final double moveSpeed;
   double moveSpeedMultiplier = 1;
   double _nextDamageAt = double.negativeInfinity;
+  PlayerAnimationState visualState = PlayerAnimationState.idle;
+  double _hitAnimationRemaining = 0;
+  bool _isMoving = false;
 
   bool get isAlive => currentHealth > 0;
 
@@ -49,6 +116,12 @@ class PlayerComponent extends PositionComponent {
     if (now != null) {
       _nextDamageAt = now + CombatFeedbackTuning.playerInvulnerabilitySeconds;
     }
+    if (isAlive) {
+      _hitAnimationRemaining = PlayerSpriteSheet.hitDurationSeconds;
+      _setVisualState(PlayerAnimationState.hit);
+    } else {
+      _setVisualState(PlayerAnimationState.death);
+    }
     return true;
   }
 
@@ -71,6 +144,12 @@ class PlayerComponent extends PositionComponent {
 
   void applyInput(VectorInput input, double dt, {Vector2? bounds}) {
     final direction = Vector2(input.x, input.y);
+    _isMoving = direction.length2 > 0;
+    if (visualState != PlayerAnimationState.hit && isAlive) {
+      _setVisualState(
+        _isMoving ? PlayerAnimationState.walking : PlayerAnimationState.idle,
+      );
+    }
     if (direction.length2 > 1) {
       direction.normalize();
     }
@@ -93,8 +172,47 @@ class PlayerComponent extends PositionComponent {
   }
 
   @override
+  Future<void> onLoad() async {
+    await super.onLoad();
+    try {
+      final image = await findGame()!.images.load(PlayerSpriteSheet.assetKey);
+      animations = PlayerSpriteSheet.animations(image);
+      current = visualState;
+    } catch (error) {
+      if (!kReleaseMode) {
+        rethrow;
+      }
+    }
+  }
+
+  @override
+  void update(double dt) {
+    super.update(dt);
+    if (visualState != PlayerAnimationState.hit) {
+      return;
+    }
+
+    _hitAnimationRemaining -= dt;
+    if (_hitAnimationRemaining <= 0) {
+      _setVisualState(
+        _isMoving ? PlayerAnimationState.walking : PlayerAnimationState.idle,
+      );
+    }
+  }
+
+  void _setVisualState(PlayerAnimationState state) {
+    visualState = state;
+    if (animations != null) {
+      current = state;
+    }
+  }
+
+  @override
   void render(Canvas canvas) {
-    super.render(canvas);
+    if (animations != null) {
+      super.render(canvas);
+      return;
+    }
 
     final bodyPaint = Paint()..color = const Color(0xff5cc8ff);
     final outlinePaint = Paint()

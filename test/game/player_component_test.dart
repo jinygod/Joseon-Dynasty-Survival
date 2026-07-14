@@ -95,5 +95,34 @@ void main() {
 
       expect(player.currentHealth, 100);
     });
+
+    test('movement, hit, and death select the matching animation state', () {
+      final player = PlayerComponent(
+        slotIndex: 0,
+        maxHealth: 100,
+        moveSpeed: 100,
+      );
+
+      expect(player.visualState, PlayerAnimationState.idle);
+
+      player.applyInput(const VectorInput(1, 0), 0.1);
+      expect(player.visualState, PlayerAnimationState.walking);
+
+      player.takeDamage(10);
+      expect(player.visualState, PlayerAnimationState.hit);
+
+      player.update(PlayerSpriteSheet.hitDurationSeconds);
+      expect(player.visualState, PlayerAnimationState.walking);
+
+      player.takeDamage(100);
+      expect(player.visualState, PlayerAnimationState.death);
+    });
+
+    test('sprite sheet contract maps 6 walk, 2 hit, and 8 death frames', () {
+      expect(PlayerSpriteSheet.walkFrames, [0, 1, 2, 3, 4, 5]);
+      expect(PlayerSpriteSheet.hitFrames, [6, 7]);
+      expect(PlayerSpriteSheet.deathFrames, [8, 9, 10, 11, 12, 13, 14, 15]);
+      expect(PlayerSpriteSheet.frameSize, Vector2.all(32));
+    });
   });
 }

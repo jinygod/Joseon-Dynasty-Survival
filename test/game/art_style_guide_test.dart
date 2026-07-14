@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/content/art_style_guide.dart';
 import 'package:pixel_survivor/game/content/asset_catalog.dart';
@@ -49,5 +51,20 @@ void main() {
       expect(rule.occupancyMax, lessThanOrEqualTo(0.9));
       expect(rule.readabilityCue, isNotEmpty);
     }
+  });
+
+  test('player animation sheet is a 4x4 RGBA grid of 32px frames', () {
+    final bytes = File(
+      'assets/images/player/rookie_constable_player_32.png',
+    ).readAsBytesSync();
+    int readUint32(int offset) =>
+        (bytes[offset] << 24) |
+        (bytes[offset + 1] << 16) |
+        (bytes[offset + 2] << 8) |
+        bytes[offset + 3];
+
+    expect(readUint32(16), 128);
+    expect(readUint32(20), 128);
+    expect(bytes[25], 6, reason: 'PNG must use RGBA color type');
   });
 }
