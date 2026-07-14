@@ -21,6 +21,7 @@ import 'models/run_result.dart';
 import 'models/run_outcome.dart';
 import 'models/vector_input.dart';
 import 'systems/level_up_system.dart';
+import 'systems/combat_system.dart';
 import 'systems/run_progression_system.dart';
 import 'systems/run_stats_tracker.dart';
 import 'systems/wave_director.dart';
@@ -49,6 +50,7 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
   final LevelUpSystem levelUpSystem = const LevelUpSystem();
   final RunProgressionSystem runProgression = RunProgressionSystem();
   final RunStatsTracker runStats = RunStatsTracker();
+  final CombatSystem combatSystem = CombatSystem();
   final List<PlayerComponent> _activePlayers = [];
   late final List<PlayerComponent> _activePlayersView = UnmodifiableListView(
     _activePlayers,
@@ -222,25 +224,28 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
     );
     final initialEnemyCount = enemyCount;
     for (var index = 0; index < wave.spawnRequests.length; index += 1) {
-      _addEnemy(wave.spawnRequests[index].enemyId, initialEnemyCount + index);
+      final request = wave.spawnRequests[index];
+      _addEnemy(
+        request.enemyId,
+        initialEnemyCount + index,
+        isElite: request.isElite,
+      );
     }
     if (wave.spawnBoss) {
       _bossRequestCount += 1;
     }
   }
 
-  void _addEnemy(EnemyId enemyId, int spawnIndex) {
+  void _addEnemy(EnemyId enemyId, int spawnIndex, {bool isElite = false}) {
     final enemyDefinition = _enemyDefinitionFor(enemyId);
     final offset = _spawnOffsetFor(spawnIndex);
     add(
-      EnemyComponent(
-        enemyId: enemyDefinition.id,
-        maxHealth: enemyDefinition.maxHealth,
-        moveSpeed: enemyDefinition.moveSpeed,
-        damage: enemyDefinition.damage,
-        experienceValue: enemyDefinition.experience,
+      EnemyComponent.fromDefinition(
+        enemyDefinition,
+        isElite: isElite,
         position: Vector2(size.x / 2, size.y / 2) + offset,
         targetPositionProvider: _nearestActivePlayerPosition,
+        nearbyEnemiesProvider: () => children.whereType<EnemyComponent>(),
       ),
     );
   }
@@ -303,6 +308,7 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
     for (final enemy in deadEnemies.toList()) {
       final enemyDefinition = _enemyDefinitionFor(enemy.enemyId);
       runStats.recordEnemyDefeat(isBoss: enemyDefinition.isBoss);
+      combatSystem.forget(enemy);
       add(
         ExperienceGemComponent(
           experienceValue: enemy.experienceValue,
@@ -328,9 +334,11 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
         .toList(growable: false);
     for (final enemy in enemies) {
       for (final player in alivePlayers) {
-        if (enemy.overlapsPlayer(player)) {
-          player.takeDamage(enemy.damage * dt);
-        }
+        combatSystem.applyContactDamage(
+          player: player,
+          enemy: enemy,
+          now: _elapsedSeconds,
+        );
       }
     }
 

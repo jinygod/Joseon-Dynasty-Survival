@@ -6,6 +6,8 @@ typedef UnlockGoalId = String;
 
 enum ElementType { physical, magic, fire, ice, lightning }
 
+enum EnemyBehaviorType { chase, swarm, dash, tank }
+
 enum UnlockMetric {
   bestSurvivalSeconds,
   totalKills,
@@ -75,6 +77,7 @@ class EnemyDefinition {
     required this.moveSpeed,
     required this.damage,
     required this.experience,
+    this.behaviorType = EnemyBehaviorType.chase,
     this.isBoss = false,
   });
 
@@ -84,6 +87,7 @@ class EnemyDefinition {
   final double moveSpeed;
   final double damage;
   final int experience;
+  final EnemyBehaviorType behaviorType;
   final bool isBoss;
 }
 

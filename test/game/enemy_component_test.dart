@@ -2,6 +2,8 @@ import 'package:flame/components.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/components/enemy_component.dart';
 import 'package:pixel_survivor/game/components/player_component.dart';
+import 'package:pixel_survivor/game/content/enemy_definitions.dart';
+import 'package:pixel_survivor/game/content/ids.dart';
 
 void main() {
   group('EnemyComponent', () {
@@ -31,6 +33,82 @@ void main() {
 
       expect(enemy.overlapsPlayer(nearPlayer), isTrue);
       expect(enemy.overlapsPlayer(farPlayer), isFalse);
+    });
+
+    test('elite enemy scales health damage size and experience', () {
+      final definition = enemyDefinitions.singleWhere(
+        (item) => item.id == bandit,
+      );
+
+      final enemy = EnemyComponent.fromDefinition(definition, isElite: true);
+
+      expect(enemy.isElite, isTrue);
+      expect(enemy.maxHealth, definition.maxHealth * 2.5);
+      expect(enemy.damage, definition.damage * 1.4);
+      expect(enemy.experienceValue, definition.experience * 3);
+      expect(enemy.size.x, greaterThan(18));
+    });
+
+    test('vengeful spirit tracks before entering a short dash', () {
+      final enemy = EnemyComponent(
+        enemyId: vengefulSpirit,
+        maxHealth: 22,
+        moveSpeed: 10,
+        damage: 10,
+        behaviorType: EnemyBehaviorType.dash,
+        position: Vector2.zero(),
+        targetPositionProvider: (_) => Vector2(1000, 0),
+      );
+
+      enemy.update(2.4);
+      final trackedDistance = enemy.position.x;
+      enemy.update(0.1);
+
+      expect(trackedDistance, closeTo(24, 0.001));
+      expect(enemy.position.x - trackedDistance, greaterThan(1));
+      expect(enemy.isDashing, isTrue);
+      enemy.update(0.35);
+      expect(enemy.isDashing, isFalse);
+    });
+
+    test('dokkaebi reduces received knockback by seventy percent', () {
+      final enemy = EnemyComponent(
+        enemyId: dokkaebi,
+        maxHealth: 38,
+        moveSpeed: 36,
+        damage: 13,
+        behaviorType: EnemyBehaviorType.tank,
+      );
+
+      enemy.applyKnockback(Vector2(100, 0));
+
+      expect(enemy.knockbackVelocity.x, closeTo(30, 0.001));
+    });
+
+    test('plague rats separate from nearby rats while pursuing', () {
+      late EnemyComponent enemy;
+      final neighbor = EnemyComponent(
+        enemyId: plagueRatSwarm,
+        maxHealth: 10,
+        moveSpeed: 0,
+        damage: 6,
+        position: Vector2(0, 2),
+      );
+      enemy = EnemyComponent(
+        enemyId: plagueRatSwarm,
+        maxHealth: 10,
+        moveSpeed: 10,
+        damage: 6,
+        behaviorType: EnemyBehaviorType.swarm,
+        position: Vector2.zero(),
+        targetPositionProvider: (_) => Vector2(100, 0),
+        nearbyEnemiesProvider: () => [enemy, neighbor],
+      );
+
+      enemy.update(1);
+
+      expect(enemy.position.y, lessThan(0));
+      expect(enemy.position.x, greaterThan(0));
     });
   });
 }
