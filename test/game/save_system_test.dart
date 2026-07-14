@@ -6,6 +6,37 @@ import 'package:pixel_survivor/game/systems/save_system.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  test('save state writes the current schema version', () {
+    final state = SaveState.defaults();
+
+    expect(SaveState.currentSchemaVersion, 1);
+    expect(state.schemaVersion, SaveState.currentSchemaVersion);
+    expect(state.toJson()['schemaVersion'], SaveState.currentSchemaVersion);
+  });
+
+  test('versionless alpha save migrates to schema one', () {
+    final restored = SaveState.fromJson({
+      'unlockedCharacterIds': [rookieConstable, exorcistDosa],
+      'unlockedWeaponIds': [hwandoSlash, gakgungShot, talismanThrow],
+      'unlockedAugmentIds': [martialTraining, rapidReload],
+      'completedGoalIds': ['survive_3_minutes'],
+      'totalKills': 321,
+      'bestSurvivalSeconds': 240,
+      'levelReachedInRun': 12,
+      'bossDefeats': 2,
+      'unlockedWeaponCount': 4,
+      'lowHealthWinCount': 1,
+    });
+
+    expect(restored.schemaVersion, SaveState.currentSchemaVersion);
+    expect(restored.totalKills, 321);
+    expect(restored.bestSurvivalSeconds, 240);
+    expect(restored.unlockedCharacterIds, contains(exorcistDosa));
+    expect(restored.unlockedWeaponIds, contains(talismanThrow));
+    expect(restored.unlockedAugmentIds, contains(rapidReload));
+    expect(restored.completedGoalIds, contains('survive_3_minutes'));
+  });
+
   test('defaults include the starting character, weapons, and augments', () {
     final save = SaveState.defaults();
     final startingAugmentIds = augmentDefinitions

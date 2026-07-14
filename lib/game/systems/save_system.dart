@@ -8,6 +8,7 @@ import '../content/weapon_definitions.dart';
 
 class SaveState {
   SaveState({
+    this.schemaVersion = currentSchemaVersion,
     required Set<String> unlockedCharacterIds,
     required Set<String> unlockedWeaponIds,
     required Set<String> unlockedAugmentIds,
@@ -22,6 +23,8 @@ class SaveState {
        unlockedWeaponIds = Set.unmodifiable(unlockedWeaponIds),
        unlockedAugmentIds = Set.unmodifiable(unlockedAugmentIds),
        completedGoalIds = Set.unmodifiable(completedGoalIds);
+
+  static const currentSchemaVersion = 1;
 
   factory SaveState.defaults() {
     final startingWeaponIds = weaponDefinitions
@@ -74,6 +77,7 @@ class SaveState {
     );
   }
 
+  final int schemaVersion;
   final Set<String> unlockedCharacterIds;
   final Set<String> unlockedWeaponIds;
   final Set<String> unlockedAugmentIds;
@@ -86,6 +90,7 @@ class SaveState {
   final int lowHealthWinCount;
 
   SaveState copyWith({
+    int? schemaVersion,
     Set<String>? unlockedCharacterIds,
     Set<String>? unlockedWeaponIds,
     Set<String>? unlockedAugmentIds,
@@ -98,6 +103,7 @@ class SaveState {
     int? lowHealthWinCount,
   }) {
     return SaveState(
+      schemaVersion: schemaVersion ?? this.schemaVersion,
       unlockedCharacterIds:
           unlockedCharacterIds ?? Set<String>.of(this.unlockedCharacterIds),
       unlockedWeaponIds:
@@ -117,6 +123,7 @@ class SaveState {
 
   Map<String, dynamic> toJson() {
     return {
+      'schemaVersion': schemaVersion,
       'unlockedCharacterIds': _sorted(unlockedCharacterIds),
       'unlockedWeaponIds': _sorted(unlockedWeaponIds),
       'unlockedAugmentIds': _sorted(unlockedAugmentIds),
