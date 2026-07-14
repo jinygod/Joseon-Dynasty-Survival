@@ -22,5 +22,5 @@ class RunProgressionSystem {
     return leveledUp;
   }
 
-  int experienceRequiredForLevel(int level) => 3 + ((level - 1) * 2);
+  int experienceRequiredForLevel(int level) => 4 + level;
 }

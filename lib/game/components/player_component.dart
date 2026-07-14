@@ -20,7 +20,7 @@ class PlayerComponent extends PositionComponent {
        );
 
   final int slotIndex;
-  final double maxHealth;
+  double maxHealth;
   double currentHealth;
   final double moveSpeed;
   double moveSpeedMultiplier = 1;
@@ -41,6 +41,23 @@ class PlayerComponent extends PositionComponent {
     }
 
     currentHealth = (currentHealth - amount).clamp(0, maxHealth).toDouble();
+  }
+
+  void heal(double amount) {
+    if (amount <= 0 || !isAlive) {
+      return;
+    }
+
+    currentHealth = (currentHealth + amount).clamp(0, maxHealth).toDouble();
+  }
+
+  void increaseMaxHealth(double amount, {double healAmount = 0}) {
+    if (amount <= 0) {
+      return;
+    }
+
+    maxHealth += amount;
+    heal(healAmount);
   }
 
   void applyInput(VectorInput input, double dt, {Vector2? bounds}) {

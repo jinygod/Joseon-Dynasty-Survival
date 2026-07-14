@@ -38,7 +38,8 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
     required this.onRunEnded,
     Random? random,
   }) : weaponSystem = WeaponSystem(random: random),
-       waveDirector = WaveDirector(random: random ?? Random()) {
+       waveDirector = WaveDirector(random: random ?? Random()),
+       levelUpSystem = LevelUpSystem(random: random) {
     if (!playerSlot.isActive) {
       throw ArgumentError.value(playerSlot, 'playerSlot', 'must be active');
     }
@@ -50,7 +51,7 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
   final void Function(RunResult result)? onRunEnded;
   final WeaponSystem weaponSystem;
   final WaveDirector waveDirector;
-  final LevelUpSystem levelUpSystem = const LevelUpSystem();
+  final LevelUpSystem levelUpSystem;
   final RunProgressionSystem runProgression = RunProgressionSystem();
   final RunStatsTracker runStats = RunStatsTracker();
   final CombatSystem combatSystem = CombatSystem();
@@ -76,6 +77,37 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
   int get kills => runStats.kills;
   bool get isGameOver => _isGameOver;
   int get bossRequestCount => _bossRequestCount;
+  double get weaponDamageMultiplier {
+    final martialTrainingLevel = augmentLevels[martialTraining] ?? 0;
+    final heavyStrikeLevel = augmentLevels[heavyStrike] ?? 0;
+    return 1 + (martialTrainingLevel * 0.12) + (heavyStrikeLevel * 0.18);
+  }
+
+  double get moveSpeedMultiplier {
+    final quickStepLevel = augmentLevels[quickStep] ?? 0;
+    return 1 + (quickStepLevel * 0.08);
+  }
+
+  double get attackSpeedMultiplier {
+    final rapidReloadLevel = augmentLevels[rapidReload] ?? 0;
+    return 1 + (rapidReloadLevel * 0.10);
+  }
+
+  double get criticalChance {
+    final hawkEyeLevel = augmentLevels[hawkEye] ?? 0;
+    return (hawkEyeLevel * 0.05).clamp(0, 1).toDouble();
+  }
+
+  double get weaponSizeMultiplier {
+    final powderMasteryLevel = augmentLevels[powderMastery] ?? 0;
+    return 1 + (powderMasteryLevel * 0.10);
+  }
+
+  double get experiencePickupRadiusBonus {
+    final blessingLevel = augmentLevels[jangseungBlessing] ?? 0;
+    return blessingLevel * 16.0;
+  }
+
   bool get isLevelUpPending => _pendingLevelUpChoices.isNotEmpty;
   List<PlayerComponent> get activePlayers => _activePlayersView;
   List<LevelUpChoice> get pendingLevelUpChoices =>
@@ -180,6 +212,7 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
         final currentLevel = augmentLevels[augmentId] ?? 0;
         if (currentLevel < definition.maxLevel) {
           augmentLevels[augmentId] = currentLevel + 1;
+          _applyImmediateAugmentEffect(augmentId);
         }
         _applyAugmentEffects();
     }
@@ -266,7 +299,10 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
       dt: dt,
       origin: player.position,
       enemies: children.whereType<EnemyComponent>(),
-      damageMultiplier: _weaponDamageMultiplier,
+      damageMultiplier: weaponDamageMultiplier,
+      attackSpeedMultiplier: attackSpeedMultiplier,
+      criticalChance: criticalChance,
+      sizeMultiplier: weaponSizeMultiplier,
     );
     _applyDamageEvents(result.damageEvents);
     for (final projectile in result.projectiles) {
@@ -400,7 +436,12 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
 
     final gems = children.whereType<ExperienceGemComponent>().toList();
     for (final gem in gems) {
-      final canPickup = alivePlayers.any(gem.canBePickedUpBy);
+      final canPickup = alivePlayers.any(
+        (player) => gem.canBePickedUpBy(
+          player,
+          additionalRadius: experiencePickupRadiusBonus,
+        ),
+      );
       if (canPickup) {
         gainExperience(gem.experienceValue);
         gem.removeFromParent();
@@ -448,21 +489,20 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
   }
 
   void _applyAugmentEffects() {
-    final speedMultiplier = _moveSpeedMultiplier;
     for (final player in _activePlayers) {
-      player.moveSpeedMultiplier = speedMultiplier;
+      player.moveSpeedMultiplier = moveSpeedMultiplier;
     }
   }
 
-  double get _weaponDamageMultiplier {
-    final martialTrainingLevel = augmentLevels[martialTraining] ?? 0;
-    final heavyStrikeLevel = augmentLevels[heavyStrike] ?? 0;
-    return 1 + (martialTrainingLevel * 0.12) + (heavyStrikeLevel * 0.18);
-  }
-
-  double get _moveSpeedMultiplier {
-    final quickStepLevel = augmentLevels[quickStep] ?? 0;
-    return 1 + (quickStepLevel * 0.08);
+  void _applyImmediateAugmentEffect(AugmentId augmentId) {
+    for (final player in _activePlayers.where((player) => player.isAlive)) {
+      switch (augmentId) {
+        case innerBreath:
+          player.increaseMaxHealth(10, healAmount: 10);
+        case herbalTonic:
+          player.heal(12);
+      }
+    }
   }
 
   void _finishRun() {

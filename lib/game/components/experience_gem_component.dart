@@ -19,9 +19,10 @@ class ExperienceGemComponent extends PositionComponent {
   final int experienceValue;
   final double pickupRadius;
 
-  bool canBePickedUpBy(PlayerComponent player) {
+  bool canBePickedUpBy(PlayerComponent player, {double additionalRadius = 0}) {
+    final effectiveRadius = pickupRadius + additionalRadius;
     return position.distanceToSquared(player.position) <=
-        pickupRadius * pickupRadius;
+        effectiveRadius * effectiveRadius;
   }
 
   @override

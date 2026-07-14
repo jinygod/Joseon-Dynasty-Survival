@@ -1,8 +1,10 @@
+import 'package:flame/components.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/content/augment_definitions.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
 import 'package:pixel_survivor/game/models/player_slot.dart';
+import 'package:pixel_survivor/game/models/vector_input.dart';
 import 'package:pixel_survivor/game/pixel_survivor_game.dart';
 import 'package:pixel_survivor/game/systems/level_up_system.dart';
 
@@ -67,7 +69,7 @@ void main() {
         ..unlockedWeaponIds.add(hwandoSlash)
         ..unlockedAugmentIds.add(martialTraining);
 
-      final leveledUp = game.gainExperience(3);
+      final leveledUp = game.gainExperience(5);
 
       expect(leveledUp, isTrue);
       expect(game.playerLevel, 2);
@@ -81,6 +83,7 @@ void main() {
       const choice = LevelUpChoice(
         id: hwandoSlash,
         displayName: '환도 베기',
+        effectDescription: '피해 8, 범위 58',
         type: LevelUpChoiceType.weapon,
         currentLevel: 0,
         nextLevel: 1,
@@ -97,6 +100,7 @@ void main() {
       const choice = LevelUpChoice(
         id: martialTraining,
         displayName: '무예 단련',
+        effectDescription: '모든 무기 피해 +12%',
         type: LevelUpChoiceType.augment,
         currentLevel: 0,
         nextLevel: 1,
@@ -106,5 +110,47 @@ void main() {
 
       expect(game.augmentLevels[martialTraining], 1);
     });
+
+    test('augment levels expose combat and collection multipliers', () {
+      final game = newGame();
+      game.augmentLevels
+        ..[martialTraining] = 2
+        ..[quickStep] = 1
+        ..[rapidReload] = 2
+        ..[hawkEye] = 1
+        ..[powderMastery] = 3
+        ..[jangseungBlessing] = 2;
+
+      expect(game.weaponDamageMultiplier, closeTo(1.24, 0.0001));
+      expect(game.moveSpeedMultiplier, closeTo(1.08, 0.0001));
+      expect(game.attackSpeedMultiplier, closeTo(1.2, 0.0001));
+      expect(game.criticalChance, closeTo(0.05, 0.0001));
+      expect(game.weaponSizeMultiplier, closeTo(1.3, 0.0001));
+      expect(game.experiencePickupRadiusBonus, 32);
+    });
+
+    test(
+      'inner breath increases max health and heals only when selected',
+      () async {
+        final game = newGame();
+        game.onGameResize(Vector2(960, 540));
+        await game.onLoad();
+        final player = game.activePlayers.single..takeDamage(20);
+        const choice = LevelUpChoice(
+          id: innerBreath,
+          displayName: '내공 호흡',
+          effectDescription: '최대 체력 +10, 체력 10 회복',
+          type: LevelUpChoiceType.augment,
+          currentLevel: 0,
+          nextLevel: 1,
+        );
+
+        game.applyLevelUpChoice(choice);
+        game.updateMovementInput(VectorInput.zero);
+
+        expect(player.maxHealth, 110);
+        expect(player.currentHealth, 90);
+      },
+    );
   });
 }

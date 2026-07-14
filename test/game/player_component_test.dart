@@ -70,5 +70,30 @@ void main() {
       expect(player.isAlive, isFalse);
       expect(player.healthFraction, 0);
     });
+
+    test('increasing max health heals once and preserves missing health', () {
+      final player = PlayerComponent(
+        slotIndex: 0,
+        maxHealth: 100,
+        moveSpeed: 100,
+      )..takeDamage(20);
+
+      player.increaseMaxHealth(10, healAmount: 10);
+
+      expect(player.maxHealth, 110);
+      expect(player.currentHealth, 90);
+    });
+
+    test('healing clamps at max health', () {
+      final player = PlayerComponent(
+        slotIndex: 0,
+        maxHealth: 100,
+        moveSpeed: 100,
+      )..takeDamage(5);
+
+      player.heal(12);
+
+      expect(player.currentHealth, 100);
+    });
   });
 }
