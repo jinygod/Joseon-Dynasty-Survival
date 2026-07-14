@@ -11,8 +11,13 @@
 
 ## Steps
 
-- [ ] Write RED tests for curve totals, deterministic profile results, and the target band.
-- [ ] Implement the pure five-minute experience simulator.
-- [ ] Document assumptions and the initial baseline.
-- [ ] Run focused tests and the full release gate.
-- [ ] Mark `BAL-003`, update the queue/baseline, merge, and clean the worktree.
+- [x] Write RED tests for curve totals, deterministic profile results, and the target band.
+- [x] Implement the pure five-minute experience simulator.
+- [x] Document assumptions and the initial baseline.
+- [x] Run focused tests and the full release gate.
+- [x] Mark `BAL-003`, update the queue/baseline, merge, and clean the worktree.
+
+## Verification
+
+- Focused experience baseline suite: 4 tests passed.
+- Full release gate: analyzer clean, 159 tests passed, web build passed, Android debug APK built.
