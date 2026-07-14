@@ -67,4 +67,26 @@ void main() {
     expect(readUint32(20), 128);
     expect(bytes[25], 6, reason: 'PNG must use RGBA color type');
   });
+
+  test('normal enemy sheets are 4x4 RGBA grids at approved frame sizes', () {
+    final expectedCells = <String, int>{
+      'assets/images/monsters/plague_rat_swarm_24.png': 24,
+      'assets/images/monsters/bandit_32.png': 32,
+      'assets/images/monsters/dokkaebi_32.png': 32,
+      'assets/images/monsters/vengeful_spirit_32.png': 32,
+    };
+
+    for (final entry in expectedCells.entries) {
+      final bytes = File(entry.key).readAsBytesSync();
+      int readUint32(int offset) =>
+          (bytes[offset] << 24) |
+          (bytes[offset + 1] << 16) |
+          (bytes[offset + 2] << 8) |
+          bytes[offset + 3];
+
+      expect(readUint32(16), entry.value * 4, reason: entry.key);
+      expect(readUint32(20), entry.value * 4, reason: entry.key);
+      expect(bytes[25], 6, reason: '${entry.key} must use RGBA color type');
+    }
+  });
 }

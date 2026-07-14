@@ -1,8 +1,12 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flame/components.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
+import '../content/enemy_definitions.dart';
 import '../content/ids.dart';
 import '../systems/combat_feedback_tuning.dart';
 import 'player_component.dart';
@@ -10,7 +14,72 @@ import 'player_component.dart';
 typedef TargetPositionProvider = Vector2? Function(Vector2 enemyPosition);
 typedef NearbyEnemiesProvider = Iterable<EnemyComponent> Function();
 
-class EnemyComponent extends PositionComponent {
+enum EnemyAnimationState { moving, attacking, hit, death }
+
+class EnemySpriteSpec {
+  const EnemySpriteSpec({required this.assetKey, required this.frameSize});
+
+  final String assetKey;
+  final double frameSize;
+}
+
+abstract final class EnemySpriteSheet {
+  static const moveFrames = [0, 1, 2, 3];
+  static const attackFrames = [4, 5, 6, 7];
+  static const hitFrames = [8, 9];
+  static const deathFrames = [10, 11, 12, 13, 14, 15];
+  static const hitDurationSeconds = 0.18;
+  static const attackDurationSeconds = 0.32;
+
+  static const specs = <EnemyId, EnemySpriteSpec>{
+    plagueRatSwarm: EnemySpriteSpec(
+      assetKey: 'monsters/plague_rat_swarm_24.png',
+      frameSize: 24,
+    ),
+    bandit: EnemySpriteSpec(assetKey: 'monsters/bandit_32.png', frameSize: 32),
+    dokkaebi: EnemySpriteSpec(
+      assetKey: 'monsters/dokkaebi_32.png',
+      frameSize: 32,
+    ),
+    vengefulSpirit: EnemySpriteSpec(
+      assetKey: 'monsters/vengeful_spirit_32.png',
+      frameSize: 32,
+    ),
+  };
+
+  static Map<EnemyAnimationState, SpriteAnimation> animations(
+    Image image,
+    EnemySpriteSpec spec,
+  ) {
+    final textureSize = Vector2.all(spec.frameSize);
+    SpriteAnimation animation(
+      List<int> frames,
+      double stepTime, {
+      bool loop = true,
+    }) => SpriteAnimation.fromFrameData(
+      image,
+      SpriteAnimationData.range(
+        start: frames.first,
+        end: frames.last,
+        amount: 16,
+        amountPerRow: 4,
+        stepTimes: List.filled(frames.length, stepTime),
+        textureSize: textureSize,
+        loop: loop,
+      ),
+    );
+
+    return {
+      EnemyAnimationState.moving: animation(moveFrames, 0.12),
+      EnemyAnimationState.attacking: animation(attackFrames, 0.08, loop: false),
+      EnemyAnimationState.hit: animation(hitFrames, 0.09, loop: false),
+      EnemyAnimationState.death: animation(deathFrames, 0.11, loop: false),
+    };
+  }
+}
+
+class EnemyComponent
+    extends SpriteAnimationGroupComponent<EnemyAnimationState> {
   EnemyComponent({
     required this.enemyId,
     required this.maxHealth,
@@ -29,6 +98,7 @@ class EnemyComponent extends PositionComponent {
          position: position ?? Vector2.zero(),
          size: size ?? Vector2.all(18),
          anchor: Anchor.center,
+         autoResize: false,
        );
 
   factory EnemyComponent.fromDefinition(
@@ -73,7 +143,9 @@ class EnemyComponent extends PositionComponent {
   double _dashTrackingElapsed = 0;
   double _dashRemaining = 0;
   double _hitFlashRemaining = 0;
+  double _visualStateRemaining = 0;
   final Vector2 knockbackVelocity = Vector2.zero();
+  EnemyAnimationState visualState = EnemyAnimationState.moving;
 
   bool get isDead => currentHealth <= 0;
   bool get isDashing => _dashRemaining > 0;
@@ -86,13 +158,31 @@ class EnemyComponent extends PositionComponent {
 
     currentHealth = (currentHealth - amount).clamp(0, maxHealth).toDouble();
     _hitFlashRemaining = _hitFlashSeconds;
+    if (isDead) {
+      _setVisualState(EnemyAnimationState.death);
+    } else {
+      _visualStateRemaining = EnemySpriteSheet.hitDurationSeconds;
+      _setVisualState(EnemyAnimationState.hit);
+    }
   }
 
   void registerHit({Vector2? knockback}) {
     _hitFlashRemaining = _hitFlashSeconds;
+    if (!isDead) {
+      _visualStateRemaining = EnemySpriteSheet.hitDurationSeconds;
+      _setVisualState(EnemyAnimationState.hit);
+    }
     if (knockback != null) {
       applyKnockback(knockback);
     }
+  }
+
+  void playAttack() {
+    if (isDead || visualState == EnemyAnimationState.hit) {
+      return;
+    }
+    _visualStateRemaining = EnemySpriteSheet.attackDurationSeconds;
+    _setVisualState(EnemyAnimationState.attacking);
   }
 
   void applyKnockback(Vector2 impulse) {
@@ -129,6 +219,44 @@ class EnemyComponent extends PositionComponent {
 
     final speedMultiplier = isDashing ? _dashSpeedMultiplier : 1.0;
     position.add(direction * moveSpeed * speedMultiplier * dt);
+    if (visualState != EnemyAnimationState.hit &&
+        visualState != EnemyAnimationState.attacking &&
+        !isDead) {
+      _setVisualState(EnemyAnimationState.moving);
+    }
+  }
+
+  @override
+  Future<void> onLoad() async {
+    await super.onLoad();
+    final spec = EnemySpriteSheet.specs[enemyId];
+    if (spec != null) {
+      unawaited(_loadAnimations(spec));
+    }
+  }
+
+  Future<void> _loadAnimations(EnemySpriteSpec spec) async {
+    try {
+      ServicesBinding.instance;
+    } on AssertionError {
+      return;
+    }
+    try {
+      final image = await findGame()!.images.load(spec.assetKey);
+      animations = EnemySpriteSheet.animations(image, spec);
+      current = visualState;
+    } catch (error, stackTrace) {
+      if (!kReleaseMode) {
+        FlutterError.reportError(
+          FlutterErrorDetails(
+            exception: error,
+            stack: stackTrace,
+            library: 'pixel_survivor enemy sprites',
+            context: ErrorDescription('loading ${spec.assetKey}'),
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -160,6 +288,22 @@ class EnemyComponent extends PositionComponent {
           _dashRemaining = _dashDurationSeconds;
         }
       }
+    }
+    if (isDashing && visualState != EnemyAnimationState.hit) {
+      playAttack();
+    }
+    if (_visualStateRemaining > 0) {
+      _visualStateRemaining = math.max(0.0, _visualStateRemaining - dt);
+      if (_visualStateRemaining == 0 && !isDead) {
+        _setVisualState(EnemyAnimationState.moving);
+      }
+    }
+  }
+
+  void _setVisualState(EnemyAnimationState state) {
+    visualState = state;
+    if (animations != null) {
+      current = state;
     }
   }
 
@@ -193,7 +337,10 @@ class EnemyComponent extends PositionComponent {
 
   @override
   void render(Canvas canvas) {
-    super.render(canvas);
+    if (animations != null) {
+      super.render(canvas);
+      return;
+    }
 
     final bodyPaint = Paint()
       ..color = isHitFlashing

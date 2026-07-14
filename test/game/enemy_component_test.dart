@@ -127,5 +127,41 @@ void main() {
       expect(enemy.isHitFlashing, isFalse);
       expect(enemy.knockbackVelocity.length, lessThan(80));
     });
+
+    test('move attack hit and death select matching visual states', () {
+      final enemy = EnemyComponent(
+        enemyId: bandit,
+        maxHealth: 18,
+        moveSpeed: 60,
+        damage: 8,
+        position: Vector2.zero(),
+      );
+
+      enemy.moveToward(Vector2(10, 0), 0.1);
+      expect(enemy.visualState, EnemyAnimationState.moving);
+
+      enemy.playAttack();
+      expect(enemy.visualState, EnemyAnimationState.attacking);
+
+      enemy.takeDamage(1);
+      expect(enemy.visualState, EnemyAnimationState.hit);
+
+      enemy.takeDamage(100);
+      expect(enemy.visualState, EnemyAnimationState.death);
+    });
+
+    test('normal enemy sheets share the 4-4-2-6 frame contract', () {
+      expect(EnemySpriteSheet.moveFrames, [0, 1, 2, 3]);
+      expect(EnemySpriteSheet.attackFrames, [4, 5, 6, 7]);
+      expect(EnemySpriteSheet.hitFrames, [8, 9]);
+      expect(EnemySpriteSheet.deathFrames, [10, 11, 12, 13, 14, 15]);
+      expect(EnemySpriteSheet.specs.keys.toSet(), {
+        plagueRatSwarm,
+        bandit,
+        dokkaebi,
+        vengefulSpirit,
+      });
+      expect(EnemySpriteSheet.specs[plagueRatSwarm]!.frameSize, 24);
+    });
   });
 }

@@ -21,6 +21,7 @@ class CombatSystem {
     if (!player.takeDamage(enemy.damage, now: now)) {
       return false;
     }
+    enemy.playAttack();
     _nextContactAt[enemy] = now + contactCooldownSeconds;
     return true;
   }
