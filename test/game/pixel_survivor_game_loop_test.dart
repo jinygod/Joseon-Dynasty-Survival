@@ -25,6 +25,33 @@ void main() {
       expect(game.activePlayers, isEmpty);
     });
 
+    test('rejects an inactive player slot', () {
+      const inactiveSlot = PlayerSlot(
+        index: 0,
+        characterId: rookieConstable,
+        isActive: false,
+      );
+
+      expect(
+        () => PixelSurvivorGame(playerSlot: inactiveSlot, onRunEnded: null),
+        throwsA(
+          isA<ArgumentError>()
+              .having((error) => error.name, 'name', 'playerSlot')
+              .having(
+                (error) => error.invalidValue,
+                'invalidValue',
+                inactiveSlot,
+              ),
+        ),
+      );
+    });
+
+    test('does not expose a mutable active players collection', () {
+      final game = newGame();
+
+      expect(() => game.activePlayers.clear(), throwsUnsupportedError);
+    });
+
     test('starts each run with all globally unlocked weapons and augments', () {
       final game = newGame();
 

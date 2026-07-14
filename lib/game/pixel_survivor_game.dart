@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'dart:math';
 
 import 'package:flame/components.dart';
@@ -33,6 +34,10 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
     required this.onRunEnded,
     Random? random,
   }) : weaponSystem = WeaponSystem(random: random) {
+    if (!playerSlot.isActive) {
+      throw ArgumentError.value(playerSlot, 'playerSlot', 'must be active');
+    }
+
     _addStartingRunUnlocks();
   }
 
@@ -43,7 +48,10 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
   final LevelUpSystem levelUpSystem = const LevelUpSystem();
   final RunProgressionSystem runProgression = RunProgressionSystem();
   final RunStatsTracker runStats = RunStatsTracker();
-  final List<PlayerComponent> activePlayers = [];
+  final List<PlayerComponent> _activePlayers = [];
+  late final List<PlayerComponent> _activePlayersView = UnmodifiableListView(
+    _activePlayers,
+  );
   final Set<WeaponId> unlockedWeaponIds = {};
   final Set<AugmentId> unlockedAugmentIds = {};
   final Map<AugmentId, int> augmentLevels = {};
@@ -63,10 +71,11 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
   int get kills => runStats.kills;
   bool get isGameOver => _isGameOver;
   bool get isLevelUpPending => _pendingLevelUpChoices.isNotEmpty;
+  List<PlayerComponent> get activePlayers => _activePlayersView;
   List<LevelUpChoice> get pendingLevelUpChoices =>
       List.unmodifiable(_pendingLevelUpChoices);
   String get playerHealthLabel {
-    final player = activePlayers
+    final player = _activePlayers
         .where((player) => player.isMounted)
         .firstOrNull;
     if (player == null) {
@@ -191,10 +200,6 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
   }
 
   Future<void> _addActivePlayers() async {
-    if (!playerSlot.isActive) {
-      return;
-    }
-
     final character = _characterDefinitionFor(playerSlot.characterId);
     final player = PlayerComponent(
       slotIndex: playerSlot.index,
@@ -208,7 +213,7 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
       weaponSystem.upgrade(character.startingWeaponId, unlockedWeaponIds);
     }
 
-    activePlayers.add(player);
+    _activePlayers.add(player);
     await add(player);
     _applyAugmentEffects();
   }
@@ -234,7 +239,7 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
   }
 
   void _updateWeapons(double dt) {
-    final player = activePlayers
+    final player = _activePlayers
         .where((player) => player.isMounted)
         .firstOrNull;
     if (player == null) {
@@ -253,7 +258,7 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
   }
 
   void _updatePlayerMovement(double dt) {
-    for (final player in activePlayers.where((player) => player.isMounted)) {
+    for (final player in _activePlayers.where((player) => player.isMounted)) {
       player.applyInput(movementInput, dt, bounds: size);
     }
   }
@@ -302,7 +307,7 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
   }
 
   void _applyEnemyContactDamage(double dt) {
-    final alivePlayers = activePlayers
+    final alivePlayers = _activePlayers
         .where((player) => player.isMounted && player.isAlive)
         .toList(growable: false);
     if (alivePlayers.isEmpty) {
@@ -322,7 +327,7 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
       }
     }
 
-    final hasAlivePlayer = activePlayers.any(
+    final hasAlivePlayer = _activePlayers.any(
       (player) => player.isMounted && player.isAlive,
     );
     if (!hasAlivePlayer) {
@@ -331,7 +336,7 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
   }
 
   void _collectExperienceGems() {
-    final alivePlayers = activePlayers
+    final alivePlayers = _activePlayers
         .where((player) => player.isMounted && player.currentHealth > 0)
         .toList(growable: false);
     if (alivePlayers.isEmpty) {
@@ -389,7 +394,7 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
 
   void _applyAugmentEffects() {
     final speedMultiplier = _moveSpeedMultiplier;
-    for (final player in activePlayers) {
+    for (final player in _activePlayers) {
       player.moveSpeedMultiplier = speedMultiplier;
     }
   }
@@ -434,7 +439,7 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
   }
 
   Vector2? _nearestActivePlayerPosition(Vector2 source) {
-    final alivePlayers = activePlayers.where(
+    final alivePlayers = _activePlayers.where(
       (player) => player.isMounted && player.currentHealth > 0,
     );
     if (alivePlayers.isEmpty) {
