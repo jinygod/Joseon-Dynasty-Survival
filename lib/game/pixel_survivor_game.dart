@@ -23,7 +23,7 @@ import 'models/vector_input.dart';
 import 'systems/level_up_system.dart';
 import 'systems/run_progression_system.dart';
 import 'systems/run_stats_tracker.dart';
-import 'systems/spawn_system.dart';
+import 'systems/wave_director.dart';
 import 'systems/weapon_system.dart';
 
 class PixelSurvivorGame extends FlameGame with KeyboardEvents {
@@ -33,7 +33,8 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
     required this.playerSlot,
     required this.onRunEnded,
     Random? random,
-  }) : weaponSystem = WeaponSystem(random: random) {
+  }) : weaponSystem = WeaponSystem(random: random),
+       waveDirector = WaveDirector(random: random ?? Random()) {
     if (!playerSlot.isActive) {
       throw ArgumentError.value(playerSlot, 'playerSlot', 'must be active');
     }
@@ -43,8 +44,8 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
 
   final PlayerSlot playerSlot;
   final void Function(RunResult result)? onRunEnded;
-  final SpawnSystem spawnSystem = const SpawnSystem();
   final WeaponSystem weaponSystem;
+  final WaveDirector waveDirector;
   final LevelUpSystem levelUpSystem = const LevelUpSystem();
   final RunProgressionSystem runProgression = RunProgressionSystem();
   final RunStatsTracker runStats = RunStatsTracker();
@@ -60,8 +61,7 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
   VectorInput movementInput = VectorInput.zero;
 
   double _elapsedSeconds = 0;
-  double _spawnTimer = 0;
-  int _spawnCursor = 0;
+  int _bossRequestCount = 0;
   bool _isGameOver = false;
 
   double get elapsedSeconds => _elapsedSeconds;
@@ -70,6 +70,7 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
   int get experienceToNextLevel => runProgression.experienceToNextLevel;
   int get kills => runStats.kills;
   bool get isGameOver => _isGameOver;
+  int get bossRequestCount => _bossRequestCount;
   bool get isLevelUpPending => _pendingLevelUpChoices.isNotEmpty;
   List<PlayerComponent> get activePlayers => _activePlayersView;
   List<LevelUpChoice> get pendingLevelUpChoices =>
@@ -133,15 +134,10 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
     }
 
     _elapsedSeconds += dt;
-    _spawnTimer += dt;
 
     _updatePlayerMovement(dt);
     _applyEnemyContactDamage(dt);
-
-    if (_spawnTimer >= 3) {
-      _spawnTimer = 0;
-      _addDebugEnemy();
-    }
+    _spawnWaveEnemies(dt);
 
     _updateWeapons(dt);
     _applyProjectileHits();
@@ -218,13 +214,24 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
     _applyAugmentEffects();
   }
 
-  void _addDebugEnemy() {
-    final enemyIds = SpawnSystem.enemiesForSecond(_elapsedSeconds.floor());
-    final enemyId = enemyIds[_spawnCursor % enemyIds.length];
-    _spawnCursor += 1;
+  void _spawnWaveEnemies(double dt) {
+    final wave = waveDirector.tick(
+      elapsedSeconds: _elapsedSeconds,
+      dt: dt,
+      activeEnemyCount: enemyCount,
+    );
+    final initialEnemyCount = enemyCount;
+    for (var index = 0; index < wave.spawnRequests.length; index += 1) {
+      _addEnemy(wave.spawnRequests[index].enemyId, initialEnemyCount + index);
+    }
+    if (wave.spawnBoss) {
+      _bossRequestCount += 1;
+    }
+  }
 
+  void _addEnemy(EnemyId enemyId, int spawnIndex) {
     final enemyDefinition = _enemyDefinitionFor(enemyId);
-    final offset = _spawnOffsetFor(_spawnCursor);
+    final offset = _spawnOffsetFor(spawnIndex);
     add(
       EnemyComponent(
         enemyId: enemyDefinition.id,
