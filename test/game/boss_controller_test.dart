@@ -26,7 +26,7 @@ void main() {
   });
 
   test(
-    'boss summons once below forty percent and enrages after sixty seconds',
+    'boss summons once below forty percent and enrages after twenty five seconds',
     () {
       final controller = BossController();
 
@@ -42,11 +42,11 @@ void main() {
             .where((action) => action.type == BossActionType.summon),
         isEmpty,
       );
-      controller.tick(dt: 60, healthFraction: 0.39);
+      controller.tick(dt: 25, healthFraction: 0.39);
 
       expect(controller.isEnraged, isTrue);
-      expect(controller.movementMultiplier, 1.35);
-      expect(controller.patternTimeMultiplier, 1.35);
+      expect(controller.movementMultiplier, 1.25);
+      expect(controller.patternTimeMultiplier, 1.25);
     },
   );
 

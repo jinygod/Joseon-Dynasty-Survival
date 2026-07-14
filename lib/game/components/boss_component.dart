@@ -74,7 +74,7 @@ class BossComponent extends EnemyComponent {
   void _execute(BossAction action) {
     switch (action.type) {
       case BossActionType.chargeWarning:
-        _chargeWarningRemaining = 0.5;
+        _chargeWarningRemaining = BossController.chargeWarningSeconds;
       case BossActionType.charge:
         _chargeDirection.setFrom(_directionToTarget());
         _chargeRemaining = 0.35;
@@ -83,7 +83,7 @@ class BossComponent extends EnemyComponent {
           AreaAttackComponent(
             damage: damage * 1.5,
             radius: 130,
-            delaySeconds: 0.6,
+            delaySeconds: BossController.coneWarningSeconds,
             knockback: 90,
             position: position.clone(),
             direction: _directionToTarget(),

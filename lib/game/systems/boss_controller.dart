@@ -9,8 +9,15 @@ class BossAction {
 }
 
 class BossController {
-  static const _enrageSeconds = 60.0;
-  static const _enrageMultiplier = 1.35;
+  static const enrageSeconds = 25.0;
+  static const chargeWarningSeconds = 0.75;
+  static const coneWarningSeconds = 0.60;
+  static const normalPatternCycleSeconds = 3.0;
+  static const _enrageMultiplier = 1.25;
+  static const _approachSeconds = 1.0;
+  static const _coneWarningAtSeconds = 0.65;
+  static const _coneDamageAtSeconds =
+      _coneWarningAtSeconds + coneWarningSeconds;
 
   BossPhase _patternPhase = BossPhase.approach;
   double _encounterSeconds = 0;
@@ -20,7 +27,7 @@ class BossController {
   bool _summonedThisTick = false;
   bool _isDefeated = false;
 
-  bool get isEnraged => _encounterSeconds >= _enrageSeconds;
+  bool get isEnraged => _encounterSeconds >= enrageSeconds;
   double get movementMultiplier => isEnraged ? _enrageMultiplier : 1;
   double get patternTimeMultiplier => isEnraged ? _enrageMultiplier : 1;
   BossPhase get phase {
@@ -50,24 +57,24 @@ class BossController {
 
     switch (_patternPhase) {
       case BossPhase.approach:
-        if (_phaseSeconds >= 1.0) {
+        if (_phaseSeconds >= _approachSeconds) {
           actions.add(const BossAction(type: BossActionType.chargeWarning));
           _patternPhase = BossPhase.charge;
           _phaseSeconds = 0;
         }
       case BossPhase.charge:
-        if (_phaseSeconds >= 0.5) {
+        if (_phaseSeconds >= chargeWarningSeconds) {
           actions.add(const BossAction(type: BossActionType.charge));
           _patternPhase = BossPhase.coneSlash;
           _phaseSeconds = 0;
           _coneWarningEmitted = false;
         }
       case BossPhase.coneSlash:
-        if (!_coneWarningEmitted && _phaseSeconds >= 0.65) {
+        if (!_coneWarningEmitted && _phaseSeconds >= _coneWarningAtSeconds) {
           _coneWarningEmitted = true;
           actions.add(const BossAction(type: BossActionType.coneWarning));
         }
-        if (_phaseSeconds >= 1.25) {
+        if (_phaseSeconds >= _coneDamageAtSeconds) {
           actions.add(const BossAction(type: BossActionType.coneDamage));
           _patternPhase = BossPhase.approach;
           _phaseSeconds = 0;

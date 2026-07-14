@@ -45,7 +45,7 @@ const enemyDefinitions = <EnemyDefinition>[
   EnemyDefinition(
     id: fallenGeneral,
     name: '타락한 관군 대장',
-    maxHealth: 700,
+    maxHealth: 900,
     moveSpeed: 26,
     damage: 20,
     experience: 20,
