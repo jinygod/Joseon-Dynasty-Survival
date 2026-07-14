@@ -30,6 +30,7 @@ abstract final class EnemySpriteSheet {
   static const deathFrames = [10, 11, 12, 13, 14, 15];
   static const hitDurationSeconds = 0.18;
   static const attackDurationSeconds = 0.32;
+  static const deathDurationSeconds = 0.66;
 
   static const specs = <EnemyId, EnemySpriteSpec>{
     plagueRatSwarm: EnemySpriteSpec(
@@ -148,8 +149,12 @@ class EnemyComponent
   double _dashRemaining = 0;
   double _hitFlashRemaining = 0;
   double _visualStateRemaining = 0;
+  double _deathVisualElapsed = 0;
   final Vector2 knockbackVelocity = Vector2.zero();
   EnemyAnimationState visualState = EnemyAnimationState.moving;
+
+  bool get deathVisualComplete =>
+      isDead && _deathVisualElapsed >= EnemySpriteSheet.deathDurationSeconds;
 
   bool get isDead => currentHealth <= 0;
   bool get isDashing => _dashRemaining > 0;
@@ -274,6 +279,10 @@ class EnemyComponent
   @override
   void update(double dt) {
     super.update(dt);
+
+    if (isDead) {
+      _deathVisualElapsed += dt;
+    }
 
     final wasDashing = isDashing;
     final target = targetPositionProvider?.call(position);

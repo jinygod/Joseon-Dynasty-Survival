@@ -170,6 +170,7 @@ void main() {
       final result = game.currentRunResult();
       expect(result.weaponDamageTotals[talismanThrow], 5);
       expect(result.weaponKillCounts[talismanThrow], 1);
+      expect(enemy.deathVisualComplete, isFalse);
     });
 
     gameTester.testGameWidget(

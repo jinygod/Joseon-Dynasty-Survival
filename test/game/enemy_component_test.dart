@@ -165,5 +165,21 @@ void main() {
       expect(EnemySpriteSheet.specs[plagueRatSwarm]!.frameSize, 24);
       expect(EnemySpriteSheet.specs[fallenGeneral]!.frameSize, 64);
     });
+
+    test('lethal damage keeps death visuals alive for their full sequence', () {
+      final enemy = EnemyComponent(
+        enemyId: bandit,
+        maxHealth: 18,
+        moveSpeed: 60,
+        damage: 8,
+      );
+
+      enemy.takeDamage(18);
+      expect(enemy.deathVisualComplete, isFalse);
+      enemy.update(EnemySpriteSheet.deathDurationSeconds - 0.01);
+      expect(enemy.deathVisualComplete, isFalse);
+      enemy.update(0.01);
+      expect(enemy.deathVisualComplete, isTrue);
+    });
   });
 }

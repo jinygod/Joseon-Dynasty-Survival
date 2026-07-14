@@ -4,9 +4,10 @@ import 'dart:ui';
 
 import 'package:flame/components.dart';
 
+import '../content/combat_effect_atlas.dart';
 import '../content/ids.dart';
-import '../models/damage_event.dart';
 import '../content/weapon_effect_atlas.dart';
+import '../models/damage_event.dart';
 import 'enemy_component.dart';
 import 'player_component.dart';
 
@@ -40,6 +41,7 @@ class AreaAttackComponent extends PositionComponent {
   double _elapsed = 0;
   bool _hasTriggered = false;
   Image? _effectImage;
+  Image? _combatEffectImage;
 
   bool get isReady => _elapsed >= delaySeconds;
   bool get hasTriggered => _hasTriggered;
@@ -50,10 +52,17 @@ class AreaAttackComponent extends PositionComponent {
     if (weaponId == 'thunder_crash_bomb') {
       unawaited(_loadEffect());
     }
+    if (isBossAttack) {
+      unawaited(_loadCombatEffect());
+    }
   }
 
   Future<void> _loadEffect() async {
     _effectImage = await WeaponEffectAtlas.load(this);
+  }
+
+  Future<void> _loadCombatEffect() async {
+    _combatEffectImage = await CombatEffectAtlas.load(this);
   }
 
   List<DamageEvent> collectDamageEvents(Iterable<EnemyComponent> enemies) {
@@ -110,6 +119,16 @@ class AreaAttackComponent extends PositionComponent {
   void render(Canvas canvas) {
     super.render(canvas);
     final center = Offset(size.x / 2, size.y / 2);
+    final combatImage = _combatEffectImage;
+    if (combatImage != null && isBossAttack && !_hasTriggered) {
+      final progress = delaySeconds <= 0 ? 1.0 : _elapsed / delaySeconds;
+      CombatEffectAtlas.sprite(
+        combatImage,
+        kind: CombatEffectKind.warning,
+        frame: CombatEffectAtlas.frameForProgress(progress),
+      ).render(canvas, size: size);
+      return;
+    }
     final image = _effectImage;
     if (image != null && weaponId == 'thunder_crash_bomb') {
       final progress = delaySeconds <= 0 ? 1.0 : _elapsed / delaySeconds;

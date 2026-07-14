@@ -9,15 +9,17 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart' show KeyEventResult;
 
 import '../app/game_hud_source.dart';
-import 'components/enemy_component.dart';
 import 'components/area_attack_component.dart';
 import 'components/boss_component.dart';
+import 'components/combat_effect_component.dart';
 import 'components/damage_number_component.dart';
+import 'components/enemy_component.dart';
 import 'components/experience_gem_component.dart';
 import 'components/player_component.dart';
 import 'components/projectile_component.dart';
 import 'content/augment_definitions.dart';
 import 'content/character_definitions.dart';
+import 'content/combat_effect_atlas.dart';
 import 'content/enemy_definitions.dart';
 import 'content/ids.dart';
 import 'content/weapon_definitions.dart';
@@ -70,6 +72,7 @@ class PixelSurvivorGame extends FlameGame
   final Set<AugmentId> unlockedAugmentIds = {};
   final Map<AugmentId, int> augmentLevels = {};
   final Map<EnemyComponent, WeaponId> _lastWeaponHitByEnemy = {};
+  final Set<EnemyComponent> _recordedEnemyDefeats = {};
   List<LevelUpChoice> _pendingLevelUpChoices = const [];
 
   VectorInput movementInput = VectorInput.zero;
@@ -81,6 +84,7 @@ class PixelSurvivorGame extends FlameGame
   RunOutcome _runOutcome = RunOutcome.inProgress;
   BossComponent? _boss;
   int _damageNumberCount = 0;
+  int _combatEffectCount = 0;
   double _screenShakeRemaining = 0;
   double _screenShakeMagnitude = 0;
   double _screenShakePhase = 0;
@@ -213,6 +217,7 @@ class PixelSurvivorGame extends FlameGame
     _updateWeapons(safeDt);
     _applyProjectileHits();
     _resolveAreaAttacks();
+    _recordNewEnemyDefeats();
     _dropExperienceForDeadEnemies();
     _resolveBossVictoryBeforePlayerDefeat();
     _applyEnemyContactDamage();
@@ -490,6 +495,11 @@ class PixelSurvivorGame extends FlameGame
       }
       event.target.registerHit(knockback: event.direction * event.knockback);
       _spawnDamageNumber(event);
+      _spawnCombatEffect(
+        event.isCritical ? CombatEffectKind.critical : CombatEffectKind.hit,
+        event.target.position,
+        size: event.isCritical ? 48 : 32,
+      );
     }
   }
 
@@ -503,6 +513,25 @@ class PixelSurvivorGame extends FlameGame
         position: event.target.position.clone(),
         onExpired: () {
           _damageNumberCount = max(0, _damageNumberCount - 1);
+        },
+      ),
+    );
+  }
+
+  void _spawnCombatEffect(
+    CombatEffectKind kind,
+    Vector2 position, {
+    double size = 36,
+  }) {
+    if (_combatEffectCount >= CombatFeedbackTuning.maxCombatEffects) return;
+    _combatEffectCount += 1;
+    add(
+      CombatEffectComponent(
+        kind: kind,
+        position: position.clone(),
+        size: Vector2.all(size),
+        onExpired: () {
+          _combatEffectCount = max(0, _combatEffectCount - 1);
         },
       ),
     );
@@ -537,15 +566,16 @@ class PixelSurvivorGame extends FlameGame
 
   void _dropExperienceForDeadEnemies() {
     final deadEnemies = children.whereType<EnemyComponent>().where(
-      (enemy) => enemy.isDead,
+      (enemy) => enemy.deathVisualComplete,
     );
     for (final enemy in deadEnemies.toList()) {
-      final enemyDefinition = _enemyDefinitionFor(enemy.enemyId);
-      runStats.recordEnemyDefeat(
-        isBoss: enemyDefinition.isBoss,
-        weaponId: _lastWeaponHitByEnemy.remove(enemy),
+      _recordEnemyDefeat(enemy);
+      _recordedEnemyDefeats.remove(enemy);
+      _spawnCombatEffect(
+        CombatEffectKind.death,
+        enemy.position,
+        size: enemy is BossComponent ? 72 : 44,
       );
-      combatSystem.forget(enemy);
       add(
         ExperienceGemComponent(
           experienceValue: enemy.experienceValue,
@@ -554,6 +584,24 @@ class PixelSurvivorGame extends FlameGame
       );
       enemy.removeFromParent();
     }
+  }
+
+  void _recordNewEnemyDefeats() {
+    for (final enemy in children.whereType<EnemyComponent>().where(
+      (enemy) => enemy.isDead,
+    )) {
+      _recordEnemyDefeat(enemy);
+    }
+  }
+
+  void _recordEnemyDefeat(EnemyComponent enemy) {
+    if (!_recordedEnemyDefeats.add(enemy)) return;
+    final enemyDefinition = _enemyDefinitionFor(enemy.enemyId);
+    runStats.recordEnemyDefeat(
+      isBoss: enemyDefinition.isBoss,
+      weaponId: _lastWeaponHitByEnemy.remove(enemy),
+    );
+    combatSystem.forget(enemy);
   }
 
   void _applyEnemyContactDamage() {
@@ -599,12 +647,7 @@ class PixelSurvivorGame extends FlameGame
 
   void _resolveBossVictoryBeforePlayerDefeat() {
     final boss = _boss;
-    if (boss != null && boss.isDead && !runStats.bossDefeated) {
-      runStats.recordEnemyDefeat(
-        isBoss: true,
-        weaponId: _lastWeaponHitByEnemy.remove(boss),
-      );
-    }
+    if (boss != null && boss.isDead) _recordEnemyDefeat(boss);
     if (runStats.bossDefeated) {
       _finishRun(RunOutcome.victory);
     }

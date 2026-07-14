@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:flame/components.dart';
 
+import '../content/combat_effect_atlas.dart';
 import 'player_component.dart';
 
 class ExperienceGemComponent extends PositionComponent {
@@ -18,6 +20,24 @@ class ExperienceGemComponent extends PositionComponent {
 
   final int experienceValue;
   final double pickupRadius;
+  double _age = 0;
+  Image? _atlasImage;
+
+  @override
+  Future<void> onLoad() async {
+    await super.onLoad();
+    unawaited(_loadAtlas());
+  }
+
+  Future<void> _loadAtlas() async {
+    _atlasImage = await CombatEffectAtlas.load(this);
+  }
+
+  @override
+  void update(double dt) {
+    super.update(dt);
+    _age += dt;
+  }
 
   bool canBePickedUpBy(PlayerComponent player, {double additionalRadius = 0}) {
     final effectiveRadius = pickupRadius + additionalRadius;
@@ -28,6 +48,16 @@ class ExperienceGemComponent extends PositionComponent {
   @override
   void render(Canvas canvas) {
     super.render(canvas);
+
+    final image = _atlasImage;
+    if (image != null) {
+      CombatEffectAtlas.sprite(
+        image,
+        kind: CombatEffectKind.experience,
+        frame: ((_age / 0.10).floor()) % CombatEffectAtlas.framesPerEffect,
+      ).render(canvas, size: size);
+      return;
+    }
 
     final paint = Paint()..color = const Color(0xff7bdff2);
     final outlinePaint = Paint()
