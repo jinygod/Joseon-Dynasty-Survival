@@ -4,8 +4,13 @@
 
 ## Steps
 
-- [ ] Write RED tests for health, telegraph windows, attack cycle, and enrage timing.
-- [ ] Tune boss health, charge warning, enrage time, and enrage multiplier.
-- [ ] Document the boss timing baseline and rationale.
-- [ ] Run focused tests and the full release gate.
-- [ ] Mark `BAL-005`, update the queue/baseline, merge, and clean the worktree.
+- [x] Write RED tests for health, telegraph windows, attack cycle, and enrage timing.
+- [x] Tune boss health, charge warning, enrage time, and enrage multiplier.
+- [x] Document the boss timing baseline and rationale.
+- [x] Run focused tests and the full release gate.
+- [x] Mark `BAL-005`, update the queue/baseline, merge, and clean the worktree.
+
+## Verification
+
+- Focused boss suite: 6 tests passed.
+- Full release gate: analyzer clean, 165 tests passed, web build passed, Android debug APK built.
