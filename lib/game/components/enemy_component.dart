@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 
 import '../content/ids.dart';
+import '../systems/combat_feedback_tuning.dart';
 import 'player_component.dart';
 
 typedef TargetPositionProvider = Vector2? Function(Vector2 enemyPosition);
@@ -99,6 +100,12 @@ class EnemyComponent extends PositionComponent {
         ? 0.3
         : 1.0;
     knockbackVelocity.add(impulse * resistanceMultiplier);
+    if (knockbackVelocity.length >
+        CombatFeedbackTuning.maxEnemyKnockbackSpeed) {
+      knockbackVelocity
+        ..normalize()
+        ..scale(CombatFeedbackTuning.maxEnemyKnockbackSpeed);
+    }
   }
 
   bool overlapsPlayer(PlayerComponent player) {

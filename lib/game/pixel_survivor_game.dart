@@ -28,6 +28,7 @@ import 'models/run_result.dart';
 import 'models/run_outcome.dart';
 import 'models/vector_input.dart';
 import 'systems/level_up_system.dart';
+import 'systems/combat_feedback_tuning.dart';
 import 'systems/combat_system.dart';
 import 'systems/run_progression_system.dart';
 import 'systems/run_stats_tracker.dart';
@@ -457,7 +458,7 @@ class PixelSurvivorGame extends FlameGame
           )) {
             if (attack.containsPlayer(player)) {
               final healthBefore = player.currentHealth;
-              player.takeDamage(attack.damage);
+              player.takeDamage(attack.damage, now: _elapsedSeconds);
               _recordPlayerDamage(
                 player: player,
                 healthBefore: healthBefore,
@@ -493,7 +494,7 @@ class PixelSurvivorGame extends FlameGame
   }
 
   void _spawnDamageNumber(DamageEvent event) {
-    if (_damageNumberCount >= 40) return;
+    if (_damageNumberCount >= CombatFeedbackTuning.maxDamageNumbers) return;
     _damageNumberCount += 1;
     add(
       DamageNumberComponent(
@@ -508,8 +509,10 @@ class PixelSurvivorGame extends FlameGame
   }
 
   void _startScreenShake(double magnitude) {
-    _screenShakeRemaining = 0.12;
-    _screenShakeMagnitude = magnitude.clamp(0, 4).toDouble();
+    _screenShakeRemaining = CombatFeedbackTuning.screenShakeDurationSeconds;
+    _screenShakeMagnitude = magnitude
+        .clamp(0, CombatFeedbackTuning.maxScreenShakeMagnitude)
+        .toDouble();
   }
 
   void _updateScreenShake(double dt) {
@@ -524,9 +527,10 @@ class PixelSurvivorGame extends FlameGame
       sin(_screenShakePhase) * _screenShakeMagnitude,
       cos(_screenShakePhase * 1.3) * _screenShakeMagnitude,
     );
-    if (_screenShakeOffset.length > 4) {
+    if (_screenShakeOffset.length >
+        CombatFeedbackTuning.maxScreenShakeMagnitude) {
       _screenShakeOffset.normalize();
-      _screenShakeOffset.scale(4);
+      _screenShakeOffset.scale(CombatFeedbackTuning.maxScreenShakeMagnitude);
     }
     camera.viewfinder.position.add(_screenShakeOffset);
   }

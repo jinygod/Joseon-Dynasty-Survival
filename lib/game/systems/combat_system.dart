@@ -18,7 +18,9 @@ class CombatSystem {
       return false;
     }
 
-    player.takeDamage(enemy.damage);
+    if (!player.takeDamage(enemy.damage, now: now)) {
+      return false;
+    }
     _nextContactAt[enemy] = now + contactCooldownSeconds;
     return true;
   }

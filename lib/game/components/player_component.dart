@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 
 import '../models/vector_input.dart';
+import '../systems/combat_feedback_tuning.dart';
 
 class PlayerComponent extends PositionComponent {
   PlayerComponent({
@@ -24,6 +25,7 @@ class PlayerComponent extends PositionComponent {
   double currentHealth;
   final double moveSpeed;
   double moveSpeedMultiplier = 1;
+  double _nextDamageAt = double.negativeInfinity;
 
   bool get isAlive => currentHealth > 0;
 
@@ -35,12 +37,19 @@ class PlayerComponent extends PositionComponent {
     return (currentHealth / maxHealth).clamp(0, 1).toDouble();
   }
 
-  void takeDamage(double amount) {
-    if (amount <= 0) {
-      return;
+  bool takeDamage(double amount, {double? now}) {
+    if (amount <= 0 || !isAlive) {
+      return false;
+    }
+    if (now != null && now < _nextDamageAt) {
+      return false;
     }
 
     currentHealth = (currentHealth - amount).clamp(0, maxHealth).toDouble();
+    if (now != null) {
+      _nextDamageAt = now + CombatFeedbackTuning.playerInvulnerabilitySeconds;
+    }
+    return true;
   }
 
   void heal(double amount) {
