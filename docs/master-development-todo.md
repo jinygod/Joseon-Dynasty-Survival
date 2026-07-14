@@ -13,12 +13,12 @@
 
 ## 현재 상태
 
-- 현재 단계: **4단계 — 모바일 조작과 온보딩** (`FND-010`~`FND-011` 외부 작업 병행)
-- 현재 브랜치: `codex/mobile-controls`
+- 현재 단계: **4단계 — 모바일 조작과 온보딩** (`FND-011` 외부 작업 병행)
+- 현재 브랜치: `master`
 - 현재 앱 버전: `0.1.0+1`
 - 검증 기준선: 정적 분석 통과, 자동 테스트 126개 통과, 웹 릴리스 빌드 통과
 - 1차 출시 플랫폼: Android, 가로 화면, 오프라인 싱글플레이
-- 다음 실행 큐: `FND-010` → `FND-011` → `UX-005`
+- 다음 실행 큐: `FND-011` → `UX-005`
 
 ---
 
@@ -51,7 +51,7 @@
 - [x] `FND-007` `[P0][Codex]` 버전 없는 기존 저장 데이터를 스키마 1로 마이그레이션. 검증: 레거시 JSON 필드 보존 테스트 통과.
 - [x] `FND-008` `[P0][Codex]` 미래·음수·문자열 스키마와 손상 저장의 안전한 기본값 복구 구현. 검증: 지원하지 않는 스키마 테스트 4개 통과.
 - [x] `FND-009` `[P1][Codex]` 버전명·빌드 번호·저장 스키마 규칙을 `docs/release/versioning.md`에 작성.
-- [ ] `FND-010` `[P0][사용자]` Android SDK와 라이선스 설치. 검증: `flutter doctor`에서 Android toolchain 통과.
+- [x] `FND-010` `[P0][사용자]` Android SDK 36, Build Tools 36.0.0, Platform Tools와 라이선스 설치. 검증: `flutter doctor -v` 전 항목 통과(`No issues found`).
 - [ ] `FND-011` `[P0][공동]` `master`를 원격에 푸시해 GitHub Actions 최초 실행 확인. 선행: `FND-006`~`FND-010`. 검증: 모든 CI job 성공.
 
 ---
