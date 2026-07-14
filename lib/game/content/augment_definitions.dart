@@ -16,45 +16,52 @@ const heavyStrike = 'heavy_strike';
 const augmentDefinitions = <AugmentDefinition>[
   AugmentDefinition(
     id: martialTraining,
-    name: 'Martial Training',
+    name: '무예 단련',
     maxLevel: 5,
     startsUnlocked: true,
+    effectDescription: '모든 무기 피해 +12%',
   ),
   AugmentDefinition(
     id: quickStep,
-    name: 'Quick Step',
+    name: '빠른 발놀림',
     maxLevel: 5,
     startsUnlocked: true,
+    effectDescription: '이동 속도 +8%',
   ),
   AugmentDefinition(
     id: innerBreath,
-    name: 'Inner Breath',
+    name: '내공 호흡',
     maxLevel: 5,
     startsUnlocked: true,
+    effectDescription: '최대 체력 +10, 체력 10 회복',
   ),
   AugmentDefinition(
     id: jangseungBlessing,
-    name: 'Jangseung Blessing',
+    name: '장승의 가호',
     maxLevel: 5,
     startsUnlocked: true,
+    effectDescription: '경험치 획득 반경 +16',
   ),
   AugmentDefinition(
     id: hawkEye,
-    name: 'Hawk Eye',
+    name: '매의 눈',
     maxLevel: 5,
     startsUnlocked: true,
+    effectDescription: '치명타 확률 +5%',
   ),
   AugmentDefinition(
     id: herbalTonic,
-    name: 'Herbal Tonic',
+    name: '약초 주머니',
     maxLevel: 5,
     startsUnlocked: true,
+    effectDescription: '체력 12 회복',
   ),
   AugmentDefinition(
     id: rapidReload,
-    name: 'Rapid Reload',
-    maxLevel: 1,
+    name: '빠른 장전',
+    maxLevel: 5,
     startsUnlocked: false,
+    effectDescription: '공격 재사용 시간 -10%',
   ),
   AugmentDefinition(
     id: goblinFire,
@@ -64,9 +71,10 @@ const augmentDefinitions = <AugmentDefinition>[
   ),
   AugmentDefinition(
     id: powderMastery,
-    name: 'Powder Mastery',
+    name: '화약 조제',
     maxLevel: 5,
     startsUnlocked: false,
+    effectDescription: '폭발 범위와 투사체 크기 +10%',
   ),
   AugmentDefinition(
     id: lastStand,
@@ -86,4 +94,15 @@ const augmentDefinitions = <AugmentDefinition>[
     maxLevel: 5,
     startsUnlocked: false,
   ),
+];
+
+const firstStageAugmentIds = <AugmentId>[
+  martialTraining,
+  quickStep,
+  rapidReload,
+  innerBreath,
+  hawkEye,
+  herbalTonic,
+  jangseungBlessing,
+  powderMastery,
 ];

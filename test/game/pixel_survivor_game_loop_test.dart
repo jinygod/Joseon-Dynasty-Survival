@@ -80,7 +80,7 @@ void main() {
       final game = newGame()..unlockedWeaponIds.add(hwandoSlash);
       const choice = LevelUpChoice(
         id: hwandoSlash,
-        displayName: 'Hwando Slash',
+        displayName: '환도 베기',
         type: LevelUpChoiceType.weapon,
         currentLevel: 0,
         nextLevel: 1,
@@ -96,7 +96,7 @@ void main() {
       final game = newGame()..unlockedAugmentIds.add(martialTraining);
       const choice = LevelUpChoice(
         id: martialTraining,
-        displayName: 'Martial Training',
+        displayName: '무예 단련',
         type: LevelUpChoiceType.augment,
         currentLevel: 0,
         nextLevel: 1,

@@ -65,7 +65,7 @@ void main() {
         contains(
           const LevelUpChoice(
             id: hwandoSlash,
-            displayName: 'Hwando Slash',
+            displayName: '환도 베기',
             type: LevelUpChoiceType.weapon,
             currentLevel: 2,
             nextLevel: 3,
@@ -77,7 +77,7 @@ void main() {
         contains(
           const LevelUpChoice(
             id: martialTraining,
-            displayName: 'Martial Training',
+            displayName: '무예 단련',
             type: LevelUpChoiceType.augment,
             currentLevel: 4,
             nextLevel: 5,

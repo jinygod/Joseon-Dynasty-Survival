@@ -55,12 +55,16 @@ class AugmentDefinition {
     required this.name,
     required this.maxLevel,
     required this.startsUnlocked,
+    this.effectDescription = '',
   });
 
   final AugmentId id;
   final String name;
   final int maxLevel;
   final bool startsUnlocked;
+  final String effectDescription;
+
+  String effectDescriptionForLevel(int nextLevel) => effectDescription;
 }
 
 class EnemyDefinition {
