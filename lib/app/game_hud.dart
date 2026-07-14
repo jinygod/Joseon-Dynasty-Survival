@@ -4,12 +4,12 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../game/models/vector_input.dart';
-import '../game/pixel_survivor_game.dart';
+import 'game_hud_source.dart';
 
 class GameHud extends StatefulWidget {
-  const GameHud({required this.game, super.key});
+  const GameHud({required this.source, super.key});
 
-  final PixelSurvivorGame game;
+  final GameHudSource source;
 
   @override
   State<GameHud> createState() => _GameHudState();
@@ -41,17 +41,33 @@ class _GameHudState extends State<GameHud> {
       child: SafeArea(
         child: Stack(
           children: [
+            if (widget.source.bossHealthFraction case final health?)
+              Positioned(
+                top: 8,
+                left: 160,
+                right: 160,
+                child: BossHealthBar(
+                  name: widget.source.bossName ?? 'Boss',
+                  healthFraction: health,
+                ),
+              ),
             Positioned(
-              top: 12,
+              top: widget.source.bossHealthFraction == null ? 12 : 62,
               left: 16,
               right: 16,
-              child: _StatusBar(game: widget.game),
+              child: _StatusBar(source: widget.source),
+            ),
+            Positioned(
+              top: widget.source.bossHealthFraction == null ? 68 : 118,
+              right: 16,
+              width: 220,
+              child: _WeaponList(labels: widget.source.weaponLevelLabels),
             ),
             Positioned(
               left: 18,
               bottom: 18,
               child: _DeveloperMovePad(
-                onInputChanged: widget.game.updateMovementInput,
+                onInputChanged: widget.source.updateMovementInput,
               ),
             ),
           ],
@@ -62,13 +78,13 @@ class _GameHudState extends State<GameHud> {
 }
 
 class _StatusBar extends StatelessWidget {
-  const _StatusBar({required this.game});
+  const _StatusBar({required this.source});
 
-  final PixelSurvivorGame game;
+  final GameHudSource source;
 
   @override
   Widget build(BuildContext context) {
-    final elapsed = Duration(seconds: game.elapsedSeconds.floor());
+    final elapsed = Duration(seconds: source.elapsedSeconds.floor());
     final minutes = elapsed.inMinutes.remainder(60).toString().padLeft(2, '0');
     final seconds = elapsed.inSeconds.remainder(60).toString().padLeft(2, '0');
 
@@ -88,17 +104,98 @@ class _StatusBar extends StatelessWidget {
             runSpacing: 6,
             children: [
               _HudValue(label: 'Time', value: '$minutes:$seconds'),
-              _HudValue(label: 'HP', value: game.playerHealthLabel),
-              _HudValue(label: 'Level', value: '${game.playerLevel}'),
+              _HudValue(label: 'HP', value: source.playerHealthLabel),
+              _HudValue(label: 'Level', value: '${source.playerLevel}'),
               _HudValue(
                 label: 'XP',
-                value: '${game.currentExperience}/${game.experienceToNextLevel}',
+                value:
+                    '${source.currentExperience}/${source.experienceToNextLevel}',
               ),
-              _HudValue(label: 'Enemies', value: '${game.enemyCount}'),
-              _HudValue(label: 'Kills', value: '${game.kills}'),
-              _HudValue(label: 'Weapon', value: game.currentWeaponLabel),
+              _HudValue(label: 'Enemies', value: '${source.enemyCount}'),
+              _HudValue(label: 'Kills', value: '${source.kills}'),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class BossHealthBar extends StatelessWidget {
+  const BossHealthBar({
+    required this.name,
+    required this.healthFraction,
+    super.key,
+  });
+
+  final String name;
+  final double healthFraction;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: Color(0xfff4ead2),
+            fontSize: 14,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0,
+            shadows: [Shadow(color: Color(0xff101820), blurRadius: 3)],
+          ),
+        ),
+        const SizedBox(height: 4),
+        LinearProgressIndicator(
+          value: healthFraction.clamp(0, 1).toDouble(),
+          minHeight: 10,
+          backgroundColor: const Color(0xff2f1b25),
+          color: const Color(0xffd1495b),
+          borderRadius: BorderRadius.circular(4),
+        ),
+      ],
+    );
+  }
+}
+
+class _WeaponList extends StatelessWidget {
+  const _WeaponList({required this.labels});
+
+  final List<String> labels;
+
+  @override
+  Widget build(BuildContext context) {
+    if (labels.isEmpty) return const SizedBox.shrink();
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: const Color(0xff101820).withValues(alpha: 0.78),
+        border: Border.all(color: const Color(0xff9fb3c8)),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (final label in labels)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xfff4ead2),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0,
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );

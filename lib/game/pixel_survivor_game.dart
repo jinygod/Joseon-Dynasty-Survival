@@ -8,9 +8,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart' show KeyEventResult;
 
+import '../app/game_hud_source.dart';
 import 'components/enemy_component.dart';
 import 'components/area_attack_component.dart';
 import 'components/boss_component.dart';
+import 'components/damage_number_component.dart';
 import 'components/experience_gem_component.dart';
 import 'components/player_component.dart';
 import 'components/melee_arc_component.dart';
@@ -32,7 +34,9 @@ import 'systems/run_stats_tracker.dart';
 import 'systems/wave_director.dart';
 import 'systems/weapon_system.dart';
 
-class PixelSurvivorGame extends FlameGame with KeyboardEvents {
+class PixelSurvivorGame extends FlameGame
+    with KeyboardEvents
+    implements GameHudSource {
   static const levelUpOverlayId = 'levelUp';
 
   PixelSurvivorGame({
@@ -74,6 +78,11 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
   int _currentEnemyCap = 24;
   RunOutcome _runOutcome = RunOutcome.inProgress;
   BossComponent? _boss;
+  int _damageNumberCount = 0;
+  double _screenShakeRemaining = 0;
+  double _screenShakeMagnitude = 0;
+  double _screenShakePhase = 0;
+  final Vector2 _screenShakeOffset = Vector2.zero();
 
   double get elapsedSeconds => _elapsedSeconds;
   int get playerLevel => runProgression.level;
@@ -87,6 +96,7 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
   int get currentEnemyCap => _currentEnemyCap;
   String? get bossName => _boss == null ? null : _boss!.displayName;
   double? get bossHealthFraction => _boss?.healthFraction;
+  Vector2 get screenShakeOffset => _screenShakeOffset.clone();
   double get weaponDamageMultiplier {
     final martialTrainingLevel = augmentLevels[martialTraining] ?? 0;
     final heavyStrikeLevel = augmentLevels[heavyStrike] ?? 0;
@@ -178,6 +188,7 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
   void update(double dt) {
     final safeDt = dt.clamp(0, 0.05).toDouble();
     super.update(safeDt);
+    _updateScreenShake(safeDt);
     if (_runOutcome != RunOutcome.inProgress || isLevelUpPending) {
       return;
     }
@@ -409,6 +420,11 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
   void _resolveAreaAttacks() {
     final enemies = children.whereType<EnemyComponent>();
     for (final attack in children.whereType<AreaAttackComponent>().toList()) {
+      if (attack.isReady &&
+          !attack.hasTriggered &&
+          (attack.isBossAttack || attack.weaponId == thunderCrashBomb)) {
+        _startScreenShake(attack.isBossAttack ? 4 : 3);
+      }
       if (attack.isBossAttack) {
         if (attack.isReady && !attack.hasTriggered) {
           for (final player in _activePlayers.where(
@@ -431,7 +447,47 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
       if (event.target.isDead) continue;
       event.target.takeDamage(event.damage);
       event.target.registerHit(knockback: event.direction * event.knockback);
+      _spawnDamageNumber(event);
     }
+  }
+
+  void _spawnDamageNumber(DamageEvent event) {
+    if (_damageNumberCount >= 40) return;
+    _damageNumberCount += 1;
+    add(
+      DamageNumberComponent(
+        damage: event.damage,
+        isCritical: event.isCritical,
+        position: event.target.position.clone(),
+        onExpired: () {
+          _damageNumberCount = max(0, _damageNumberCount - 1);
+        },
+      ),
+    );
+  }
+
+  void _startScreenShake(double magnitude) {
+    _screenShakeRemaining = 0.12;
+    _screenShakeMagnitude = magnitude.clamp(0, 4).toDouble();
+  }
+
+  void _updateScreenShake(double dt) {
+    camera.viewfinder.position.sub(_screenShakeOffset);
+    _screenShakeOffset.setZero();
+    if (_screenShakeRemaining <= 0) return;
+
+    _screenShakeRemaining = max(0.0, _screenShakeRemaining - dt);
+    if (_screenShakeRemaining <= 0) return;
+    _screenShakePhase += dt * 90;
+    _screenShakeOffset.setValues(
+      sin(_screenShakePhase) * _screenShakeMagnitude,
+      cos(_screenShakePhase * 1.3) * _screenShakeMagnitude,
+    );
+    if (_screenShakeOffset.length > 4) {
+      _screenShakeOffset.normalize();
+      _screenShakeOffset.scale(4);
+    }
+    camera.viewfinder.position.add(_screenShakeOffset);
   }
 
   void _dropExperienceForDeadEnemies() {

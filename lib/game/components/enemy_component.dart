@@ -142,10 +142,10 @@ class EnemyComponent extends PositionComponent {
       }
     }
 
-    _hitFlashRemaining = math.max(0, _hitFlashRemaining - dt);
+    _hitFlashRemaining = math.max(0.0, _hitFlashRemaining - dt);
     if (behaviorType == EnemyBehaviorType.dash && !isDead) {
       if (wasDashing) {
-        _dashRemaining = math.max(0, _dashRemaining - dt);
+        _dashRemaining = math.max(0.0, _dashRemaining - dt);
       } else {
         _dashTrackingElapsed += dt;
         if (_dashTrackingElapsed >= _dashTrackingSeconds) {

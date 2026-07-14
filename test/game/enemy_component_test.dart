@@ -110,5 +110,22 @@ void main() {
       expect(enemy.position.y, lessThan(0));
       expect(enemy.position.x, greaterThan(0));
     });
+
+    test('enemy hit flash expires and knockback decays', () {
+      final enemy = EnemyComponent(
+        enemyId: bandit,
+        maxHealth: 18,
+        moveSpeed: 60,
+        damage: 8,
+        position: Vector2.zero(),
+      );
+
+      enemy.registerHit(knockback: Vector2(80, 0));
+      expect(enemy.isHitFlashing, isTrue);
+      enemy.update(0.3);
+
+      expect(enemy.isHitFlashing, isFalse);
+      expect(enemy.knockbackVelocity.length, lessThan(80));
+    });
   });
 }

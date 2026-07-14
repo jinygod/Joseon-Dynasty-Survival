@@ -73,7 +73,7 @@ class _LevelUpChoiceButton extends StatelessWidget {
     };
 
     return SizedBox(
-      height: 148,
+      height: 184,
       child: FilledButton(
         onPressed: onPressed,
         style: FilledButton.styleFrom(
@@ -113,6 +113,18 @@ class _LevelUpChoiceButton extends StatelessWidget {
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 0,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              choice.effectDescription,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0,
+                height: 1.25,
               ),
             ),
           ],

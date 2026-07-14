@@ -72,7 +72,7 @@ class _GameScreenState extends State<GameScreen> {
     return GameWidget<PixelSurvivorGame>(
       game: _game,
       overlayBuilderMap: {
-        'hud': (_, game) => GameHud(game: game),
+        'hud': (_, game) => GameHud(source: game),
         PixelSurvivorGame.levelUpOverlayId: (_, game) => LevelUpOverlay(
           choices: game.pendingLevelUpChoices,
           onChoiceSelected: game.applyLevelUpChoice,
