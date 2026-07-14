@@ -17,6 +17,7 @@ class AreaAttackComponent extends PositionComponent {
     this.weaponId,
     Vector2? direction,
     this.angleRadians = math.pi * 2,
+    this.isBossAttack = false,
   }) : direction = _normalizedDirection(direction ?? Vector2(1, 0)),
        super(
          position: position,
@@ -31,6 +32,7 @@ class AreaAttackComponent extends PositionComponent {
   final double knockback;
   final Vector2 direction;
   final double angleRadians;
+  final bool isBossAttack;
 
   double _elapsed = 0;
   bool _hasTriggered = false;
