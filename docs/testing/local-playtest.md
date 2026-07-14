@@ -1,6 +1,6 @@
-# Local Playtest Checklist
+# 로컬 플레이 테스트 안내
 
-This guide is for a Windows customer playtest of Joseon Dynasty Survival.
+이 문서는 Windows에서 조선시대 서바이벌의 가로 화면 5분 런을 확인하기 위한 안내다.
 
 ## Current Test Scope
 
@@ -29,6 +29,7 @@ flutter pub get
 dart analyze
 flutter test
 flutter build web
+flutter build apk --debug
 
 Pop-Location
 subst P: /D
@@ -49,13 +50,19 @@ Android builds can be prepared on Windows. Install and configure:
 Run `flutter doctor` and resolve Android toolchain warnings before relying on
 Android test results.
 
+Android SDK 약관은 사용자 본인이 아래 명령으로 확인하고 동의해야 한다.
+
+```powershell
+flutter doctor --android-licenses
+```
+
 ## iOS Preparation
 
 iOS builds require a MacBook or other Mac with Xcode installed. Clone the same
 GitHub branch on the Mac, then use the same Flutter version as the Windows
 environment before building.
 
-## Customer Checklist
+## 핵심 플레이 체크
 
 1. Pull the latest repository changes:
 
@@ -69,6 +76,12 @@ environment before building.
    git branch --show-current
    ```
 
-3. Run the stable Windows procedure above.
-4. If anything fails, share the full command output and any generated Flutter
-   log files.
+3. 위 Windows 절차를 실행한다.
+4. 웹 서버를 실행하고 `http://127.0.0.1:8765/`을 연다.
+5. 가로 화면에서 이동, 자동 공격, 경험치 획득, 레벨업 선택을 확인한다.
+6. 환도 베기, 각궁 사격, 부적 투척, 벽력진천뢰의 공격 방식과 레벨 변화를 확인한다.
+7. 04:30 보스 등장, 보스 체력 바, 돌진/부채꼴 예고, 저체력 소환을 확인한다.
+8. 보스를 처치해 승리 결과와 최종 무기 레벨을 확인한다. 사망 시에는 패배가 표시되어야 한다.
+9. 다시 시작했을 때 시간, 레벨, XP, 적, 처치 수, 보스 상태가 모두 초기화되는지 확인한다.
+
+세부 기록 양식은 `docs/testing/manual-qa-test-cases.txt`를 사용한다.

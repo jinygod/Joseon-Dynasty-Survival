@@ -13,8 +13,8 @@ class BossComponent extends EnemyComponent {
   BossComponent({
     required EnemyDefinition definition,
     required TargetPositionProvider targetPositionProvider,
-    NearbyEnemiesProvider? nearbyEnemiesProvider,
-    Vector2? position,
+    super.nearbyEnemiesProvider,
+    super.position,
     this.onAreaAttack,
     this.onSummonRequested,
     BossController? controller,
@@ -28,8 +28,6 @@ class BossComponent extends EnemyComponent {
          experienceValue: definition.experience,
          behaviorType: EnemyBehaviorType.tank,
          targetPositionProvider: targetPositionProvider,
-         nearbyEnemiesProvider: nearbyEnemiesProvider,
-         position: position,
          size: Vector2.all(42),
        );
 

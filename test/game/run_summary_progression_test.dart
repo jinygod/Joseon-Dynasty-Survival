@@ -162,14 +162,77 @@ void main() {
     expect(find.text('02:05'), findsOneWidget);
     expect(find.text('42'), findsOneWidget);
     expect(find.text('6'), findsOneWidget);
-    expect(find.text(exorcistDosa), findsOneWidget);
-    expect(find.text(talismanThrow), findsOneWidget);
-    expect(find.text(lastStand), findsOneWidget);
+    expect(find.text('퇴마 도사'), findsOneWidget);
+    expect(find.text('부적 투척'), findsOneWidget);
+    expect(find.text('최후의 저항'), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(FilledButton, 'Start'));
-    await tester.tap(find.widgetWithText(OutlinedButton, 'Menu'));
+    await tester.tap(find.widgetWithText(FilledButton, '다시 시작'));
+    await tester.tap(find.widgetWithText(OutlinedButton, '메인 메뉴'));
 
     expect(started, isTrue);
     expect(openedMenu, isTrue);
+  });
+
+  testWidgets('victory summary shows boss result and final build', (
+    tester,
+  ) async {
+    const result = RunResult(
+      outcome: RunOutcome.victory,
+      survivalSeconds: 301,
+      kills: 96,
+      level: 11,
+      bossDefeated: true,
+      wonWithLowHealth: false,
+      weaponKillCounts: {},
+      weaponLevels: {hwandoSlash: 5, gakgungShot: 3},
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: RunSummaryScreen(
+          result: result,
+          unlocks: const ProgressionUnlocks(),
+          onStart: () {},
+          onMenu: () {},
+        ),
+      ),
+    );
+
+    expect(find.text('승리'), findsOneWidget);
+    expect(find.text('보스 처치'), findsOneWidget);
+    expect(find.text('환도 베기'), findsOneWidget);
+    expect(find.text('Lv 5'), findsOneWidget);
+    expect(find.text('각궁 사격'), findsOneWidget);
+    expect(find.text('Lv 3'), findsOneWidget);
+  });
+
+  testWidgets('defeat summary distinguishes an unfinished boss fight', (
+    tester,
+  ) async {
+    const result = RunResult(
+      outcome: RunOutcome.defeat,
+      survivalSeconds: 285,
+      kills: 72,
+      level: 9,
+      bossDefeated: false,
+      wonWithLowHealth: false,
+      weaponKillCounts: {},
+      weaponLevels: {hwandoSlash: 4},
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: RunSummaryScreen(
+          result: result,
+          unlocks: const ProgressionUnlocks(),
+          onStart: () {},
+          onMenu: () {},
+        ),
+      ),
+    );
+
+    expect(find.text('패배'), findsOneWidget);
+    expect(find.text('보스 미처치'), findsOneWidget);
+    expect(find.text('04:45'), findsOneWidget);
   });
 }

@@ -152,8 +152,8 @@ void main() {
         game.applyLevelUpChoice(choice);
         game.updateMovementInput(VectorInput.zero);
 
-        expect(player.maxHealth, 110);
-        expect(player.currentHealth, 90);
+        expect(player.maxHealth, 115);
+        expect(player.currentHealth, 95);
       },
     );
 

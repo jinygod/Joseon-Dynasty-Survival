@@ -15,7 +15,6 @@ import 'components/boss_component.dart';
 import 'components/damage_number_component.dart';
 import 'components/experience_gem_component.dart';
 import 'components/player_component.dart';
-import 'components/melee_arc_component.dart';
 import 'components/projectile_component.dart';
 import 'content/augment_definitions.dart';
 import 'content/character_definitions.dart';
@@ -84,17 +83,24 @@ class PixelSurvivorGame extends FlameGame
   double _screenShakePhase = 0;
   final Vector2 _screenShakeOffset = Vector2.zero();
 
+  @override
   double get elapsedSeconds => _elapsedSeconds;
+  @override
   int get playerLevel => runProgression.level;
+  @override
   int get currentExperience => runProgression.currentExperience;
+  @override
   int get experienceToNextLevel => runProgression.experienceToNextLevel;
+  @override
   int get kills => runStats.kills;
   RunOutcome get runOutcome => _runOutcome;
   bool get isGameOver => _runOutcome != RunOutcome.inProgress;
   int get bossRequestCount => _bossRequestCount;
   int get bossSpawnCount => _bossSpawnCount;
   int get currentEnemyCap => _currentEnemyCap;
-  String? get bossName => _boss == null ? null : _boss!.displayName;
+  @override
+  String? get bossName => _boss?.displayName;
+  @override
   double? get bossHealthFraction => _boss?.healthFraction;
   Vector2 get screenShakeOffset => _screenShakeOffset.clone();
   double get weaponDamageMultiplier {
@@ -132,6 +138,7 @@ class PixelSurvivorGame extends FlameGame
   List<PlayerComponent> get activePlayers => _activePlayersView;
   List<LevelUpChoice> get pendingLevelUpChoices =>
       List.unmodifiable(_pendingLevelUpChoices);
+  @override
   String get playerHealthLabel {
     final player = _activePlayers
         .where((player) => player.isMounted)
@@ -143,6 +150,7 @@ class PixelSurvivorGame extends FlameGame
     return '${player.currentHealth.ceil()}/${player.maxHealth.ceil()}';
   }
 
+  @override
   int get enemyCount => children
       .whereType<EnemyComponent>()
       .where((enemy) => !enemy.isDead)
@@ -156,6 +164,7 @@ class PixelSurvivorGame extends FlameGame
     return labels.first;
   }
 
+  @override
   List<String> get weaponLevelLabels => [
     for (final definition in weaponDefinitions)
       if ((weaponSystem.levels[definition.id] ?? 0) > 0)
@@ -209,6 +218,7 @@ class PixelSurvivorGame extends FlameGame
     _elapsedSeconds += dt;
   }
 
+  @override
   void updateMovementInput(VectorInput input) {
     movementInput = input;
   }

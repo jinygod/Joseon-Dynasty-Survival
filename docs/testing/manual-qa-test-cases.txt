@@ -1,5 +1,5 @@
 Joseon Dynasty Survival Manual QA Test Cases
-Last updated: 2026-07-01
+Last updated: 2026-07-14
 Branch: codex/pixel-survivor-mvp
 
 Purpose
@@ -9,14 +9,12 @@ Purpose
 Current Build Notes
 - 현재 그래픽은 최종 도트 이미지가 아니라 Flame 기본 도형/임시 UI 기반이다.
 - 현재 기본 플레이어는 Rookie Constable 1명이다.
-- 현재 시작 무기는 Hwando Slash이며, Gakgung Shot은 시작 해금 상태라 레벨업 선택 후보로 나온다.
-- 현재 시작 증강은 Martial Training, Quick Step, Inner Breath, Jangseung Blessing, Hawk Eye, Herbal Tonic이다.
-- 적은 3초마다 1마리씩 스폰된다.
-- 0초 이상 60초 미만: Plague Rat Swarm
-- 60초 이상 120초 미만: Plague Rat Swarm, Bandit
-- 120초 이상 300초 미만: Plague Rat Swarm, Bandit, Dokkaebi, Vengeful Spirit
-- 300초 이상: Fallen General
-- 첫 레벨업 요구 XP는 3이다. 이후 요구 XP는 5, 7, 9처럼 2씩 증가한다.
+- 현재 시작 무기는 환도 베기이며, 각궁 사격은 시작 해금 상태라 레벨업 선택 후보로 나온다.
+- 첫 스테이지의 핵심 무기는 환도 베기, 각궁 사격, 부적 투척, 벽력진천뢰 4종이며 각각 5레벨까지 성장한다.
+- 첫 레벨업 요구 XP는 5이며, 이후 레벨마다 요구량이 1씩 증가한다.
+- 웨이브는 0, 60, 120, 180, 240, 270초에 전환되고 구간별 스폰 속도, 무리 크기, 정예 확률, 생존 상한이 증가한다.
+- 270초에 타락한 별장 보스가 등장한다. 330초까지 살아 있으면 광폭화한다.
+- 승리 조건은 보스 처치이며 플레이어 사망과 같은 프레임이면 보스 처치를 먼저 판정한다.
 - 장기 해금 목표: 180초 생존 Talisman Throw, 누적 300킬 Thunder Crash Bomb, 런 레벨 10 Jangseung Ward/Rapid Reload, Fallen General 처치 Exorcist Dosa, 300초 생존 Goblin Fire, 무기 3개 해금 Powder Mastery, 누적 500킬 Singijeon Volley.
 
 Stable Windows Test Commands
@@ -90,7 +88,7 @@ Steps:
 1. Run "flutter test".
 Expected:
 - All tests pass.
-- Current expected count is 47 passing tests.
+- Current expected count is 82 passing tests.
 User result: [ ]
 Notes:
 
@@ -300,10 +298,10 @@ Expected:
 - Time starts near 00:00.
 - HP starts at 105/105.
 - Level starts at 1.
-- XP starts at 0/3.
+- XP starts at 0/5.
 - Enemies starts at 0.
 - Kills starts at 0.
-- Weapon shows Hwando Slash Lv 1.
+- Weapon list shows 환도 베기 Lv 1.
 User result: [ ]
 Notes:
 
@@ -365,9 +363,9 @@ Priority: Critical
 Automatic mapping: test/game/spawn_system_test.dart
 Steps:
 1. Start a run.
-2. Watch until around 3 seconds.
+2. Watch the first few seconds.
 Expected:
-- First enemy appears at an edge/outside-edge position and moves inward.
+- Enemies appear at edge/outside-edge positions and move inward.
 User result: [ ]
 Notes:
 
@@ -378,7 +376,7 @@ Steps:
 1. Start a run.
 2. Observe enemy count from 0 to 15 seconds.
 Expected:
-- New enemies appear about every 3 seconds.
+- New enemies keep appearing according to the current wave rate.
 - Enemy count may go up or down depending on kills.
 User result: [ ]
 Notes:
@@ -418,14 +416,14 @@ Expected:
 User result: [ ]
 Notes:
 
-TC-SPAWN-006 300 second boss spawn
+TC-SPAWN-006 270 second boss spawn
 Priority: Medium
-Automatic mapping: test/game/spawn_system_test.dart
+Automatic mapping: test/game/wave_director_test.dart, test/game/boss_controller_test.dart
 Steps:
-1. Survive past 300 seconds.
+1. Survive to 04:30 (270 seconds).
 Expected:
-- Spawn pool switches to Fallen General boss according to automated test.
-- Manual UI currently uses placeholder rendering, so treat visual name confirmation as future work.
+- 타락한 별장 보스가 정확히 한 번 등장한다.
+- 보스 체력 바가 표시되며 일반 적 웨이브는 낮은 밀도로 계속된다.
 User result: [ ]
 Notes:
 
@@ -494,11 +492,11 @@ TC-COMBAT-005 First level-up threshold
 Priority: Critical
 Automatic mapping: test/game/run_progression_system_test.dart
 Steps:
-1. Collect XP until HUD reaches 3/3 or crosses the threshold.
+1. Collect XP until HUD reaches 5/5 or crosses the threshold.
 Expected:
 - Player level becomes 2.
 - Level Up overlay appears.
-- Current XP carries overflow correctly if more than 3 XP was collected at once.
+- Current XP carries overflow correctly if more than 5 XP was collected at once.
 User result: [ ]
 Notes:
 
@@ -685,6 +683,7 @@ Expected:
 - Kills are shown.
 - Level is shown.
 - New Unlocks section is shown.
+- 결과 제목이 패배로 표시되고 보스 미처치 여부와 최종 무기 레벨이 보인다.
 User result: [ ]
 Notes:
 
@@ -692,10 +691,11 @@ TC-SUMMARY-002 Start from summary
 Priority: High
 Automatic mapping: RunSummaryScreen callbacks
 Steps:
-1. On Run Summary, press Start.
+1. On Run Summary, press 다시 시작.
 Expected:
 - A new run starts.
-- HUD resets to Level 1 and XP 0/3.
+- 시간, 적, 처치 수, 보스 상태가 초기화된다.
+- HUD resets to Level 1 and XP 0/5.
 User result: [ ]
 Notes:
 
@@ -703,7 +703,7 @@ TC-SUMMARY-003 Menu from summary
 Priority: High
 Automatic mapping: RunSummaryScreen callbacks
 Steps:
-1. On Run Summary, press Menu.
+1. On Run Summary, press 메인 메뉴.
 Expected:
 - App returns to the main menu.
 User result: [ ]
@@ -835,6 +835,55 @@ Expected:
 User result: [ ]
 Notes:
 
+TC-REG-005 30-second wave boundary stability
+Priority: High
+Automatic mapping: test/game/wave_director_test.dart
+Steps:
+1. Observe play across 00:30, 01:30, 02:30, 03:30 and 04:30.
+2. Watch enemy count immediately before and after each boundary.
+Expected:
+- No duplicate burst, freeze, or sudden removal occurs at a 30-second observation point.
+- The enemy count remains within the current wave cap.
+User result: [ ]
+Notes:
+
+TC-REG-006 Four weapon growth identities
+Priority: Critical
+Automatic mapping: test/game/weapon_system_test.dart
+Steps:
+1. Across repeated runs, obtain 환도 베기, 각궁 사격, 부적 투척, 벽력진천뢰.
+2. Upgrade each weapon at least once and compare its attack.
+Expected:
+- 환도 베기는 근거리 부채꼴, 각궁은 투사체, 부적은 지연 범위, 벽력진천뢰는 폭발 공격으로 구분된다.
+- 레벨 증가 후 피해량, 재사용 시간, 범위, 투사체 수 또는 관통 중 정의된 값이 좋아진다.
+- HUD의 각 무기 레벨이 실제 선택 결과와 일치한다.
+User result: [ ]
+Notes:
+
+TC-REG-007 Boss patterns and enrage
+Priority: Critical
+Automatic mapping: test/game/boss_controller_test.dart
+Steps:
+1. Reach the boss at 04:30 and keep it alive past 05:30.
+2. Observe charge and cone telegraphs, low-health summon, then post-05:30 speed.
+Expected:
+- 돌진과 부채꼴 공격은 피해 전에 예고된다.
+- 낮은 체력 소환은 한 번만 발생한다.
+- 05:30 이후 보스가 광폭화해 더 빠르고 강해진다.
+User result: [ ]
+Notes:
+
+TC-REG-008 Simultaneous boss kill and player death
+Priority: Critical
+Automatic mapping: test/game/pixel_survivor_game_loop_test.dart
+Steps:
+1. Treat this timing-sensitive case as automated-test-first; manually attempt a final trade when both health bars are low.
+Expected:
+- 같은 프레임에 둘 다 0이 되면 승리로 종료된다.
+- 종료 콜백과 결과 화면은 한 번만 열린다.
+User result: [ ]
+Notes:
+
 ===============================================================================
 Codex Verification Record
 ===============================================================================
@@ -846,11 +895,12 @@ Command:
 - dart analyze
 - flutter test
 - flutter build web
-Result: PASS on 2026-07-01
+Result: PASS on 2026-07-14
 Evidence:
 - dart analyze: No issues found.
-- flutter test: 47 tests passed.
+- flutter test: 82 tests passed.
 - flutter build web: Built build\web successfully.
+- flutter build apk --debug: BLOCKED because Android SDK platforms/build-tools and license acceptance are not yet installed.
 
 COD-VERIFY-002 Browser smoke: menu and Start Run
 Method:

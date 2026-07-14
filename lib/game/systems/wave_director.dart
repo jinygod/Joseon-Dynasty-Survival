@@ -23,7 +23,9 @@ class WaveTickResult {
 }
 
 class WaveDirector {
-  WaveDirector({required Random random}) : _random = random;
+  factory WaveDirector({required Random random}) => WaveDirector._(random);
+
+  WaveDirector._(this._random);
 
   static const _frameSpawnCap = 8;
   static const _bossSecond = 270;
@@ -40,7 +42,10 @@ class WaveDirector {
     final definition = waveDefinitionForSecond(elapsedSeconds.floor());
     _spawnBudget += dt * definition.spawnsPerSecond;
 
-    final activeCapacity = max(0, definition.maxActiveEnemies - activeEnemyCount);
+    final activeCapacity = max(
+      0,
+      definition.maxActiveEnemies - activeEnemyCount,
+    );
     final spawnCount = min(
       min(_spawnBudget.floor(), activeCapacity),
       _frameSpawnCap,
@@ -60,8 +65,7 @@ class WaveDirector {
     var consecutiveCount = 0;
 
     for (var index = 0; index < count; index += 1) {
-      if (consecutiveCount == 0 ||
-          consecutiveCount >= definition.groupSize) {
+      if (consecutiveCount == 0 || consecutiveCount >= definition.groupSize) {
         previousEnemyId = _selectEnemyId(
           definition.enemyWeights,
           exclude: consecutiveCount >= definition.groupSize
@@ -83,10 +87,7 @@ class WaveDirector {
     return requests;
   }
 
-  EnemyId _selectEnemyId(
-    Map<EnemyId, int> weights, {
-    EnemyId? exclude,
-  }) {
+  EnemyId _selectEnemyId(Map<EnemyId, int> weights, {EnemyId? exclude}) {
     final entries = weights.entries
         .where((entry) => entry.key != exclude)
         .toList(growable: false);
