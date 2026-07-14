@@ -2,10 +2,15 @@ import 'dart:math';
 
 import 'package:flame/components.dart';
 
+import '../components/area_attack_component.dart';
 import '../components/enemy_component.dart';
+import '../components/melee_arc_component.dart';
 import '../components/projectile_component.dart';
+import '../content/enemy_definitions.dart';
 import '../content/ids.dart';
 import '../content/weapon_definitions.dart';
+import '../content/weapon_level_definitions.dart';
+import '../models/damage_event.dart';
 
 class WeaponSystem {
   WeaponSystem({Map<WeaponId, int>? initialLevels, Random? random})
@@ -28,16 +33,13 @@ class WeaponSystem {
     if (definition == null || !unlockedWeaponIds.contains(weaponId)) {
       return false;
     }
-
     return levelOf(weaponId) < definition.maxLevel;
   }
 
   void upgrade(WeaponId weaponId, Set<WeaponId> unlockedWeaponIds) {
-    if (!canUpgrade(weaponId, unlockedWeaponIds)) {
-      return;
+    if (canUpgrade(weaponId, unlockedWeaponIds)) {
+      _levels[weaponId] = levelOf(weaponId) + 1;
     }
-
-    _levels[weaponId] = levelOf(weaponId) + 1;
   }
 
   List<WeaponId> availableUpgradeIds(Set<WeaponId> unlockedWeaponIds) {
@@ -52,143 +54,286 @@ class WeaponSystem {
     required Vector2 origin,
     required Iterable<EnemyComponent> enemies,
     double damageMultiplier = 1,
+    double attackSpeedMultiplier = 1,
+    double criticalChance = 0,
+    double sizeMultiplier = 1,
   }) {
     final aliveEnemies = enemies.where((enemy) => !enemy.isDead).toList();
-    final projectiles = <ProjectileComponent>[];
     if (aliveEnemies.isEmpty) {
       return const WeaponTickResult.empty();
     }
 
-    if (_consumeCooldown(hwandoSlash, dt, 0.7)) {
-      _damageNearestEnemy(
-        origin: origin,
-        enemies: aliveEnemies,
-        damage: _scaledDamage(6 + levelOf(hwandoSlash) * 2, damageMultiplier),
-        maxRange: 52,
-      );
-    }
+    final damageEvents = <DamageEvent>[];
+    final projectiles = <ProjectileComponent>[];
+    final meleeArcs = <MeleeArcComponent>[];
+    final areaAttacks = <AreaAttackComponent>[];
 
-    if (_consumeCooldown(gakgungShot, dt, 1.1)) {
-      final projectile = _projectileTowardNearestEnemy(
-        weaponId: gakgungShot,
-        origin: origin,
-        enemies: aliveEnemies,
-        damage: _scaledDamage(5 + levelOf(gakgungShot) * 2, damageMultiplier),
-        speed: 220,
-      );
-      if (projectile != null) {
-        projectiles.add(projectile);
-      }
-    }
+    _fireHwando(
+      dt: dt,
+      origin: origin,
+      enemies: aliveEnemies,
+      damageMultiplier: damageMultiplier,
+      attackSpeedMultiplier: attackSpeedMultiplier,
+      criticalChance: criticalChance,
+      sizeMultiplier: sizeMultiplier,
+      damageEvents: damageEvents,
+      meleeArcs: meleeArcs,
+    );
+    _fireGakgung(
+      dt: dt,
+      origin: origin,
+      enemies: aliveEnemies,
+      damageMultiplier: damageMultiplier,
+      attackSpeedMultiplier: attackSpeedMultiplier,
+      criticalChance: criticalChance,
+      sizeMultiplier: sizeMultiplier,
+      projectiles: projectiles,
+    );
+    _fireTalisman(
+      dt: dt,
+      origin: origin,
+      enemies: aliveEnemies,
+      damageMultiplier: damageMultiplier,
+      attackSpeedMultiplier: attackSpeedMultiplier,
+      criticalChance: criticalChance,
+      sizeMultiplier: sizeMultiplier,
+      damageEvents: damageEvents,
+    );
+    _fireBomb(
+      dt: dt,
+      origin: origin,
+      enemies: aliveEnemies,
+      damageMultiplier: damageMultiplier,
+      attackSpeedMultiplier: attackSpeedMultiplier,
+      criticalChance: criticalChance,
+      sizeMultiplier: sizeMultiplier,
+      areaAttacks: areaAttacks,
+    );
 
-    if (_consumeCooldown(talismanThrow, dt, 1.5)) {
-      final projectile = _projectileTowardNearestEnemy(
-        weaponId: talismanThrow,
-        origin: origin,
-        enemies: aliveEnemies,
-        damage: _scaledDamage(
-          7 + levelOf(talismanThrow) * 2,
-          damageMultiplier,
-        ),
-        speed: 120,
-        size: Vector2.all(10),
-      );
-      if (projectile != null) {
-        projectiles.add(projectile);
-      }
-    }
-
-    if (_consumeCooldown(thunderCrashBomb, dt, 2.4)) {
-      damageEnemiesNear(
-        center: _bombCenter(origin, aliveEnemies),
-        enemies: aliveEnemies,
-        damage: _scaledDamage(
-          8 + levelOf(thunderCrashBomb) * 3,
-          damageMultiplier,
-        ),
-        radius: 72,
-      );
-    }
-
-    return WeaponTickResult(projectiles: projectiles);
+    return WeaponTickResult(
+      damageEvents: damageEvents,
+      projectiles: projectiles,
+      meleeArcs: meleeArcs,
+      areaAttacks: areaAttacks,
+    );
   }
 
-  double _scaledDamage(num baseDamage, double damageMultiplier) {
-    return baseDamage * damageMultiplier;
-  }
-
-  void damageEnemiesNear({
-    required Vector2 center,
-    required Iterable<EnemyComponent> enemies,
-    required double damage,
-    required double radius,
+  void _fireHwando({
+    required double dt,
+    required Vector2 origin,
+    required List<EnemyComponent> enemies,
+    required double damageMultiplier,
+    required double attackSpeedMultiplier,
+    required double criticalChance,
+    required double sizeMultiplier,
+    required List<DamageEvent> damageEvents,
+    required List<MeleeArcComponent> meleeArcs,
   }) {
-    final radiusSquared = radius * radius;
-    for (final enemy in enemies) {
-      if (!enemy.isDead &&
-          enemy.position.distanceToSquared(center) <= radiusSquared) {
-        enemy.takeDamage(damage);
+    final level = levelOf(hwandoSlash);
+    if (level == 0) return;
+    final stats = weaponLevelFor(hwandoSlash, level);
+    if (!_consumeCooldown(
+      hwandoSlash,
+      dt,
+      stats.cooldownSeconds / _positiveMultiplier(attackSpeedMultiplier),
+    )) {
+      return;
+    }
+
+    final nearest = _nearestEnemy(origin, enemies)!;
+    final baseDirection = _direction(origin, nearest.position);
+    for (var index = 0; index < stats.projectileCount; index += 1) {
+      final offset = stats.projectileCount == 1
+          ? 0.0
+          : (index == 0 ? -0.18 : 0.18);
+      final direction = baseDirection.clone()..rotate(offset);
+      final arc = MeleeArcComponent(
+        weaponId: hwandoSlash,
+        damage: stats.damage * damageMultiplier,
+        knockback: stats.knockback,
+        position: origin.clone(),
+        direction: direction,
+        range: stats.range * sizeMultiplier,
+      );
+      meleeArcs.add(arc);
+      for (final enemy in enemies.where(arc.containsEnemy)) {
+        damageEvents.add(
+          _damageEvent(
+            weaponId: hwandoSlash,
+            target: enemy,
+            origin: origin,
+            damage: stats.damage * damageMultiplier,
+            knockback: stats.knockback,
+            criticalChance: criticalChance,
+          ),
+        );
       }
     }
+  }
+
+  void _fireGakgung({
+    required double dt,
+    required Vector2 origin,
+    required List<EnemyComponent> enemies,
+    required double damageMultiplier,
+    required double attackSpeedMultiplier,
+    required double criticalChance,
+    required double sizeMultiplier,
+    required List<ProjectileComponent> projectiles,
+  }) {
+    final level = levelOf(gakgungShot);
+    if (level == 0) return;
+    final stats = weaponLevelFor(gakgungShot, level);
+    if (!_consumeCooldown(
+      gakgungShot,
+      dt,
+      stats.cooldownSeconds / _positiveMultiplier(attackSpeedMultiplier),
+    )) {
+      return;
+    }
+
+    final nearest = _nearestEnemy(origin, enemies)!;
+    final baseDirection = _direction(origin, nearest.position);
+    for (var index = 0; index < stats.projectileCount; index += 1) {
+      final spread = (index - (stats.projectileCount - 1) / 2) * 0.10;
+      final direction = baseDirection.clone()..rotate(spread);
+      projectiles.add(
+        ProjectileComponent(
+          weaponId: gakgungShot,
+          damage: _rolledDamage(
+            stats.damage * damageMultiplier,
+            criticalChance,
+          ),
+          position: origin.clone(),
+          velocity: direction * 260,
+          pierce: stats.pierce,
+          knockback: stats.knockback,
+          size: Vector2.all(8 * sizeMultiplier),
+        ),
+      );
+    }
+  }
+
+  void _fireTalisman({
+    required double dt,
+    required Vector2 origin,
+    required List<EnemyComponent> enemies,
+    required double damageMultiplier,
+    required double attackSpeedMultiplier,
+    required double criticalChance,
+    required double sizeMultiplier,
+    required List<DamageEvent> damageEvents,
+  }) {
+    final level = levelOf(talismanThrow);
+    if (level == 0) return;
+    final stats = weaponLevelFor(talismanThrow, level);
+    if (!_consumeCooldown(
+      talismanThrow,
+      dt,
+      stats.cooldownSeconds / _positiveMultiplier(attackSpeedMultiplier),
+    )) {
+      return;
+    }
+
+    final maxRangeSquared = pow(stats.range * sizeMultiplier, 2);
+    final targets =
+        enemies
+            .where(
+              (enemy) =>
+                  enemy.position.distanceToSquared(origin) <= maxRangeSquared,
+            )
+            .toList()
+          ..sort(
+            (a, b) => a.position
+                .distanceToSquared(origin)
+                .compareTo(b.position.distanceToSquared(origin)),
+          );
+    for (final target in targets.take(stats.chainCount)) {
+      final spiritMultiplier = target.enemyId == vengefulSpirit ? 1.25 : 1.0;
+      damageEvents.add(
+        _damageEvent(
+          weaponId: talismanThrow,
+          target: target,
+          origin: origin,
+          damage: stats.damage * damageMultiplier * spiritMultiplier,
+          knockback: stats.knockback,
+          criticalChance: criticalChance,
+        ),
+      );
+    }
+  }
+
+  void _fireBomb({
+    required double dt,
+    required Vector2 origin,
+    required List<EnemyComponent> enemies,
+    required double damageMultiplier,
+    required double attackSpeedMultiplier,
+    required double criticalChance,
+    required double sizeMultiplier,
+    required List<AreaAttackComponent> areaAttacks,
+  }) {
+    final level = levelOf(thunderCrashBomb);
+    if (level == 0) return;
+    final stats = weaponLevelFor(thunderCrashBomb, level);
+    if (!_consumeCooldown(
+      thunderCrashBomb,
+      dt,
+      stats.cooldownSeconds / _positiveMultiplier(attackSpeedMultiplier),
+    )) {
+      return;
+    }
+
+    for (var index = 0; index < stats.projectileCount; index += 1) {
+      final center = _bombCenter(origin, enemies);
+      areaAttacks.add(
+        AreaAttackComponent(
+          weaponId: thunderCrashBomb,
+          damage: _rolledDamage(
+            stats.damage * damageMultiplier,
+            criticalChance,
+          ),
+          radius: stats.range * sizeMultiplier,
+          delaySeconds: 0.65,
+          knockback: stats.knockback,
+          position: center,
+          direction: _direction(origin, center),
+        ),
+      );
+    }
+  }
+
+  DamageEvent _damageEvent({
+    required WeaponId weaponId,
+    required EnemyComponent target,
+    required Vector2 origin,
+    required double damage,
+    required double knockback,
+    required double criticalChance,
+  }) {
+    final isCritical = _random.nextDouble() < criticalChance.clamp(0, 1);
+    return DamageEvent(
+      target: target,
+      damage: damage * (isCritical ? 2 : 1),
+      knockback: knockback,
+      direction: _direction(origin, target.position),
+      weaponId: weaponId,
+      isCritical: isCritical,
+    );
+  }
+
+  double _rolledDamage(double damage, double criticalChance) {
+    return damage * (_random.nextDouble() < criticalChance.clamp(0, 1) ? 2 : 1);
   }
 
   bool _consumeCooldown(WeaponId weaponId, double dt, double interval) {
-    if (levelOf(weaponId) <= 0) {
-      return false;
-    }
-
     final remaining = (_cooldowns[weaponId] ?? 0) - dt;
     if (remaining > 0) {
       _cooldowns[weaponId] = remaining;
       return false;
     }
-
     _cooldowns[weaponId] = interval;
     return true;
-  }
-
-  void _damageNearestEnemy({
-    required Vector2 origin,
-    required List<EnemyComponent> enemies,
-    required double damage,
-    required double maxRange,
-  }) {
-    final nearest = _nearestEnemy(origin, enemies);
-    if (nearest == null ||
-        nearest.position.distanceToSquared(origin) > maxRange * maxRange) {
-      return;
-    }
-
-    nearest.takeDamage(damage);
-  }
-
-  ProjectileComponent? _projectileTowardNearestEnemy({
-    required WeaponId weaponId,
-    required Vector2 origin,
-    required List<EnemyComponent> enemies,
-    required double damage,
-    required double speed,
-    Vector2? size,
-  }) {
-    final nearest = _nearestEnemy(origin, enemies);
-    if (nearest == null) {
-      return null;
-    }
-
-    final direction = nearest.position - origin;
-    if (direction.length2 == 0) {
-      direction.setValues(1, 0);
-    } else {
-      direction.normalize();
-    }
-
-    return ProjectileComponent(
-      weaponId: weaponId,
-      damage: damage,
-      position: origin.clone(),
-      velocity: direction * speed,
-      size: size,
-    );
   }
 
   Vector2 _bombCenter(Vector2 origin, List<EnemyComponent> enemies) {
@@ -196,7 +341,6 @@ class WeaponSystem {
     if (nearest != null && _random.nextBool()) {
       return nearest.position.clone();
     }
-
     return enemies[_random.nextInt(enemies.length)].position.clone();
   }
 
@@ -210,25 +354,43 @@ class WeaponSystem {
         nearestDistance = distance;
       }
     }
-
     return nearest;
   }
 
+  Vector2 _direction(Vector2 origin, Vector2 target) {
+    final direction = target - origin;
+    if (direction.length2 == 0) {
+      return Vector2(1, 0);
+    }
+    return direction..normalize();
+  }
+
+  double _positiveMultiplier(double value) => value > 0 ? value : 1;
+
   WeaponDefinition? _definitionFor(WeaponId weaponId) {
     for (final definition in weaponDefinitions) {
-      if (definition.id == weaponId) {
-        return definition;
-      }
+      if (definition.id == weaponId) return definition;
     }
-
     return null;
   }
 }
 
 class WeaponTickResult {
-  const WeaponTickResult({this.projectiles = const []});
+  const WeaponTickResult({
+    this.damageEvents = const [],
+    this.projectiles = const [],
+    this.meleeArcs = const [],
+    this.areaAttacks = const [],
+  });
 
-  const WeaponTickResult.empty() : projectiles = const [];
+  const WeaponTickResult.empty()
+    : damageEvents = const [],
+      projectiles = const [],
+      meleeArcs = const [],
+      areaAttacks = const [];
 
+  final List<DamageEvent> damageEvents;
   final List<ProjectileComponent> projectiles;
+  final List<MeleeArcComponent> meleeArcs;
+  final List<AreaAttackComponent> areaAttacks;
 }

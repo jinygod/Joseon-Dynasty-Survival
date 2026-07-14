@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flame/components.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/components/enemy_component.dart';
@@ -53,14 +55,75 @@ void main() {
         position: Vector2(20, 0),
       );
 
-      system.tick(
+      final result = system.tick(
         dt: 1,
         origin: Vector2.zero(),
         enemies: [enemy],
         damageMultiplier: 2,
       );
 
-      expect(enemy.currentHealth, 4);
+      expect(result.damageEvents.single.damage, 16);
+      expect(enemy.currentHealth, 20);
+    });
+
+    test('level five hwando creates two arc attacks with knockback', () {
+      final enemy = EnemyComponent(
+        enemyId: 'bandit',
+        maxHealth: 100,
+        moveSpeed: 0,
+        damage: 1,
+        position: Vector2(20, 0),
+      );
+
+      final result = WeaponSystem(
+        initialLevels: const {hwandoSlash: 5},
+        random: Random(1),
+      ).tick(dt: 1, origin: Vector2.zero(), enemies: [enemy]);
+
+      expect(result.meleeArcs, hasLength(2));
+      expect(result.damageEvents, hasLength(2));
+      expect(result.damageEvents.every((event) => event.knockback > 0), isTrue);
+    });
+
+    test('talisman chains to unique nearby targets', () {
+      final enemies = List.generate(
+        3,
+        (index) => EnemyComponent(
+          enemyId: 'vengeful_spirit',
+          maxHealth: 20,
+          moveSpeed: 0,
+          damage: 1,
+          position: Vector2(20.0 + index * 15, 0),
+        ),
+      );
+
+      final result = WeaponSystem(
+        initialLevels: const {talismanThrow: 3},
+        random: Random(1),
+      ).tick(dt: 2, origin: Vector2.zero(), enemies: enemies);
+
+      expect(
+        result.damageEvents.map((event) => event.target).toSet(),
+        hasLength(3),
+      );
+    });
+
+    test('bomb creates delayed area attack instead of immediate damage', () {
+      final enemy = EnemyComponent(
+        enemyId: 'bandit',
+        maxHealth: 20,
+        moveSpeed: 0,
+        damage: 1,
+        position: Vector2(20, 0),
+      );
+
+      final result = WeaponSystem(
+        initialLevels: const {thunderCrashBomb: 1},
+        random: Random(1),
+      ).tick(dt: 3, origin: Vector2.zero(), enemies: [enemy]);
+
+      expect(result.areaAttacks.single.delaySeconds, greaterThan(0));
+      expect(result.damageEvents, isEmpty);
     });
   });
 
@@ -124,6 +187,42 @@ void main() {
 
       expect(projectile.overlapsEnemy(nearEnemy), isTrue);
       expect(projectile.overlapsEnemy(farEnemy), isFalse);
+    });
+
+    test('pierces configured targets once each', () {
+      final projectile = ProjectileComponent(
+        weaponId: gakgungShot,
+        damage: 10,
+        position: Vector2.zero(),
+        velocity: Vector2(100, 0),
+        pierce: 2,
+      );
+      final enemyA = EnemyComponent(
+        enemyId: 'bandit',
+        maxHealth: 10,
+        moveSpeed: 0,
+        damage: 1,
+      );
+      final enemyB = EnemyComponent(
+        enemyId: 'bandit',
+        maxHealth: 10,
+        moveSpeed: 0,
+        damage: 1,
+      );
+      final enemyC = EnemyComponent(
+        enemyId: 'bandit',
+        maxHealth: 10,
+        moveSpeed: 0,
+        damage: 1,
+      );
+
+      expect(projectile.registerHit(enemyA), isTrue);
+      expect(projectile.registerHit(enemyA), isFalse);
+      expect(projectile.registerHit(enemyB), isTrue);
+      expect(projectile.isSpent, isFalse);
+      expect(projectile.remainingPierces, 0);
+      expect(projectile.registerHit(enemyC), isTrue);
+      expect(projectile.isSpent, isTrue);
     });
   });
 

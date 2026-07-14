@@ -12,8 +12,11 @@ class ProjectileComponent extends PositionComponent {
     required Vector2 position,
     required this.velocity,
     this.lifetime = 2.2,
+    this.pierce = 0,
+    this.knockback = 0,
     Vector2? size,
-  }) : super(
+  }) : _remainingHits = pierce + 1,
+       super(
          position: position,
          size: size ?? Vector2.all(8),
          anchor: Anchor.center,
@@ -23,9 +26,24 @@ class ProjectileComponent extends PositionComponent {
   final double damage;
   final Vector2 velocity;
   final double lifetime;
+  final int pierce;
+  final double knockback;
+  final Set<EnemyComponent> _hitEnemies = {};
+  int _remainingHits;
   double _age = 0;
 
   bool get isExpired => _age >= lifetime;
+  bool get isSpent => _remainingHits <= 0;
+  int get remainingPierces => (_remainingHits - 1).clamp(0, pierce).toInt();
+
+  bool registerHit(EnemyComponent enemy) {
+    if (isSpent || !_hitEnemies.add(enemy)) {
+      return false;
+    }
+
+    _remainingHits -= 1;
+    return true;
+  }
 
   bool overlapsEnemy(EnemyComponent enemy) {
     final hitRadius = (size.x + enemy.size.x) / 2;
@@ -38,7 +56,7 @@ class ProjectileComponent extends PositionComponent {
 
     _age += dt;
     position.add(velocity * dt);
-    if (isExpired) {
+    if (isExpired || isSpent) {
       removeFromParent();
     }
   }

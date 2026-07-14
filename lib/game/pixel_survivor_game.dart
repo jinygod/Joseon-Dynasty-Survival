@@ -8,8 +8,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart' show KeyEventResult;
 
 import 'components/enemy_component.dart';
+import 'components/area_attack_component.dart';
 import 'components/experience_gem_component.dart';
 import 'components/player_component.dart';
+import 'components/melee_arc_component.dart';
 import 'components/projectile_component.dart';
 import 'content/augment_definitions.dart';
 import 'content/character_definitions.dart';
@@ -17,6 +19,7 @@ import 'content/enemy_definitions.dart';
 import 'content/ids.dart';
 import 'content/weapon_definitions.dart';
 import 'models/player_slot.dart';
+import 'models/damage_event.dart';
 import 'models/run_result.dart';
 import 'models/run_outcome.dart';
 import 'models/vector_input.dart';
@@ -143,6 +146,7 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
 
     _updateWeapons(dt);
     _applyProjectileHits();
+    _resolveAreaAttacks();
     _dropExperienceForDeadEnemies();
     _collectExperienceGems();
   }
@@ -264,8 +268,15 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
       enemies: children.whereType<EnemyComponent>(),
       damageMultiplier: _weaponDamageMultiplier,
     );
+    _applyDamageEvents(result.damageEvents);
     for (final projectile in result.projectiles) {
       add(projectile);
+    }
+    for (final arc in result.meleeArcs) {
+      add(arc);
+    }
+    for (final areaAttack in result.areaAttacks) {
+      add(areaAttack);
     }
   }
 
@@ -292,12 +303,41 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
       }
 
       for (final enemy in enemies) {
-        if (!enemy.isDead && projectile.overlapsEnemy(enemy)) {
-          enemy.takeDamage(projectile.damage);
-          projectile.removeFromParent();
-          break;
+        if (!enemy.isDead &&
+            projectile.overlapsEnemy(enemy) &&
+            projectile.registerHit(enemy)) {
+          final direction = enemy.position - projectile.position;
+          if (direction.length2 > 0) direction.normalize();
+          _applyDamageEvents([
+            DamageEvent(
+              target: enemy,
+              damage: projectile.damage,
+              knockback: projectile.knockback,
+              direction: direction,
+              weaponId: projectile.weaponId,
+            ),
+          ]);
+          if (projectile.isSpent) {
+            projectile.removeFromParent();
+            break;
+          }
         }
       }
+    }
+  }
+
+  void _resolveAreaAttacks() {
+    final enemies = children.whereType<EnemyComponent>();
+    for (final attack in children.whereType<AreaAttackComponent>().toList()) {
+      _applyDamageEvents(attack.collectDamageEvents(enemies));
+    }
+  }
+
+  void _applyDamageEvents(Iterable<DamageEvent> events) {
+    for (final event in events) {
+      if (event.target.isDead) continue;
+      event.target.takeDamage(event.damage);
+      event.target.registerHit(knockback: event.direction * event.knockback);
     }
   }
 
