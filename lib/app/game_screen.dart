@@ -1,6 +1,7 @@
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 
+import 'first_run_tutorial_overlay.dart';
 import 'game_hud.dart';
 import 'level_up_overlay.dart';
 import 'pause_menu_overlay.dart';
@@ -14,6 +15,7 @@ import '../game/systems/run_telemetry_service.dart';
 import '../game/systems/save_system.dart';
 import '../game/systems/telemetry_export_service.dart';
 import '../game/systems/telemetry_repository.dart';
+import '../game/systems/tutorial_progress_repository.dart';
 
 class GameScreen extends StatefulWidget {
   const GameScreen({
@@ -22,6 +24,8 @@ class GameScreen extends StatefulWidget {
     this.telemetryExportService,
     this.now,
     this.game,
+    this.showFirstRunTutorial = false,
+    this.tutorialProgressRepository,
     super.key,
   });
 
@@ -30,6 +34,8 @@ class GameScreen extends StatefulWidget {
   final TelemetryExportService? telemetryExportService;
   final UtcClock? now;
   final PixelSurvivorGame? game;
+  final bool showFirstRunTutorial;
+  final TutorialProgressRepository? tutorialProgressRepository;
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -37,11 +43,13 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   static const _pauseOverlayId = 'pauseMenu';
+  static const _tutorialOverlayId = 'firstRunTutorial';
 
   late final PixelSurvivorGame _game;
   late final RunTelemetryService _telemetryService;
   late final TelemetryRepository _telemetryRepository;
   late final TelemetryExportService _telemetryExportService;
+  late final TutorialProgressRepository _tutorialProgressRepository;
   late final DateTime _runStartedAtUtc;
   bool _handledRunEnd = false;
 
@@ -53,6 +61,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     _telemetryRepository = widget.telemetryRepository ?? TelemetryRepository();
     _telemetryExportService =
         widget.telemetryExportService ?? TelemetryExportService();
+    _tutorialProgressRepository =
+        widget.tutorialProgressRepository ?? TutorialProgressRepository();
     _runStartedAtUtc = (widget.now ?? DateTime.now)().toUtc();
     _game =
         widget.game ??
@@ -64,6 +74,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           onRunEnded: _handleRunEnded,
         );
     _game.pauseWhenBackgrounded = false;
+    if (widget.showFirstRunTutorial) {
+      _game.pauseEngine();
+    }
   }
 
   @override
@@ -87,7 +100,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   void _pauseGame() {
-    if (!_game.canPauseRun || _game.overlays.isActive(_pauseOverlayId)) {
+    if (!_game.canPauseRun ||
+        _game.overlays.isActive(_pauseOverlayId) ||
+        _game.overlays.isActive(_tutorialOverlayId)) {
       return;
     }
     _game.updateMovementInput(VectorInput.zero);
@@ -96,7 +111,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   void _resumeGame() {
-    if (!_game.canPauseRun) return;
+    if (!_game.canPauseRun || _game.overlays.isActive(_tutorialOverlayId)) {
+      return;
+    }
     _game.overlays.remove(_pauseOverlayId);
     _game.resumeEngine();
   }
@@ -109,6 +126,17 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   void _exitToMenu() {
     Navigator.of(context).popUntil((route) => route.isFirst);
+  }
+
+  Future<void> _completeTutorial() async {
+    try {
+      await _tutorialProgressRepository.markCompleted();
+    } on Object {
+      // A storage failure must not trap the player behind onboarding.
+    }
+    if (!mounted || !_game.canPauseRun) return;
+    _game.overlays.remove(_tutorialOverlayId);
+    _game.resumeEngine();
   }
 
   void _handleRunEnded(RunResult result) {
@@ -189,8 +217,16 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             onRestart: _restartGame,
             onExitToMenu: _exitToMenu,
           ),
+          _tutorialOverlayId: (_, _) => FirstRunTutorialOverlay(
+            onCompleted: () {
+              _completeTutorial();
+            },
+          ),
         },
-        initialActiveOverlays: const ['hud'],
+        initialActiveOverlays: [
+          'hud',
+          if (widget.showFirstRunTutorial) _tutorialOverlayId,
+        ],
       ),
     );
   }

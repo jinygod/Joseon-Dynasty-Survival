@@ -4,6 +4,8 @@ import 'package:pixel_survivor/app/game_screen.dart';
 import 'package:pixel_survivor/game/models/player_slot.dart';
 import 'package:pixel_survivor/game/models/vector_input.dart';
 import 'package:pixel_survivor/game/pixel_survivor_game.dart';
+import 'package:pixel_survivor/game/systems/tutorial_progress_repository.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   testWidgets('HUD pause clears input and can explicitly resume', (
@@ -58,6 +60,35 @@ void main() {
     expect(game.paused, isTrue);
     expect(find.byKey(const Key('pause-resume')), findsOneWidget);
     expect(find.byType(GameScreen), findsOneWidget);
+  });
+
+  testWidgets('first-run tutorial pauses, persists, and explicitly resumes', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final repository = TutorialProgressRepository(preferences: preferences);
+    final game = _game();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GameScreen(
+          game: game,
+          showFirstRunTutorial: true,
+          tutorialProgressRepository: repository,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(game.paused, isTrue);
+    expect(find.byKey(const Key('tutorial-skip')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('tutorial-skip')));
+    await tester.pump();
+
+    expect(await repository.isCompleted(), isTrue);
+    expect(game.paused, isFalse);
+    expect(find.byKey(const Key('tutorial-skip')), findsNothing);
   });
 }
 
