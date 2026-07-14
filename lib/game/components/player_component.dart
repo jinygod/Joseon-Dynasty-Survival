@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:flame/components.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 import '../models/vector_input.dart';
 import '../systems/combat_feedback_tuning.dart';
@@ -179,6 +180,12 @@ class PlayerComponent
   }
 
   Future<void> _loadAnimations() async {
+    try {
+      ServicesBinding.instance;
+    } on AssertionError {
+      // Pure game-loop tests intentionally run without a Flutter binding.
+      return;
+    }
     try {
       final image = await findGame()!.images.load(PlayerSpriteSheet.assetKey);
       animations = PlayerSpriteSheet.animations(image);
