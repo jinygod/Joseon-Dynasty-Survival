@@ -71,6 +71,7 @@ $workingDirectory = $repoRoot
 $mappedDrives = @()
 $originalTemp = $env:TEMP
 $originalTmp = $env:TMP
+$originalPubCache = $env:PUB_CACHE
 
 try {
   $isWindowsHost = $env:OS -eq 'Windows_NT'
@@ -79,6 +80,9 @@ try {
     New-Item -ItemType Directory -Force -Path $tempRoot | Out-Null
     $env:TEMP = $tempRoot
     $env:TMP = $tempRoot
+    $pubCacheRoot = Join-Path $env:SystemDrive 'codex-pub-cache'
+    New-Item -ItemType Directory -Force -Path $pubCacheRoot | Out-Null
+    $env:PUB_CACHE = $pubCacheRoot
 
     $flutterDrive = Get-FreeDriveLetter -Reserved @()
     $repoDrive = Get-FreeDriveLetter -Reserved @($flutterDrive)
@@ -119,4 +123,5 @@ finally {
   }
   $env:TEMP = $originalTemp
   $env:TMP = $originalTmp
+  $env:PUB_CACHE = $originalPubCache
 }
