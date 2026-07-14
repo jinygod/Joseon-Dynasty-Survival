@@ -51,6 +51,7 @@ class BossComponent extends EnemyComponent {
     if (direction.length2 == 0) return;
     direction.normalize();
     position.add(direction * moveSpeed * controller.movementMultiplier * dt);
+    playMove();
   }
 
   @override
@@ -75,10 +76,13 @@ class BossComponent extends EnemyComponent {
     switch (action.type) {
       case BossActionType.chargeWarning:
         _chargeWarningRemaining = BossController.chargeWarningSeconds;
+        playAttack();
       case BossActionType.charge:
         _chargeDirection.setFrom(_directionToTarget());
         _chargeRemaining = 0.35;
+        playAttack();
       case BossActionType.coneWarning:
+        playAttack();
         onAreaAttack?.call(
           AreaAttackComponent(
             damage: damage * 1.5,
@@ -94,6 +98,7 @@ class BossComponent extends EnemyComponent {
       case BossActionType.coneDamage:
         break;
       case BossActionType.summon:
+        playAttack();
         onSummonRequested?.call();
     }
   }

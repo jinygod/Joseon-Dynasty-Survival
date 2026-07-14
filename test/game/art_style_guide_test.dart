@@ -89,4 +89,19 @@ void main() {
       expect(bytes[25], 6, reason: '${entry.key} must use RGBA color type');
     }
   });
+
+  test('boss sheet is a 4x4 RGBA grid of 64px frames', () {
+    final bytes = File(
+      'assets/images/monsters/fallen_general_64.png',
+    ).readAsBytesSync();
+    int readUint32(int offset) =>
+        (bytes[offset] << 24) |
+        (bytes[offset + 1] << 16) |
+        (bytes[offset + 2] << 8) |
+        bytes[offset + 3];
+
+    expect(readUint32(16), 256);
+    expect(readUint32(20), 256);
+    expect(bytes[25], 6, reason: 'boss PNG must use RGBA color type');
+  });
 }

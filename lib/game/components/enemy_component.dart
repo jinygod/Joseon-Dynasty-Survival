@@ -45,6 +45,10 @@ abstract final class EnemySpriteSheet {
       assetKey: 'monsters/vengeful_spirit_32.png',
       frameSize: 32,
     ),
+    fallenGeneral: EnemySpriteSpec(
+      assetKey: 'monsters/fallen_general_64.png',
+      frameSize: 64,
+    ),
   };
 
   static Map<EnemyAnimationState, SpriteAnimation> animations(
@@ -185,6 +189,14 @@ class EnemyComponent
     _setVisualState(EnemyAnimationState.attacking);
   }
 
+  void playMove() {
+    if (!isDead &&
+        visualState != EnemyAnimationState.hit &&
+        visualState != EnemyAnimationState.attacking) {
+      _setVisualState(EnemyAnimationState.moving);
+    }
+  }
+
   void applyKnockback(Vector2 impulse) {
     final resistanceMultiplier = behaviorType == EnemyBehaviorType.tank
         ? 0.3
@@ -222,7 +234,7 @@ class EnemyComponent
     if (visualState != EnemyAnimationState.hit &&
         visualState != EnemyAnimationState.attacking &&
         !isDead) {
-      _setVisualState(EnemyAnimationState.moving);
+      playMove();
     }
   }
 

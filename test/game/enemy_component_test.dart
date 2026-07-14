@@ -150,7 +150,7 @@ void main() {
       expect(enemy.visualState, EnemyAnimationState.death);
     });
 
-    test('normal enemy sheets share the 4-4-2-6 frame contract', () {
+    test('enemy sheets share the 4-4-2-6 frame contract', () {
       expect(EnemySpriteSheet.moveFrames, [0, 1, 2, 3]);
       expect(EnemySpriteSheet.attackFrames, [4, 5, 6, 7]);
       expect(EnemySpriteSheet.hitFrames, [8, 9]);
@@ -160,8 +160,10 @@ void main() {
         bandit,
         dokkaebi,
         vengefulSpirit,
+        fallenGeneral,
       });
       expect(EnemySpriteSheet.specs[plagueRatSwarm]!.frameSize, 24);
+      expect(EnemySpriteSheet.specs[fallenGeneral]!.frameSize, 64);
     });
   });
 }
