@@ -12,10 +12,14 @@
 
 ## Steps
 
-- [ ] Add tests that inspect rendered menu/HUD/result text and all content display names for Latin letters.
-- [ ] Create `AppStrings` and move shared UI copy to it.
-- [ ] Translate remaining content definition names and technical-looking result labels.
-- [ ] Update existing exact-text tests.
-- [ ] Run focused tests and the full web/Android release gate.
-- [ ] Mark `UX-010`, update baseline/queue, merge, and clean worktree.
+- [x] Add tests that inspect rendered menu/HUD/result text and all content display names for Latin letters.
+- [x] Create `AppStrings` and move shared UI copy to it.
+- [x] Translate remaining content definition names and technical-looking result labels.
+- [x] Update existing exact-text tests.
+- [x] Run focused tests and the full web/Android release gate.
+- [x] Mark `UX-010`, update baseline/queue, merge, and clean worktree.
 
+## Verification
+
+- Focused widget/content suite: 23 tests passed.
+- Full release gate: analyzer clean, 145 tests passed, web build passed, Android debug APK built.
