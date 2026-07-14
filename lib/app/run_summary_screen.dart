@@ -42,6 +42,7 @@ class _RunSummaryScreenState extends State<RunSummaryScreen> {
   bool? _retryIntent;
   bool _savingFeedback = false;
   bool _feedbackSaved = false;
+  bool _navigationCommitted = false;
 
   @override
   void dispose() {
@@ -211,11 +212,17 @@ class _RunSummaryScreenState extends State<RunSummaryScreen> {
                     runSpacing: 12,
                     children: [
                       FilledButton(
-                        onPressed: widget.onStart,
+                        key: const Key('result-retry'),
+                        onPressed: _navigationCommitted
+                            ? null
+                            : () => _commitNavigation(widget.onStart),
                         child: const Text('다시 시작'),
                       ),
                       OutlinedButton(
-                        onPressed: widget.onMenu,
+                        key: const Key('result-menu'),
+                        onPressed: _navigationCommitted
+                            ? null
+                            : () => _commitNavigation(widget.onMenu),
                         child: const Text('메인 메뉴'),
                       ),
                     ],
@@ -309,6 +316,12 @@ class _RunSummaryScreenState extends State<RunSummaryScreen> {
       setState(() => _savingFeedback = false);
       _showMessage('피드백 저장에 실패했습니다.');
     }
+  }
+
+  void _commitNavigation(VoidCallback action) {
+    if (_navigationCommitted) return;
+    setState(() => _navigationCommitted = true);
+    action();
   }
 
   Future<void> _runJsonAction(

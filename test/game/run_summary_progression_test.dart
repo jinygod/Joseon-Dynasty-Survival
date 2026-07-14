@@ -171,7 +171,86 @@ void main() {
     await tester.tap(find.widgetWithText(OutlinedButton, '메인 메뉴'));
 
     expect(started, isTrue);
-    expect(openedMenu, isTrue);
+    expect(openedMenu, isFalse);
+  });
+
+  testWidgets('result navigation commits only the first rapid action', (
+    tester,
+  ) async {
+    const result = RunResult(
+      outcome: RunOutcome.defeat,
+      survivalSeconds: 90,
+      kills: 10,
+      level: 3,
+      bossDefeated: false,
+      wonWithLowHealth: false,
+      weaponKillCounts: {},
+      weaponLevels: {},
+    );
+    var retries = 0;
+    var menus = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: RunSummaryScreen(
+          result: result,
+          unlocks: const ProgressionUnlocks(),
+          onStart: () => retries += 1,
+          onMenu: () => menus += 1,
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('result-retry')));
+    await tester.tap(find.byKey(const Key('result-retry')));
+    await tester.tap(find.byKey(const Key('result-menu')));
+    await tester.pump();
+
+    expect(retries, 1);
+    expect(menus, 0);
+    expect(
+      tester
+          .widget<FilledButton>(find.byKey(const Key('result-retry')))
+          .onPressed,
+      isNull,
+    );
+    expect(
+      tester
+          .widget<OutlinedButton>(find.byKey(const Key('result-menu')))
+          .onPressed,
+      isNull,
+    );
+  });
+
+  testWidgets('menu double tap cannot trigger retry', (tester) async {
+    const result = RunResult(
+      outcome: RunOutcome.victory,
+      survivalSeconds: 300,
+      kills: 80,
+      level: 10,
+      bossDefeated: true,
+      wonWithLowHealth: false,
+      weaponKillCounts: {},
+      weaponLevels: {},
+    );
+    var retries = 0;
+    var menus = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: RunSummaryScreen(
+          result: result,
+          unlocks: const ProgressionUnlocks(),
+          onStart: () => retries += 1,
+          onMenu: () => menus += 1,
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('result-menu')));
+    await tester.tap(find.byKey(const Key('result-menu')));
+    await tester.tap(find.byKey(const Key('result-retry')));
+
+    expect(menus, 1);
+    expect(retries, 0);
   });
 
   testWidgets('victory summary shows boss result and final build', (
