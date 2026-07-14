@@ -24,6 +24,10 @@ class GameScreen extends StatefulWidget {
     this.telemetryExportService,
     this.now,
     this.game,
+    this.playerSlot = const PlayerSlot(
+      index: 0,
+      characterId: 'rookie_constable',
+    ),
     this.showFirstRunTutorial = false,
     this.tutorialProgressRepository,
     super.key,
@@ -34,6 +38,7 @@ class GameScreen extends StatefulWidget {
   final TelemetryExportService? telemetryExportService;
   final UtcClock? now;
   final PixelSurvivorGame? game;
+  final PlayerSlot playerSlot;
   final bool showFirstRunTutorial;
   final TutorialProgressRepository? tutorialProgressRepository;
 
@@ -67,10 +72,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     _game =
         widget.game ??
         PixelSurvivorGame(
-          playerSlot: const PlayerSlot(
-            index: 0,
-            characterId: 'rookie_constable',
-          ),
+          playerSlot: widget.playerSlot,
           onRunEnded: _handleRunEnded,
         );
     _game.pauseWhenBackgrounded = false;
@@ -120,7 +122,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   void _restartGame() {
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute<void>(builder: (_) => const GameScreen()),
+      MaterialPageRoute<void>(
+        builder: (_) => GameScreen(playerSlot: widget.playerSlot),
+      ),
     );
   }
 
@@ -185,7 +189,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                 : _telemetryExportService.exportAll,
             onStart: () {
               Navigator.of(context).pushReplacement(
-                MaterialPageRoute<void>(builder: (_) => const GameScreen()),
+                MaterialPageRoute<void>(
+                  builder: (_) => GameScreen(playerSlot: widget.playerSlot),
+                ),
               );
             },
             onMenu: () {

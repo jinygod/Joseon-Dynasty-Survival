@@ -1,6 +1,8 @@
+import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/app/game_screen.dart';
+import 'package:pixel_survivor/game/content/character_definitions.dart';
 import 'package:pixel_survivor/game/models/player_slot.dart';
 import 'package:pixel_survivor/game/models/vector_input.dart';
 import 'package:pixel_survivor/game/pixel_survivor_game.dart';
@@ -89,6 +91,33 @@ void main() {
     expect(await repository.isCompleted(), isTrue);
     expect(game.paused, isFalse);
     expect(find.byKey(const Key('tutorial-skip')), findsNothing);
+  });
+
+  testWidgets('pause restart preserves the selected character slot', (
+    tester,
+  ) async {
+    const slot = PlayerSlot(index: 0, characterId: exorcistDosa);
+    await tester.pumpWidget(
+      const MaterialApp(home: GameScreen(playerSlot: slot)),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('hud-pause')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('pause-restart')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    final gameWidgets = tester.widgetList<GameWidget<PixelSurvivorGame>>(
+      find.byType(GameWidget<PixelSurvivorGame>),
+    );
+    expect(gameWidgets, isNotEmpty);
+    expect(
+      gameWidgets.every(
+        (widget) => widget.game!.playerSlot.characterId == exorcistDosa,
+      ),
+      isTrue,
+    );
   });
 }
 
