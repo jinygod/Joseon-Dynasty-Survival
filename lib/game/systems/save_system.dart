@@ -51,7 +51,7 @@ class SaveState {
 
   factory SaveState.fromJson(Map<String, dynamic> json) {
     final rawSchemaVersion = json['schemaVersion'];
-    final schemaVersion = rawSchemaVersion == null ? 0 : rawSchemaVersion;
+    final schemaVersion = rawSchemaVersion ?? 0;
     if (schemaVersion is! int ||
         schemaVersion < 0 ||
         schemaVersion > currentSchemaVersion) {
