@@ -1,4 +1,6 @@
+import 'run_choice_record.dart';
 import 'run_outcome.dart';
+import 'run_result.dart';
 
 class RunTelemetry {
   RunTelemetry({
@@ -13,7 +15,14 @@ class RunTelemetry {
     required this.kills,
     required this.bossDefeated,
     required Map<String, int> weaponKillCounts,
-  }) : weaponKillCounts = Map.unmodifiable(weaponKillCounts);
+    Map<String, double> weaponDamageTotals = const {},
+    List<RunChoiceRecord> choices = const [],
+    this.totalDamageTaken = 0,
+    this.lastDamageSource,
+    this.deathAtSeconds,
+  }) : weaponKillCounts = Map.unmodifiable(weaponKillCounts),
+       weaponDamageTotals = Map.unmodifiable(weaponDamageTotals),
+       choices = List.unmodifiable(choices);
 
   static const currentSchemaVersion = 1;
 
@@ -28,6 +37,37 @@ class RunTelemetry {
   final int kills;
   final bool bossDefeated;
   final Map<String, int> weaponKillCounts;
+  final Map<String, double> weaponDamageTotals;
+  final List<RunChoiceRecord> choices;
+  final double totalDamageTaken;
+  final String? lastDamageSource;
+  final int? deathAtSeconds;
+
+  factory RunTelemetry.fromRunResult({
+    required RunResult result,
+    required String runId,
+    required String appVersion,
+    required DateTime startedAtUtc,
+    required DateTime endedAtUtc,
+  }) {
+    return RunTelemetry(
+      runId: runId,
+      appVersion: appVersion,
+      startedAtUtc: startedAtUtc,
+      endedAtUtc: endedAtUtc,
+      outcome: result.outcome,
+      survivalSeconds: result.survivalSeconds,
+      level: result.level,
+      kills: result.kills,
+      bossDefeated: result.bossDefeated,
+      weaponKillCounts: result.weaponKillCounts,
+      weaponDamageTotals: result.weaponDamageTotals,
+      choices: result.choices,
+      totalDamageTaken: result.totalDamageTaken,
+      lastDamageSource: result.lastDamageSource,
+      deathAtSeconds: result.deathAtSeconds,
+    );
+  }
 
   Map<String, dynamic> toJson() => {
     'schemaVersion': schemaVersion,
@@ -41,6 +81,11 @@ class RunTelemetry {
     'kills': kills,
     'bossDefeated': bossDefeated,
     'weaponKillCounts': weaponKillCounts,
+    'weaponDamageTotals': weaponDamageTotals,
+    'choices': choices.map((choice) => choice.toJson()).toList(),
+    'totalDamageTaken': totalDamageTaken,
+    'lastDamageSource': lastDamageSource,
+    'deathAtSeconds': deathAtSeconds,
   };
 
   factory RunTelemetry.fromJson(Map<String, dynamic> json) {
@@ -67,6 +112,11 @@ class RunTelemetry {
         weaponKillCounts: Map<String, int>.from(
           json['weaponKillCounts'] as Map,
         ),
+        weaponDamageTotals: _doubleMap(json['weaponDamageTotals']),
+        choices: _choiceList(json['choices']),
+        totalDamageTaken: (json['totalDamageTaken'] as num?)?.toDouble() ?? 0,
+        lastDamageSource: json['lastDamageSource'] as String?,
+        deathAtSeconds: json['deathAtSeconds'] as int?,
       );
     } on Object catch (error) {
       throw FormatException('Invalid run telemetry schema 1 payload', error);
@@ -80,5 +130,33 @@ class RunTelemetry {
       }
     }
     throw FormatException('Unknown run outcome: $value');
+  }
+
+  static Map<String, double> _doubleMap(Object? value) {
+    if (value == null) return const {};
+    if (value is! Map) {
+      throw const FormatException('Invalid weapon damage totals');
+    }
+
+    return value.map((key, amount) {
+      if (key is! String || amount is! num) {
+        throw const FormatException('Invalid weapon damage entry');
+      }
+      return MapEntry(key, amount.toDouble());
+    });
+  }
+
+  static List<RunChoiceRecord> _choiceList(Object? value) {
+    if (value == null) return const [];
+    if (value is! List) {
+      throw const FormatException('Invalid run choice list');
+    }
+
+    return value.map((entry) {
+      if (entry is! Map) {
+        throw const FormatException('Invalid run choice entry');
+      }
+      return RunChoiceRecord.fromJson(Map<String, dynamic>.from(entry));
+    }).toList();
   }
 }

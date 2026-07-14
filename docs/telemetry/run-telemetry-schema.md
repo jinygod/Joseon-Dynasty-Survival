@@ -17,5 +17,10 @@ Run telemetry is local playtest data. It is separate from `SaveState`, does not 
 | `kills` | integer | Total enemies defeated. |
 | `bossDefeated` | boolean | Whether the boss was defeated. |
 | `weaponKillCounts` | object | Weapon ID to kill count map. |
+| `weaponDamageTotals` | object | Weapon ID to effective damage total map. |
+| `choices` | array | Ordered weapon/augment selections with time and selected level. |
+| `totalDamageTaken` | number | Effective player health lost during the run. |
+| `lastDamageSource` | string or null | Enemy/content ID responsible for the latest damage. |
+| `deathAtSeconds` | integer or null | First lethal-damage time, or null for a surviving player. |
 
-All fields are required in schema 1. Unknown or malformed schemas throw `FormatException`; the later telemetry repository boundary must isolate that failure from progression saving and the result screen. Future tasks extend this model with weapon damage, choice history, received damage, and optional playtest feedback.
+Core fields through `weaponKillCounts` are required. Extended playtest fields are backward-compatible additions: absent maps/lists decode empty, absent damage decodes to zero, and absent nullable fields decode to null. Unknown or malformed schemas throw `FormatException`; the telemetry repository boundary isolates that failure from progression saving and the result screen.

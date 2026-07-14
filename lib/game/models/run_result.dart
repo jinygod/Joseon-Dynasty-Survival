@@ -1,4 +1,5 @@
 import 'run_outcome.dart';
+import 'run_choice_record.dart';
 
 class RunResult {
   const RunResult({
@@ -10,6 +11,11 @@ class RunResult {
     required this.wonWithLowHealth,
     required this.weaponKillCounts,
     required this.weaponLevels,
+    this.weaponDamageTotals = const {},
+    this.choices = const [],
+    this.totalDamageTaken = 0,
+    this.lastDamageSource,
+    this.deathAtSeconds,
   });
 
   final RunOutcome outcome;
@@ -20,4 +26,9 @@ class RunResult {
   final bool wonWithLowHealth;
   final Map<String, int> weaponKillCounts;
   final Map<String, int> weaponLevels;
+  final Map<String, double> weaponDamageTotals;
+  final List<RunChoiceRecord> choices;
+  final double totalDamageTaken;
+  final String? lastDamageSource;
+  final int? deathAtSeconds;
 }
