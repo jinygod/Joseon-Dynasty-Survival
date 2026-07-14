@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../game/systems/level_up_system.dart';
+import '../l10n/app_strings.dart';
 
 class LevelUpOverlay extends StatelessWidget {
   const LevelUpOverlay({
@@ -28,7 +29,7 @@ class LevelUpOverlay extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Level Up',
+                    AppStrings.levelUp,
                     style: theme.textTheme.headlineMedium?.copyWith(
                       color: const Color(0xfff4ead2),
                       fontWeight: FontWeight.w700,
@@ -68,8 +69,8 @@ class _LevelUpChoiceButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final typeLabel = switch (choice.type) {
-      LevelUpChoiceType.weapon => 'Weapon',
-      LevelUpChoiceType.augment => 'Augment',
+      LevelUpChoiceType.weapon => AppStrings.weapon,
+      LevelUpChoiceType.augment => AppStrings.augment,
     };
 
     return SizedBox(
@@ -108,7 +109,10 @@ class _LevelUpChoiceButton extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              'Lv ${choice.currentLevel} -> ${choice.nextLevel}',
+              AppStrings.levelRange(
+                current: choice.currentLevel,
+                next: choice.nextLevel,
+              ),
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,

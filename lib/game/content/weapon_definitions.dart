@@ -38,14 +38,14 @@ const weaponDefinitions = <WeaponDefinition>[
   ),
   WeaponDefinition(
     id: jangseungWard,
-    name: 'Jangseung Ward',
+    name: '장승 결계',
     element: ElementType.magic,
     maxLevel: 5,
     startsUnlocked: false,
   ),
   WeaponDefinition(
     id: singijeonVolley,
-    name: 'Singijeon Volley',
+    name: '신기전 일제사격',
     element: ElementType.fire,
     maxLevel: 5,
     startsUnlocked: false,

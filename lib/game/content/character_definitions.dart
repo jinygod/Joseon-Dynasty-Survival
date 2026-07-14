@@ -7,7 +7,7 @@ const exorcistDosa = 'exorcist_dosa';
 const characterDefinitions = <CharacterDefinition>[
   CharacterDefinition(
     id: rookieConstable,
-    name: 'Rookie Constable',
+    name: '신참 포졸',
     maxHealth: 105,
     moveSpeed: 125,
     damageMultiplier: 1,
@@ -15,7 +15,7 @@ const characterDefinitions = <CharacterDefinition>[
   ),
   CharacterDefinition(
     id: exorcistDosa,
-    name: 'Exorcist Dosa',
+    name: '퇴마 도사',
     maxHealth: 85,
     moveSpeed: 115,
     damageMultiplier: 1.12,

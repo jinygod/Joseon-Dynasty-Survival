@@ -281,9 +281,9 @@ void main() {
     expect(find.text('승리'), findsOneWidget);
     expect(find.text('보스 처치'), findsOneWidget);
     expect(find.text('환도 베기'), findsOneWidget);
-    expect(find.textContaining('Lv 5'), findsOneWidget);
+    expect(find.textContaining('레벨 5'), findsOneWidget);
     expect(find.text('각궁 사격'), findsOneWidget);
-    expect(find.textContaining('Lv 3'), findsOneWidget);
+    expect(find.textContaining('레벨 3'), findsOneWidget);
   });
 
   testWidgets('defeat summary distinguishes an unfinished boss fight', (
@@ -341,9 +341,9 @@ void main() {
     );
 
     expect(find.text('환도 베기'), findsOneWidget);
-    expect(find.text('Lv 5 · 피해 1235 · 처치 42'), findsOneWidget);
+    expect(find.text('레벨 5 · 피해 1235 · 처치 42'), findsOneWidget);
     expect(find.text('각궁 사격'), findsOneWidget);
-    expect(find.text('Lv 3 · 피해 500 · 처치 10'), findsOneWidget);
+    expect(find.text('레벨 3 · 피해 500 · 처치 10'), findsOneWidget);
   });
 
   testWidgets('feedback requires structured answers and submits exact values', (
@@ -434,7 +434,7 @@ void main() {
     await tester.ensureVisible(copyFinder);
     await tester.tap(copyFinder);
     await tester.pump();
-    expect(find.text('런 JSON을 복사했습니다.'), findsOneWidget);
+    expect(find.text('이 판 기록을 복사했습니다.'), findsOneWidget);
 
     final exportFinder = find.byKey(const Key('export-all-json'));
     await tester.ensureVisible(exportFinder);

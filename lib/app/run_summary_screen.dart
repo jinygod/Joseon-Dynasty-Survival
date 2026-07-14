@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_strings.dart';
 import '../game/content/augment_definitions.dart';
 import '../game/content/character_definitions.dart';
 import '../game/content/weapon_definitions.dart';
@@ -66,7 +67,7 @@ class _RunSummaryScreenState extends State<RunSummaryScreen> {
                 shrinkWrap: true,
                 children: [
                   Text(
-                    isVictory ? '승리' : '패배',
+                    isVictory ? AppStrings.victory : AppStrings.defeat,
                     textAlign: TextAlign.center,
                     style: theme.textTheme.headlineLarge?.copyWith(
                       color: isVictory ? Colors.amber.shade700 : Colors.red,
@@ -75,23 +76,31 @@ class _RunSummaryScreenState extends State<RunSummaryScreen> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    widget.result.bossDefeated ? '보스 처치' : '보스 미처치',
+                    widget.result.bossDefeated
+                        ? AppStrings.bossDefeated
+                        : AppStrings.bossNotDefeated,
                     textAlign: TextAlign.center,
                     style: theme.textTheme.titleMedium,
                   ),
                   const SizedBox(height: 24),
-                  _StatRow(label: '생존 시간', value: _formatTime()),
                   _StatRow(
-                    label: '처치 수',
+                    label: AppStrings.survivalTime,
+                    value: _formatTime(),
+                  ),
+                  _StatRow(
+                    label: AppStrings.killCount,
                     value: widget.result.kills.toString(),
                   ),
                   _StatRow(
-                    label: '도달 레벨',
+                    label: AppStrings.reachedLevel,
                     value: widget.result.level.toString(),
                   ),
                   if (_weaponIds().isNotEmpty) ...[
                     const SizedBox(height: 18),
-                    Text('무기 성과', style: theme.textTheme.titleMedium),
+                    Text(
+                      AppStrings.weaponPerformance,
+                      style: theme.textTheme.titleMedium,
+                    ),
                     const SizedBox(height: 8),
                     for (final weaponId in _weaponIds())
                       _StatRow(
@@ -100,17 +109,26 @@ class _RunSummaryScreenState extends State<RunSummaryScreen> {
                       ),
                   ],
                   const SizedBox(height: 24),
-                  Text('새로운 해금', style: theme.textTheme.titleMedium),
+                  Text(
+                    AppStrings.newUnlocks,
+                    style: theme.textTheme.titleMedium,
+                  ),
                   const SizedBox(height: 8),
                   if (widget.unlocks.isEmpty)
-                    const Text('이번 판에서 새로 해금된 항목이 없습니다.')
+                    const Text(AppStrings.noNewUnlocks)
                   else ...[
                     _UnlockGroup(
-                      label: '캐릭터',
+                      label: AppStrings.character,
                       ids: widget.unlocks.characterIds,
                     ),
-                    _UnlockGroup(label: '무기', ids: widget.unlocks.weaponIds),
-                    _UnlockGroup(label: '증강', ids: widget.unlocks.augmentIds),
+                    _UnlockGroup(
+                      label: AppStrings.weapon,
+                      ids: widget.unlocks.weaponIds,
+                    ),
+                    _UnlockGroup(
+                      label: AppStrings.augment,
+                      ids: widget.unlocks.augmentIds,
+                    ),
                   ],
                   if (widget.onFeedbackSubmitted != null) ...[
                     const SizedBox(height: 24),
@@ -185,11 +203,11 @@ class _RunSummaryScreenState extends State<RunSummaryScreen> {
                             key: const Key('copy-run-json'),
                             onPressed: () => _runJsonAction(
                               widget.onCopyRunJson!,
-                              successMessage: '런 JSON을 복사했습니다.',
+                              successMessage: '이 판 기록을 복사했습니다.',
                               emptyMessage: '복사할 런 기록이 없습니다.',
                             ),
                             icon: const Icon(Icons.copy),
-                            label: const Text('이 런 JSON 복사'),
+                            label: const Text(AppStrings.copyRunRecord),
                           ),
                         if (widget.onExportAllJson != null)
                           OutlinedButton.icon(
@@ -200,7 +218,7 @@ class _RunSummaryScreenState extends State<RunSummaryScreen> {
                               emptyMessage: '내보낼 기록이 없습니다.',
                             ),
                             icon: const Icon(Icons.ios_share),
-                            label: const Text('전체 기록 JSON 내보내기'),
+                            label: const Text(AppStrings.exportAllRecords),
                           ),
                       ],
                     ),
@@ -216,14 +234,14 @@ class _RunSummaryScreenState extends State<RunSummaryScreen> {
                         onPressed: _navigationCommitted
                             ? null
                             : () => _commitNavigation(widget.onStart),
-                        child: const Text('다시 시작'),
+                        child: const Text(AppStrings.retry),
                       ),
                       OutlinedButton(
                         key: const Key('result-menu'),
                         onPressed: _navigationCommitted
                             ? null
                             : () => _commitNavigation(widget.onMenu),
-                        child: const Text('메인 메뉴'),
+                        child: const Text(AppStrings.mainMenu),
                       ),
                     ],
                   ),
@@ -257,7 +275,7 @@ class _RunSummaryScreenState extends State<RunSummaryScreen> {
     final level = widget.result.weaponLevels[weaponId] ?? 0;
     final damage = (widget.result.weaponDamageTotals[weaponId] ?? 0).round();
     final kills = widget.result.weaponKillCounts[weaponId] ?? 0;
-    return 'Lv $level · 피해 $damage · 처치 $kills';
+    return AppStrings.weaponMetric(level: level, damage: damage, kills: kills);
   }
 
   bool get _canSubmitFeedback =>
@@ -335,7 +353,7 @@ class _RunSummaryScreenState extends State<RunSummaryScreen> {
       _showMessage(succeeded ? successMessage : emptyMessage);
     } on Object {
       if (!mounted) return;
-      _showMessage('JSON 작업에 실패했습니다.');
+      _showMessage('기록 작업에 실패했습니다.');
     }
   }
 

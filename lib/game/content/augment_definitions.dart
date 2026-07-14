@@ -65,7 +65,7 @@ const augmentDefinitions = <AugmentDefinition>[
   ),
   AugmentDefinition(
     id: goblinFire,
-    name: 'Goblin Fire',
+    name: '도깨비불',
     maxLevel: 5,
     startsUnlocked: false,
   ),
@@ -78,19 +78,19 @@ const augmentDefinitions = <AugmentDefinition>[
   ),
   AugmentDefinition(
     id: lastStand,
-    name: 'Last Stand',
+    name: '최후의 저항',
     maxLevel: 3,
     startsUnlocked: false,
   ),
   AugmentDefinition(
     id: ritualShortcut,
-    name: 'Ritual Shortcut',
+    name: '의식 단축',
     maxLevel: 1,
     startsUnlocked: false,
   ),
   AugmentDefinition(
     id: heavyStrike,
-    name: 'Heavy Strike',
+    name: '강력한 일격',
     maxLevel: 5,
     startsUnlocked: false,
   ),

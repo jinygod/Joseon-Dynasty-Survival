@@ -11,14 +11,14 @@ void main() {
     final source = FakeGameHudSource(
       bossName: '타락한 관군 대장',
       bossHealthFraction: 0.5,
-      weaponLevelLabels: const ['환도 베기 Lv 3', '각궁 사격 Lv 2'],
+      weaponLevelLabels: const ['환도 베기 레벨 3', '각궁 사격 레벨 2'],
     );
 
     await tester.pumpWidget(MaterialApp(home: GameHud(source: source)));
 
     expect(find.text('타락한 관군 대장'), findsOneWidget);
-    expect(find.text('환도 베기 Lv 3'), findsOneWidget);
-    expect(find.text('각궁 사격 Lv 2'), findsOneWidget);
+    expect(find.text('환도 베기 레벨 3'), findsOneWidget);
+    expect(find.text('각궁 사격 레벨 2'), findsOneWidget);
     expect(find.byType(LinearProgressIndicator), findsOneWidget);
   });
 
@@ -39,7 +39,7 @@ void main() {
     );
 
     expect(find.text(choice.displayName), findsOneWidget);
-    expect(find.text('Lv 0 -> 1'), findsOneWidget);
+    expect(find.text('레벨 0 → 1'), findsOneWidget);
     expect(find.text(choice.effectDescription), findsOneWidget);
   });
 

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../l10n/app_strings.dart';
 import 'game_hud_source.dart';
 import 'virtual_joystick.dart';
 
@@ -47,7 +48,7 @@ class _GameHudState extends State<GameHud> {
                 left: 160,
                 right: 160,
                 child: BossHealthBar(
-                  name: widget.source.bossName ?? 'Boss',
+                  name: widget.source.bossName ?? AppStrings.genericBoss,
                   healthFraction: health,
                 ),
               ),
@@ -114,16 +115,25 @@ class _StatusBar extends StatelessWidget {
             spacing: 16,
             runSpacing: 6,
             children: [
-              _HudValue(label: 'Time', value: '$minutes:$seconds'),
-              _HudValue(label: 'HP', value: source.playerHealthLabel),
-              _HudValue(label: 'Level', value: '${source.playerLevel}'),
+              _HudValue(label: AppStrings.hudTime, value: '$minutes:$seconds'),
               _HudValue(
-                label: 'XP',
+                label: AppStrings.hudHealth,
+                value: source.playerHealthLabel,
+              ),
+              _HudValue(
+                label: AppStrings.hudLevel,
+                value: '${source.playerLevel}',
+              ),
+              _HudValue(
+                label: AppStrings.hudExperience,
                 value:
                     '${source.currentExperience}/${source.experienceToNextLevel}',
               ),
-              _HudValue(label: 'Enemies', value: '${source.enemyCount}'),
-              _HudValue(label: 'Kills', value: '${source.kills}'),
+              _HudValue(
+                label: AppStrings.hudEnemies,
+                value: '${source.enemyCount}',
+              ),
+              _HudValue(label: AppStrings.hudKills, value: '${source.kills}'),
             ],
           ),
         ),

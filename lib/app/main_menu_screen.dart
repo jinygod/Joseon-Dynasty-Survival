@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_strings.dart';
 import '../game/systems/tutorial_progress_repository.dart';
 import 'character_select_screen.dart';
 import 'game_screen.dart';
@@ -67,14 +68,13 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                'Joseon Dynasty Survival',
-                style: TextStyle(fontSize: 32),
-              ),
+              const Text(AppStrings.appTitle, style: TextStyle(fontSize: 32)),
               const SizedBox(height: 16),
               FilledButton(
                 onPressed: _launching ? null : _startRun,
-                child: Text(_launching ? 'Loading...' : 'Start Run'),
+                child: Text(
+                  _launching ? AppStrings.loading : AppStrings.prepareRun,
+                ),
               ),
             ],
           ),

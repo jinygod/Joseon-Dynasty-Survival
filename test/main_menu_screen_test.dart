@@ -19,8 +19,8 @@ void main() {
   testWidgets('shows the Joseon Dynasty Survival main menu', (tester) async {
     await tester.pumpWidget(const PixelSurvivorApp());
 
-    expect(find.text('Joseon Dynasty Survival'), findsOneWidget);
-    expect(find.text('Start Run'), findsOneWidget);
+    expect(find.text('조선 왕조 서바이벌'), findsOneWidget);
+    expect(find.text('출진 준비'), findsOneWidget);
   });
 
   testWidgets('navigates through character selection into the first run', (
@@ -28,7 +28,7 @@ void main() {
   ) async {
     await tester.pumpWidget(const PixelSurvivorApp());
 
-    await tester.tap(find.widgetWithText(FilledButton, 'Start Run'));
+    await tester.tap(find.widgetWithText(FilledButton, '출진 준비'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
@@ -55,7 +55,7 @@ void main() {
     await TutorialProgressRepository().markCompleted();
     await tester.pumpWidget(const PixelSurvivorApp());
 
-    await tester.tap(find.widgetWithText(FilledButton, 'Start Run'));
+    await tester.tap(find.widgetWithText(FilledButton, '출진 준비'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     await tester.tap(find.byKey(const Key('character-start')));
@@ -81,7 +81,7 @@ void main() {
     await TutorialProgressRepository(preferences: preferences).markCompleted();
     await tester.pumpWidget(const PixelSurvivorApp());
 
-    await tester.tap(find.widgetWithText(FilledButton, 'Start Run'));
+    await tester.tap(find.widgetWithText(FilledButton, '출진 준비'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     await tester.tap(find.byKey(const Key('character-exorcist_dosa')));

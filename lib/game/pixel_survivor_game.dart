@@ -163,7 +163,7 @@ class PixelSurvivorGame extends FlameGame
   String get currentWeaponLabel {
     final labels = weaponLevelLabels;
     if (labels.isEmpty) {
-      return 'Weapon Lv 0';
+      return '무기 레벨 0';
     }
     return labels.first;
   }
@@ -172,7 +172,7 @@ class PixelSurvivorGame extends FlameGame
   List<String> get weaponLevelLabels => [
     for (final definition in weaponDefinitions)
       if ((weaponSystem.levels[definition.id] ?? 0) > 0)
-        '${definition.name} Lv ${weaponSystem.levels[definition.id]}',
+        '${definition.name} 레벨 ${weaponSystem.levels[definition.id]}',
   ];
 
   @override

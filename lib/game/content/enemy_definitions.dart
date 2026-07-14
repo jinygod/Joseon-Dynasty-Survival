@@ -9,7 +9,7 @@ const fallenGeneral = 'fallen_general';
 const enemyDefinitions = <EnemyDefinition>[
   EnemyDefinition(
     id: plagueRatSwarm,
-    name: 'Plague Rat Swarm',
+    name: '역병 쥐떼',
     maxHealth: 10,
     moveSpeed: 55,
     damage: 6,
@@ -18,7 +18,7 @@ const enemyDefinitions = <EnemyDefinition>[
   ),
   EnemyDefinition(
     id: bandit,
-    name: 'Bandit',
+    name: '산적',
     maxHealth: 18,
     moveSpeed: 60,
     damage: 8,
@@ -26,7 +26,7 @@ const enemyDefinitions = <EnemyDefinition>[
   ),
   EnemyDefinition(
     id: dokkaebi,
-    name: 'Dokkaebi',
+    name: '도깨비',
     maxHealth: 38,
     moveSpeed: 36,
     damage: 13,
@@ -35,7 +35,7 @@ const enemyDefinitions = <EnemyDefinition>[
   ),
   EnemyDefinition(
     id: vengefulSpirit,
-    name: 'Vengeful Spirit',
+    name: '원혼',
     maxHealth: 22,
     moveSpeed: 45,
     damage: 10,
@@ -44,7 +44,7 @@ const enemyDefinitions = <EnemyDefinition>[
   ),
   EnemyDefinition(
     id: fallenGeneral,
-    name: 'Fallen General',
+    name: '타락한 관군 대장',
     maxHealth: 700,
     moveSpeed: 26,
     damage: 20,

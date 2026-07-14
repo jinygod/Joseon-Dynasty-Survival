@@ -46,7 +46,7 @@ void main() {
       await _pumpSurface(tester, const MainMenuScreen());
       _expectSafe(
         tester,
-        find.widgetWithText(FilledButton, 'Start Run'),
+        find.widgetWithText(FilledButton, '출진 준비'),
         entry.value,
       );
 
@@ -160,7 +160,7 @@ class _HudSource implements GameHudSource {
   @override
   double? get bossHealthFraction => null;
   @override
-  List<String> get weaponLevelLabels => const ['환도 베기 Lv 3'];
+  List<String> get weaponLevelLabels => const ['환도 베기 레벨 3'];
   @override
   void updateMovementInput(VectorInput input) {}
 }
