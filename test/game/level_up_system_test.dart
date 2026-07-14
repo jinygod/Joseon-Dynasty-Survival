@@ -74,7 +74,7 @@ void main() {
           const LevelUpChoice(
             id: hwandoSlash,
             displayName: '환도 베기',
-            effectDescription: '재사용 시간 0.60초',
+            effectDescription: '피해 10 → 12 · 재사용 0.72초 → 0.60초 · 넉백 50 → 55',
             type: LevelUpChoiceType.weapon,
             currentLevel: 2,
             nextLevel: 3,
@@ -87,7 +87,7 @@ void main() {
           const LevelUpChoice(
             id: martialTraining,
             displayName: '무예 단련',
-            effectDescription: '모든 무기 피해 +12%',
+            effectDescription: '무기 피해 +48% → +60%',
             type: LevelUpChoiceType.augment,
             currentLevel: 4,
             nextLevel: 5,
@@ -109,6 +109,52 @@ void main() {
       expect(
         choices.every((choice) => choice.effectDescription.isNotEmpty),
         isTrue,
+      );
+    });
+
+    test('filters content that has no runtime weapon or augment effect', () {
+      final choices = LevelUpSystem(random: Random(3)).choices(
+        unlockedWeaponIds: {hwandoSlash, jangseungWard, singijeonVolley},
+        unlockedAugmentIds: {martialTraining, goblinFire, lastStand},
+        currentWeaponLevels: const {},
+        currentAugmentLevels: const {},
+        maxChoices: 10,
+      );
+
+      expect(choices.map((choice) => choice.id).toSet(), {
+        hwandoSlash,
+        martialTraining,
+      });
+      expect(
+        choices.every(
+          (choice) =>
+              choice.effectDescription.contains('→') ||
+              choice.effectDescription.startsWith('신규'),
+        ),
+        isTrue,
+      );
+    });
+
+    test('augment cards show cumulative production values', () {
+      final choices = LevelUpSystem(random: Random(1)).choices(
+        unlockedWeaponIds: const {},
+        unlockedAugmentIds: {quickStep, rapidReload, jangseungBlessing},
+        currentWeaponLevels: const {},
+        currentAugmentLevels: const {
+          quickStep: 2,
+          rapidReload: 3,
+          jangseungBlessing: 1,
+        },
+        maxChoices: 3,
+      );
+
+      expect(
+        choices.map((choice) => choice.effectDescription),
+        containsAll({
+          '이동 속도 +16% → +24%',
+          '공격 속도 +30% → +40%',
+          '획득 반경 +16 → +32',
+        }),
       );
     });
   });
