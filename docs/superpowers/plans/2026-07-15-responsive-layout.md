@@ -16,9 +16,8 @@ Main menu, character selection, stage selection, first-run tutorial, gameplay HU
 
 ## Steps
 
-- [ ] Add parameterized widget tests that fail on any Flutter exception or overflow.
-- [ ] Assert key actions remain inside the safe content rectangle.
-- [ ] Apply the smallest responsive fixes exposed by the matrix.
-- [ ] Run focused matrix and full web/Android release gate.
-- [ ] Mark `UX-009`, update baseline/queue, merge, and clean worktree.
-
+- [x] Add parameterized widget tests that fail on any Flutter exception or overflow.
+- [x] Assert key actions remain inside the safe content rectangle.
+- [x] Apply the smallest responsive fixes exposed by the matrix (no product changes required).
+- [x] Run focused matrix and full web/Android release gate.
+- [x] Mark `UX-009`, update baseline/queue, merge, and clean worktree.
