@@ -1,15 +1,15 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import '../game/models/vector_input.dart';
 import 'game_hud_source.dart';
+import 'virtual_joystick.dart';
 
 class GameHud extends StatefulWidget {
-  const GameHud({required this.source, super.key});
+  const GameHud({required this.source, this.onPause, super.key});
 
   final GameHudSource source;
+  final VoidCallback? onPause;
 
   @override
   State<GameHud> createState() => _GameHudState();
@@ -66,10 +66,21 @@ class _GameHudState extends State<GameHud> {
             Positioned(
               left: 18,
               bottom: 18,
-              child: _DeveloperMovePad(
+              child: VirtualJoystick(
                 onInputChanged: widget.source.updateMovementInput,
               ),
             ),
+            if (widget.onPause case final onPause?)
+              Positioned(
+                top: 8,
+                left: 8,
+                child: IconButton.filledTonal(
+                  key: const Key('hud-pause'),
+                  tooltip: '일시정지',
+                  onPressed: onPause,
+                  icon: const Icon(Icons.pause),
+                ),
+              ),
           ],
         ),
       ),
@@ -233,96 +244,6 @@ class _HudValue extends StatelessWidget {
       ),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-    );
-  }
-}
-
-class _DeveloperMovePad extends StatefulWidget {
-  const _DeveloperMovePad({required this.onInputChanged});
-
-  final ValueChanged<VectorInput> onInputChanged;
-
-  @override
-  State<_DeveloperMovePad> createState() => _DeveloperMovePadState();
-}
-
-class _DeveloperMovePadState extends State<_DeveloperMovePad> {
-  static const double _padSize = 112;
-  static const double _deadZone = 8;
-
-  Offset _thumbOffset = Offset.zero;
-
-  void _updateInput(Offset localPosition) {
-    const center = Offset(_padSize / 2, _padSize / 2);
-    final delta = localPosition - center;
-    const radius = _padSize / 2;
-    final distance = math.min(delta.distance, radius);
-    final normalized = delta.distance == 0
-        ? Offset.zero
-        : Offset(delta.dx / radius, delta.dy / radius);
-
-    setState(() {
-      _thumbOffset = delta.distance == 0
-          ? Offset.zero
-          : Offset(
-              delta.dx / delta.distance * distance,
-              delta.dy / delta.distance * distance,
-            );
-    });
-
-    if (delta.distance < _deadZone) {
-      widget.onInputChanged(VectorInput.zero);
-      return;
-    }
-
-    widget.onInputChanged(VectorInput(normalized.dx, normalized.dy));
-  }
-
-  void _resetInput() {
-    setState(() {
-      _thumbOffset = Offset.zero;
-    });
-    widget.onInputChanged(VectorInput.zero);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox.square(
-      dimension: _padSize,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onPanStart: (details) => _updateInput(details.localPosition),
-        onPanUpdate: (details) => _updateInput(details.localPosition),
-        onPanEnd: (_) => _resetInput(),
-        onPanCancel: _resetInput,
-        onTapDown: (details) => _updateInput(details.localPosition),
-        onTapUp: (_) => _resetInput(),
-        onTapCancel: _resetInput,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: const Color(0xfff4ead2).withValues(alpha: 0.16),
-            border: Border.all(
-              color: const Color(0xfff4ead2).withValues(alpha: 0.55),
-              width: 2,
-            ),
-          ),
-          child: Center(
-            child: Transform.translate(
-              offset: _thumbOffset,
-              child: Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: const Color(0xff5cc8ff).withValues(alpha: 0.85),
-                  border: Border.all(color: const Color(0xff101820), width: 2),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

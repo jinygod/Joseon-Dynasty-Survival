@@ -42,6 +42,27 @@ void main() {
     expect(find.text('Lv 0 -> 1'), findsOneWidget);
     expect(find.text(choice.effectDescription), findsOneWidget);
   });
+
+  testWidgets('hud shows production joystick and invokes pause', (
+    tester,
+  ) async {
+    var pauses = 0;
+    final source = FakeGameHudSource(
+      bossName: null,
+      bossHealthFraction: null,
+      weaponLevelLabels: const [],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GameHud(source: source, onPause: () => pauses += 1),
+      ),
+    );
+
+    expect(find.byKey(const Key('virtual-joystick')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('hud-pause')));
+    expect(pauses, 1);
+  });
 }
 
 class FakeGameHudSource implements GameHudSource {
