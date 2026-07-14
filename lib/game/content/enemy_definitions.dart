@@ -10,7 +10,7 @@ const enemyDefinitions = <EnemyDefinition>[
   EnemyDefinition(
     id: plagueRatSwarm,
     name: '역병 쥐떼',
-    maxHealth: 10,
+    maxHealth: 8,
     moveSpeed: 55,
     damage: 6,
     experience: 1,
