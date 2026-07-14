@@ -2,9 +2,8 @@
 
 **Goal:** Complete `UX-008` with one-shot result navigation.
 
-- [ ] Write RED tests for duplicate and cross-action taps.
-- [ ] Add stable result action keys and an atomic navigation-committed state.
-- [ ] Update existing callback expectations to the one-shot contract.
-- [ ] Run focused tests and commit.
-- [ ] Run full web/Android release gate, update TODO, merge, and clean worktree.
-
+- [x] Write RED tests for duplicate and cross-action taps.
+- [x] Add stable result action keys and an atomic navigation-committed state.
+- [x] Update existing callback expectations to the one-shot contract.
+- [x] Run focused tests and commit.
+- [x] Run full web/Android release gate, update TODO, merge, and clean worktree.
