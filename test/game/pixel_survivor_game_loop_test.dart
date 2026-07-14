@@ -9,13 +9,22 @@ import 'package:pixel_survivor/game/systems/level_up_system.dart';
 void main() {
   PixelSurvivorGame newGame() {
     return PixelSurvivorGame(
-      playerSlots: const [
-        PlayerSlot(index: 0, characterId: rookieConstable),
-      ],
+      playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
+      onRunEnded: null,
     );
   }
 
   group('PixelSurvivorGame run loop progression', () {
+    test('game accepts exactly one player slot', () {
+      final game = PixelSurvivorGame(
+        playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
+        onRunEnded: null,
+      );
+
+      expect(game.playerSlot.index, 0);
+      expect(game.activePlayers, isEmpty);
+    });
+
     test('starts each run with all globally unlocked weapons and augments', () {
       final game = newGame();
 

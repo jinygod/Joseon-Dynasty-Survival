@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flame/game.dart';
@@ -15,6 +17,7 @@ import 'content/ids.dart';
 import 'content/weapon_definitions.dart';
 import 'models/player_slot.dart';
 import 'models/run_result.dart';
+import 'models/run_outcome.dart';
 import 'models/vector_input.dart';
 import 'systems/level_up_system.dart';
 import 'systems/run_progression_system.dart';
@@ -26,24 +29,17 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
   static const levelUpOverlayId = 'levelUp';
 
   PixelSurvivorGame({
-    required List<PlayerSlot> playerSlots,
-    this.onRunEnded,
-  }) : playerSlots = List.unmodifiable(playerSlots) {
-    if (this.playerSlots.isEmpty) {
-      throw ArgumentError.value(
-        playerSlots,
-        'playerSlots',
-        'must not be empty',
-      );
-    }
-
+    required this.playerSlot,
+    required this.onRunEnded,
+    Random? random,
+  }) : weaponSystem = WeaponSystem(random: random) {
     _addStartingRunUnlocks();
   }
 
-  final List<PlayerSlot> playerSlots;
+  final PlayerSlot playerSlot;
   final void Function(RunResult result)? onRunEnded;
   final SpawnSystem spawnSystem = const SpawnSystem();
-  final WeaponSystem weaponSystem = WeaponSystem();
+  final WeaponSystem weaponSystem;
   final LevelUpSystem levelUpSystem = const LevelUpSystem();
   final RunProgressionSystem runProgression = RunProgressionSystem();
   final RunStatsTracker runStats = RunStatsTracker();
@@ -70,7 +66,9 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
   List<LevelUpChoice> get pendingLevelUpChoices =>
       List.unmodifiable(_pendingLevelUpChoices);
   String get playerHealthLabel {
-    final player = activePlayers.where((player) => player.isMounted).firstOrNull;
+    final player = activePlayers
+        .where((player) => player.isMounted)
+        .firstOrNull;
     if (player == null) {
       return '--';
     }
@@ -184,35 +182,34 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
 
   RunResult currentRunResult() {
     return runStats.toRunResult(
+      outcome: _isGameOver ? RunOutcome.defeat : RunOutcome.inProgress,
       survivalSeconds: _elapsedSeconds.floor(),
       level: playerLevel,
       wonWithLowHealth: false,
+      weaponLevels: weaponSystem.levels,
     );
   }
 
   Future<void> _addActivePlayers() async {
-    final activeSlots = playerSlots.where((slot) => slot.isActive).toList();
-    const spacing = 36.0;
-    final startX = size.x / 2 - ((activeSlots.length - 1) * spacing / 2);
-
-    for (var i = 0; i < activeSlots.length; i += 1) {
-      final slot = activeSlots[i];
-      final character = _characterDefinitionFor(slot.characterId);
-      final player = PlayerComponent(
-        slotIndex: slot.index,
-        maxHealth: character.maxHealth,
-        moveSpeed: character.moveSpeed,
-        position: Vector2(startX + (i * spacing), size.y / 2),
-      );
-
-      unlockedWeaponIds.add(character.startingWeaponId);
-      if (weaponSystem.levelOf(character.startingWeaponId) == 0) {
-        weaponSystem.upgrade(character.startingWeaponId, unlockedWeaponIds);
-      }
-
-      activePlayers.add(player);
-      await add(player);
+    if (!playerSlot.isActive) {
+      return;
     }
+
+    final character = _characterDefinitionFor(playerSlot.characterId);
+    final player = PlayerComponent(
+      slotIndex: playerSlot.index,
+      maxHealth: character.maxHealth,
+      moveSpeed: character.moveSpeed,
+      position: Vector2(size.x / 2, size.y / 2),
+    );
+
+    unlockedWeaponIds.add(character.startingWeaponId);
+    if (weaponSystem.levelOf(character.startingWeaponId) == 0) {
+      weaponSystem.upgrade(character.startingWeaponId, unlockedWeaponIds);
+    }
+
+    activePlayers.add(player);
+    await add(player);
     _applyAugmentEffects();
   }
 
@@ -364,7 +361,7 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
     unlockedAugmentIds.addAll(
       augmentDefinitions
           .where((definition) => definition.startsUnlocked)
-      .map((definition) => definition.id),
+          .map((definition) => definition.id),
     );
   }
 

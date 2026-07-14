@@ -4,6 +4,7 @@ import 'package:pixel_survivor/app/run_summary_screen.dart';
 import 'package:pixel_survivor/game/content/augment_definitions.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
+import 'package:pixel_survivor/game/models/run_outcome.dart';
 import 'package:pixel_survivor/game/models/run_result.dart';
 import 'package:pixel_survivor/game/systems/progression_system.dart';
 import 'package:pixel_survivor/game/systems/save_system.dart';
@@ -16,12 +17,14 @@ void main() {
       levelReachedInRun: 7,
     );
     const result = RunResult(
+      outcome: RunOutcome.defeat,
       survivalSeconds: 240,
       kills: 80,
       level: 12,
       bossDefeated: true,
       wonWithLowHealth: false,
       weaponKillCounts: {hwandoSlash: 50, gakgungShot: 30},
+      weaponLevels: {},
     );
 
     final updated = const ProgressionSystem().applyRunResult(save, result);
@@ -47,12 +50,14 @@ void main() {
       bossDefeats: 2,
     );
     const result = RunResult(
+      outcome: RunOutcome.defeat,
       survivalSeconds: 120,
       kills: 10,
       level: 8,
       bossDefeated: false,
       wonWithLowHealth: false,
       weaponKillCounts: {},
+      weaponLevels: {},
     );
 
     final updated = const ProgressionSystem().applyRunResult(save, result);
@@ -65,12 +70,14 @@ void main() {
 
   test('low health win unlocks last stand', () {
     const result = RunResult(
+      outcome: RunOutcome.defeat,
       survivalSeconds: 60,
       kills: 5,
       level: 2,
       bossDefeated: false,
       wonWithLowHealth: true,
       weaponKillCounts: {},
+      weaponLevels: {},
     );
 
     final updated = const ProgressionSystem().applyRunResult(
@@ -105,14 +112,32 @@ void main() {
     expect(unlocks.isEmpty, isFalse);
   });
 
+  test('run result exposes explicit victory outcome and weapon levels', () {
+    const result = RunResult(
+      outcome: RunOutcome.victory,
+      survivalSeconds: 300,
+      kills: 100,
+      level: 10,
+      bossDefeated: true,
+      wonWithLowHealth: false,
+      weaponKillCounts: {},
+      weaponLevels: {hwandoSlash: 5},
+    );
+
+    expect(result.outcome, RunOutcome.victory);
+    expect(result.weaponLevels[hwandoSlash], 5);
+  });
+
   testWidgets('run summary shows stats and newly unlocked ids', (tester) async {
     const result = RunResult(
+      outcome: RunOutcome.victory,
       survivalSeconds: 125,
       kills: 42,
       level: 6,
       bossDefeated: true,
       wonWithLowHealth: false,
       weaponKillCounts: {},
+      weaponLevels: {},
     );
     const unlocks = ProgressionUnlocks(
       characterIds: [exorcistDosa],

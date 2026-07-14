@@ -25,9 +25,7 @@ class _GameScreenState extends State<GameScreen> {
   void initState() {
     super.initState();
     _game = PixelSurvivorGame(
-      playerSlots: const [
-        PlayerSlot(index: 0, characterId: 'rookie_constable'),
-      ],
+      playerSlot: const PlayerSlot(index: 0, characterId: 'rookie_constable'),
       onRunEnded: _handleRunEnded,
     );
   }
