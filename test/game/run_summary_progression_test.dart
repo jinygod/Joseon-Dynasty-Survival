@@ -5,6 +5,7 @@ import 'package:pixel_survivor/game/content/augment_definitions.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
 import 'package:pixel_survivor/game/models/run_outcome.dart';
+import 'package:pixel_survivor/game/models/run_feedback.dart';
 import 'package:pixel_survivor/game/models/run_result.dart';
 import 'package:pixel_survivor/game/systems/progression_system.dart';
 import 'package:pixel_survivor/game/systems/save_system.dart';
@@ -201,9 +202,9 @@ void main() {
     expect(find.text('승리'), findsOneWidget);
     expect(find.text('보스 처치'), findsOneWidget);
     expect(find.text('환도 베기'), findsOneWidget);
-    expect(find.text('Lv 5'), findsOneWidget);
+    expect(find.textContaining('Lv 5'), findsOneWidget);
     expect(find.text('각궁 사격'), findsOneWidget);
-    expect(find.text('Lv 3'), findsOneWidget);
+    expect(find.textContaining('Lv 3'), findsOneWidget);
   });
 
   testWidgets('defeat summary distinguishes an unfinished boss fight', (
@@ -234,5 +235,134 @@ void main() {
     expect(find.text('패배'), findsOneWidget);
     expect(find.text('보스 미처치'), findsOneWidget);
     expect(find.text('04:45'), findsOneWidget);
+  });
+
+  testWidgets('summary shows weapon level damage and kills', (tester) async {
+    const result = RunResult(
+      outcome: RunOutcome.victory,
+      survivalSeconds: 300,
+      kills: 52,
+      level: 10,
+      bossDefeated: true,
+      wonWithLowHealth: false,
+      weaponKillCounts: {hwandoSlash: 42, gakgungShot: 10},
+      weaponLevels: {hwandoSlash: 5, gakgungShot: 3},
+      weaponDamageTotals: {hwandoSlash: 1234.6, gakgungShot: 500},
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: RunSummaryScreen(
+          result: result,
+          unlocks: const ProgressionUnlocks(),
+          onStart: () {},
+          onMenu: () {},
+        ),
+      ),
+    );
+
+    expect(find.text('환도 베기'), findsOneWidget);
+    expect(find.text('Lv 5 · 피해 1235 · 처치 42'), findsOneWidget);
+    expect(find.text('각궁 사격'), findsOneWidget);
+    expect(find.text('Lv 3 · 피해 500 · 처치 10'), findsOneWidget);
+  });
+
+  testWidgets('feedback requires structured answers and submits exact values', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(800, 1600);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    RunFeedback? submitted;
+    const result = RunResult(
+      outcome: RunOutcome.defeat,
+      survivalSeconds: 180,
+      kills: 50,
+      level: 6,
+      bossDefeated: false,
+      wonWithLowHealth: false,
+      weaponKillCounts: {},
+      weaponLevels: {},
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: RunSummaryScreen(
+          result: result,
+          unlocks: const ProgressionUnlocks(),
+          onStart: () {},
+          onMenu: () {},
+          onFeedbackSubmitted: (feedback) async => submitted = feedback,
+        ),
+      ),
+    );
+    final submitFinder = find.byKey(const Key('feedback-submit'));
+    await tester.ensureVisible(submitFinder);
+
+    expect(tester.widget<FilledButton>(submitFinder).onPressed, isNull);
+    await tester.tap(find.byKey(const Key('fun-rating-4')));
+    await tester.tap(find.byKey(const Key('difficulty-rating-3')));
+    await tester.tap(find.byKey(const Key('retry-yes')));
+    await tester.enterText(
+      find.byKey(const Key('feedback-comment')),
+      '  보스가 재미있음  ',
+    );
+    await tester.pump();
+    await tester.ensureVisible(submitFinder);
+    await tester.tap(submitFinder);
+    await tester.pump();
+
+    expect(submitted?.funRating, 4);
+    expect(submitted?.difficultyRating, 3);
+    expect(submitted?.retryIntent, isTrue);
+    expect(submitted?.comment, '보스가 재미있음');
+    expect(find.text('피드백 저장 완료'), findsOneWidget);
+  });
+
+  testWidgets('summary copy and export actions report success', (tester) async {
+    var copies = 0;
+    var exports = 0;
+    const result = RunResult(
+      outcome: RunOutcome.victory,
+      survivalSeconds: 300,
+      kills: 100,
+      level: 10,
+      bossDefeated: true,
+      wonWithLowHealth: false,
+      weaponKillCounts: {},
+      weaponLevels: {},
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: RunSummaryScreen(
+          result: result,
+          unlocks: const ProgressionUnlocks(),
+          onStart: () {},
+          onMenu: () {},
+          onCopyRunJson: () async {
+            copies += 1;
+            return true;
+          },
+          onExportAllJson: () async {
+            exports += 1;
+            return true;
+          },
+        ),
+      ),
+    );
+
+    final copyFinder = find.byKey(const Key('copy-run-json'));
+    await tester.ensureVisible(copyFinder);
+    await tester.tap(copyFinder);
+    await tester.pump();
+    expect(find.text('런 JSON을 복사했습니다.'), findsOneWidget);
+
+    final exportFinder = find.byKey(const Key('export-all-json'));
+    await tester.ensureVisible(exportFinder);
+    await tester.tap(exportFinder);
+    await tester.pump();
+    expect(find.text('전체 기록 내보내기를 열었습니다.'), findsOneWidget);
+    expect(copies, 1);
+    expect(exports, 1);
   });
 }
