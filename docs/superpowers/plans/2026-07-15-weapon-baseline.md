@@ -11,8 +11,13 @@
 
 ## Steps
 
-- [ ] Write RED tests for deterministic baseline rows, usage aggregation, and unsupported weapon reporting.
-- [ ] Implement pure baseline simulation and telemetry aggregation.
-- [ ] Generate and document the initial baseline table and assumptions.
-- [ ] Run focused tests and the full release gate.
-- [ ] Mark `BAL-002`, update the queue/baseline, merge, and clean the worktree.
+- [x] Write RED tests for deterministic baseline rows, usage aggregation, and unsupported weapon reporting.
+- [x] Implement pure baseline simulation and telemetry aggregation.
+- [x] Generate and document the initial baseline table and assumptions.
+- [x] Run focused tests and the full release gate.
+- [x] Mark `BAL-002`, update the queue/baseline, merge, and clean the worktree.
+
+## Verification
+
+- Focused weapon baseline suite: 6 tests passed.
+- Full release gate: analyzer clean, 155 tests passed, web build passed, Android debug APK built.
