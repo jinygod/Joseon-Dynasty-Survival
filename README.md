@@ -38,6 +38,8 @@ drive letters on Windows when either path contains non-ASCII characters.
 GitHub Actions runs formatting, analysis, all automated tests, a web release
 build, and an Android debug APK build for pushes and pull requests.
 
+App and save version rules are documented in `docs/release/versioning.md`.
+
 On this Windows machine, Flutter tooling is more reliable when run through ASCII
 `subst` paths because the Flutter SDK and workspace may be under Korean paths.
 `flutter run -d chrome` can still hit shader compilation issues unless the SDK is
