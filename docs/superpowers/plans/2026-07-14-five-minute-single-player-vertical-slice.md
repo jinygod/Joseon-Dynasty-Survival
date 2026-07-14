@@ -172,6 +172,8 @@ git push origin codex/pixel-survivor-mvp
 - Modify: `lib/game/content/augment_definitions.dart`
 - Modify: `lib/game/content/ids.dart`
 - Create: `test/game/content_definitions_test.dart`
+- Modify: `test/game/level_up_system_test.dart`
+- Modify: `test/game/pixel_survivor_game_loop_test.dart`
 
 **Interfaces:**
 - Produces: `WeaponLevelDefinition weaponLevelFor(WeaponId id, int level)`
@@ -273,6 +275,8 @@ class WeaponLevelDefinition {
 
 기존 영구 해금 흐름을 유지하기 위해 빠른 장전과 화약 조제는 `startsUnlocked: false`, 나머지 여섯 종은 `startsUnlocked: true`로 둔다. `firstStageAugmentIds`에는 여덟 종을 모두 포함하되 런의 실제 후보 여부는 기존 영구 해금 집합이 결정한다.
 
+기존 테스트에서 `LevelUpChoice.displayName`을 영어 문자열로 직접 작성한 경우 동일 ID의 새 한국어 이름으로 기대값만 갱신한다. 테스트의 동작 범위나 검증 의미는 바꾸지 않는다.
+
 - [ ] **Step 4: 데이터 테스트 통과 확인**
 
 Run: `flutter test test/game/content_definitions_test.dart`
@@ -282,7 +286,7 @@ Expected: PASS
 - [ ] **Step 5: 커밋과 푸시**
 
 ```powershell
-git add lib/game/content test/game/content_definitions_test.dart
+git add lib/game/content test/game/content_definitions_test.dart test/game/level_up_system_test.dart test/game/pixel_survivor_game_loop_test.dart
 git commit -m "feat: define first-stage weapon and augment levels"
 git push origin codex/pixel-survivor-mvp
 ```
