@@ -76,6 +76,7 @@ $originalAndroidHome = $env:ANDROID_HOME
 $originalAndroidSdkRoot = $env:ANDROID_SDK_ROOT
 $localPropertiesPath = Join-Path $repoRoot 'android\local.properties'
 $originalLocalProperties = $null
+$mappedAndroidSdkProperty = $null
 
 try {
   $isWindowsHost = $env:OS -eq 'Windows_NT'
@@ -116,16 +117,16 @@ try {
         $mappedAndroidSdk = "${androidDrive}:\"
         $env:ANDROID_HOME = $mappedAndroidSdk
         $env:ANDROID_SDK_ROOT = $mappedAndroidSdk
+        $mappedAndroidSdkProperty = "sdk.dir=${androidDrive}:\\"
 
         if (Test-Path $localPropertiesPath) {
           $originalLocalProperties = [IO.File]::ReadAllBytes($localPropertiesPath)
           $localPropertiesText = [IO.File]::ReadAllText($localPropertiesPath)
-          $mappedSdkProperty = "sdk.dir=${androidDrive}:\\"
           if ($localPropertiesText -match '(?m)^sdk\.dir=.*$') {
-            $localPropertiesText = $localPropertiesText -replace '(?m)^sdk\.dir=.*$', $mappedSdkProperty
+            $localPropertiesText = $localPropertiesText -replace '(?m)^sdk\.dir=.*$', $mappedAndroidSdkProperty
           }
           else {
-            $localPropertiesText = "$mappedSdkProperty`r`n$localPropertiesText"
+            $localPropertiesText = "$mappedAndroidSdkProperty`r`n$localPropertiesText"
           }
           [IO.File]::WriteAllText(
             $localPropertiesPath,
@@ -145,6 +146,22 @@ try {
     Invoke-Tool $flutterExecutable @('test', '-r', 'compact')
     Invoke-Tool $flutterExecutable @('build', 'web')
     if ($IncludeAndroid) {
+      if ($null -ne $mappedAndroidSdkProperty) {
+        $localPropertiesText = [IO.File]::ReadAllText($localPropertiesPath)
+        $localPropertiesText = $localPropertiesText -replace '(?m)^sdk\.dir=.*$', $mappedAndroidSdkProperty
+        [IO.File]::WriteAllText(
+          $localPropertiesPath,
+          $localPropertiesText,
+          [Text.UTF8Encoding]::new($false)
+        )
+
+        $pubHostRoot = Join-Path $env:PUB_CACHE 'hosted\pub.dev'
+        if (Test-Path $pubHostRoot) {
+          Get-ChildItem -Path $pubHostRoot -Directory -Filter '.cxx' -Recurse |
+            Where-Object { $_.FullName.StartsWith($pubHostRoot) } |
+            Remove-Item -Recurse -Force
+        }
+      }
       Invoke-Tool $flutterExecutable @('build', 'apk', '--debug')
     }
   }
