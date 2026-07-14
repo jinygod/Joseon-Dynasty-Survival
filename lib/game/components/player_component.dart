@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:flame/components.dart';
@@ -174,13 +175,24 @@ class PlayerComponent
   @override
   Future<void> onLoad() async {
     await super.onLoad();
+    unawaited(_loadAnimations());
+  }
+
+  Future<void> _loadAnimations() async {
     try {
       final image = await findGame()!.images.load(PlayerSpriteSheet.assetKey);
       animations = PlayerSpriteSheet.animations(image);
       current = visualState;
-    } catch (error) {
+    } catch (error, stackTrace) {
       if (!kReleaseMode) {
-        rethrow;
+        FlutterError.reportError(
+          FlutterErrorDetails(
+            exception: error,
+            stack: stackTrace,
+            library: 'pixel_survivor player sprites',
+            context: ErrorDescription('loading ${PlayerSpriteSheet.assetKey}'),
+          ),
+        );
       }
     }
   }
