@@ -10,11 +10,21 @@ import '../game/pixel_survivor_game.dart';
 import '../game/systems/progression_system.dart';
 import '../game/systems/run_telemetry_service.dart';
 import '../game/systems/save_system.dart';
+import '../game/systems/telemetry_export_service.dart';
+import '../game/systems/telemetry_repository.dart';
 
 class GameScreen extends StatefulWidget {
-  const GameScreen({this.telemetryService, this.now, super.key});
+  const GameScreen({
+    this.telemetryService,
+    this.telemetryRepository,
+    this.telemetryExportService,
+    this.now,
+    super.key,
+  });
 
   final RunTelemetryService? telemetryService;
+  final TelemetryRepository? telemetryRepository;
+  final TelemetryExportService? telemetryExportService;
   final UtcClock? now;
 
   @override
@@ -24,6 +34,8 @@ class GameScreen extends StatefulWidget {
 class _GameScreenState extends State<GameScreen> {
   late final PixelSurvivorGame _game;
   late final RunTelemetryService _telemetryService;
+  late final TelemetryRepository _telemetryRepository;
+  late final TelemetryExportService _telemetryExportService;
   late final DateTime _runStartedAtUtc;
   bool _handledRunEnd = false;
 
@@ -31,6 +43,9 @@ class _GameScreenState extends State<GameScreen> {
   void initState() {
     super.initState();
     _telemetryService = widget.telemetryService ?? RunTelemetryService();
+    _telemetryRepository = widget.telemetryRepository ?? TelemetryRepository();
+    _telemetryExportService =
+        widget.telemetryExportService ?? TelemetryExportService();
     _runStartedAtUtc = (widget.now ?? DateTime.now)().toUtc();
     _game = PixelSurvivorGame(
       playerSlot: const PlayerSlot(index: 0, characterId: 'rookie_constable'),
@@ -51,7 +66,10 @@ class _GameScreenState extends State<GameScreen> {
       final after = progressionSystem.applyRunResult(before, result);
       await saveSystem.save(after);
       final unlocks = ProgressionUnlocks.diff(before, after);
-      await _telemetryService.record(result, startedAtUtc: _runStartedAtUtc);
+      final telemetry = await _telemetryService.record(
+        result,
+        startedAtUtc: _runStartedAtUtc,
+      );
 
       if (!mounted) {
         return;
@@ -62,6 +80,23 @@ class _GameScreenState extends State<GameScreen> {
           builder: (_) => RunSummaryScreen(
             result: result,
             unlocks: unlocks,
+            onFeedbackSubmitted: telemetry == null
+                ? null
+                : (feedback) async {
+                    final updated = await _telemetryRepository.updateFeedback(
+                      telemetry.runId,
+                      feedback,
+                    );
+                    if (!updated) {
+                      throw StateError('Recorded run was not found');
+                    }
+                  },
+            onCopyRunJson: telemetry == null
+                ? null
+                : () => _telemetryExportService.copyRun(telemetry.runId),
+            onExportAllJson: telemetry == null
+                ? null
+                : _telemetryExportService.exportAll,
             onStart: () {
               Navigator.of(context).pushReplacement(
                 MaterialPageRoute<void>(builder: (_) => const GameScreen()),

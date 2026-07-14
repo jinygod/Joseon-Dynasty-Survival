@@ -27,9 +27,10 @@ void main() {
       now: () => endedAtUtc,
     );
 
-    await service.record(result, startedAtUtc: startedAtUtc);
+    final recorded = await service.record(result, startedAtUtc: startedAtUtc);
 
     expect(saved, isNotNull);
+    expect(recorded, same(saved));
     expect(
       saved!.runId,
       '${startedAtUtc.microsecondsSinceEpoch}-${endedAtUtc.microsecondsSinceEpoch}',
@@ -48,10 +49,7 @@ void main() {
       now: () => endedAtUtc,
     );
 
-    await expectLater(
-      service.record(result, startedAtUtc: startedAtUtc),
-      completes,
-    );
+    expect(await service.record(result, startedAtUtc: startedAtUtc), isNull);
   });
 
   test('service isolates package metadata failures', () async {
@@ -61,9 +59,6 @@ void main() {
       now: () => endedAtUtc,
     );
 
-    await expectLater(
-      service.record(result, startedAtUtc: startedAtUtc),
-      completes,
-    );
+    expect(await service.record(result, startedAtUtc: startedAtUtc), isNull);
   });
 }

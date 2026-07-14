@@ -21,7 +21,7 @@ class RunTelemetryService {
   final AppVersionLoader _loadAppVersion;
   final UtcClock _now;
 
-  Future<void> record(
+  Future<RunTelemetry?> record(
     RunResult result, {
     required DateTime startedAtUtc,
   }) async {
@@ -38,8 +38,10 @@ class RunTelemetryService {
         endedAtUtc: endedAtUtc,
       );
       await _append(telemetry);
+      return telemetry;
     } on Object {
       // Playtest telemetry must never block progression saving or navigation.
+      return null;
     }
   }
 
