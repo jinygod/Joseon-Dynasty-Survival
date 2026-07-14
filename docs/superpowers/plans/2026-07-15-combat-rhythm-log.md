@@ -11,8 +11,13 @@
 
 ## Steps
 
-- [ ] Write RED tests for exact phase boundaries, contiguous coverage, validation, and JSON output.
-- [ ] Implement combat rhythm phase definitions and snapshot serialization.
-- [ ] Document sampling rules, metrics, and pass/fail interpretation for later balance tasks.
-- [ ] Run focused tests and the full release gate.
-- [ ] Mark `BAL-001`, update the queue/baseline, merge, and clean the worktree.
+- [x] Write RED tests for exact phase boundaries, contiguous coverage, validation, and JSON output.
+- [x] Implement combat rhythm phase definitions and snapshot serialization.
+- [x] Document sampling rules, metrics, and pass/fail interpretation for later balance tasks.
+- [x] Run focused tests and the full release gate.
+- [x] Mark `BAL-001`, update the queue/baseline, merge, and clean the worktree.
+
+## Verification
+
+- Focused combat rhythm suite: 4 tests passed.
+- Full release gate: analyzer clean, 149 tests passed, web build passed, Android debug APK built.
