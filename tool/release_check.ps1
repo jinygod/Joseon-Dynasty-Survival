@@ -72,6 +72,10 @@ $mappedDrives = @()
 $originalTemp = $env:TEMP
 $originalTmp = $env:TMP
 $originalPubCache = $env:PUB_CACHE
+$originalAndroidHome = $env:ANDROID_HOME
+$originalAndroidSdkRoot = $env:ANDROID_SDK_ROOT
+$localPropertiesPath = Join-Path $repoRoot 'android\local.properties'
+$originalLocalProperties = $null
 
 try {
   $isWindowsHost = $env:OS -eq 'Windows_NT'
@@ -98,6 +102,39 @@ try {
     $flutterExecutable = "${flutterDrive}:\bin\flutter.bat"
     $dartExecutable = "${flutterDrive}:\bin\dart.bat"
     $workingDirectory = "${repoDrive}:\"
+
+    if ($IncludeAndroid) {
+      $androidSdkRoot = $env:ANDROID_HOME
+      if ([string]::IsNullOrWhiteSpace($androidSdkRoot)) {
+        $androidSdkRoot = Join-Path $env:LOCALAPPDATA 'Android\Sdk'
+      }
+      if ((Test-Path $androidSdkRoot) -and $androidSdkRoot -match '[^\x00-\x7F]') {
+        $androidDrive = Get-FreeDriveLetter -Reserved @($flutterDrive, $repoDrive)
+        & subst.exe "${androidDrive}:" $androidSdkRoot
+        if ($LASTEXITCODE -ne 0) { throw 'Failed to map the Android SDK path.' }
+        $mappedDrives += $androidDrive
+        $mappedAndroidSdk = "${androidDrive}:\"
+        $env:ANDROID_HOME = $mappedAndroidSdk
+        $env:ANDROID_SDK_ROOT = $mappedAndroidSdk
+
+        if (Test-Path $localPropertiesPath) {
+          $originalLocalProperties = [IO.File]::ReadAllBytes($localPropertiesPath)
+          $localPropertiesText = [IO.File]::ReadAllText($localPropertiesPath)
+          $mappedSdkProperty = "sdk.dir=${androidDrive}:\\"
+          if ($localPropertiesText -match '(?m)^sdk\.dir=.*$') {
+            $localPropertiesText = $localPropertiesText -replace '(?m)^sdk\.dir=.*$', $mappedSdkProperty
+          }
+          else {
+            $localPropertiesText = "$mappedSdkProperty`r`n$localPropertiesText"
+          }
+          [IO.File]::WriteAllText(
+            $localPropertiesPath,
+            $localPropertiesText,
+            [Text.UTF8Encoding]::new($false)
+          )
+        }
+      }
+    }
   }
 
   Push-Location $workingDirectory
@@ -124,4 +161,9 @@ finally {
   $env:TEMP = $originalTemp
   $env:TMP = $originalTmp
   $env:PUB_CACHE = $originalPubCache
+  $env:ANDROID_HOME = $originalAndroidHome
+  $env:ANDROID_SDK_ROOT = $originalAndroidSdkRoot
+  if ($null -ne $originalLocalProperties) {
+    [IO.File]::WriteAllBytes($localPropertiesPath, $originalLocalProperties)
+  }
 }
