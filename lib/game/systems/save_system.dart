@@ -50,8 +50,21 @@ class SaveState {
   }
 
   factory SaveState.fromJson(Map<String, dynamic> json) {
+    final rawSchemaVersion = json['schemaVersion'];
+    final schemaVersion = rawSchemaVersion == null ? 0 : rawSchemaVersion;
+    if (schemaVersion is! int ||
+        schemaVersion < 0 ||
+        schemaVersion > currentSchemaVersion) {
+      return SaveState.defaults();
+    }
+
+    return _fromSupportedJson(json);
+  }
+
+  static SaveState _fromSupportedJson(Map<String, dynamic> json) {
     final defaults = SaveState.defaults();
     return SaveState(
+      schemaVersion: currentSchemaVersion,
       unlockedCharacterIds: _stringSet(
         json['unlockedCharacterIds'],
         fallback: defaults.unlockedCharacterIds,

@@ -37,6 +37,50 @@ void main() {
     expect(restored.completedGoalIds, contains('survive_3_minutes'));
   });
 
+  group('unsupported save schemas', () {
+    test('future schema returns defaults', () {
+      final restored = SaveState.fromJson({
+        'schemaVersion': SaveState.currentSchemaVersion + 1,
+        'totalKills': 999,
+        'unlockedCharacterIds': [exorcistDosa],
+      });
+
+      expect(restored.schemaVersion, SaveState.currentSchemaVersion);
+      expect(restored.totalKills, 0);
+      expect(restored.unlockedCharacterIds, {rookieConstable});
+    });
+
+    test('negative schema returns defaults', () {
+      final restored = SaveState.fromJson({
+        'schemaVersion': -1,
+        'totalKills': 999,
+      });
+
+      expect(restored.totalKills, 0);
+    });
+
+    test('non-integer schema returns defaults', () {
+      final restored = SaveState.fromJson({
+        'schemaVersion': '1',
+        'totalKills': 999,
+      });
+
+      expect(restored.totalKills, 0);
+    });
+  });
+
+  test('save system loads defaults for unsupported stored schema', () async {
+    SharedPreferences.setMockInitialValues({
+      'save_state': '{"schemaVersion":2,"totalKills":999}',
+    });
+
+    final save = await SaveSystem().load();
+
+    expect(save.schemaVersion, SaveState.currentSchemaVersion);
+    expect(save.totalKills, 0);
+    expect(save.unlockedCharacterIds, {rookieConstable});
+  });
+
   test('defaults include the starting character, weapons, and augments', () {
     final save = SaveState.defaults();
     final startingAugmentIds = augmentDefinitions
