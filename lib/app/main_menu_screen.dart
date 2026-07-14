@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../game/systems/tutorial_progress_repository.dart';
 import 'character_select_screen.dart';
 import 'game_screen.dart';
+import 'stage_select_screen.dart';
 
 class MainMenuScreen extends StatefulWidget {
   const MainMenuScreen({this.tutorialProgressRepository, super.key});
@@ -33,12 +34,21 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
       MaterialPageRoute<void>(
         builder: (selectionContext) => CharacterSelectScreen(
           onStart: (slot) {
-            Navigator.of(selectionContext).pushReplacement(
+            Navigator.of(selectionContext).push(
               MaterialPageRoute<void>(
-                builder: (_) => GameScreen(
-                  playerSlot: slot,
-                  showFirstRunTutorial: showTutorial,
-                  tutorialProgressRepository: repository,
+                builder: (stageContext) => StageSelectScreen(
+                  onStart: (stageId) {
+                    Navigator.of(stageContext).pushReplacement(
+                      MaterialPageRoute<void>(
+                        builder: (_) => GameScreen(
+                          playerSlot: slot,
+                          stageId: stageId,
+                          showFirstRunTutorial: showTutorial,
+                          tutorialProgressRepository: repository,
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
             );

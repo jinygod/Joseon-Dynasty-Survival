@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/app/character_select_screen.dart';
 import 'package:pixel_survivor/app/game_screen.dart';
 import 'package:pixel_survivor/app/pixel_survivor_app.dart';
+import 'package:pixel_survivor/app/stage_select_screen.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
 import 'package:pixel_survivor/game/pixel_survivor_game.dart';
 import 'package:pixel_survivor/game/systems/save_system.dart';
@@ -38,6 +39,12 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
+    expect(find.byType(StageSelectScreen), findsOneWidget);
+    expect(find.byType(GameScreen), findsNothing);
+    await tester.tap(find.byKey(const Key('stage-start')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
     expect(find.byType(GameScreen), findsOneWidget);
     expect(find.byKey(const Key('tutorial-next')), findsOneWidget);
   });
@@ -52,6 +59,9 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     await tester.tap(find.byKey(const Key('character-start')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byKey(const Key('stage-start')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
@@ -77,6 +87,9 @@ void main() {
     await tester.tap(find.byKey(const Key('character-exorcist_dosa')));
     await tester.pump();
     await tester.tap(find.byKey(const Key('character-start')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byKey(const Key('stage-start')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 

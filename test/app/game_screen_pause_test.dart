@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/app/game_screen.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
+import 'package:pixel_survivor/game/content/stage_definitions.dart';
 import 'package:pixel_survivor/game/models/player_slot.dart';
 import 'package:pixel_survivor/game/models/vector_input.dart';
 import 'package:pixel_survivor/game/pixel_survivor_game.dart';
@@ -98,7 +99,9 @@ void main() {
   ) async {
     const slot = PlayerSlot(index: 0, characterId: exorcistDosa);
     await tester.pumpWidget(
-      const MaterialApp(home: GameScreen(playerSlot: slot)),
+      const MaterialApp(
+        home: GameScreen(playerSlot: slot, stageId: moonlitAbandonedOffice),
+      ),
     );
     await tester.pump();
 
@@ -116,6 +119,11 @@ void main() {
       gameWidgets.every(
         (widget) => widget.game!.playerSlot.characterId == exorcistDosa,
       ),
+      isTrue,
+    );
+    final screens = tester.widgetList<GameScreen>(find.byType(GameScreen));
+    expect(
+      screens.every((screen) => screen.stageId == moonlitAbandonedOffice),
       isTrue,
     );
   });

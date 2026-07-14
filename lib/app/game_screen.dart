@@ -9,6 +9,7 @@ import 'run_summary_screen.dart';
 import '../game/models/player_slot.dart';
 import '../game/models/run_result.dart';
 import '../game/models/vector_input.dart';
+import '../game/content/stage_definitions.dart';
 import '../game/pixel_survivor_game.dart';
 import '../game/systems/progression_system.dart';
 import '../game/systems/run_telemetry_service.dart';
@@ -28,6 +29,7 @@ class GameScreen extends StatefulWidget {
       index: 0,
       characterId: 'rookie_constable',
     ),
+    this.stageId = moonlitAbandonedOffice,
     this.showFirstRunTutorial = false,
     this.tutorialProgressRepository,
     super.key,
@@ -39,6 +41,7 @@ class GameScreen extends StatefulWidget {
   final UtcClock? now;
   final PixelSurvivorGame? game;
   final PlayerSlot playerSlot;
+  final String stageId;
   final bool showFirstRunTutorial;
   final TutorialProgressRepository? tutorialProgressRepository;
 
@@ -123,7 +126,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   void _restartGame() {
     Navigator.of(context).pushReplacement(
       MaterialPageRoute<void>(
-        builder: (_) => GameScreen(playerSlot: widget.playerSlot),
+        builder: (_) =>
+            GameScreen(playerSlot: widget.playerSlot, stageId: widget.stageId),
       ),
     );
   }
@@ -190,7 +194,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             onStart: () {
               Navigator.of(context).pushReplacement(
                 MaterialPageRoute<void>(
-                  builder: (_) => GameScreen(playerSlot: widget.playerSlot),
+                  builder: (_) => GameScreen(
+                    playerSlot: widget.playerSlot,
+                    stageId: widget.stageId,
+                  ),
                 ),
               );
             },
