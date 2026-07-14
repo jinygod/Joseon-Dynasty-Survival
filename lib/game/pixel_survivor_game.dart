@@ -4,11 +4,13 @@ import 'dart:math';
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flame/game.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart' show KeyEventResult;
 
 import 'components/enemy_component.dart';
 import 'components/area_attack_component.dart';
+import 'components/boss_component.dart';
 import 'components/experience_gem_component.dart';
 import 'components/player_component.dart';
 import 'components/melee_arc_component.dart';
@@ -68,15 +70,23 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
 
   double _elapsedSeconds = 0;
   int _bossRequestCount = 0;
-  bool _isGameOver = false;
+  int _bossSpawnCount = 0;
+  int _currentEnemyCap = 24;
+  RunOutcome _runOutcome = RunOutcome.inProgress;
+  BossComponent? _boss;
 
   double get elapsedSeconds => _elapsedSeconds;
   int get playerLevel => runProgression.level;
   int get currentExperience => runProgression.currentExperience;
   int get experienceToNextLevel => runProgression.experienceToNextLevel;
   int get kills => runStats.kills;
-  bool get isGameOver => _isGameOver;
+  RunOutcome get runOutcome => _runOutcome;
+  bool get isGameOver => _runOutcome != RunOutcome.inProgress;
   int get bossRequestCount => _bossRequestCount;
+  int get bossSpawnCount => _bossSpawnCount;
+  int get currentEnemyCap => _currentEnemyCap;
+  String? get bossName => _boss == null ? null : _boss!.displayName;
+  double? get bossHealthFraction => _boss?.healthFraction;
   double get weaponDamageMultiplier {
     final martialTrainingLevel = augmentLevels[martialTraining] ?? 0;
     final heavyStrikeLevel = augmentLevels[heavyStrike] ?? 0;
@@ -129,17 +139,18 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
       .length;
 
   String get currentWeaponLabel {
-    if (weaponSystem.levels.isEmpty) {
+    final labels = weaponLevelLabels;
+    if (labels.isEmpty) {
       return 'Weapon Lv 0';
     }
-
-    final entry = weaponSystem.levels.entries.first;
-    final definition = weaponDefinitions.firstWhere(
-      (definition) => definition.id == entry.key,
-      orElse: () => weaponDefinitions.first,
-    );
-    return '${definition.name} Lv ${entry.value}';
+    return labels.first;
   }
+
+  List<String> get weaponLevelLabels => [
+    for (final definition in weaponDefinitions)
+      if ((weaponSystem.levels[definition.id] ?? 0) > 0)
+        '${definition.name} Lv ${weaponSystem.levels[definition.id]}',
+  ];
 
   @override
   Color backgroundColor() => const Color(0xff101820);
@@ -165,22 +176,26 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
 
   @override
   void update(double dt) {
-    super.update(dt);
-    if (_isGameOver) {
+    final safeDt = dt.clamp(0, 0.05).toDouble();
+    super.update(safeDt);
+    if (_runOutcome != RunOutcome.inProgress || isLevelUpPending) {
       return;
     }
 
-    _elapsedSeconds += dt;
-
-    _updatePlayerMovement(dt);
-    _applyEnemyContactDamage(dt);
-    _spawnWaveEnemies(dt);
-
-    _updateWeapons(dt);
+    _advanceTime(safeDt);
+    _spawnWaveEnemies(safeDt);
+    _updatePlayerMovement(safeDt);
+    _updateWeapons(safeDt);
     _applyProjectileHits();
     _resolveAreaAttacks();
     _dropExperienceForDeadEnemies();
+    _resolveBossVictoryBeforePlayerDefeat();
+    _applyEnemyContactDamage();
     _collectExperienceGems();
+  }
+
+  void _advanceTime(double dt) {
+    _elapsedSeconds += dt;
   }
 
   void updateMovementInput(VectorInput input) {
@@ -226,10 +241,12 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
 
   RunResult currentRunResult() {
     return runStats.toRunResult(
-      outcome: _isGameOver ? RunOutcome.defeat : RunOutcome.inProgress,
+      outcome: _runOutcome,
       survivalSeconds: _elapsedSeconds.floor(),
       level: playerLevel,
-      wonWithLowHealth: false,
+      wonWithLowHealth:
+          _runOutcome == RunOutcome.victory &&
+          (_activePlayers.firstOrNull?.healthFraction ?? 1) <= 0.2,
       weaponLevels: weaponSystem.levels,
     );
   }
@@ -259,6 +276,7 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
       dt: dt,
       activeEnemyCount: enemyCount,
     );
+    _currentEnemyCap = wave.maxActiveEnemies;
     final initialEnemyCount = enemyCount;
     for (var index = 0; index < wave.spawnRequests.length; index += 1) {
       final request = wave.spawnRequests[index];
@@ -270,6 +288,32 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
     }
     if (wave.spawnBoss) {
       _bossRequestCount += 1;
+      _spawnBoss();
+    }
+  }
+
+  void _spawnBoss() {
+    if (_bossSpawnCount > 0) return;
+
+    final definition = _enemyDefinitionFor(fallenGeneral);
+    final boss = BossComponent(
+      definition: definition,
+      position: Vector2(size.x / 2, -36),
+      targetPositionProvider: _nearestActivePlayerPosition,
+      nearbyEnemiesProvider: () => children.whereType<EnemyComponent>(),
+      onAreaAttack: (attack) => add(attack),
+      onSummonRequested: _summonBossMinions,
+    );
+    _boss = boss;
+    _bossSpawnCount += 1;
+    add(boss);
+  }
+
+  void _summonBossMinions() {
+    final availableSlots = max(0, _currentEnemyCap - enemyCount);
+    final summonCount = min(3, availableSlots);
+    for (var index = 0; index < summonCount; index += 1) {
+      _addEnemy(vengefulSpirit, enemyCount + index);
     }
   }
 
@@ -365,7 +409,20 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
   void _resolveAreaAttacks() {
     final enemies = children.whereType<EnemyComponent>();
     for (final attack in children.whereType<AreaAttackComponent>().toList()) {
-      _applyDamageEvents(attack.collectDamageEvents(enemies));
+      if (attack.isBossAttack) {
+        if (attack.isReady && !attack.hasTriggered) {
+          for (final player in _activePlayers.where(
+            (player) => player.isAlive,
+          )) {
+            if (attack.containsPlayer(player)) {
+              player.takeDamage(attack.damage);
+            }
+          }
+          attack.collectDamageEvents(const <EnemyComponent>[]);
+        }
+      } else {
+        _applyDamageEvents(attack.collectDamageEvents(enemies));
+      }
     }
   }
 
@@ -395,12 +452,14 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
     }
   }
 
-  void _applyEnemyContactDamage(double dt) {
+  void _applyEnemyContactDamage() {
+    if (_runOutcome != RunOutcome.inProgress) return;
+
     final alivePlayers = _activePlayers
         .where((player) => player.isMounted && player.isAlive)
         .toList(growable: false);
     if (alivePlayers.isEmpty) {
-      _finishRun();
+      _finishRun(RunOutcome.defeat);
       return;
     }
 
@@ -422,7 +481,17 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
       (player) => player.isMounted && player.isAlive,
     );
     if (!hasAlivePlayer) {
-      _finishRun();
+      _finishRun(RunOutcome.defeat);
+    }
+  }
+
+  void _resolveBossVictoryBeforePlayerDefeat() {
+    final boss = _boss;
+    if (boss != null && boss.isDead && !runStats.bossDefeated) {
+      runStats.recordEnemyDefeat(isBoss: true);
+    }
+    if (runStats.bossDefeated) {
+      _finishRun(RunOutcome.victory);
     }
   }
 
@@ -505,18 +574,57 @@ class PixelSurvivorGame extends FlameGame with KeyboardEvents {
     }
   }
 
-  void _finishRun() {
-    if (_isGameOver) {
+  void _finishRun(RunOutcome outcome) {
+    if (_runOutcome != RunOutcome.inProgress) {
       return;
     }
 
-    _isGameOver = true;
+    _runOutcome = outcome;
     _pendingLevelUpChoices = const [];
     if (isMounted) {
       overlays.remove(levelUpOverlayId);
       pauseEngine();
     }
     onRunEnded?.call(currentRunResult());
+  }
+
+  @visibleForTesting
+  void debugAdvanceTo(double elapsedSeconds) {
+    if (_runOutcome != RunOutcome.inProgress ||
+        elapsedSeconds < _elapsedSeconds) {
+      return;
+    }
+
+    _elapsedSeconds = elapsedSeconds;
+    final wave = waveDirector.tick(
+      elapsedSeconds: _elapsedSeconds,
+      dt: 0,
+      activeEnemyCount: enemyCount,
+    );
+    _currentEnemyCap = wave.maxActiveEnemies;
+    if (wave.spawnBoss) {
+      _bossRequestCount += 1;
+      _spawnBoss();
+    }
+  }
+
+  @visibleForTesting
+  void debugDefeatBossAndPlayerSameFrame() {
+    final boss = _boss;
+    if (boss == null) return;
+    boss.takeDamage(boss.currentHealth);
+    for (final player in _activePlayers) {
+      player.takeDamage(player.currentHealth);
+    }
+    _resolveBossVictoryBeforePlayerDefeat();
+    _applyEnemyContactDamage();
+  }
+
+  @visibleForTesting
+  void debugKillPlayer() {
+    for (final player in _activePlayers) {
+      player.takeDamage(player.currentHealth);
+    }
   }
 
   CharacterDefinition _characterDefinitionFor(CharacterId characterId) {

@@ -1,9 +1,13 @@
+import 'dart:math';
+
 import 'package:flame/components.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/content/augment_definitions.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
 import 'package:pixel_survivor/game/models/player_slot.dart';
+import 'package:pixel_survivor/game/models/run_outcome.dart';
+import 'package:pixel_survivor/game/models/run_result.dart';
 import 'package:pixel_survivor/game/models/vector_input.dart';
 import 'package:pixel_survivor/game/pixel_survivor_game.dart';
 import 'package:pixel_survivor/game/systems/level_up_system.dart';
@@ -152,5 +156,44 @@ void main() {
         expect(player.currentHealth, 90);
       },
     );
+
+    test('boss spawns once and its defeat wins the run', () async {
+      RunResult? ended;
+      final game = PixelSurvivorGame(
+        playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
+        random: Random(1),
+        onRunEnded: (result) => ended = result,
+      );
+      game.onGameResize(Vector2(960, 540));
+      await game.onLoad();
+
+      game.debugAdvanceTo(270);
+      expect(game.bossSpawnCount, 1);
+      expect(game.bossName, isNotEmpty);
+      expect(game.bossHealthFraction, 1);
+      game.debugDefeatBossAndPlayerSameFrame();
+
+      expect(ended?.outcome, RunOutcome.victory);
+      expect(ended?.bossDefeated, isTrue);
+      expect(game.runOutcome, RunOutcome.victory);
+    });
+
+    test('run end callback fires once', () async {
+      var calls = 0;
+      final game = PixelSurvivorGame(
+        playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
+        random: Random(1),
+        onRunEnded: (_) => calls += 1,
+      );
+      game.onGameResize(Vector2(960, 540));
+      await game.onLoad();
+
+      game.debugKillPlayer();
+      game.update(0.016);
+      game.update(0.016);
+
+      expect(calls, 1);
+      expect(game.runOutcome, RunOutcome.defeat);
+    });
   });
 }

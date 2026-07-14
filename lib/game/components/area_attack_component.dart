@@ -6,6 +6,7 @@ import 'package:flame/components.dart';
 import '../content/ids.dart';
 import '../models/damage_event.dart';
 import 'enemy_component.dart';
+import 'player_component.dart';
 
 class AreaAttackComponent extends PositionComponent {
   AreaAttackComponent({
@@ -60,8 +61,16 @@ class AreaAttackComponent extends PositionComponent {
   }
 
   bool containsEnemy(EnemyComponent enemy) {
-    final offset = enemy.position - position;
-    final hitRange = radius + enemy.size.x / 2;
+    return _containsCircle(enemy.position, enemy.size.x / 2);
+  }
+
+  bool containsPlayer(PlayerComponent player) {
+    return _containsCircle(player.position, player.size.x / 2);
+  }
+
+  bool _containsCircle(Vector2 center, double targetRadius) {
+    final offset = center - position;
+    final hitRange = radius + targetRadius;
     if (offset.length2 > hitRange * hitRange) {
       return false;
     }
