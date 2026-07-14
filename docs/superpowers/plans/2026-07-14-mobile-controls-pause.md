@@ -30,25 +30,25 @@
 - Produces: `VirtualJoystick(onInputChanged, size = 120, deadZone = 10)`.
 - Changes: `GameHud(source, onPause)` with an optional pause callback for compatibility.
 
-- [ ] **Step 1: Write failing pointer tests**
+- [x] **Step 1: Write failing pointer tests**
 
 Use `WidgetTester.createGesture(pointer:)` to assert center/dead-zone zero, right-edge `(1, 0)`, outside clamp, diagonal magnitude at most 1, release zero, and second pointer moves do not change the first pointer's value.
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
 Run: `flutter test test/app/virtual_joystick_test.dart -r expanded`
 
 Expected: compilation fails because `VirtualJoystick` does not exist.
 
-- [ ] **Step 3: Implement raw pointer ownership and visual thumb clamp**
+- [x] **Step 3: Implement raw pointer ownership and visual thumb clamp**
 
 Store `_activePointer`, ignore non-owner move/up/cancel events, and emit `VectorInput.zero` exactly when the owner ends. Dispose/reset safely if the widget is removed while active.
 
-- [ ] **Step 4: Replace developer pad and add HUD pause button**
+- [x] **Step 4: Replace developer pad and add HUD pause button**
 
 Use keys `virtual-joystick` and `hud-pause`. Assert the HUD renders both and pause callback fires once.
 
-- [ ] **Step 5: Verify focused tests and commit**
+- [x] **Step 5: Verify focused tests and commit**
 
 ```powershell
 git add lib/app/virtual_joystick.dart lib/app/game_hud.dart test/app
@@ -64,19 +64,19 @@ git commit -m "feat: add mobile virtual joystick"
 **Interfaces:**
 - Produces callbacks `onResume`, `onRestart`, `onMenu` and internal settings panel state.
 
-- [ ] **Step 1: Write failing menu action test**
+- [x] **Step 1: Write failing menu action test**
 
 Assert title and Continue/Restart/Settings/Main Menu render. Tap Continue, Restart, and Main Menu and assert exact callbacks.
 
-- [ ] **Step 2: Write failing settings panel test**
+- [x] **Step 2: Write failing settings panel test**
 
 Tap Settings, assert the panel explains persistent audio/vibration settings arrive in the settings phase, then tap Back and assert the four menu actions return.
 
-- [ ] **Step 3: Implement callback-only overlay and verify GREEN**
+- [x] **Step 3: Implement callback-only overlay and verify GREEN**
 
 Use a centered constrained Material panel with Korean labels and stable keys `pause-resume`, `pause-restart`, `pause-settings`, `pause-menu`, and `pause-settings-back`.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```powershell
 git add lib/app/pause_menu_overlay.dart test/app/pause_menu_overlay_test.dart
@@ -92,25 +92,25 @@ git commit -m "feat: add pause menu overlay"
 - Modify: `docs/master-development-todo.md`
 
 **Interfaces:**
-- Adds: `PixelSurvivorGame.canPauseRun` and `hasPendingLevelUp` read-only state.
+- Adds: `PixelSurvivorGame.canPauseRun` read-only state.
 - `GameScreen` observes lifecycle and wraps `GameWidget` in `PopScope`.
 
-- [ ] **Step 1: Write failing HUD pause integration test**
+- [x] **Step 1: Write failing HUD pause integration test**
 
 Pump `GameScreen`, find the underlying game, set non-zero movement, tap `hud-pause`, and assert movement is zero, engine paused, and pause menu visible. Tap Continue and assert overlay is gone and engine resumed.
 
-- [ ] **Step 2: Write failing lifecycle/back tests**
+- [x] **Step 2: Write failing lifecycle/back tests**
 
 Send `AppLifecycleState.paused` twice and assert one menu overlay. Resume lifecycle and assert the game stays paused. Simulate `handlePopRoute` and assert pause opens instead of route removal.
 
-- [ ] **Step 3: Implement one idempotent pause coordinator**
+- [x] **Step 3: Implement one idempotent pause coordinator**
 
 Register/remove observer, gate with live-run and level-up state, use overlay ID `pauseMenu`, and keep pause callbacks route-safe with `mounted` checks.
 
-- [ ] **Step 4: Run focused and full verification**
+- [x] **Step 4: Run focused and full verification**
 
 Run focused app tests, then `.\tool\release_check.ps1`. Expected: analysis clean, all tests pass, web build succeeds.
 
-- [ ] **Step 5: Mark TODO and commit**
+- [x] **Step 5: Mark TODO and commit**
 
 Mark `UX-001` through `UX-004` complete with evidence, record the new test count, advance to `UX-005`, and commit only after the full gate.
