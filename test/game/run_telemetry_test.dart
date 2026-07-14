@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/models/run_choice_record.dart';
+import 'package:pixel_survivor/game/models/run_feedback.dart';
 import 'package:pixel_survivor/game/models/run_outcome.dart';
 import 'package:pixel_survivor/game/models/run_result.dart';
 import 'package:pixel_survivor/game/models/run_telemetry.dart';
@@ -142,5 +143,63 @@ void main() {
     expect(decoded.totalDamageTaken, 0);
     expect(decoded.lastDamageSource, isNull);
     expect(decoded.deathAtSeconds, isNull);
+    expect(decoded.feedback, isNull);
+  });
+
+  test('run feedback validates trims and round trips', () {
+    final feedback = RunFeedback(
+      funRating: 4,
+      difficultyRating: 3,
+      retryIntent: true,
+      comment: '  보스전이 재미있음  ',
+    );
+    final telemetry = RunTelemetry(
+      runId: 'feedback-run',
+      appVersion: '0.1.0+1',
+      startedAtUtc: DateTime.utc(2026, 7, 14),
+      endedAtUtc: DateTime.utc(2026, 7, 14, 0, 5),
+      outcome: RunOutcome.victory,
+      survivalSeconds: 300,
+      level: 10,
+      kills: 400,
+      bossDefeated: true,
+      weaponKillCounts: const {},
+      feedback: feedback,
+    );
+
+    final decoded = RunTelemetry.fromJson(telemetry.toJson());
+
+    expect(feedback.comment, '보스전이 재미있음');
+    expect(decoded.feedback, feedback);
+  });
+
+  test('run feedback rejects invalid ratings and long comments', () {
+    expect(
+      () => RunFeedback(
+        funRating: 0,
+        difficultyRating: 3,
+        retryIntent: true,
+        comment: '',
+      ),
+      throwsArgumentError,
+    );
+    expect(
+      () => RunFeedback(
+        funRating: 5,
+        difficultyRating: 6,
+        retryIntent: false,
+        comment: '',
+      ),
+      throwsArgumentError,
+    );
+    expect(
+      () => RunFeedback(
+        funRating: 5,
+        difficultyRating: 3,
+        retryIntent: true,
+        comment: List.filled(201, 'a').join(),
+      ),
+      throwsArgumentError,
+    );
   });
 }

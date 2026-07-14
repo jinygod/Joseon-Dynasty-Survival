@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/models/run_outcome.dart';
+import 'package:pixel_survivor/game/models/run_feedback.dart';
 import 'package:pixel_survivor/game/models/run_telemetry.dart';
 import 'package:pixel_survivor/game/systems/telemetry_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -74,5 +75,41 @@ void main() {
     expect(loaded, hasLength(50));
     expect(loaded.first.runId, 'run-2');
     expect(loaded.last.runId, 'run-51');
+  });
+
+  test('repository updates feedback by run id without reordering', () async {
+    final repository = TelemetryRepository();
+    await repository.append(telemetry(1));
+    await repository.append(telemetry(2));
+    final feedback = RunFeedback(
+      funRating: 4,
+      difficultyRating: 3,
+      retryIntent: true,
+      comment: '다시 하고 싶음',
+    );
+
+    final updated = await repository.updateFeedback('run-2', feedback);
+    final loaded = await repository.load();
+
+    expect(updated, isTrue);
+    expect(loaded.map((run) => run.runId), ['run-1', 'run-2']);
+    expect(loaded.first.feedback, isNull);
+    expect(loaded.last.feedback, feedback);
+  });
+
+  test('repository returns false for unknown feedback run id', () async {
+    final repository = TelemetryRepository();
+    await repository.append(telemetry(1));
+    final feedback = RunFeedback(
+      funRating: 4,
+      difficultyRating: 3,
+      retryIntent: false,
+      comment: '',
+    );
+
+    final updated = await repository.updateFeedback('missing', feedback);
+
+    expect(updated, isFalse);
+    expect((await repository.load()).single.feedback, isNull);
   });
 }

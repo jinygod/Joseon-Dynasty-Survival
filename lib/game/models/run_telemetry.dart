@@ -1,4 +1,5 @@
 import 'run_choice_record.dart';
+import 'run_feedback.dart';
 import 'run_outcome.dart';
 import 'run_result.dart';
 
@@ -20,6 +21,7 @@ class RunTelemetry {
     this.totalDamageTaken = 0,
     this.lastDamageSource,
     this.deathAtSeconds,
+    this.feedback,
   }) : weaponKillCounts = Map.unmodifiable(weaponKillCounts),
        weaponDamageTotals = Map.unmodifiable(weaponDamageTotals),
        choices = List.unmodifiable(choices);
@@ -42,6 +44,29 @@ class RunTelemetry {
   final double totalDamageTaken;
   final String? lastDamageSource;
   final int? deathAtSeconds;
+  final RunFeedback? feedback;
+
+  RunTelemetry copyWith({RunFeedback? feedback}) {
+    return RunTelemetry(
+      schemaVersion: schemaVersion,
+      runId: runId,
+      appVersion: appVersion,
+      startedAtUtc: startedAtUtc,
+      endedAtUtc: endedAtUtc,
+      outcome: outcome,
+      survivalSeconds: survivalSeconds,
+      level: level,
+      kills: kills,
+      bossDefeated: bossDefeated,
+      weaponKillCounts: weaponKillCounts,
+      weaponDamageTotals: weaponDamageTotals,
+      choices: choices,
+      totalDamageTaken: totalDamageTaken,
+      lastDamageSource: lastDamageSource,
+      deathAtSeconds: deathAtSeconds,
+      feedback: feedback ?? this.feedback,
+    );
+  }
 
   factory RunTelemetry.fromRunResult({
     required RunResult result,
@@ -86,6 +111,7 @@ class RunTelemetry {
     'totalDamageTaken': totalDamageTaken,
     'lastDamageSource': lastDamageSource,
     'deathAtSeconds': deathAtSeconds,
+    'feedback': feedback?.toJson(),
   };
 
   factory RunTelemetry.fromJson(Map<String, dynamic> json) {
@@ -117,6 +143,7 @@ class RunTelemetry {
         totalDamageTaken: (json['totalDamageTaken'] as num?)?.toDouble() ?? 0,
         lastDamageSource: json['lastDamageSource'] as String?,
         deathAtSeconds: json['deathAtSeconds'] as int?,
+        feedback: _feedback(json['feedback']),
       );
     } on Object catch (error) {
       throw FormatException('Invalid run telemetry schema 1 payload', error);
@@ -158,5 +185,13 @@ class RunTelemetry {
       }
       return RunChoiceRecord.fromJson(Map<String, dynamic>.from(entry));
     }).toList();
+  }
+
+  static RunFeedback? _feedback(Object? value) {
+    if (value == null) return null;
+    if (value is! Map) {
+      throw const FormatException('Invalid run feedback entry');
+    }
+    return RunFeedback.fromJson(Map<String, dynamic>.from(value));
   }
 }
