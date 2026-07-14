@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flame/components.dart';
 
 import '../content/ids.dart';
+import '../content/weapon_effect_atlas.dart';
 import 'enemy_component.dart';
 
 class MeleeArcComponent extends PositionComponent {
@@ -32,6 +34,7 @@ class MeleeArcComponent extends PositionComponent {
   final double lifetime;
 
   double _age = 0;
+  Image? _effectImage;
 
   bool containsEnemy(EnemyComponent enemy) {
     final offset = enemy.position - position;
@@ -48,6 +51,16 @@ class MeleeArcComponent extends PositionComponent {
   }
 
   @override
+  Future<void> onLoad() async {
+    await super.onLoad();
+    unawaited(_loadEffect());
+  }
+
+  Future<void> _loadEffect() async {
+    _effectImage = await WeaponEffectAtlas.load(this);
+  }
+
+  @override
   void update(double dt) {
     super.update(dt);
     _age += dt;
@@ -61,6 +74,25 @@ class MeleeArcComponent extends PositionComponent {
     super.render(canvas);
     final center = Offset(size.x / 2, size.y / 2);
     final facingAngle = math.atan2(direction.y, direction.x);
+    final image = _effectImage;
+    if (image != null) {
+      final sprite = WeaponEffectAtlas.sprite(
+        image,
+        row: WeaponEffectAtlas.hwandoRow,
+        frame: WeaponEffectAtlas.frameForProgress(_age / lifetime),
+      );
+      canvas
+        ..save()
+        ..translate(center.dx, center.dy)
+        ..rotate(facingAngle);
+      sprite.render(
+        canvas,
+        position: Vector2(-size.x / 2, -size.y / 2),
+        size: size,
+      );
+      canvas.restore();
+      return;
+    }
     final paint = Paint()
       ..color = const Color(0xfff4ead2).withValues(alpha: 0.55)
       ..style = PaintingStyle.stroke

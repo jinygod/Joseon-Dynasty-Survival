@@ -40,9 +40,7 @@ void main() {
       );
       expect(
         late.spawnRequests.map((request) => request.enemyId),
-        everyElement(
-          isIn(waveDefinitionForSecond(210).enemyWeights.keys),
-        ),
+        everyElement(isIn(waveDefinitionForSecond(210).enemyWeights.keys)),
       );
       expect(late.spawnRequests.length, lessThanOrEqualTo(4));
       expect(late.spawnRequests.length, lessThanOrEqualTo(8));
@@ -80,11 +78,15 @@ void main() {
         isFalse,
       );
       expect(
-        director.tick(elapsedSeconds: 270, dt: 0.1, activeEnemyCount: 0).spawnBoss,
+        director
+            .tick(elapsedSeconds: 270, dt: 0.1, activeEnemyCount: 0)
+            .spawnBoss,
         isTrue,
       );
       expect(
-        director.tick(elapsedSeconds: 271, dt: 1, activeEnemyCount: 0).spawnBoss,
+        director
+            .tick(elapsedSeconds: 271, dt: 1, activeEnemyCount: 0)
+            .spawnBoss,
         isFalse,
       );
     });

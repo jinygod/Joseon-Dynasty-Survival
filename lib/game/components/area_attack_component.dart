@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui';
 
@@ -5,6 +6,7 @@ import 'package:flame/components.dart';
 
 import '../content/ids.dart';
 import '../models/damage_event.dart';
+import '../content/weapon_effect_atlas.dart';
 import 'enemy_component.dart';
 import 'player_component.dart';
 
@@ -37,9 +39,22 @@ class AreaAttackComponent extends PositionComponent {
 
   double _elapsed = 0;
   bool _hasTriggered = false;
+  Image? _effectImage;
 
   bool get isReady => _elapsed >= delaySeconds;
   bool get hasTriggered => _hasTriggered;
+
+  @override
+  Future<void> onLoad() async {
+    await super.onLoad();
+    if (weaponId == 'thunder_crash_bomb') {
+      unawaited(_loadEffect());
+    }
+  }
+
+  Future<void> _loadEffect() async {
+    _effectImage = await WeaponEffectAtlas.load(this);
+  }
 
   List<DamageEvent> collectDamageEvents(Iterable<EnemyComponent> enemies) {
     if (!isReady || _hasTriggered) {
@@ -95,6 +110,27 @@ class AreaAttackComponent extends PositionComponent {
   void render(Canvas canvas) {
     super.render(canvas);
     final center = Offset(size.x / 2, size.y / 2);
+    final image = _effectImage;
+    if (image != null && weaponId == 'thunder_crash_bomb') {
+      final progress = delaySeconds <= 0 ? 1.0 : _elapsed / delaySeconds;
+      final frame = _hasTriggered
+          ? 2 + ((_elapsed - delaySeconds) / 0.06).floor().clamp(0, 1)
+          : WeaponEffectAtlas.frameForProgress(progress).clamp(0, 1);
+      final visualExtent = _hasTriggered ? radius * 2 : 32.0;
+      WeaponEffectAtlas.sprite(
+        image,
+        row: WeaponEffectAtlas.bombRow,
+        frame: frame,
+      ).render(
+        canvas,
+        position: Vector2(
+          center.dx - visualExtent / 2,
+          center.dy - visualExtent / 2,
+        ),
+        size: Vector2.all(visualExtent),
+      );
+      return;
+    }
     final paint = Paint()
       ..color = (_hasTriggered
           ? const Color(0xffffb703)

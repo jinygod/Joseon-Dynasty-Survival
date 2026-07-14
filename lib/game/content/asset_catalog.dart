@@ -42,6 +42,7 @@ class AssetCatalog {
     'experience_gem': 'assets/images/effects/experience_gem_16.png',
     'healing_item': 'assets/images/effects/healing_item_16.png',
     'hwando_slash_effect': 'assets/images/effects/hwando_slash_effect_64.png',
+    'weapon_effects_atlas': 'assets/images/effects/weapon_effects_atlas_64.png',
   };
 
   static const stages = <String, String>{
