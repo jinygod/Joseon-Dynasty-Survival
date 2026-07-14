@@ -25,6 +25,19 @@ flutter test
 flutter build web
 ```
 
+Run the complete local release gate from PowerShell with:
+
+```powershell
+.\tool\release_check.ps1
+```
+
+Add `-IncludeAndroid` when the Android SDK is installed and configured. The
+script automatically maps the Flutter SDK and repository to temporary ASCII
+drive letters on Windows when either path contains non-ASCII characters.
+
+GitHub Actions runs formatting, analysis, all automated tests, a web release
+build, and an Android debug APK build for pushes and pull requests.
+
 On this Windows machine, Flutter tooling is more reliable when run through ASCII
 `subst` paths because the Flutter SDK and workspace may be under Korean paths.
 `flutter run -d chrome` can still hit shader compilation issues unless the SDK is
