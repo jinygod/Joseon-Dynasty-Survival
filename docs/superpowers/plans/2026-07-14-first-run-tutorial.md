@@ -8,22 +8,21 @@
 
 ### Task 1: Tutorial progress persistence
 
-- [ ] Write RED tests for unseen default and completion persistence.
-- [ ] Implement `TutorialProgressRepository` with an isolated preference key.
-- [ ] Run focused tests and commit.
+- [x] Write RED tests for unseen default and completion persistence.
+- [x] Implement `TutorialProgressRepository` with an isolated preference key.
+- [x] Run focused tests and commit.
 
 ### Task 2: Five-step tutorial overlay
 
-- [ ] Write RED tests for movement → auto attack → experience → level-up → boss ordering.
-- [ ] Test Skip and final Start callbacks.
-- [ ] Implement the compact landscape-safe overlay with stable keys.
-- [ ] Run focused tests and commit.
+- [x] Write RED tests for movement → auto attack → experience → level-up → boss ordering.
+- [x] Test Skip and final Start callbacks.
+- [x] Implement the compact landscape-safe overlay with stable keys.
+- [x] Run focused tests and commit.
 
 ### Task 3: First-run integration
 
-- [ ] Write RED menu/game tests for new and returning players.
-- [ ] Make MainMenuScreen resolve tutorial state before navigation.
-- [ ] Pause the first run, prioritize the tutorial overlay, persist completion, then explicitly resume.
-- [ ] Run focused tests and the full release gate.
-- [ ] Mark `UX-005`, update baseline/queue, and commit.
-
+- [x] Write RED menu/game tests for new and returning players.
+- [x] Make MainMenuScreen resolve tutorial state before navigation.
+- [x] Pause the first run, prioritize the tutorial overlay, persist completion, then explicitly resume.
+- [x] Run focused tests and the full release gate.
+- [x] Mark `UX-005`, update baseline/queue, and commit.
