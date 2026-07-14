@@ -1,0 +1,69 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:pixel_survivor/app/game_screen.dart';
+import 'package:pixel_survivor/game/models/player_slot.dart';
+import 'package:pixel_survivor/game/models/vector_input.dart';
+import 'package:pixel_survivor/game/pixel_survivor_game.dart';
+
+void main() {
+  testWidgets('HUD pause clears input and can explicitly resume', (
+    tester,
+  ) async {
+    final game = _game();
+    await tester.pumpWidget(MaterialApp(home: GameScreen(game: game)));
+    await tester.pump();
+    game.updateMovementInput(const VectorInput(1, 0));
+
+    await tester.tap(find.byKey(const Key('hud-pause')));
+    await tester.pump();
+
+    expect(game.paused, isTrue);
+    expect(game.movementInput, same(VectorInput.zero));
+    expect(find.byKey(const Key('pause-resume')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('pause-resume')));
+    await tester.pump();
+    expect(game.paused, isFalse);
+    expect(find.byKey(const Key('pause-resume')), findsNothing);
+  });
+
+  testWidgets('background pause never auto-resumes on foreground', (
+    tester,
+  ) async {
+    final game = _game();
+    await tester.pumpWidget(MaterialApp(home: GameScreen(game: game)));
+    await tester.pump();
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    await tester.pump();
+    expect(game.paused, isTrue);
+    expect(find.byKey(const Key('pause-resume')), findsOneWidget);
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+    expect(game.paused, isTrue);
+    expect(find.byKey(const Key('pause-resume')), findsOneWidget);
+  });
+
+  testWidgets('system back pauses instead of leaving an active run', (
+    tester,
+  ) async {
+    final game = _game();
+    await tester.pumpWidget(MaterialApp(home: GameScreen(game: game)));
+    await tester.pump();
+
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+
+    expect(game.paused, isTrue);
+    expect(find.byKey(const Key('pause-resume')), findsOneWidget);
+    expect(find.byType(GameScreen), findsOneWidget);
+  });
+}
+
+PixelSurvivorGame _game() {
+  return PixelSurvivorGame(
+    playerSlot: const PlayerSlot(index: 0, characterId: 'rookie_constable'),
+    onRunEnded: null,
+  );
+}

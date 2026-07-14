@@ -97,6 +97,8 @@ class PixelSurvivorGame extends FlameGame
   int get kills => runStats.kills;
   RunOutcome get runOutcome => _runOutcome;
   bool get isGameOver => _runOutcome != RunOutcome.inProgress;
+  bool get canPauseRun =>
+      _runOutcome == RunOutcome.inProgress && !isLevelUpPending;
   int get bossRequestCount => _bossRequestCount;
   int get bossSpawnCount => _bossSpawnCount;
   int get currentEnemyCap => _currentEnemyCap;
