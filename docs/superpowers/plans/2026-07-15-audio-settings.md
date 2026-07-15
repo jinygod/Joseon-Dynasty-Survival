@@ -109,7 +109,7 @@
 
 ### Task 6: Integrate into development mainline
 
-- [ ] Review `master...codex/audio-settings` and confirm only `AUD-007` work is present.
-- [ ] Fast-forward merge into local `master` per the standing development preference.
-- [ ] Re-run the complete release gate on merged `master`.
-- [ ] Update the plan integration checklist, remove the worktree, and delete the merged branch.
+- [x] Review `master...codex/audio-settings` and confirm only `AUD-007` work is present.
+- [x] Fast-forward merge into local `master` per the standing development preference.
+- [x] Re-run the complete release gate on merged `master`.
+- [x] Update the plan integration checklist, remove the worktree, and delete the merged branch.
