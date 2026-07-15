@@ -7,6 +7,7 @@ import 'package:pixel_survivor/game/components/experience_gem_component.dart';
 import 'package:pixel_survivor/game/components/player_component.dart';
 import 'package:pixel_survivor/game/components/projectile_component.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
+import 'package:pixel_survivor/game/content/ids.dart';
 import 'package:pixel_survivor/game/systems/weapon_system.dart';
 
 void main() {
@@ -64,6 +65,40 @@ void main() {
 
       expect(result.damageEvents.single.damage, 16);
       expect(enemy.currentHealth, 20);
+    });
+
+    test('element multiplier only affects weapons of that element', () {
+      final system = WeaponSystem(
+        initialLevels: const {hwandoSlash: 1, talismanThrow: 1},
+        random: Random(1),
+      );
+      final enemy = EnemyComponent(
+        enemyId: 'test_enemy',
+        maxHealth: 100,
+        moveSpeed: 0,
+        damage: 1,
+        position: Vector2(20, 0),
+      );
+
+      final result = system.tick(
+        dt: 2,
+        origin: Vector2.zero(),
+        enemies: [enemy],
+        elementDamageMultipliers: const {ElementType.magic: 1.15},
+      );
+
+      expect(
+        result.damageEvents
+            .singleWhere((event) => event.weaponId == hwandoSlash)
+            .damage,
+        8,
+      );
+      expect(
+        result.damageEvents
+            .singleWhere((event) => event.weaponId == talismanThrow)
+            .damage,
+        closeTo(9.2, 0.0001),
+      );
     });
 
     test('level five hwando creates two arc attacks with knockback', () {

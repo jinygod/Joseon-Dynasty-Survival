@@ -57,6 +57,7 @@ class WeaponSystem {
     double attackSpeedMultiplier = 1,
     double criticalChance = 0,
     double sizeMultiplier = 1,
+    Map<ElementType, double> elementDamageMultipliers = const {},
   }) {
     final aliveEnemies = enemies.where((enemy) => !enemy.isDead).toList();
     if (aliveEnemies.isEmpty) {
@@ -74,7 +75,9 @@ class WeaponSystem {
       dt: dt,
       origin: origin,
       enemies: aliveEnemies,
-      damageMultiplier: damageMultiplier,
+      damageMultiplier:
+          damageMultiplier *
+          _elementDamageMultiplier(hwandoSlash, elementDamageMultipliers),
       attackSpeedMultiplier: attackSpeedMultiplier,
       criticalChance: criticalChance,
       sizeMultiplier: sizeMultiplier,
@@ -89,7 +92,9 @@ class WeaponSystem {
       dt: dt,
       origin: origin,
       enemies: aliveEnemies,
-      damageMultiplier: damageMultiplier,
+      damageMultiplier:
+          damageMultiplier *
+          _elementDamageMultiplier(gakgungShot, elementDamageMultipliers),
       attackSpeedMultiplier: attackSpeedMultiplier,
       criticalChance: criticalChance,
       sizeMultiplier: sizeMultiplier,
@@ -103,7 +108,9 @@ class WeaponSystem {
       dt: dt,
       origin: origin,
       enemies: aliveEnemies,
-      damageMultiplier: damageMultiplier,
+      damageMultiplier:
+          damageMultiplier *
+          _elementDamageMultiplier(talismanThrow, elementDamageMultipliers),
       attackSpeedMultiplier: attackSpeedMultiplier,
       criticalChance: criticalChance,
       sizeMultiplier: sizeMultiplier,
@@ -117,7 +124,9 @@ class WeaponSystem {
       dt: dt,
       origin: origin,
       enemies: aliveEnemies,
-      damageMultiplier: damageMultiplier,
+      damageMultiplier:
+          damageMultiplier *
+          _elementDamageMultiplier(thunderCrashBomb, elementDamageMultipliers),
       attackSpeedMultiplier: attackSpeedMultiplier,
       criticalChance: criticalChance,
       sizeMultiplier: sizeMultiplier,
@@ -384,6 +393,16 @@ class WeaponSystem {
   }
 
   double _positiveMultiplier(double value) => value > 0 ? value : 1;
+
+  double _elementDamageMultiplier(
+    WeaponId weaponId,
+    Map<ElementType, double> multipliers,
+  ) {
+    final definition = _definitionFor(weaponId);
+    if (definition == null) return 1;
+    final multiplier = multipliers[definition.element] ?? 1;
+    return multiplier.isFinite && multiplier >= 0 ? multiplier : 1;
+  }
 
   WeaponDefinition? _definitionFor(WeaponId weaponId) {
     for (final definition in weaponDefinitions) {

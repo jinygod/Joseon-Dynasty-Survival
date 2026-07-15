@@ -8,6 +8,7 @@ import 'package:pixel_survivor/game/components/projectile_component.dart';
 import 'package:pixel_survivor/game/audio/audio_cue.dart';
 import 'package:pixel_survivor/game/content/augment_definitions.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
+import 'package:pixel_survivor/game/content/ids.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
 import 'package:pixel_survivor/game/models/player_slot.dart';
 import 'package:pixel_survivor/game/models/run_choice_record.dart';
@@ -30,19 +31,35 @@ void main() {
     gameSize: Vector2(960, 540),
   );
   var audioCues = <AudioCue>[];
-  final audioGameTester = FlameTester<PixelSurvivorGame>(
-    () {
-      audioCues = <AudioCue>[];
-      return PixelSurvivorGame(
-        playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
-        onRunEnded: null,
-        onAudioCue: audioCues.add,
-      );
-    },
-    gameSize: Vector2(960, 540),
-  );
+  final audioGameTester = FlameTester<PixelSurvivorGame>(() {
+    audioCues = <AudioCue>[];
+    return PixelSurvivorGame(
+      playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
+      onRunEnded: null,
+      onAudioCue: audioCues.add,
+    );
+  }, gameSize: Vector2(960, 540));
 
   group('PixelSurvivorGame run loop progression', () {
+    test('selected character contributes its passive modifiers', () {
+      final constable = PixelSurvivorGame(
+        playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
+        onRunEnded: null,
+      );
+      final dosa = PixelSurvivorGame(
+        playerSlot: const PlayerSlot(index: 0, characterId: exorcistDosa),
+        onRunEnded: null,
+      );
+      final hunter = PixelSurvivorGame(
+        playerSlot: const PlayerSlot(index: 0, characterId: mountainHunter),
+        onRunEnded: null,
+      );
+
+      expect(constable.incomingContactDamageMultiplier, 0.88);
+      expect(dosa.elementDamageMultipliers, {ElementType.magic: 1.15});
+      expect(hunter.criticalChance, 0.10);
+    });
+
     test('level-up emits its audio cue once', () {
       final cues = <AudioCue>[];
       final game = PixelSurvivorGame(
@@ -56,25 +73,28 @@ void main() {
       expect(cues, [AudioCue.levelUp]);
     });
 
-    test('boss arrival switches music and victory emits result music', () async {
-      final cues = <AudioCue>[];
-      final game = PixelSurvivorGame(
-        playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
-        onRunEnded: null,
-        onAudioCue: cues.add,
-      );
-      game.onGameResize(Vector2(960, 540));
-      await game.onLoad();
+    test(
+      'boss arrival switches music and victory emits result music',
+      () async {
+        final cues = <AudioCue>[];
+        final game = PixelSurvivorGame(
+          playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
+          onRunEnded: null,
+          onAudioCue: cues.add,
+        );
+        game.onGameResize(Vector2(960, 540));
+        await game.onLoad();
 
-      game.debugAdvanceTo(270);
-      game.debugDefeatBossAndPlayerSameFrame();
+        game.debugAdvanceTo(270);
+        game.debugDefeatBossAndPlayerSameFrame();
 
-      expect(cues, [
-        AudioCue.bossWarning,
-        AudioCue.bossMusic,
-        AudioCue.victoryMusic,
-      ]);
-    });
+        expect(cues, [
+          AudioCue.bossWarning,
+          AudioCue.bossMusic,
+          AudioCue.victoryMusic,
+        ]);
+      },
+    );
 
     audioGameTester.testGameWidget(
       'contact damage and player defeat emit combat and result cues',
@@ -85,17 +105,17 @@ void main() {
             enemyId: 'audio_enemy',
             maxHealth: 100,
             moveSpeed: 0,
-            damage: player.currentHealth,
+            damage: player.currentHealth / game.incomingContactDamageMultiplier,
             position: player.position.clone(),
           ),
         );
       },
       verify: (game, _) async {
         game.update(0.016);
-        expect(audioCues, containsAllInOrder([
-          AudioCue.playerHit,
-          AudioCue.defeatMusic,
-        ]));
+        expect(
+          audioCues,
+          containsAllInOrder([AudioCue.playerHit, AudioCue.defeatMusic]),
+        );
       },
     );
 
@@ -260,7 +280,7 @@ void main() {
         game.update(0.016);
 
         final result = game.currentRunResult();
-        expect(result.totalDamageTaken, 15);
+        expect(result.totalDamageTaken, closeTo(13.2, 0.0001));
         expect(result.lastDamageSource, 'telemetry_enemy');
         expect(result.deathAtSeconds, isNull);
       },

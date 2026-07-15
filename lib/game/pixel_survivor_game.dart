@@ -33,6 +33,7 @@ import 'models/vector_input.dart';
 import 'systems/level_up_system.dart';
 import 'systems/combat_feedback_tuning.dart';
 import 'systems/combat_system.dart';
+import 'systems/character_passive_modifiers.dart';
 import 'systems/run_progression_system.dart';
 import 'systems/run_stats_tracker.dart';
 import 'systems/wave_director.dart';
@@ -133,8 +134,18 @@ class PixelSurvivorGame extends FlameGame
 
   double get criticalChance {
     final hawkEyeLevel = augmentLevels[hawkEye] ?? 0;
-    return (hawkEyeLevel * 0.05).clamp(0, 1).toDouble();
+    return (hawkEyeLevel * 0.05 + _passiveModifiers.bonusCriticalChance)
+        .clamp(0, 1)
+        .toDouble();
   }
+
+  double get incomingContactDamageMultiplier =>
+      _passiveModifiers.incomingContactDamageMultiplier;
+
+  Map<ElementType, double> get elementDamageMultipliers =>
+      _passiveModifiers.magicDamageMultiplier == 1
+      ? const {}
+      : {ElementType.magic: _passiveModifiers.magicDamageMultiplier};
 
   double get weaponSizeMultiplier {
     final powderMasteryLevel = augmentLevels[powderMastery] ?? 0;
@@ -394,6 +405,7 @@ class PixelSurvivorGame extends FlameGame
       attackSpeedMultiplier: attackSpeedMultiplier,
       criticalChance: criticalChance,
       sizeMultiplier: weaponSizeMultiplier,
+      elementDamageMultipliers: elementDamageMultipliers,
     );
     for (final weaponId in result.firedWeaponIds) {
       _emitAudio(_attackCueFor(weaponId));
@@ -636,6 +648,7 @@ class PixelSurvivorGame extends FlameGame
           player: player,
           enemy: enemy,
           now: _elapsedSeconds,
+          incomingDamageMultiplier: incomingContactDamageMultiplier,
         );
         if (player.currentHealth < healthBefore) {
           _emitAudio(AudioCue.playerHit);
@@ -834,6 +847,11 @@ class PixelSurvivorGame extends FlameGame
       orElse: () => characterDefinitions.first,
     );
   }
+
+  CharacterPassiveModifiers get _passiveModifiers =>
+      CharacterPassiveModifiers.forPassive(
+        _characterDefinitionFor(playerSlot.characterId).passive,
+      );
 
   EnemyDefinition _enemyDefinitionFor(EnemyId enemyId) {
     return enemyDefinitions.firstWhere(

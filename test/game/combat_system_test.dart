@@ -61,4 +61,30 @@ void main() {
     );
     expect(player.currentHealth, 100);
   });
+
+  test('contact damage applies the selected character multiplier', () {
+    final combat = CombatSystem();
+    final player = PlayerComponent(
+      slotIndex: 0,
+      maxHealth: 100,
+      moveSpeed: 80,
+      position: Vector2.zero(),
+    );
+    final enemy = EnemyComponent(
+      enemyId: bandit,
+      maxHealth: 18,
+      moveSpeed: 0,
+      damage: 10,
+      position: Vector2.zero(),
+    );
+
+    combat.applyContactDamage(
+      player: player,
+      enemy: enemy,
+      now: 1,
+      incomingDamageMultiplier: 0.88,
+    );
+
+    expect(player.currentHealth, closeTo(91.2, 0.0001));
+  });
 }
