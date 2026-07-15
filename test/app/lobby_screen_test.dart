@@ -9,8 +9,13 @@ import 'package:pixel_survivor/game/audio/audio_settings_repository.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
 import 'package:pixel_survivor/game/models/meta_progress.dart';
 import 'package:pixel_survivor/game/systems/save_system.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   testWidgets('lobby shows saved state and working destinations', (
     tester,
   ) async {
@@ -62,6 +67,7 @@ void main() {
 
     await tester.tap(find.byKey(const Key('lobby-deploy')));
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
     final screen = tester.widget<GameScreen>(find.byType(GameScreen));
     expect(screen.playerSlot.characterId, exorcistDosa);
     expect(screen.stageId, lobby.state.selectedStageId);

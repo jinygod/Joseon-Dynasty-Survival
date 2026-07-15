@@ -1,10 +1,11 @@
+import 'dart:async';
 import 'dart:math';
 import 'dart:ui';
 
 import 'package:flame/components.dart';
 
 import '../balance/meta_reward_balance.dart';
-import '../content/asset_catalog.dart';
+import '../content/combat_effect_atlas.dart';
 import 'player_component.dart';
 
 class SpiritJadePickup {
@@ -42,6 +43,7 @@ class SpiritJadeComponent extends SpriteComponent {
   bool _saving = false;
   double _retryRemaining = 0;
   double _age = 0;
+  Image? _atlasImage;
 
   bool get isSaving => _saving;
   bool get canRetry => !_saving && _retryRemaining <= 0;
@@ -49,8 +51,11 @@ class SpiritJadeComponent extends SpriteComponent {
   @override
   Future<void> onLoad() async {
     await super.onLoad();
-    final assetPath = AssetCatalog.effects['spirit_jade']!;
-    sprite = await Sprite.load(assetPath.replaceFirst('assets/images/', ''));
+    unawaited(_loadAtlas());
+  }
+
+  Future<void> _loadAtlas() async {
+    _atlasImage = await CombatEffectAtlas.load(this);
   }
 
   @override
@@ -91,9 +96,14 @@ class SpiritJadeComponent extends SpriteComponent {
 
   @override
   void render(Canvas canvas) {
-    if (sprite != null) {
-      super.render(canvas);
-      return;
+    super.render(canvas);
+    final image = _atlasImage;
+    if (image != null) {
+      CombatEffectAtlas.sprite(
+        image,
+        kind: CombatEffectKind.experience,
+        frame: ((_age / 0.10).floor()) % CombatEffectAtlas.framesPerEffect,
+      ).render(canvas, size: size);
     }
     final center = Offset(size.x / 2, size.y / 2);
     final path = Path()
@@ -102,7 +112,9 @@ class SpiritJadeComponent extends SpriteComponent {
       ..lineTo(center.dx, size.y)
       ..lineTo(0, center.dy)
       ..close();
-    canvas.drawPath(path, Paint()..color = const Color(0xffd99cff));
+    if (image == null) {
+      canvas.drawPath(path, Paint()..color = const Color(0xffd99cff));
+    }
     canvas.drawPath(
       path,
       Paint()

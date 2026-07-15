@@ -359,6 +359,10 @@ class _GovernmentOfficeScene extends StatelessWidget {
               AssetCatalog.lobby['government_office']!,
               repeat: ImageRepeat.repeat,
               filterQuality: FilterQuality.none,
+              errorBuilder: (_, _, _) => const ColoredBox(
+                color: Color(0xff365246),
+                child: SizedBox.expand(),
+              ),
             ),
           ),
           Padding(
@@ -382,7 +386,11 @@ class _GovernmentOfficeScene extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '$characterName · 최고 기록 ${_clock(bestSeconds)}',
+                  characterName,
+                  style: const TextStyle(color: Color(0xffffe6a7)),
+                ),
+                Text(
+                  '최고 기록 ${_clock(bestSeconds)}',
                   style: const TextStyle(color: Color(0xffffe6a7)),
                 ),
                 const SizedBox(height: 12),

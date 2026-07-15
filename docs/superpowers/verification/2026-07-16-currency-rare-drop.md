@@ -10,21 +10,33 @@
   - Result: `No issues found!`
 - `git diff --check`
   - Result: no whitespace errors
+- `$env:TEMP='C:\codex-temp'; $env:TMP='C:\codex-temp'; flutter test --concurrency=2`
+  - Result: `300` tests passed.
 - `C:\codex-flutter-sdk\bin\flutter.bat build web`
   - Result: `√ Built build\web`
   - Wasm dry run also succeeded.
 - `$env:PUB_CACHE='C:\codex-pub-cache'; $env:ANDROID_HOME='C:\codex-android-sdk'; C:\codex-flutter-sdk\bin\flutter.bat build apk --debug`
   - Result: `√ Built build\app\outputs\flutter-apk\app-debug.apk`
 
-## Runtime test limitation
+## Flutter tester resolution
 
-The focused command below was attempted once:
+Windows Error Reporting showed `flutter_tester.exe` terminating before the
+test suite loaded with `0xc0000409` / `FAST_FAIL_INVALID_ARG`. The executable
+path and software rendering settings were ruled out independently. Verbose
+test output showed that the compiled test dill and font configuration were
+still created below the Korean user temp path.
 
-```powershell
-flutter test test/game/meta_reward_policy_test.dart test/game/meta_progression_service_test.dart test/game/spirit_jade_component_test.dart test/game/pixel_survivor_game_loop_test.dart test/app/run_summary_reward_test.dart
-```
+- Root cause: Flutter 3.44.4's Windows test shell crashes when its generated
+  test inputs are supplied through the non-ASCII user temp path.
+- Fix: created `C:\codex-temp` and set the user-level `TEMP` and `TMP`
+  environment variables to that path.
+- Confirmation: the smallest reproduction passed `3/3`, the reward-focused
+  suite passed `30/30`, and the complete suite passed `300/300`.
 
-The local Windows `flutter_tester.exe` again hung without producing test output and was terminated. This is the same local runner failure observed before this feature, so it was not repeatedly retried. All new test sources and the full project pass static analysis, and both Web and Android artifacts compile successfully.
+The first successful full run exposed seven previously hidden test failures.
+They were resolved by using the existing combat-effect atlas for spirit jade,
+adding a safe lobby background fallback, separating the character label from
+the record label, and initializing SharedPreferences in the async lobby test.
 
 ## Tool path notes
 
