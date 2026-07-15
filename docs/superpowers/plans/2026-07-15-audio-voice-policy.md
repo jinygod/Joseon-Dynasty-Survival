@@ -70,7 +70,7 @@
 
 ### Task 5: Integrate into development mainline
 
-- [ ] Review the branch diff and confirm it contains only `AUD-006` work.
-- [ ] Fast-forward merge `codex/audio-voice-policy` into local `master` per the standing development preference.
-- [ ] Re-run the full release gate on merged `master`.
-- [ ] Remove the worktree and merged feature branch.
+- [x] Review the branch diff and confirm it contains only `AUD-006` work.
+- [x] Fast-forward merge `codex/audio-voice-policy` into local `master` per the standing development preference.
+- [x] Re-run the full release gate on merged `master`.
+- [x] Remove the worktree and merged feature branch.
