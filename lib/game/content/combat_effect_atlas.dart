@@ -1,8 +1,9 @@
 import 'dart:ui';
 
 import 'package:flame/components.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+
+import 'safe_asset_loader.dart';
 
 enum CombatEffectKind { experience, hit, critical, death, warning }
 
@@ -36,20 +37,10 @@ abstract final class CombatEffectAtlas {
     } on AssertionError {
       return null;
     }
-    try {
-      return await component.findGame()!.images.load(assetKey);
-    } catch (error, stackTrace) {
-      if (!kReleaseMode) {
-        FlutterError.reportError(
-          FlutterErrorDetails(
-            exception: error,
-            stack: stackTrace,
-            library: 'pixel_survivor combat effects',
-            context: ErrorDescription('loading $assetKey'),
-          ),
-        );
-      }
-      return null;
-    }
+    return SafeAssetLoader.load(
+      load: () => component.findGame()!.images.load(assetKey),
+      library: 'pixel_survivor combat effects',
+      assetKey: assetKey,
+    );
   }
 }

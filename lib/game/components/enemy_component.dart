@@ -3,11 +3,11 @@ import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flame/components.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import '../content/enemy_definitions.dart';
 import '../content/ids.dart';
+import '../content/safe_asset_loader.dart';
 import '../systems/combat_feedback_tuning.dart';
 import 'player_component.dart';
 
@@ -258,22 +258,14 @@ class EnemyComponent
     } on AssertionError {
       return;
     }
-    try {
-      final image = await findGame()!.images.load(spec.assetKey);
-      animations = EnemySpriteSheet.animations(image, spec);
-      current = visualState;
-    } catch (error, stackTrace) {
-      if (!kReleaseMode) {
-        FlutterError.reportError(
-          FlutterErrorDetails(
-            exception: error,
-            stack: stackTrace,
-            library: 'pixel_survivor enemy sprites',
-            context: ErrorDescription('loading ${spec.assetKey}'),
-          ),
-        );
-      }
-    }
+    final image = await SafeAssetLoader.load(
+      load: () => findGame()!.images.load(spec.assetKey),
+      library: 'pixel_survivor enemy sprites',
+      assetKey: spec.assetKey,
+    );
+    if (image == null) return;
+    animations = EnemySpriteSheet.animations(image, spec);
+    current = visualState;
   }
 
   @override

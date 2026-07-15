@@ -1,10 +1,10 @@
 import 'dart:ui';
 
 import 'package:flame/components.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import 'ids.dart';
+import 'safe_asset_loader.dart';
 
 abstract final class WeaponEffectAtlas {
   static const assetKey = 'effects/weapon_effects_atlas_64.png';
@@ -42,20 +42,10 @@ abstract final class WeaponEffectAtlas {
     } on AssertionError {
       return null;
     }
-    try {
-      return await component.findGame()!.images.load(assetKey);
-    } catch (error, stackTrace) {
-      if (!kReleaseMode) {
-        FlutterError.reportError(
-          FlutterErrorDetails(
-            exception: error,
-            stack: stackTrace,
-            library: 'pixel_survivor weapon effects',
-            context: ErrorDescription('loading $assetKey'),
-          ),
-        );
-      }
-      return null;
-    }
+    return SafeAssetLoader.load(
+      load: () => component.findGame()!.images.load(assetKey),
+      library: 'pixel_survivor weapon effects',
+      assetKey: assetKey,
+    );
   }
 }

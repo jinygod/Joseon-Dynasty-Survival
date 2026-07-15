@@ -2,9 +2,9 @@ import 'dart:async';
 import 'dart:ui';
 
 import 'package:flame/components.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import '../content/safe_asset_loader.dart';
 import '../models/vector_input.dart';
 import '../systems/combat_feedback_tuning.dart';
 
@@ -186,22 +186,14 @@ class PlayerComponent
       // Pure game-loop tests intentionally run without a Flutter binding.
       return;
     }
-    try {
-      final image = await findGame()!.images.load(PlayerSpriteSheet.assetKey);
-      animations = PlayerSpriteSheet.animations(image);
-      current = visualState;
-    } catch (error, stackTrace) {
-      if (!kReleaseMode) {
-        FlutterError.reportError(
-          FlutterErrorDetails(
-            exception: error,
-            stack: stackTrace,
-            library: 'pixel_survivor player sprites',
-            context: ErrorDescription('loading ${PlayerSpriteSheet.assetKey}'),
-          ),
-        );
-      }
-    }
+    final image = await SafeAssetLoader.load(
+      load: () => findGame()!.images.load(PlayerSpriteSheet.assetKey),
+      library: 'pixel_survivor player sprites',
+      assetKey: PlayerSpriteSheet.assetKey,
+    );
+    if (image == null) return;
+    animations = PlayerSpriteSheet.animations(image);
+    current = visualState;
   }
 
   @override
