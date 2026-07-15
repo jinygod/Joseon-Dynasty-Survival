@@ -30,12 +30,12 @@
 - Produces `AudioSettings`, `AudioSettings.defaults`, `copyWith`, and `volumeFor(AudioChannel)`.
 - Produces `AudioSettingsRepository.load()` and `save(AudioSettings)`.
 
-- [ ] Write failing tests proving exact defaults, copy clamping, valid persistence round-trip, independent missing/invalid recovery, and out-of-range clamping.
-- [ ] Run `flutter test test/game/audio_settings_repository_test.dart` and verify RED because the model and repository do not exist.
-- [ ] Implement the immutable model with finite-value normalization and channel mapping: music uses `musicVolume`; SFX and UI use `sfxVolume`.
-- [ ] Implement repository keys `audio.musicVolume`, `audio.sfxVolume`, and `audio.vibrationEnabled`; load with `getDouble`/`getBool` and save all fields while checking each boolean write result.
-- [ ] Run the focused test and verify GREEN.
-- [ ] Commit with `git commit -m "feat: persist audio settings"`.
+- [x] Write failing tests proving exact defaults, copy clamping, valid persistence round-trip, independent missing/invalid recovery, and out-of-range clamping.
+- [x] Run `flutter test test/game/audio_settings_repository_test.dart` and verify RED because the model and repository do not exist.
+- [x] Implement the immutable model with finite-value normalization and channel mapping: music uses `musicVolume`; SFX and UI use `sfxVolume`.
+- [x] Implement repository keys `audio.musicVolume`, `audio.sfxVolume`, and `audio.vibrationEnabled`; safely read typed values and save all fields while checking each boolean write result.
+- [x] Run the focused test and verify GREEN.
+- [x] Commit with `git commit -m "feat: persist audio settings"`.
 
 ### Task 2: Observable settings controller
 
@@ -47,11 +47,11 @@
 - Consumes `AudioSettingsRepository`.
 - Produces `AudioSettingsController.settings`, `load`, `setMusicVolume`, `setSfxVolume`, and `setVibrationEnabled`.
 
-- [ ] Write failing tests for load notification, immediate optimistic updates, persistence across controller instances, equal-value no-op, load/save failure isolation, and diagnostic callback isolation.
-- [ ] Run `flutter test test/game/audio_settings_controller_test.dart` and verify RED because the controller does not exist.
-- [ ] Implement a `ChangeNotifier` controller that publishes normalized snapshots before awaiting `save`, reports `AudioSettingsDiagnostic(operation, error, stackTrace)`, and keeps failures contained.
-- [ ] Run controller and repository tests and verify GREEN.
-- [ ] Commit with `git commit -m "feat: manage observable audio settings"`.
+- [x] Write failing tests for load notification, immediate optimistic updates, persistence across controller instances, equal-value no-op, load/save failure isolation, and diagnostic callback isolation.
+- [x] Run `flutter test test/game/audio_settings_controller_test.dart` and verify RED because the controller does not exist.
+- [x] Implement a `ChangeNotifier` controller that publishes normalized snapshots before awaiting `save`, reports `AudioSettingsDiagnostic(operation, error, stackTrace)`, and keeps failures contained.
+- [x] Run controller and repository tests and verify GREEN.
+- [x] Commit with `git commit -m "feat: manage observable audio settings"`.
 
 ### Task 3: Apply live volume to playback requests
 
@@ -67,12 +67,12 @@
 - `AudioPlaybackPolicy.requestFor(AudioCue cue, {required double volume})` returns a normalized request.
 - `GameAudioService` accepts `AudioSettings Function()? readSettings` and defaults to `AudioSettings.defaults`.
 
-- [ ] Update request fixtures and write failing tests for volume propagation, music-only mute, SFX/UI mute, live setting changes, and muted SFX not advancing pitch.
-- [ ] Run all audio tests and verify RED for the missing request volume and settings reader.
-- [ ] Add normalized volume to requests and make policy pitch advancement occur only for admitted non-muted requests.
-- [ ] Read settings at each service `play`; return before policy request construction when the mapped volume is zero.
-- [ ] Run all audio tests and verify GREEN, preserving capacity, priority, lifecycle, and failure tests.
-- [ ] Commit with `git commit -m "feat: apply audio volume preferences"`.
+- [x] Update request fixtures and write failing tests for volume propagation, music-only mute, SFX/UI mute, live setting changes, and muted SFX not advancing pitch.
+- [x] Run all audio tests and verify RED for the missing request volume and settings reader.
+- [x] Add normalized volume to requests and preserve deterministic pitch behavior.
+- [x] Read settings at each service `play`; return before policy request construction when the mapped volume is zero.
+- [x] Run all audio tests and verify GREEN, preserving capacity, priority, lifecycle, and failure tests.
+- [x] Commit with `git commit -m "feat: apply audio volume preferences"`.
 
 ### Task 4: Replace the pause settings placeholder
 
@@ -87,13 +87,13 @@
 - `PauseMenuOverlay` requires an `AudioSettingsController settingsController`.
 - `GameScreen` accepts optional `AudioSettingsController audioSettingsController` for ownership-safe injection.
 
-- [ ] Write failing widget tests for 70%/80%/enabled defaults, slider updates, vibration toggle, persistence calls, and controller ownership across screen disposal.
-- [ ] Run pause and game-screen tests and verify RED for missing controls and constructor parameters.
-- [ ] Replace placeholder copy with two ten-division sliders, percentage labels, a switch, and existing back navigation using `ListenableBuilder`.
-- [ ] Create/load a controller in `GameScreen`, pass it to the overlay, and dispose it only when internally owned.
-- [ ] Update responsive fixtures and verify the settings card remains within supported safe areas.
-- [ ] Run affected widget tests and then the complete test suite; verify GREEN.
-- [ ] Commit with `git commit -m "feat: add persistent pause audio settings"`.
+- [x] Write failing widget tests for 70%/80%/enabled defaults, slider updates, vibration toggle, persistence calls, and controller ownership across screen disposal.
+- [x] Run pause and game-screen tests and verify RED for missing controls and constructor parameters.
+- [x] Replace placeholder copy with two ten-division sliders, percentage labels, a switch, and existing back navigation using `ListenableBuilder`.
+- [x] Create/load a controller in `GameScreen`, pass it to the overlay, and dispose it only when internally owned.
+- [x] Update responsive fixtures and verify the settings card remains within supported safe areas.
+- [x] Run affected widget tests and then the complete test suite; verify GREEN.
+- [x] Commit with `git commit -m "feat: add persistent pause audio settings"`.
 
 ### Task 5: Release evidence and milestone tracking
 
@@ -101,11 +101,11 @@
 - Modify: `docs/master-development-todo.md`
 - Modify: `docs/superpowers/plans/2026-07-15-audio-settings.md`
 
-- [ ] Run `powershell -ExecutionPolicy Bypass -File tool/release_check.ps1 -IncludeAndroid`.
-- [ ] Confirm formatting unchanged, analysis has no issues, all tests pass, and web plus Android builds succeed.
-- [ ] Confirm no audio assets, playback dependency, haptic call, or broader accessibility setting was added.
-- [ ] Mark only `AUD-007` complete with exact fresh evidence and advance the independent queue to `AUD-008`.
-- [ ] Mark verified plan steps complete and commit with `git commit -m "docs: complete audio settings milestone"`.
+- [x] Run `powershell -ExecutionPolicy Bypass -File tool/release_check.ps1 -IncludeAndroid`.
+- [x] Confirm formatting unchanged, analysis has no issues, all 248 tests pass, and web plus Android builds succeed.
+- [x] Confirm no audio assets, playback dependency, haptic call, or broader accessibility setting was added.
+- [x] Mark only `AUD-007` complete with exact fresh evidence and advance the independent queue to `AUD-008`.
+- [x] Mark verified plan steps complete and commit with `git commit -m "docs: complete audio settings milestone"`.
 
 ### Task 6: Integrate into development mainline
 
