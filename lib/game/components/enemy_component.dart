@@ -150,6 +150,7 @@ class EnemyComponent
   double _hitFlashRemaining = 0;
   double _visualStateRemaining = 0;
   double _deathVisualElapsed = 0;
+  double _environmentalSlowFraction = 0;
   final Vector2 knockbackVelocity = Vector2.zero();
   EnemyAnimationState visualState = EnemyAnimationState.moving;
 
@@ -159,6 +160,15 @@ class EnemyComponent
   bool get isDead => currentHealth <= 0;
   bool get isDashing => _dashRemaining > 0;
   bool get isHitFlashing => _hitFlashRemaining > 0;
+  double get environmentalSlowFraction => _environmentalSlowFraction;
+  double get effectiveMoveSpeed => moveSpeed * (1 - _environmentalSlowFraction);
+
+  void setEnvironmentalSlow(double fraction) {
+    if (!fraction.isFinite || fraction < 0 || fraction >= .8) {
+      throw ArgumentError.value(fraction, 'fraction', 'Must be from 0 to 0.8');
+    }
+    _environmentalSlowFraction = fraction;
+  }
 
   void takeDamage(double amount) {
     if (amount <= 0 || isDead) {
@@ -235,7 +245,7 @@ class EnemyComponent
     }
 
     final speedMultiplier = isDashing ? _dashSpeedMultiplier : 1.0;
-    position.add(direction * moveSpeed * speedMultiplier * dt);
+    position.add(direction * effectiveMoveSpeed * speedMultiplier * dt);
     if (visualState != EnemyAnimationState.hit &&
         visualState != EnemyAnimationState.attacking &&
         !isDead) {

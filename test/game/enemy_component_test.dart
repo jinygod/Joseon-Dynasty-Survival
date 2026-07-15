@@ -7,6 +7,24 @@ import 'package:pixel_survivor/game/content/ids.dart';
 
 void main() {
   group('EnemyComponent', () {
+    test('environmental slow changes movement and can be reset', () {
+      final enemy = EnemyComponent(
+        enemyId: 'test_enemy',
+        maxHealth: 10,
+        moveSpeed: 100,
+        damage: 1,
+        position: Vector2.zero(),
+      );
+
+      enemy.setEnvironmentalSlow(0.45);
+      enemy.moveToward(Vector2(1000, 0), 1);
+      expect(enemy.position.x, closeTo(55, 0.001));
+      expect(enemy.effectiveMoveSpeed, closeTo(55, 0.001));
+
+      enemy.setEnvironmentalSlow(0);
+      expect(enemy.effectiveMoveSpeed, 100);
+    });
+
     test('detects player overlap using component sizes', () {
       final enemy = EnemyComponent(
         enemyId: 'test_enemy',
