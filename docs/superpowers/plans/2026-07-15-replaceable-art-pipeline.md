@@ -44,7 +44,7 @@
 - Consumes: existing `AssetCatalog` runtime paths.
 - Produces: `ArtAssetStatus`, `SpriteAtlasContract`, `ReplaceableArtCatalog.atlases`, `ReplaceableArtCatalog.byId`, and `AssetCatalog.allPaths`.
 
-- [ ] **Step 1: Write failing metadata and catalog-consistency tests**
+- [x] **Step 1: Write failing metadata and catalog-consistency tests**
 
 ```dart
 test('replaceable atlases are temporary and registered in AssetCatalog', () {
@@ -72,13 +72,13 @@ test('frame lookup rejects coordinates outside the atlas contract', () {
 });
 ```
 
-- [ ] **Step 2: Run tests and verify RED**
+- [x] **Step 2: Run tests and verify RED**
 
 Run: `flutter test test/game/sprite_atlas_contract_test.dart`
 
 Expected: compilation fails because `sprite_atlas_contract.dart`, `SpriteAtlasContract`, and `AssetCatalog.allPaths` do not exist.
 
-- [ ] **Step 3: Implement the minimal contract API and current registry**
+- [x] **Step 3: Implement the minimal contract API and current registry**
 
 ```dart
 enum ArtAssetStatus { temporary, approved }
@@ -120,13 +120,13 @@ Register the player 4x4/32px sheet, four normal-enemy 4x4 sheets, the boss 4x4/6
 
 Add `AssetCatalog.allPaths` by flattening the existing category maps into an unmodifiable set literal.
 
-- [ ] **Step 4: Run tests and verify GREEN**
+- [x] **Step 4: Run tests and verify GREEN**
 
 Run: `flutter test test/game/sprite_atlas_contract_test.dart`
 
 Expected: metadata and frame-bound tests pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```powershell
 git add lib/game/content/sprite_atlas_contract.dart lib/game/content/asset_catalog.dart test/game/sprite_atlas_contract_test.dart
@@ -143,7 +143,7 @@ git commit -m "feat: define replaceable sprite atlas contracts"
 - Consumes: `Uint8List` PNG file bytes and `SpriteAtlasContract` geometry.
 - Produces: `List<String> validatePngHeader(Uint8List bytes)` with an empty list for valid files and explicit messages for invalid signature, dimensions, or color type.
 
-- [ ] **Step 1: Write failing real-file and corrupt-header tests**
+- [x] **Step 1: Write failing real-file and corrupt-header tests**
 
 ```dart
 test('every replaceable atlas matches its PNG contract', () {
@@ -162,13 +162,13 @@ test('PNG validation reports malformed files without throwing', () {
 });
 ```
 
-- [ ] **Step 2: Run tests and verify RED**
+- [x] **Step 2: Run tests and verify RED**
 
 Run: `flutter test test/game/sprite_atlas_contract_test.dart`
 
 Expected: compilation fails because `validatePngHeader` does not exist.
 
-- [ ] **Step 3: Implement bounded PNG IHDR validation**
+- [x] **Step 3: Implement bounded PNG IHDR validation**
 
 ```dart
 List<String> validatePngHeader(Uint8List bytes) {
@@ -195,13 +195,13 @@ List<String> validatePngHeader(Uint8List bytes) {
 
 Use a direct indexed signature loop in the final implementation so repeated byte values cannot produce a false match.
 
-- [ ] **Step 4: Run tests and verify GREEN**
+- [x] **Step 4: Run tests and verify GREEN**
 
 Run: `flutter test test/game/sprite_atlas_contract_test.dart`
 
 Expected: all registered current atlases exist and match exact width, height, and RGBA requirements; malformed input returns a diagnostic instead of throwing.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```powershell
 git add lib/game/content/sprite_atlas_contract.dart test/game/sprite_atlas_contract_test.dart
@@ -222,7 +222,7 @@ git commit -m "test: validate replaceable atlas PNG contracts"
 - Consumes: `Future<T> Function() load`, diagnostic library name, asset key, and optional diagnostic callback.
 - Produces: `Future<T?> SafeAssetLoader.load<T>(...)`; successful values pass through, failures return `null`, development mode reports one `FlutterErrorDetails`.
 
-- [ ] **Step 1: Write failing loader behavior tests**
+- [x] **Step 1: Write failing loader behavior tests**
 
 ```dart
 test('safe loader returns a successfully loaded value', () async {
@@ -259,13 +259,13 @@ test('safe loader reports one explicit development diagnostic', () async {
 });
 ```
 
-- [ ] **Step 2: Run tests and verify RED**
+- [x] **Step 2: Run tests and verify RED**
 
 Run: `flutter test test/game/safe_asset_loader_test.dart`
 
 Expected: compilation fails because `SafeAssetLoader` does not exist.
 
-- [ ] **Step 3: Implement the minimal shared loader**
+- [x] **Step 3: Implement the minimal shared loader**
 
 ```dart
 abstract final class SafeAssetLoader {
@@ -295,13 +295,13 @@ abstract final class SafeAssetLoader {
 
 Replace the four duplicated `try/catch` blocks with `SafeAssetLoader.load`. Player and enemy components return early on `null`; their existing procedural `render` branches remain unchanged. Weapon and combat effect loaders return the nullable shared-loader result.
 
-- [ ] **Step 4: Run targeted fallback and component tests**
+- [x] **Step 4: Run targeted fallback and component tests**
 
 Run: `flutter test test/game/safe_asset_loader_test.dart test/game/player_component_test.dart test/game/enemy_component_test.dart test/game/weapon_effect_atlas_test.dart test/game/combat_effect_atlas_test.dart`
 
 Expected: loader tests pass and all existing procedural fallback/component tests remain green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```powershell
 git add lib/game/content/safe_asset_loader.dart lib/game/content/weapon_effect_atlas.dart lib/game/content/combat_effect_atlas.dart lib/game/components/player_component.dart lib/game/components/enemy_component.dart test/game/safe_asset_loader_test.dart
@@ -318,25 +318,25 @@ git commit -m "refactor: centralize safe sprite loading"
 - Consumes: fresh format, analysis, test, web-build, and Android-debug-build output.
 - Produces: checked plan steps and auditable `VIS-003` through `VIS-012` status text.
 
-- [ ] **Step 1: Mark prior generated art as technically integrated but visually temporary**
+- [x] **Step 1: Mark prior generated art as technically integrated but visually temporary**
 
 Keep `VIS-003` through `VIS-007` checked because their code and provenance milestones remain complete, but append that visual approval was withdrawn on 2026-07-15 and final cute/chibi replacements are required before `VIS-013` and release.
 
-- [ ] **Step 2: Run the complete release gate**
+- [x] **Step 2: Run the complete release gate**
 
 Run: `powershell -ExecutionPolicy Bypass -File tool/release_check.ps1 -IncludeAndroid`
 
 Expected: formatting unchanged, Dart analysis has zero issues, all tests pass, web build succeeds, Android debug APK build succeeds, and the script exits 0.
 
-- [ ] **Step 3: Update `VIS-011` and `VIS-012` with exact evidence**
+- [x] **Step 3: Update `VIS-011` and `VIS-012` with exact evidence**
 
 Mark both items complete only after Step 2 succeeds. Record the shared safe loader, development diagnostic/release fallback tests, eight atlas contracts, exact PNG dimensions/transparency checks, total test count from the fresh run, and successful web/Android builds.
 
-- [ ] **Step 4: Check the plan against the approved design**
+- [x] **Step 4: Check the plan against the approved design**
 
 Confirm that no image was generated or visually approved, all registered art is `temporary`, same-contract PNG replacement requires no component change, and `VIS-008` through `VIS-010` remain unchecked.
 
-- [ ] **Step 5: Commit release evidence**
+- [x] **Step 5: Commit release evidence**
 
 ```powershell
 git add docs/master-development-todo.md docs/superpowers/plans/2026-07-15-replaceable-art-pipeline.md
