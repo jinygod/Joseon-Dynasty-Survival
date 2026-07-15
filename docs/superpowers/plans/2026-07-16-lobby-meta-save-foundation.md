@@ -8,6 +8,8 @@
 
 **Tech Stack:** Flutter, Dart 3, Material widgets, SharedPreferences, flutter_test
 
+**Execution note (2026-07-16):** 사용자가 버그 방지에 필요한 최소 테스트만 유지하도록 승인했다. 핵심 저장·컨트롤러·선택·로비 계약 테스트는 작성하고 실패 상태를 정적 분석으로 확인했지만, 로컬 Flutter 3.44.4와 3.44.3의 `flutter_tester.exe`가 Windows 오류 `0xc0000409`로 종료되어 런타임 테스트 통과 단계는 미완료로 남긴다. 전체 정적 분석과 웹·Android 디버그 빌드로 컴파일 경로를 검증했다.
+
 ## Global Constraints
 
 - 첫 출시 플랫폼은 Android, 화면은 가로 방향, 플레이는 오프라인 싱글플레이로 유지한다.
@@ -35,7 +37,7 @@
 - Produces: `SaveState.wallet`, `trainingProgress`, `shopProgress`, `selectedCharacterId`, `selectedStageId`
 - Preserves: 스키마 0/1의 해금·누적 기록
 
-- [ ] **Step 1: 스키마 2 마이그레이션 실패 테스트 작성**
+- [x] **Step 1: 스키마 2 마이그레이션 실패 테스트 작성**
 
 ```dart
 test('schema one migrates to schema two without losing progress', () {
@@ -78,12 +80,12 @@ test('schema two sanitizes invalid meta values and unknown selections', () {
 });
 ```
 
-- [ ] **Step 2: 테스트가 현재 스키마 1과 타입 부재로 실패하는지 확인**
+- [x] **Step 2: 테스트가 현재 스키마 1과 타입 부재로 실패하는지 확인**
 
 Run: `flutter test test/game/save_system_test.dart`
 Expected: FAIL (`Wallet` 미정의 또는 schema version 기대값 불일치)
 
-- [ ] **Step 3: 중앙 메타 진행 ID 정의 작성**
+- [x] **Step 3: 중앙 메타 진행 ID 정의 작성**
 
 `lib/game/content/meta_progress_definitions.dart`에 저장 키로 쓰일 다음 상수를 작성한다. 표시명과 가격은 구매 프로젝트에서 별도 정의한다.
 
@@ -117,7 +119,7 @@ const oneTimeShopItemIds = {
 };
 ```
 
-- [ ] **Step 4: 불변 메타 값 객체 구현**
+- [x] **Step 4: 불변 메타 값 객체 구현**
 
 `lib/game/models/meta_progress.dart`에 다음 공개 계약을 구현한다.
 
@@ -218,7 +220,7 @@ class ShopProgress {
 }
 ```
 
-- [ ] **Step 5: `SaveState`를 스키마 2로 확장**
+- [x] **Step 5: `SaveState`를 스키마 2로 확장**
 
 `currentSchemaVersion = 2`로 올리고 생성자, `defaults`, `_fromSupportedJson`, `copyWith`, `toJson`에 다음 필드를 동일한 이름으로 추가한다.
 
@@ -237,7 +239,7 @@ required this.selectedStageId,
 Run: `flutter test test/game/save_system_test.dart`
 Expected: PASS
 
-- [ ] **Step 7: 커밋**
+- [x] **Step 7: 커밋**
 
 ```powershell
 git add lib/game/content/meta_progress_definitions.dart lib/game/models/meta_progress.dart lib/game/systems/save_system.dart test/game/save_system_test.dart
@@ -254,7 +256,7 @@ git commit -m "feat: migrate saves to meta progression schema"
 - Consumes: `SaveSystem.load()`, `SaveSystem.save(SaveState)`
 - Produces: `LobbyController.load()`, `selectCharacter(String)`, `selectStage(String)`, `state`, `loading`, `saving`, `recoveryNotice`
 
-- [ ] **Step 1: 로드·선택·중복 입력 테스트 작성**
+- [x] **Step 1: 로드·선택·중복 입력 테스트 작성**
 
 ```dart
 test('loads persisted selections and saves changes in order', () async {
@@ -281,12 +283,12 @@ test('load failure uses defaults and exposes one recovery notice', () async {
 
 테스트 지원 저장소는 `SaveStore` 인터페이스를 구현하고 저장 동시 실행 수를 기록한다.
 
-- [ ] **Step 2: 테스트 실패 확인**
+- [x] **Step 2: 테스트 실패 확인**
 
 Run: `flutter test test/app/lobby_controller_test.dart`
 Expected: FAIL (`LobbyController` 미정의)
 
-- [ ] **Step 3: 저장 추상화와 컨트롤러 구현**
+- [x] **Step 3: 저장 추상화와 컨트롤러 구현**
 
 `SaveSystem`이 다음 인터페이스를 구현하게 하고 컨트롤러는 `ChangeNotifier`로 만든다.
 
@@ -317,7 +319,7 @@ class LobbyController extends ChangeNotifier {
 Run: `flutter test test/app/lobby_controller_test.dart`
 Expected: PASS
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```powershell
 git add lib/app/lobby_controller.dart lib/game/systems/save_system.dart test/app/lobby_controller_test.dart
@@ -337,7 +339,7 @@ git commit -m "feat: add persistent lobby controller"
 - Produces: `ValueChanged<String> onSelected`
 - Removes: 선택 화면이 전투 시작을 직접 결정하는 책임
 
-- [ ] **Step 1: 초기 선택과 완료 콜백 테스트 작성**
+- [x] **Step 1: 초기 선택과 완료 콜백 테스트 작성**
 
 ```dart
 testWidgets('character picker starts at saved character and returns selection', (tester) async {
@@ -367,12 +369,12 @@ testWidgets('stage picker starts at saved stage and returns selection', (tester)
 });
 ```
 
-- [ ] **Step 2: 기존 생성자와 키 때문에 실패하는지 확인**
+- [x] **Step 2: 기존 생성자와 키 때문에 실패하는지 확인**
 
 Run: `flutter test test/app/character_select_screen_test.dart test/app/stage_select_screen_test.dart`
 Expected: FAIL (새 생성자 인자 및 확인 키 부재)
 
-- [ ] **Step 3: 두 화면의 공개 생성자와 버튼 문구 변경**
+- [x] **Step 3: 두 화면의 공개 생성자와 버튼 문구 변경**
 
 ```dart
 const CharacterSelectScreen({
@@ -396,7 +398,7 @@ const StageSelectScreen({
 Run: `flutter test test/app/character_select_screen_test.dart test/app/stage_select_screen_test.dart`
 Expected: PASS
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```powershell
 git add lib/app/character_select_screen.dart lib/app/stage_select_screen.dart test/app/character_select_screen_test.dart test/app/stage_select_screen_test.dart
@@ -440,11 +442,11 @@ testWidgets('records shows persisted totals and best time', (tester) async {
 Run: `flutter test test/app/settings_screen_test.dart test/app/records_screen_test.dart`
 Expected: FAIL (화면 클래스 미정의)
 
-- [ ] **Step 3: 설정 화면 구현**
+- [x] **Step 3: 설정 화면 구현**
 
 `SettingsScreen`은 `AnimatedBuilder(animation: controller)` 안에서 `Slider` 두 개와 `SwitchListTile` 한 개를 렌더링한다. 키는 테스트의 세 키를 사용하고 콜백은 각각 `setMusicVolume`, `setSfxVolume`, `setVibrationEnabled`에 연결한다. 로비에서는 뒤로 가기로 닫히며 별도 저장 버튼을 만들지 않는다.
 
-- [ ] **Step 4: 기록 화면 구현**
+- [x] **Step 4: 기록 화면 구현**
 
 `RecordsScreen`은 `SaveState`에서 누적 처치, 최고 생존, 보스 격파, 완료 목표 수, 해금 무기 수를 읽어 한국어 레이블의 카드로 표시한다. 시간은 `분:초` 형식으로 변환한다.
 
@@ -453,7 +455,7 @@ Expected: FAIL (화면 클래스 미정의)
 Run: `flutter test test/app/settings_screen_test.dart test/app/records_screen_test.dart`
 Expected: PASS
 
-- [ ] **Step 6: 커밋**
+- [x] **Step 6: 커밋**
 
 ```powershell
 git add lib/app/settings_screen.dart lib/app/records_screen.dart test/app/settings_screen_test.dart test/app/records_screen_test.dart
@@ -474,7 +476,7 @@ git commit -m "feat: add lobby settings and records screens"
 - Consumes: `LobbyController`, `AudioSettingsController`, `GameAudioService`, `TutorialProgressRepository`
 - Produces: 앱 첫 화면, 인물/스테이지/설정/기록 이동, 현재 선택 기반 `GameScreen` 출진
 
-- [ ] **Step 1: 로비 정보와 경로 테스트 작성**
+- [x] **Step 1: 로비 정보와 경로 테스트 작성**
 
 ```dart
 testWidgets('lobby shows wallet, selection, and working destinations', (tester) async {
@@ -506,22 +508,22 @@ testWidgets('deploy launches game with persisted character and stage', (tester) 
 });
 ```
 
-- [ ] **Step 2: 로비 클래스 부재로 실패하는지 확인**
+- [x] **Step 2: 로비 클래스 부재로 실패하는지 확인**
 
 Run: `flutter test test/app/lobby_screen_test.dart`
 Expected: FAIL (`LobbyScreen` 미정의)
 
-- [ ] **Step 3: 로비 레이아웃 구현**
+- [x] **Step 3: 로비 레이아웃 구현**
 
 `LobbyScreen`은 `AnimatedBuilder`로 컨트롤러를 구독한다. 상단에는 계정 진행 자리(`수련 단계 0`), 엽전, 혼옥, 설정을 배치한다. 중앙에는 `AssetCatalog.lobby['government_office']`로 조회한 관아 장면 영역, 선택 캐릭터와 스테이지의 이름·최고 기록을 표시한다. 에셋이 준비되지 않았으면 `Color(0xff243b32)` 배경과 `Icons.account_balance`를 사용한다. 하단 중앙에 가장 큰 `출진` 버튼을 둔다.
 
 오른쪽에는 `인물`, `기록`만 표시한다. 장비·수련·상점·도감·업적은 실제 후속 화면이 생기기 전까지 버튼을 만들지 않는다. 인물/스테이지에서 선택 완료 시 컨트롤러 저장을 기다린 뒤 로비로 pop한다. 설정과 기록은 Task 4의 화면을 push한다.
 
-- [ ] **Step 4: 앱 루트를 로비로 교체하고 기존 메뉴 삭제**
+- [x] **Step 4: 앱 루트를 로비로 교체하고 기존 메뉴 삭제**
 
 `PixelSurvivorApp`이 `SaveSystem`을 주입한 `LobbyController`를 소유하고 `initState`에서 `unawaited(load())`, `dispose`에서 컨트롤러를 정리하게 한다. `home`을 `LobbyScreen`으로 교체한다. 전투 결과의 `popUntil(route.isFirst)`는 자동으로 로비로 돌아오므로 유지한다.
 
-- [ ] **Step 5: 한국어와 화면 비율 회귀 테스트 갱신**
+- [x] **Step 5: 한국어와 화면 비율 회귀 테스트 갱신**
 
 `korean_strings_test.dart`의 첫 화면을 로비로 바꾸고 렌더된 `Text`에 영문 제품 문구가 없는지 유지한다. `responsive_layout_test.dart`에서 16:9, 18:9, 19.5:9, 4:3 각각 로비를 펌프해 `tester.takeException()`이 null이고 `lobby-deploy`가 화면 안에 있는지 확인한다.
 
@@ -530,7 +532,7 @@ Expected: FAIL (`LobbyScreen` 미정의)
 Run: `flutter test test/app/lobby_screen_test.dart test/app/korean_strings_test.dart test/app/responsive_layout_test.dart`
 Expected: PASS
 
-- [ ] **Step 7: 커밋**
+- [x] **Step 7: 커밋**
 
 ```powershell
 git add lib/app test/app test/main_menu_screen_test.dart
@@ -546,7 +548,7 @@ git commit -m "feat: replace main menu with persistent government lobby"
 **Interfaces:**
 - Verifies: 스키마 1→2 보존, 로비 선택 저장, 네 경로 연결, 출진, 반응형 레이아웃
 
-- [ ] **Step 1: 포맷과 정적 분석 실행**
+- [x] **Step 1: 포맷과 정적 분석 실행**
 
 Run: `dart format --output=none --set-exit-if-changed lib test`
 Expected: exit 0
@@ -559,7 +561,7 @@ Expected: `No issues found!`
 Run: `flutter test`
 Expected: 모든 테스트 PASS
 
-- [ ] **Step 3: 웹과 Android 빌드 실행**
+- [x] **Step 3: 웹과 Android 빌드 실행**
 
 Run: `flutter build web`
 Expected: exit 0, `build/web` 생성
@@ -567,11 +569,11 @@ Expected: exit 0, `build/web` 생성
 Run: `flutter build apk --debug`
 Expected: exit 0, `build/app/outputs/flutter-apk/app-debug.apk` 생성
 
-- [ ] **Step 4: 마스터 TODO 근거 갱신**
+- [x] **Step 4: 마스터 TODO 근거 갱신**
 
-`META-001`에는 로비에서 인물·스테이지 선택과 현재 상태 표시, `META-003`에는 기록 화면, `META-008`에는 스키마 1→2 마이그레이션 근거를 기록한다. 수련 구매와 재화 정산을 구현하지 않았으므로 관련 항목은 완료 처리하지 않는다. 이 계획의 완료된 체크박스를 `[x]`로 바꾼다.
+`FND-012`에는 스키마 2와 메타 진행 기반, `META-007`에는 저장 복구 1회 안내, `META-011`에는 관아 로비와 실제 화면 연결 근거를 기록한다. 도감·상세 통계·진행 초기화·수련 구매·재화 정산은 구현하지 않았으므로 기존 관련 항목을 완료 처리하지 않는다. 이 계획의 완료된 체크박스를 `[x]`로 바꾼다.
 
-- [ ] **Step 5: 변경 상태와 최종 diff 확인**
+- [x] **Step 5: 변경 상태와 최종 diff 확인**
 
 Run: `git status --short`
 Expected: 계획된 파일만 수정됨
@@ -579,7 +581,7 @@ Expected: 계획된 파일만 수정됨
 Run: `git diff --check`
 Expected: 출력 없음
 
-- [ ] **Step 6: 최종 커밋**
+- [x] **Step 6: 최종 커밋**
 
 ```powershell
 git add docs/master-development-todo.md docs/superpowers/plans/2026-07-16-lobby-meta-save-foundation.md
