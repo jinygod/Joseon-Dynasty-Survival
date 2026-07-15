@@ -10,6 +10,7 @@ import 'package:flutter/widgets.dart' show KeyEventResult;
 
 import '../app/game_hud_source.dart';
 import 'components/area_attack_component.dart';
+import 'audio/audio_cue.dart';
 import 'components/boss_component.dart';
 import 'components/combat_effect_component.dart';
 import 'components/damage_number_component.dart';
@@ -45,6 +46,7 @@ class PixelSurvivorGame extends FlameGame
   PixelSurvivorGame({
     required this.playerSlot,
     required this.onRunEnded,
+    this.onAudioCue,
     Random? random,
   }) : weaponSystem = WeaponSystem(random: random),
        waveDirector = WaveDirector(random: random ?? Random()),
@@ -58,6 +60,7 @@ class PixelSurvivorGame extends FlameGame
 
   final PlayerSlot playerSlot;
   final void Function(RunResult result)? onRunEnded;
+  final void Function(AudioCue cue)? onAudioCue;
   final WeaponSystem weaponSystem;
   final WaveDirector waveDirector;
   final LevelUpSystem levelUpSystem;
@@ -330,6 +333,8 @@ class PixelSurvivorGame extends FlameGame
     }
     if (wave.spawnBoss) {
       _bossRequestCount += 1;
+      _emitAudio(AudioCue.bossWarning);
+      _emitAudio(AudioCue.bossMusic);
       _spawnBoss();
     }
   }
@@ -390,6 +395,9 @@ class PixelSurvivorGame extends FlameGame
       criticalChance: criticalChance,
       sizeMultiplier: weaponSizeMultiplier,
     );
+    for (final weaponId in result.firedWeaponIds) {
+      _emitAudio(_attackCueFor(weaponId));
+    }
     _applyDamageEvents(result.damageEvents);
     for (final projectile in result.projectiles) {
       add(projectile);
@@ -500,6 +508,7 @@ class PixelSurvivorGame extends FlameGame
         event.target.position,
         size: event.isCritical ? 48 : 32,
       );
+      if (event.isCritical) _emitAudio(AudioCue.criticalHit);
     }
   }
 
@@ -602,6 +611,7 @@ class PixelSurvivorGame extends FlameGame
       weaponId: _lastWeaponHitByEnemy.remove(enemy),
     );
     combatSystem.forget(enemy);
+    if (!enemyDefinition.isBoss) _emitAudio(AudioCue.enemyDeath);
   }
 
   void _applyEnemyContactDamage() {
@@ -622,12 +632,13 @@ class PixelSurvivorGame extends FlameGame
     for (final enemy in enemies) {
       for (final player in alivePlayers) {
         final healthBefore = player.currentHealth;
-        final applied = combatSystem.applyContactDamage(
+        combatSystem.applyContactDamage(
           player: player,
           enemy: enemy,
           now: _elapsedSeconds,
         );
-        if (applied) {
+        if (player.currentHealth < healthBefore) {
+          _emitAudio(AudioCue.playerHit);
           _recordPlayerDamage(
             player: player,
             healthBefore: healthBefore,
@@ -670,6 +681,7 @@ class PixelSurvivorGame extends FlameGame
         ),
       );
       if (canPickup) {
+        _emitAudio(AudioCue.experiencePickup);
         gainExperience(gem.experienceValue);
         gem.removeFromParent();
       }
@@ -722,6 +734,7 @@ class PixelSurvivorGame extends FlameGame
     }
 
     _pendingLevelUpChoices = choices;
+    _emitAudio(AudioCue.levelUp);
     if (isMounted) {
       pauseEngine();
       overlays.add(levelUpOverlayId);
@@ -751,6 +764,11 @@ class PixelSurvivorGame extends FlameGame
     }
 
     _runOutcome = outcome;
+    _emitAudio(
+      outcome == RunOutcome.victory
+          ? AudioCue.victoryMusic
+          : AudioCue.defeatMusic,
+    );
     _pendingLevelUpChoices = const [];
     if (isMounted) {
       overlays.remove(levelUpOverlayId);
@@ -775,6 +793,8 @@ class PixelSurvivorGame extends FlameGame
     _currentEnemyCap = wave.maxActiveEnemies;
     if (wave.spawnBoss) {
       _bossRequestCount += 1;
+      _emitAudio(AudioCue.bossWarning);
+      _emitAudio(AudioCue.bossMusic);
       _spawnBoss();
     }
   }
@@ -797,6 +817,16 @@ class PixelSurvivorGame extends FlameGame
       player.takeDamage(player.currentHealth);
     }
   }
+
+  AudioCue _attackCueFor(WeaponId weaponId) => switch (weaponId) {
+    hwandoSlash => AudioCue.hwandoAttack,
+    gakgungShot => AudioCue.bowAttack,
+    talismanThrow => AudioCue.talismanAttack,
+    thunderCrashBomb => AudioCue.bombAttack,
+    _ => AudioCue.hwandoAttack,
+  };
+
+  void _emitAudio(AudioCue cue) => onAudioCue?.call(cue);
 
   CharacterDefinition _characterDefinitionFor(CharacterId characterId) {
     return characterDefinitions.firstWhere(

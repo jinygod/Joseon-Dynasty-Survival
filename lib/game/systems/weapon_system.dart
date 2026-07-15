@@ -67,7 +67,9 @@ class WeaponSystem {
     final projectiles = <ProjectileComponent>[];
     final meleeArcs = <MeleeArcComponent>[];
     final areaAttacks = <AreaAttackComponent>[];
+    final firedWeaponIds = <WeaponId>[];
 
+    final hwandoEventCount = damageEvents.length + meleeArcs.length;
     _fireHwando(
       dt: dt,
       origin: origin,
@@ -79,6 +81,10 @@ class WeaponSystem {
       damageEvents: damageEvents,
       meleeArcs: meleeArcs,
     );
+    if (damageEvents.length + meleeArcs.length > hwandoEventCount) {
+      firedWeaponIds.add(hwandoSlash);
+    }
+    final gakgungProjectileCount = projectiles.length;
     _fireGakgung(
       dt: dt,
       origin: origin,
@@ -89,6 +95,10 @@ class WeaponSystem {
       sizeMultiplier: sizeMultiplier,
       projectiles: projectiles,
     );
+    if (projectiles.length > gakgungProjectileCount) {
+      firedWeaponIds.add(gakgungShot);
+    }
+    final talismanDamageCount = damageEvents.length;
     _fireTalisman(
       dt: dt,
       origin: origin,
@@ -99,6 +109,10 @@ class WeaponSystem {
       sizeMultiplier: sizeMultiplier,
       damageEvents: damageEvents,
     );
+    if (damageEvents.length > talismanDamageCount) {
+      firedWeaponIds.add(talismanThrow);
+    }
+    final bombAreaCount = areaAttacks.length;
     _fireBomb(
       dt: dt,
       origin: origin,
@@ -109,12 +123,16 @@ class WeaponSystem {
       sizeMultiplier: sizeMultiplier,
       areaAttacks: areaAttacks,
     );
+    if (areaAttacks.length > bombAreaCount) {
+      firedWeaponIds.add(thunderCrashBomb);
+    }
 
     return WeaponTickResult(
       damageEvents: damageEvents,
       projectiles: projectiles,
       meleeArcs: meleeArcs,
       areaAttacks: areaAttacks,
+      firedWeaponIds: firedWeaponIds,
     );
   }
 
@@ -381,16 +399,19 @@ class WeaponTickResult {
     this.projectiles = const [],
     this.meleeArcs = const [],
     this.areaAttacks = const [],
+    this.firedWeaponIds = const [],
   });
 
   const WeaponTickResult.empty()
     : damageEvents = const [],
       projectiles = const [],
       meleeArcs = const [],
-      areaAttacks = const [];
+      areaAttacks = const [],
+      firedWeaponIds = const [];
 
   final List<DamageEvent> damageEvents;
   final List<ProjectileComponent> projectiles;
   final List<MeleeArcComponent> meleeArcs;
   final List<AreaAttackComponent> areaAttacks;
+  final List<WeaponId> firedWeaponIds;
 }

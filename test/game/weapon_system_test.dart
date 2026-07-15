@@ -125,6 +125,61 @@ void main() {
       expect(result.areaAttacks.single.delaySeconds, greaterThan(0));
       expect(result.damageEvents, isEmpty);
     });
+
+    test('tick reports every weapon that actually fires', () {
+      final enemy = EnemyComponent(
+        enemyId: 'target',
+        maxHealth: 1000,
+        moveSpeed: 0,
+        damage: 0,
+        position: Vector2(20, 0),
+      );
+      final system = WeaponSystem(
+        initialLevels: const {
+          hwandoSlash: 1,
+          gakgungShot: 1,
+          talismanThrow: 1,
+          thunderCrashBomb: 1,
+        },
+        random: Random(1),
+      );
+
+      final result = system.tick(
+        dt: 10,
+        origin: Vector2.zero(),
+        enemies: [enemy],
+      );
+
+      expect(result.firedWeaponIds, [
+        hwandoSlash,
+        gakgungShot,
+        talismanThrow,
+        thunderCrashBomb,
+      ]);
+    });
+
+    test('tick does not report a weapon while its cooldown is active', () {
+      final enemy = EnemyComponent(
+        enemyId: 'target',
+        maxHealth: 1000,
+        moveSpeed: 0,
+        damage: 0,
+        position: Vector2(20, 0),
+      );
+      final system = WeaponSystem(
+        initialLevels: const {hwandoSlash: 1},
+        random: Random(1),
+      );
+      system.tick(dt: 1, origin: Vector2.zero(), enemies: [enemy]);
+
+      final result = system.tick(
+        dt: 0.01,
+        origin: Vector2.zero(),
+        enemies: [enemy],
+      );
+
+      expect(result.firedWeaponIds, isEmpty);
+    });
   });
 
   group('ProjectileComponent', () {
