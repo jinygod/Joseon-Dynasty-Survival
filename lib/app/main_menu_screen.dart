@@ -1,15 +1,27 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../l10n/app_strings.dart';
+import '../game/audio/audio_cue.dart';
+import '../game/audio/audio_settings_controller.dart';
+import '../game/audio/game_audio_service.dart';
 import '../game/systems/tutorial_progress_repository.dart';
 import 'character_select_screen.dart';
 import 'game_screen.dart';
 import 'stage_select_screen.dart';
 
 class MainMenuScreen extends StatefulWidget {
-  const MainMenuScreen({this.tutorialProgressRepository, super.key});
+  const MainMenuScreen({
+    this.tutorialProgressRepository,
+    this.audioService,
+    this.audioSettingsController,
+    super.key,
+  });
 
   final TutorialProgressRepository? tutorialProgressRepository;
+  final GameAudioService? audioService;
+  final AudioSettingsController? audioSettingsController;
 
   @override
   State<MainMenuScreen> createState() => _MainMenuScreenState();
@@ -21,6 +33,11 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
   Future<void> _startRun() async {
     if (_launching) return;
     setState(() => _launching = true);
+    final audio = widget.audioService;
+    if (audio != null) {
+      unawaited(audio.play(AudioCue.uiConfirm));
+      unawaited(audio.play(AudioCue.menuMusic));
+    }
     final repository =
         widget.tutorialProgressRepository ?? TutorialProgressRepository();
     var showTutorial = true;
@@ -46,6 +63,9 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                           stageId: stageId,
                           showFirstRunTutorial: showTutorial,
                           tutorialProgressRepository: repository,
+                          audioService: widget.audioService,
+                          audioSettingsController:
+                              widget.audioSettingsController,
                         ),
                       ),
                     );

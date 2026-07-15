@@ -11,6 +11,8 @@ import 'run_summary_screen.dart';
 import '../game/models/player_slot.dart';
 import '../game/audio/audio_settings_controller.dart';
 import '../game/audio/audio_settings_repository.dart';
+import '../game/audio/audio_cue.dart';
+import '../game/audio/game_audio_service.dart';
 import '../game/models/run_result.dart';
 import '../game/models/vector_input.dart';
 import '../game/content/stage_definitions.dart';
@@ -37,6 +39,7 @@ class GameScreen extends StatefulWidget {
     this.showFirstRunTutorial = false,
     this.tutorialProgressRepository,
     this.audioSettingsController,
+    this.audioService,
     super.key,
   });
 
@@ -50,6 +53,7 @@ class GameScreen extends StatefulWidget {
   final bool showFirstRunTutorial;
   final TutorialProgressRepository? tutorialProgressRepository;
   final AudioSettingsController? audioSettingsController;
+  final GameAudioService? audioService;
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -90,11 +94,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         PixelSurvivorGame(
           playerSlot: widget.playerSlot,
           onRunEnded: _handleRunEnded,
+          onAudioCue: _playAudio,
         );
     _game.pauseWhenBackgrounded = false;
     if (widget.showFirstRunTutorial) {
       _game.pauseEngine();
     }
+    _playAudio(AudioCue.battleMusic);
   }
 
   @override
@@ -127,6 +133,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     _game.updateMovementInput(VectorInput.zero);
     _game.pauseEngine();
     _game.overlays.add(_pauseOverlayId);
+    final audio = widget.audioService;
+    if (audio != null) unawaited(audio.pauseAll());
   }
 
   void _resumeGame() {
@@ -135,18 +143,26 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     }
     _game.overlays.remove(_pauseOverlayId);
     _game.resumeEngine();
+    final audio = widget.audioService;
+    if (audio != null) unawaited(audio.resumeAll());
   }
 
   void _restartGame() {
     Navigator.of(context).pushReplacement(
       MaterialPageRoute<void>(
-        builder: (_) =>
-            GameScreen(playerSlot: widget.playerSlot, stageId: widget.stageId),
+        builder: (_) => GameScreen(
+          playerSlot: widget.playerSlot,
+          stageId: widget.stageId,
+          audioService: widget.audioService,
+          audioSettingsController: widget.audioSettingsController,
+        ),
       ),
     );
   }
 
   void _exitToMenu() {
+    _playAudio(AudioCue.uiBack);
+    _playAudio(AudioCue.menuMusic);
     Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
@@ -159,6 +175,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     if (!mounted || !_game.canPauseRun) return;
     _game.overlays.remove(_tutorialOverlayId);
     _game.resumeEngine();
+    final audio = widget.audioService;
+    if (audio != null) unawaited(audio.resumeAll());
   }
 
   void _handleRunEnded(RunResult result) {
@@ -211,17 +229,26 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                   builder: (_) => GameScreen(
                     playerSlot: widget.playerSlot,
                     stageId: widget.stageId,
+                    audioService: widget.audioService,
+                    audioSettingsController: widget.audioSettingsController,
                   ),
                 ),
               );
             },
             onMenu: () {
+              _playAudio(AudioCue.uiBack);
+              _playAudio(AudioCue.menuMusic);
               Navigator.of(context).popUntil((route) => route.isFirst);
             },
           ),
         ),
       );
     });
+  }
+
+  void _playAudio(AudioCue cue) {
+    final audio = widget.audioService;
+    if (audio != null) unawaited(audio.play(cue));
   }
 
   @override

@@ -6,11 +6,14 @@ import 'package:pixel_survivor/game/content/character_definitions.dart';
 import 'package:pixel_survivor/game/content/stage_definitions.dart';
 import 'package:pixel_survivor/game/audio/audio_settings_controller.dart';
 import 'package:pixel_survivor/game/audio/audio_settings_repository.dart';
+import 'package:pixel_survivor/game/audio/game_audio_service.dart';
 import 'package:pixel_survivor/game/models/player_slot.dart';
 import 'package:pixel_survivor/game/models/vector_input.dart';
 import 'package:pixel_survivor/game/pixel_survivor_game.dart';
 import 'package:pixel_survivor/game/systems/tutorial_progress_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../support/recording_audio_backend.dart';
 
 void main() {
   testWidgets('HUD pause clears input and can explicitly resume', (
@@ -32,6 +35,22 @@ void main() {
     await tester.pump();
     expect(game.paused, isFalse);
     expect(find.byKey(const Key('pause-resume')), findsNothing);
+  });
+
+  testWidgets('pause and resume forward the audio lifecycle', (tester) async {
+    final backend = RecordingAudioBackend();
+    final audio = GameAudioService(backend: backend);
+    await tester.pumpWidget(
+      MaterialApp(home: GameScreen(game: _game(), audioService: audio)),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('hud-pause')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('pause-resume')));
+    await tester.pump();
+
+    expect(backend.commands, ['pauseAll', 'resumeAll']);
   });
 
   testWidgets('background pause never auto-resumes on foreground', (

@@ -3,13 +3,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/app/character_select_screen.dart';
 import 'package:pixel_survivor/app/game_screen.dart';
+import 'package:pixel_survivor/app/main_menu_screen.dart';
 import 'package:pixel_survivor/app/pixel_survivor_app.dart';
 import 'package:pixel_survivor/app/stage_select_screen.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
+import 'package:pixel_survivor/game/audio/audio_cue.dart';
+import 'package:pixel_survivor/game/audio/game_audio_service.dart';
 import 'package:pixel_survivor/game/pixel_survivor_game.dart';
 import 'package:pixel_survivor/game/systems/save_system.dart';
 import 'package:pixel_survivor/game/systems/tutorial_progress_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'support/recording_audio_backend.dart';
 
 void main() {
   setUp(() {
@@ -21,6 +26,24 @@ void main() {
 
     expect(find.text('조선 왕조 서바이벌'), findsOneWidget);
     expect(find.text('출진 준비'), findsOneWidget);
+  });
+
+  testWidgets('first start tap unlocks Chrome audio with a confirm cue', (
+    tester,
+  ) async {
+    final backend = RecordingAudioBackend();
+    final audio = GameAudioService(backend: backend);
+    await tester.pumpWidget(
+      MaterialApp(home: MainMenuScreen(audioService: audio)),
+    );
+
+    await tester.tap(find.byType(FilledButton));
+    await tester.pump();
+
+    expect(backend.requests.map((request) => request.cue), [
+      AudioCue.uiConfirm,
+      AudioCue.menuMusic,
+    ]);
   });
 
   testWidgets('navigates through character selection into the first run', (
