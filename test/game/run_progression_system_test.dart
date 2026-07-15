@@ -8,29 +8,29 @@ void main() {
 
       expect(progression.level, 1);
       expect(progression.currentExperience, 0);
-      expect(progression.experienceToNextLevel, 5);
+      expect(progression.experienceToNextLevel, 11);
     });
 
     test('adds experience without leveling when below the threshold', () {
       final progression = RunProgressionSystem();
 
-      final leveledUp = progression.addExperience(4);
+      final leveledUp = progression.addExperience(10);
 
       expect(leveledUp, isFalse);
       expect(progression.level, 1);
-      expect(progression.currentExperience, 4);
-      expect(progression.experienceToNextLevel, 5);
+      expect(progression.currentExperience, 10);
+      expect(progression.experienceToNextLevel, 11);
     });
 
     test('levels up and carries overflow experience', () {
       final progression = RunProgressionSystem();
 
-      final leveledUp = progression.addExperience(7);
+      final leveledUp = progression.addExperience(14);
 
       expect(leveledUp, isTrue);
       expect(progression.level, 2);
-      expect(progression.currentExperience, 2);
-      expect(progression.experienceToNextLevel, 6);
+      expect(progression.currentExperience, 3);
+      expect(progression.experienceToNextLevel, 13);
     });
 
     test('ignores zero and negative experience', () {
@@ -45,12 +45,12 @@ void main() {
       final system = RunProgressionSystem();
       var upgrades = 0;
 
-      for (var index = 0; index < 85; index += 1) {
+      for (var index = 0; index < 177; index += 1) {
         if (system.addExperience(1)) upgrades += 1;
       }
 
-      expect(system.experienceRequiredForLevel(1), 5);
-      expect(system.experienceRequiredForLevel(10), 14);
+      expect(system.experienceRequiredForLevel(1), 11);
+      expect(system.experienceRequiredForLevel(10), 29);
       expect(upgrades, 9);
     });
   });

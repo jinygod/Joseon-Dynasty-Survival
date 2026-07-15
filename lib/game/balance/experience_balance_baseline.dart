@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import '../content/enemy_definitions.dart';
 import '../content/wave_definitions.dart';
 import '../systems/run_progression_system.dart';
@@ -23,7 +21,7 @@ class ExperienceAcquisitionProfile {
 class ExperienceBalanceSimulator {
   const ExperienceBalanceSimulator({
     this.durationSeconds = 300,
-    this.minimumTargetLevelUps = 8,
+    this.minimumTargetLevelUps = 9,
     this.maximumTargetLevelUps = 12,
   });
 
@@ -94,27 +92,20 @@ class ExperienceBalanceSimulator {
 
   double _expectedSpawnedExperience() {
     var total = 0.0;
-    for (final wave in waveDefinitions) {
-      final activeSeconds = max(
-        0,
-        min(durationSeconds, wave.endSecond) - wave.startSecond,
-      );
-      if (activeSeconds == 0) continue;
-      final totalWeight = wave.enemyWeights.values.fold<int>(
+    for (var second = 0; second < durationSeconds; second += 1) {
+      final pressure = wavePressureForSecond(second + 0.5);
+      final weights = pressure.definition.enemyWeights;
+      final totalWeight = weights.values.fold<int>(
         0,
         (sum, weight) => sum + weight,
       );
-      final weightedExperience = wave.enemyWeights.entries.fold<double>(
+      final weightedExperience = weights.entries.fold<double>(
         0,
         (sum, entry) => sum + _experienceForEnemy(entry.key) * entry.value,
       );
       final averageExperience = weightedExperience / totalWeight;
-      final eliteMultiplier = 1 + (wave.eliteChance * 2);
-      total +=
-          activeSeconds *
-          wave.spawnsPerSecond *
-          averageExperience *
-          eliteMultiplier;
+      final eliteMultiplier = 1 + (pressure.eliteChance * 2);
+      total += pressure.spawnsPerSecond * averageExperience * eliteMultiplier;
     }
     return total;
   }

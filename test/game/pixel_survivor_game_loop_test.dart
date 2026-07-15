@@ -68,7 +68,7 @@ void main() {
         onAudioCue: cues.add,
       );
 
-      game.gainExperience(5);
+      game.gainExperience(11);
 
       expect(cues, [AudioCue.levelUp]);
     });
@@ -171,7 +171,7 @@ void main() {
         ..unlockedWeaponIds.add(hwandoSlash)
         ..unlockedAugmentIds.add(martialTraining);
 
-      final leveledUp = game.gainExperience(5);
+      final leveledUp = game.gainExperience(11);
 
       expect(leveledUp, isTrue);
       expect(game.playerLevel, 2);

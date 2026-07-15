@@ -7,11 +7,11 @@ void main() {
       final report = const ExperienceBalanceSimulator().simulate();
 
       expect(report.durationSeconds, 300);
-      expect(report.expectedSpawnedExperience, closeTo(471.945, 0.001));
+      expect(report.expectedSpawnedExperience, closeTo(987.5269, 0.001));
       expect(report.profileResults, hasLength(3));
     });
 
-    test('keeps all acquisition profiles in the 8 to 12 target band', () {
+    test('keeps all acquisition profiles in the 9 to 12 target band', () {
       final report = const ExperienceBalanceSimulator().simulate();
 
       expect(report.profileResults.map((result) => result.levelUps), [
@@ -20,6 +20,7 @@ void main() {
         12,
       ]);
       expect(report.averageLevelUps, closeTo(10.67, 0.01));
+      expect(report.minimumTargetLevelUps, 9);
       expect(report.meetsTargetBand, isTrue);
     });
 
@@ -27,12 +28,12 @@ void main() {
       const simulator = ExperienceBalanceSimulator();
 
       expect(simulator.experienceForLevelUps(0), 0);
-      expect(simulator.experienceForLevelUps(8), 68);
-      expect(simulator.experienceForLevelUps(12), 126);
+      expect(simulator.experienceForLevelUps(8), 144);
+      expect(simulator.experienceForLevelUps(12), 264);
       expect([
         for (var level = 1; level <= 12; level += 1)
           simulator.costForLevel(level),
-      ], orderedEquals([5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]));
+      ], orderedEquals([11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33]));
     });
 
     test('is deterministic and rejects invalid acquisition rates', () {

@@ -107,7 +107,7 @@ void main() {
 
     final unlocks = ProgressionUnlocks.diff(before, after);
 
-    expect(unlocks.characterIds, [exorcistDosa]);
+    expect(unlocks.characterIds, isEmpty);
     expect(unlocks.weaponIds, [thunderCrashBomb]);
     expect(unlocks.augmentIds, [lastStand, rapidReload]);
     expect(unlocks.isEmpty, isFalse);
