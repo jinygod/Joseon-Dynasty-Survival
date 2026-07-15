@@ -242,13 +242,20 @@ class SaveState {
   }
 }
 
-class SaveSystem {
+abstract interface class SaveStore {
+  Future<SaveState> load();
+
+  Future<void> save(SaveState state);
+}
+
+class SaveSystem implements SaveStore {
   SaveSystem({this.preferences});
 
   static const _saveStateKey = 'save_state';
 
   final SharedPreferences? preferences;
 
+  @override
   Future<SaveState> load() async {
     final activePreferences =
         preferences ?? await SharedPreferences.getInstance();
@@ -270,6 +277,7 @@ class SaveSystem {
     return SaveState.defaults();
   }
 
+  @override
   Future<void> save(SaveState state) async {
     final activePreferences =
         preferences ?? await SharedPreferences.getInstance();
