@@ -9,9 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('defaults select constable and show dosa as locked', (
-    tester,
-  ) async {
+  testWidgets('defaults expose every playtest character', (tester) async {
     SharedPreferences.setMockInitialValues({});
     final preferences = await SharedPreferences.getInstance();
     PlayerSlot? launched;
@@ -27,13 +25,38 @@ void main() {
 
     expect(find.byKey(const Key('character-rookie_constable')), findsOneWidget);
     expect(find.byKey(const Key('character-exorcist_dosa')), findsOneWidget);
-    expect(
-      find.byKey(const Key('character-lock-exorcist_dosa')),
-      findsOneWidget,
-    );
+    expect(find.byKey(const Key('character-mountain_hunter')), findsOneWidget);
+    for (final definition in characterDefinitions) {
+      expect(find.byKey(Key('character-lock-${definition.id}')), findsNothing);
+    }
 
     await tester.tap(find.byKey(const Key('character-start')));
     expect(launched?.characterId, rookieConstable);
+  });
+
+  testWidgets('mountain hunter can be selected and launched', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    PlayerSlot? launched;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: CharacterSelectScreen(
+          saveSystem: SaveSystem(preferences: preferences),
+          onStart: (slot) => launched = slot,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('character-mountain_hunter')));
+    await tester.pump();
+    expect(
+      find.byKey(const Key('character-selected-mountain_hunter')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const Key('character-start')));
+
+    expect(launched?.characterId, mountainHunter);
   });
 
   testWidgets('an unlocked dosa can be selected and launched', (tester) async {

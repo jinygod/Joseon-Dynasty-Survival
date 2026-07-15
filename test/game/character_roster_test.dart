@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
 import 'package:pixel_survivor/game/content/ids.dart';
+import 'package:pixel_survivor/game/content/playtest_roster.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
 
 void main() {
@@ -38,5 +39,13 @@ void main() {
     expect(hunter.moveSpeed, 140);
     expect(hunter.startingWeaponId, gakgungShot);
     expect(hunter.passive, CharacterPassive.hawkEye);
+  });
+
+  test('development roster exposes every current character', () {
+    expect(PlaytestRoster.resolveUnlocked({rookieConstable}), {
+      rookieConstable,
+      exorcistDosa,
+      mountainHunter,
+    });
   });
 }

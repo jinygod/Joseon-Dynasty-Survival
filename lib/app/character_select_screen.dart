@@ -142,32 +142,39 @@ class _CharacterCard extends StatelessWidget {
         child: Stack(
           children: [
             Padding(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(12),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
-                    definition.id == rookieConstable
-                        ? Icons.shield
-                        : Icons.auto_awesome,
-                    size: 56,
+                    _iconForCharacter(definition.id),
+                    size: 44,
                     color: unlocked
                         ? const Color(0xff8f2d38)
                         : Colors.grey.shade500,
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 6),
                   Text(
                     _localizedName(definition.id),
                     style: const TextStyle(
-                      fontSize: 24,
+                      fontSize: 20,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 6),
                   Text('체력 ${definition.maxHealth.toInt()}'),
                   Text('이동 속도 ${definition.moveSpeed.toInt()}'),
                   Text('공격력 ${(definition.damageMultiplier * 100).round()}%'),
                   Text('시작 무기 ${weapon.name}'),
+                  const SizedBox(height: 4),
+                  Text(
+                    definition.passiveName,
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  Text(
+                    definition.passiveDescription,
+                    textAlign: TextAlign.center,
+                  ),
                   if (selected)
                     SizedBox(key: Key('character-selected-${definition.id}')),
                 ],
@@ -210,6 +217,14 @@ String _localizedName(String id) {
   return switch (id) {
     rookieConstable => '신참 포졸',
     exorcistDosa => '퇴마 도사',
+    mountainHunter => '산길 사냥꾼',
     _ => id,
   };
 }
+
+IconData _iconForCharacter(String id) => switch (id) {
+  rookieConstable => Icons.shield,
+  exorcistDosa => Icons.auto_awesome,
+  mountainHunter => Icons.track_changes,
+  _ => Icons.person,
+};

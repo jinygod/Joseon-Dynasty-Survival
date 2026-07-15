@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../content/augment_definitions.dart';
 import '../content/character_definitions.dart';
+import '../content/playtest_roster.dart';
 import '../content/weapon_definitions.dart';
 
 class SaveState {
@@ -33,7 +34,7 @@ class SaveState {
         .toSet();
 
     return SaveState(
-      unlockedCharacterIds: {rookieConstable},
+      unlockedCharacterIds: PlaytestRoster.resolveUnlocked({rookieConstable}),
       unlockedWeaponIds: startingWeaponIds,
       unlockedAugmentIds: augmentDefinitions
           .where((augment) => augment.startsUnlocked)

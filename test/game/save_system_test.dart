@@ -47,7 +47,11 @@ void main() {
 
       expect(restored.schemaVersion, SaveState.currentSchemaVersion);
       expect(restored.totalKills, 0);
-      expect(restored.unlockedCharacterIds, {rookieConstable});
+      expect(restored.unlockedCharacterIds, {
+        rookieConstable,
+        exorcistDosa,
+        mountainHunter,
+      });
     });
 
     test('negative schema returns defaults', () {
@@ -78,7 +82,11 @@ void main() {
 
     expect(save.schemaVersion, SaveState.currentSchemaVersion);
     expect(save.totalKills, 0);
-    expect(save.unlockedCharacterIds, {rookieConstable});
+    expect(save.unlockedCharacterIds, {
+      rookieConstable,
+      exorcistDosa,
+      mountainHunter,
+    });
   });
 
   test('defaults include the starting character, weapons, and augments', () {
@@ -109,7 +117,11 @@ void main() {
 
     final restored = SaveState.fromJson(original.toJson());
 
-    expect(restored.unlockedCharacterIds, original.unlockedCharacterIds);
+    expect(restored.unlockedCharacterIds, {
+      rookieConstable,
+      exorcistDosa,
+      mountainHunter,
+    });
     expect(restored.unlockedWeaponIds, original.unlockedWeaponIds);
     expect(
       restored.unlockedAugmentIds,
