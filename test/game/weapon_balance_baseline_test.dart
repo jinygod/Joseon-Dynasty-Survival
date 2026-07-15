@@ -7,17 +7,21 @@ import 'package:pixel_survivor/game/models/run_telemetry.dart';
 
 void main() {
   group('WeaponBaselineSimulator', () {
-    test('simulates every implemented level and reports placeholders', () {
+    test('simulates all forty implemented weapon levels', () {
       final report = const WeaponBaselineSimulator().simulate();
 
-      expect(report.rows, hasLength(20));
+      expect(report.rows, hasLength(40));
       expect(report.rows.map((row) => row.weaponId).toSet(), {
         hwandoSlash,
         gakgungShot,
         talismanThrow,
         thunderCrashBomb,
+        jangseungWard,
+        singijeonVolley,
+        frostFlask,
+        windThunderFan,
       });
-      expect(report.unsupportedWeaponIds, {jangseungWard, singijeonVolley});
+      expect(report.unsupportedWeaponIds, isEmpty);
       expect(report.rows.every((row) => row.dps > 0), isTrue);
       expect(report.rows.every((row) => row.killsPerMinute > 0), isTrue);
     });

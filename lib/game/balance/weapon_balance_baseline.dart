@@ -9,6 +9,10 @@ const _runtimeWeaponIds = <WeaponId>{
   gakgungShot,
   talismanThrow,
   thunderCrashBomb,
+  jangseungWard,
+  singijeonVolley,
+  frostFlask,
+  windThunderFan,
 };
 
 class WeaponBaselineSimulator {
@@ -77,6 +81,11 @@ class WeaponBaselineSimulator {
         gakgungShot => stats.projectileCount * (stats.pierce + 1),
         talismanThrow => stats.chainCount,
         thunderCrashBomb => stats.projectileCount * crowdTargetsPerArea,
+        jangseungWard => crowdTargetsPerArea,
+        singijeonVolley => stats.projectileCount * (stats.pierce + 1),
+        frostFlask =>
+          crowdTargetsPerArea * (stats.durationSeconds / .5).floor(),
+        windThunderFan => stats.projectileCount * 2,
         _ => throw ArgumentError.value(weaponId, 'weaponId'),
       };
 }
