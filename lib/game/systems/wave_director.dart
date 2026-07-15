@@ -27,7 +27,7 @@ class WaveDirector {
 
   WaveDirector._(this._random);
 
-  static const _frameSpawnCap = 8;
+  static const frameSpawnCap = 8;
   static const _bossSecond = 270;
 
   final Random _random;
@@ -39,28 +39,29 @@ class WaveDirector {
     required double dt,
     required int activeEnemyCount,
   }) {
-    final definition = waveDefinitionForSecond(elapsedSeconds.floor());
-    _spawnBudget += dt * definition.spawnsPerSecond;
-
-    final activeCapacity = max(
-      0,
-      definition.maxActiveEnemies - activeEnemyCount,
+    final pressure = wavePressureForSecond(elapsedSeconds);
+    _spawnBudget = min(
+      frameSpawnCap.toDouble(),
+      _spawnBudget + max(0, dt) * pressure.spawnsPerSecond,
     );
+
+    final activeCapacity = max(0, pressure.maxActiveEnemies - activeEnemyCount);
     final spawnCount = min(
       min(_spawnBudget.floor(), activeCapacity),
-      _frameSpawnCap,
+      frameSpawnCap,
     );
     _spawnBudget -= spawnCount;
 
     return WaveTickResult(
-      spawnRequests: _spawnRequests(definition, spawnCount),
+      spawnRequests: _spawnRequests(pressure, spawnCount),
       spawnBoss: _shouldRequestBoss(elapsedSeconds),
-      maxActiveEnemies: definition.maxActiveEnemies,
+      maxActiveEnemies: pressure.maxActiveEnemies,
     );
   }
 
-  List<SpawnRequest> _spawnRequests(WaveDefinition definition, int count) {
+  List<SpawnRequest> _spawnRequests(WavePressure pressure, int count) {
     final requests = <SpawnRequest>[];
+    final definition = pressure.definition;
     EnemyId? previousEnemyId;
     var consecutiveCount = 0;
 
@@ -78,7 +79,7 @@ class WaveDirector {
       requests.add(
         SpawnRequest(
           enemyId: previousEnemyId!,
-          isElite: _random.nextDouble() < definition.eliteChance,
+          isElite: _random.nextDouble() < pressure.eliteChance,
         ),
       );
       consecutiveCount += 1;

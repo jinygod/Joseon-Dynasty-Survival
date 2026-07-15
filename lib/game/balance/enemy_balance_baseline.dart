@@ -27,12 +27,16 @@ class EnemyBalanceAnalyzer {
     return EnemyBalanceReport(
       rows: rows,
       preBossActiveCaps: [
-        for (final wave in preBossWaves) wave.maxActiveEnemies,
+        for (final wave in preBossWaves)
+          wavePressureForSecond(wave.endSecond - 0.001).maxActiveEnemies,
       ],
       preBossSpawnRates: [
-        for (final wave in preBossWaves) wave.spawnsPerSecond,
+        for (final wave in preBossWaves)
+          wavePressureForSecond(wave.endSecond - 0.001).spawnsPerSecond,
       ],
-      bossActiveCap: bossWave.maxActiveEnemies,
+      bossActiveCap: wavePressureForSecond(
+        bossWave.startSecond.toDouble(),
+      ).maxActiveEnemies,
     );
   }
 

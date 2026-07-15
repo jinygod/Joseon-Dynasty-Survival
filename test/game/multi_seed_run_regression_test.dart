@@ -13,11 +13,15 @@ void main() {
       expect(report.durationSeconds, 300);
       expect(report.bossRequests, 1, reason: 'seed ${report.seed}');
       expect(report.capViolations, 0, reason: 'seed ${report.seed}');
-      expect(report.overCapFrames, lessThanOrEqualTo(40));
+      expect(
+        report.overCapFrames,
+        lessThanOrEqualTo(60),
+        reason: 'pre-boss enemies drain naturally after the boss cap reset',
+      );
       expect(report.invalidPoolRequests, 0, reason: 'seed ${report.seed}');
       expect(report.maxFrameSpawns, lessThanOrEqualTo(8));
-      expect(report.maxActiveEnemies, lessThanOrEqualTo(64));
-      expect(report.totalSpawns, greaterThan(200));
+      expect(report.maxActiveEnemies, lessThanOrEqualTo(92));
+      expect(report.totalSpawns, greaterThanOrEqualTo(400));
       expect(
         report.phaseSpawnCounts.keys.toSet(),
         CombatRhythmPhaseId.values.toSet(),

@@ -17,6 +17,24 @@ void main() {
       expect(waveDefinitionForSecond(270), same(waveDefinitions[5]));
       expect(waveDefinitionForSecond(330), same(waveDefinitions[5]));
     });
+
+    test('pressure interpolates continuously inside the opening phase', () {
+      expect(wavePressureForSecond(0).spawnsPerSecond, 1.0);
+      expect(wavePressureForSecond(30).spawnsPerSecond, closeTo(1.2, 0.001));
+      expect(
+        wavePressureForSecond(59.999).spawnsPerSecond,
+        closeTo(1.4, 0.001),
+      );
+      expect(wavePressureForSecond(30).maxActiveEnemies, 36);
+      expect(wavePressureForSecond(-10).spawnsPerSecond, 1.0);
+    });
+
+    test('pre-boss cap peaks and boss phase stays populated', () {
+      expect(wavePressureForSecond(240).maxActiveEnemies, 80);
+      expect(wavePressureForSecond(269.999).maxActiveEnemies, 92);
+      expect(wavePressureForSecond(270).spawnsPerSecond, 1.5);
+      expect(wavePressureForSecond(329.999).maxActiveEnemies, 64);
+    });
   });
 
   group('WaveDirector', () {
@@ -31,7 +49,7 @@ void main() {
       final late = director.tick(
         elapsedSeconds: 210,
         dt: 8,
-        activeEnemyCount: 50,
+        activeEnemyCount: 68,
       );
 
       expect(
@@ -42,9 +60,9 @@ void main() {
         late.spawnRequests.map((request) => request.enemyId),
         everyElement(isIn(waveDefinitionForSecond(210).enemyWeights.keys)),
       );
-      expect(late.spawnRequests.length, lessThanOrEqualTo(4));
+      expect(late.spawnRequests.length, lessThanOrEqualTo(5));
       expect(late.spawnRequests.length, lessThanOrEqualTo(8));
-      expect(late.maxActiveEnemies, 54);
+      expect(late.maxActiveEnemies, 73);
     });
 
     test('limits consecutive requests for a selected enemy to group size', () {
@@ -64,8 +82,26 @@ void main() {
           previousEnemyId = request.enemyId;
           consecutiveCount = 1;
         }
-        expect(consecutiveCount, lessThanOrEqualTo(3));
+        expect(consecutiveCount, lessThanOrEqualTo(4));
       }
+    });
+
+    test('spawn budget cannot retain more than one frame of backlog', () {
+      final director = WaveDirector(random: Random(2));
+
+      final blocked = director.tick(
+        elapsedSeconds: 260,
+        dt: 100,
+        activeEnemyCount: 92,
+      );
+      final released = director.tick(
+        elapsedSeconds: 260.1,
+        dt: 0,
+        activeEnemyCount: 0,
+      );
+
+      expect(blocked.spawnRequests, isEmpty);
+      expect(released.spawnRequests, hasLength(WaveDirector.frameSpawnCap));
     });
 
     test('returns a boss request only when 270 seconds is first crossed', () {

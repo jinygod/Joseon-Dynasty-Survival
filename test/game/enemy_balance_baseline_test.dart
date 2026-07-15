@@ -31,9 +31,15 @@ void main() {
     test('pressure caps rise before boss relief', () {
       final report = const EnemyBalanceAnalyzer().analyze();
 
-      expect(report.preBossActiveCaps, [24, 32, 42, 54, 64]);
-      expect(report.preBossSpawnRates, [0.65, 0.90, 1.15, 1.45, 1.80]);
-      expect(report.bossActiveCap, 28);
+      expect(report.preBossActiveCaps, [40, 52, 66, 80, 92]);
+      expect(report.preBossSpawnRates, [
+        closeTo(1.4, 0.001),
+        closeTo(1.9, 0.001),
+        closeTo(2.5, 0.001),
+        closeTo(3.2, 0.001),
+        closeTo(4.0, 0.001),
+      ]);
+      expect(report.bossActiveCap, 48);
       expect(report.hasMonotonicPreBossPressure, isTrue);
       expect(report.bossActiveCap, lessThan(report.preBossActiveCaps.last));
     });
