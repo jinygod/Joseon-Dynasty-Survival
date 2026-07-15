@@ -47,17 +47,16 @@ void main() {
     final backend = RecordingAudioBackend();
     final service = GameAudioService(
       backend: backend,
-      readSettings: () => AudioSettings(
-        musicVolume: 0,
-        sfxVolume: 0.5,
-        vibrationEnabled: true,
-      ),
+      readSettings: () =>
+          AudioSettings(musicVolume: 0, sfxVolume: 0.5, vibrationEnabled: true),
     );
 
     await service.play(AudioCue.battleMusic);
     await service.play(AudioCue.playerHit);
 
-    expect(backend.requests.map((request) => request.cue), [AudioCue.playerHit]);
+    expect(backend.requests.map((request) => request.cue), [
+      AudioCue.playerHit,
+    ]);
     expect(backend.requests.single.volume, 0.5);
   });
 
@@ -65,11 +64,8 @@ void main() {
     final backend = RecordingAudioBackend();
     final service = GameAudioService(
       backend: backend,
-      readSettings: () => AudioSettings(
-        musicVolume: 0.3,
-        sfxVolume: 0,
-        vibrationEnabled: true,
-      ),
+      readSettings: () =>
+          AudioSettings(musicVolume: 0.3, sfxVolume: 0, vibrationEnabled: true),
     );
 
     await service.play(AudioCue.playerHit);

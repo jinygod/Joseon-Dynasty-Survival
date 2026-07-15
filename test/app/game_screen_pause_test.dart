@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/app/game_screen.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
 import 'package:pixel_survivor/game/content/stage_definitions.dart';
+import 'package:pixel_survivor/game/audio/audio_settings_controller.dart';
+import 'package:pixel_survivor/game/audio/audio_settings_repository.dart';
 import 'package:pixel_survivor/game/models/player_slot.dart';
 import 'package:pixel_survivor/game/models/vector_input.dart';
 import 'package:pixel_survivor/game/pixel_survivor_game.dart';
@@ -126,6 +128,51 @@ void main() {
       screens.every((screen) => screen.stageId == moonlitAbandonedOffice),
       isTrue,
     );
+  });
+
+  testWidgets('game screen loads persisted audio settings', (tester) async {
+    SharedPreferences.setMockInitialValues({
+      AudioSettingsRepository.musicVolumeKey: 0.2,
+      AudioSettingsRepository.sfxVolumeKey: 0.4,
+      AudioSettingsRepository.vibrationEnabledKey: false,
+    });
+    final game = _game();
+    await tester.pumpWidget(MaterialApp(home: GameScreen(game: game)));
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('hud-pause')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('pause-settings')));
+    await tester.pump();
+
+    expect(find.text('음악 20%'), findsOneWidget);
+    expect(find.text('효과음 40%'), findsOneWidget);
+    expect(
+      tester
+          .widget<SwitchListTile>(find.byKey(const Key('audio-vibration')))
+          .value,
+      isFalse,
+    );
+  });
+
+  testWidgets('game screen does not dispose an injected settings controller', (
+    tester,
+  ) async {
+    final controller = AudioSettingsController(
+      store: AudioSettingsRepository(
+        preferences: await SharedPreferences.getInstance(),
+      ),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GameScreen(game: _game(), audioSettingsController: controller),
+      ),
+    );
+    await tester.pumpWidget(const SizedBox());
+
+    await controller.setMusicVolume(0.3);
+    expect(controller.settings.musicVolume, 0.3);
+    controller.dispose();
   });
 }
 

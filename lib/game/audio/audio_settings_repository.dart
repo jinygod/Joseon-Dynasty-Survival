@@ -41,10 +41,7 @@ class AudioSettingsRepository implements AudioSettingsStore {
     final results = await Future.wait([
       activePreferences.setDouble(musicVolumeKey, settings.musicVolume),
       activePreferences.setDouble(sfxVolumeKey, settings.sfxVolume),
-      activePreferences.setBool(
-        vibrationEnabledKey,
-        settings.vibrationEnabled,
-      ),
+      activePreferences.setBool(vibrationEnabledKey, settings.vibrationEnabled),
     ]);
     if (results.any((saved) => !saved)) {
       throw StateError('Audio settings could not be persisted');

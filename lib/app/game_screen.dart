@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 
@@ -7,6 +9,8 @@ import 'level_up_overlay.dart';
 import 'pause_menu_overlay.dart';
 import 'run_summary_screen.dart';
 import '../game/models/player_slot.dart';
+import '../game/audio/audio_settings_controller.dart';
+import '../game/audio/audio_settings_repository.dart';
 import '../game/models/run_result.dart';
 import '../game/models/vector_input.dart';
 import '../game/content/stage_definitions.dart';
@@ -32,6 +36,7 @@ class GameScreen extends StatefulWidget {
     this.stageId = moonlitAbandonedOffice,
     this.showFirstRunTutorial = false,
     this.tutorialProgressRepository,
+    this.audioSettingsController,
     super.key,
   });
 
@@ -44,6 +49,7 @@ class GameScreen extends StatefulWidget {
   final String stageId;
   final bool showFirstRunTutorial;
   final TutorialProgressRepository? tutorialProgressRepository;
+  final AudioSettingsController? audioSettingsController;
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -58,6 +64,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   late final TelemetryRepository _telemetryRepository;
   late final TelemetryExportService _telemetryExportService;
   late final TutorialProgressRepository _tutorialProgressRepository;
+  late final AudioSettingsController _audioSettingsController;
+  late final bool _ownsAudioSettingsController;
   late final DateTime _runStartedAtUtc;
   bool _handledRunEnd = false;
 
@@ -71,6 +79,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         widget.telemetryExportService ?? TelemetryExportService();
     _tutorialProgressRepository =
         widget.tutorialProgressRepository ?? TutorialProgressRepository();
+    _ownsAudioSettingsController = widget.audioSettingsController == null;
+    _audioSettingsController =
+        widget.audioSettingsController ??
+        AudioSettingsController(store: AudioSettingsRepository());
+    unawaited(_audioSettingsController.load());
     _runStartedAtUtc = (widget.now ?? DateTime.now)().toUtc();
     _game =
         widget.game ??
@@ -88,6 +101,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _game.updateMovementInput(VectorInput.zero);
+    if (_ownsAudioSettingsController) _audioSettingsController.dispose();
     super.dispose();
   }
 
@@ -226,6 +240,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             onChoiceSelected: game.applyLevelUpChoice,
           ),
           _pauseOverlayId: (_, _) => PauseMenuOverlay(
+            settingsController: _audioSettingsController,
             onResume: _resumeGame,
             onRestart: _restartGame,
             onExitToMenu: _exitToMenu,

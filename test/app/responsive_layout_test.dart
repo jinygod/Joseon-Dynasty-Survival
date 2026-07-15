@@ -9,6 +9,8 @@ import 'package:pixel_survivor/app/pause_menu_overlay.dart';
 import 'package:pixel_survivor/app/run_summary_screen.dart';
 import 'package:pixel_survivor/app/stage_select_screen.dart';
 import 'package:pixel_survivor/game/models/run_outcome.dart';
+import 'package:pixel_survivor/game/audio/audio_settings_controller.dart';
+import 'package:pixel_survivor/game/audio/audio_settings_repository.dart';
 import 'package:pixel_survivor/game/models/run_result.dart';
 import 'package:pixel_survivor/game/models/vector_input.dart';
 import 'package:pixel_survivor/game/systems/progression_system.dart';
@@ -81,12 +83,23 @@ void main() {
       await _pumpSurface(
         tester,
         PauseMenuOverlay(
+          settingsController: AudioSettingsController(
+            store: AudioSettingsRepository(preferences: preferences),
+          ),
           onResume: () {},
           onRestart: () {},
           onExitToMenu: () {},
         ),
       );
       _expectSafe(tester, find.byKey(const Key('pause-resume')), entry.value);
+      await tester.tap(find.byKey(const Key('pause-settings')));
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+      _expectSafe(
+        tester,
+        find.byKey(const Key('pause-settings-back')),
+        entry.value,
+      );
 
       await _pumpSurface(
         tester,

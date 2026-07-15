@@ -8,11 +8,7 @@ import 'package:pixel_survivor/game/audio/audio_settings_repository.dart';
 void main() {
   test('load publishes persisted settings', () async {
     final store = MemoryAudioSettingsStore(
-      AudioSettings(
-        musicVolume: 0.2,
-        sfxVolume: 0.4,
-        vibrationEnabled: false,
-      ),
+      AudioSettings(musicVolume: 0.2, sfxVolume: 0.4, vibrationEnabled: false),
     );
     final controller = AudioSettingsController(store: store);
     var notifications = 0;
@@ -80,7 +76,11 @@ void main() {
       controller.setMusicVolume(0.3),
     ]);
 
-    expect(store.saved.map((settings) => settings.musicVolume), [0.1, 0.2, 0.3]);
+    expect(store.saved.map((settings) => settings.musicVolume), [
+      0.1,
+      0.2,
+      0.3,
+    ]);
     expect(store.settings.musicVolume, 0.3);
   });
 

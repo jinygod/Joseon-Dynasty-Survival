@@ -1,16 +1,22 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+
+import '../game/audio/audio_settings_controller.dart';
 
 class PauseMenuOverlay extends StatefulWidget {
   const PauseMenuOverlay({
     required this.onResume,
     required this.onRestart,
     required this.onExitToMenu,
+    required this.settingsController,
     super.key,
   });
 
   final VoidCallback onResume;
   final VoidCallback onRestart;
   final VoidCallback onExitToMenu;
+  final AudioSettingsController settingsController;
 
   @override
   State<PauseMenuOverlay> createState() => _PauseMenuOverlayState();
@@ -79,27 +85,56 @@ class _PauseMenuOverlayState extends State<PauseMenuOverlay> {
   }
 
   Widget _buildSettings() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const Text(
-          '설정',
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900),
-        ),
-        const SizedBox(height: 20),
-        const Text(
-          '정식 설정은 META-004 단계에서 음량과 진동 옵션을 저장하도록 연결됩니다.',
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 20),
-        FilledButton.tonal(
-          key: const Key('pause-settings-back'),
-          onPressed: () => setState(() => _showSettings = false),
-          child: const Text('돌아가기'),
-        ),
-      ],
+    return ListenableBuilder(
+      listenable: widget.settingsController,
+      builder: (context, _) {
+        final settings = widget.settingsController.settings;
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              '설정',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 12),
+            Text('음악 ${(settings.musicVolume * 100).round()}%'),
+            Slider(
+              key: const Key('audio-music-volume'),
+              value: settings.musicVolume,
+              divisions: 10,
+              onChanged: (value) {
+                unawaited(widget.settingsController.setMusicVolume(value));
+              },
+            ),
+            Text('효과음 ${(settings.sfxVolume * 100).round()}%'),
+            Slider(
+              key: const Key('audio-sfx-volume'),
+              value: settings.sfxVolume,
+              divisions: 10,
+              onChanged: (value) {
+                unawaited(widget.settingsController.setSfxVolume(value));
+              },
+            ),
+            SwitchListTile(
+              key: const Key('audio-vibration'),
+              contentPadding: EdgeInsets.zero,
+              title: const Text('진동'),
+              value: settings.vibrationEnabled,
+              onChanged: (value) {
+                unawaited(widget.settingsController.setVibrationEnabled(value));
+              },
+            ),
+            const SizedBox(height: 8),
+            FilledButton.tonal(
+              key: const Key('pause-settings-back'),
+              onPressed: () => setState(() => _showSettings = false),
+              child: const Text('돌아가기'),
+            ),
+          ],
+        );
+      },
     );
   }
 }

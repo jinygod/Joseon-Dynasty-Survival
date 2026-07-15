@@ -16,11 +16,12 @@ class AudioSettingsDiagnostic {
 }
 
 class AudioSettingsController extends ChangeNotifier {
-  AudioSettingsController({
+  factory AudioSettingsController({
     required AudioSettingsStore store,
     void Function(AudioSettingsDiagnostic)? reportDiagnostic,
-  }) : _store = store,
-       _reportDiagnostic = reportDiagnostic;
+  }) => AudioSettingsController._(store, reportDiagnostic);
+
+  AudioSettingsController._(this._store, this._reportDiagnostic);
 
   final AudioSettingsStore _store;
   final void Function(AudioSettingsDiagnostic)? _reportDiagnostic;

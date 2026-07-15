@@ -85,10 +85,7 @@ void main() {
   test('request clamps volume to the normalized range', () {
     final policy = AudioPlaybackPolicy();
 
-    expect(
-      policy.requestFor(AudioCue.battleMusic, volume: 2).volume,
-      1,
-    );
+    expect(policy.requestFor(AudioCue.battleMusic, volume: 2).volume, 1);
     expect(policy.requestFor(AudioCue.uiBack, volume: -1).volume, 0);
   });
 }
