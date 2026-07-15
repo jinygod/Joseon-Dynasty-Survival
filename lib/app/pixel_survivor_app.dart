@@ -6,8 +6,10 @@ import '../game/audio/audio_settings_controller.dart';
 import '../game/audio/audio_settings_repository.dart';
 import '../game/audio/flame_audio_backend.dart';
 import '../game/audio/game_audio_service.dart';
+import '../game/systems/save_system.dart';
 import '../l10n/app_strings.dart';
-import 'main_menu_screen.dart';
+import 'lobby_controller.dart';
+import 'lobby_screen.dart';
 
 class PixelSurvivorApp extends StatefulWidget {
   const PixelSurvivorApp({super.key});
@@ -19,6 +21,7 @@ class PixelSurvivorApp extends StatefulWidget {
 class _PixelSurvivorAppState extends State<PixelSurvivorApp> {
   late final AudioSettingsController _audioSettingsController;
   late final GameAudioService _audioService;
+  late final LobbyController _lobbyController;
 
   @override
   void initState() {
@@ -31,11 +34,14 @@ class _PixelSurvivorAppState extends State<PixelSurvivorApp> {
       backend: FlameAudioBackend(),
       readSettings: () => _audioSettingsController.settings,
     );
+    _lobbyController = LobbyController(store: SaveSystem());
+    unawaited(_lobbyController.load());
   }
 
   @override
   void dispose() {
     unawaited(_audioService.dispose());
+    _lobbyController.dispose();
     _audioSettingsController.dispose();
     super.dispose();
   }
@@ -50,7 +56,8 @@ class _PixelSurvivorAppState extends State<PixelSurvivorApp> {
         splashFactory: NoSplash.splashFactory,
         useMaterial3: false,
       ),
-      home: MainMenuScreen(
+      home: LobbyScreen(
+        controller: _lobbyController,
         audioService: _audioService,
         audioSettingsController: _audioSettingsController,
       ),

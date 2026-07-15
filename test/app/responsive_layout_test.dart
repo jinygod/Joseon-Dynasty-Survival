@@ -4,7 +4,8 @@ import 'package:pixel_survivor/app/character_select_screen.dart';
 import 'package:pixel_survivor/app/first_run_tutorial_overlay.dart';
 import 'package:pixel_survivor/app/game_hud.dart';
 import 'package:pixel_survivor/app/game_hud_source.dart';
-import 'package:pixel_survivor/app/main_menu_screen.dart';
+import 'package:pixel_survivor/app/lobby_controller.dart';
+import 'package:pixel_survivor/app/lobby_screen.dart';
 import 'package:pixel_survivor/app/pause_menu_overlay.dart';
 import 'package:pixel_survivor/app/run_summary_screen.dart';
 import 'package:pixel_survivor/app/stage_select_screen.dart';
@@ -15,6 +16,8 @@ import 'package:pixel_survivor/game/models/run_result.dart';
 import 'package:pixel_survivor/game/models/vector_input.dart';
 import 'package:pixel_survivor/game/systems/progression_system.dart';
 import 'package:pixel_survivor/game/systems/save_system.dart';
+import 'package:pixel_survivor/game/content/character_definitions.dart';
+import 'package:pixel_survivor/game/content/stage_definitions.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -45,29 +48,44 @@ void main() {
       SharedPreferences.setMockInitialValues({});
       final preferences = await SharedPreferences.getInstance();
 
-      await _pumpSurface(tester, const MainMenuScreen());
-      _expectSafe(
-        tester,
-        find.widgetWithText(FilledButton, '출진 준비'),
-        entry.value,
+      final lobbyController = LobbyController(
+        store: _MemorySaveStore(SaveState.defaults()),
       );
+      await lobbyController.load();
+      await _pumpSurface(
+        tester,
+        LobbyScreen(
+          controller: lobbyController,
+          audioSettingsController: AudioSettingsController(
+            store: AudioSettingsRepository(preferences: preferences),
+          ),
+        ),
+      );
+      _expectSafe(tester, find.byKey(const Key('lobby-deploy')), entry.value);
 
       await _pumpSurface(
         tester,
         CharacterSelectScreen(
-          saveSystem: SaveSystem(preferences: preferences),
-          onStart: (_) {},
+          initialCharacterId: rookieConstable,
+          unlockedCharacterIds: SaveState.defaults().unlockedCharacterIds,
+          onSelected: (_) {},
         ),
         settle: true,
       );
       _expectSafe(
         tester,
-        find.byKey(const Key('character-start')),
+        find.byKey(const Key('character-confirm')),
         entry.value,
       );
 
-      await _pumpSurface(tester, StageSelectScreen(onStart: (_) {}));
-      _expectSafe(tester, find.byKey(const Key('stage-start')), entry.value);
+      await _pumpSurface(
+        tester,
+        StageSelectScreen(
+          initialStageId: moonlitAbandonedOffice,
+          onSelected: (_) {},
+        ),
+      );
+      _expectSafe(tester, find.byKey(const Key('stage-confirm')), entry.value);
 
       await _pumpSurface(tester, FirstRunTutorialOverlay(onCompleted: () {}));
       _expectSafe(tester, find.byKey(const Key('tutorial-next')), entry.value);
@@ -176,4 +194,16 @@ class _HudSource implements GameHudSource {
   List<String> get weaponLevelLabels => const ['환도 베기 레벨 3'];
   @override
   void updateMovementInput(VectorInput input) {}
+}
+
+class _MemorySaveStore implements SaveStore {
+  _MemorySaveStore(this.value);
+
+  SaveState value;
+
+  @override
+  Future<SaveState> load() async => value;
+
+  @override
+  Future<void> save(SaveState state) async => value = state;
 }

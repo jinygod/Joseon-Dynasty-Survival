@@ -2,16 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/app/game_hud.dart';
 import 'package:pixel_survivor/app/game_hud_source.dart';
-import 'package:pixel_survivor/app/main_menu_screen.dart';
+import 'package:pixel_survivor/app/lobby_controller.dart';
+import 'package:pixel_survivor/app/lobby_screen.dart';
 import 'package:pixel_survivor/app/run_summary_screen.dart';
 import 'package:pixel_survivor/game/content/augment_definitions.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
 import 'package:pixel_survivor/game/content/enemy_definitions.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
+import 'package:pixel_survivor/game/audio/audio_settings.dart';
+import 'package:pixel_survivor/game/audio/audio_settings_controller.dart';
+import 'package:pixel_survivor/game/audio/audio_settings_repository.dart';
 import 'package:pixel_survivor/game/models/run_outcome.dart';
 import 'package:pixel_survivor/game/models/run_result.dart';
 import 'package:pixel_survivor/game/models/vector_input.dart';
 import 'package:pixel_survivor/game/systems/progression_system.dart';
+import 'package:pixel_survivor/game/systems/save_system.dart';
 
 void main() {
   test('every content display name is Korean', () {
@@ -28,7 +33,20 @@ void main() {
   testWidgets('main menu and gameplay HUD expose no English copy', (
     tester,
   ) async {
-    await tester.pumpWidget(const MaterialApp(home: MainMenuScreen()));
+    final lobby = LobbyController(
+      store: _MemorySaveStore(SaveState.defaults()),
+    );
+    await lobby.load();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: LobbyScreen(
+          controller: lobby,
+          audioSettingsController: AudioSettingsController(
+            store: _MemoryAudioStore(),
+          ),
+        ),
+      ),
+    );
     _expectRenderedTextIsKorean(tester);
 
     await tester.pumpWidget(
@@ -109,4 +127,26 @@ class _HudSource implements GameHudSource {
   List<String> get weaponLevelLabels => const ['환도 베기 레벨 3'];
   @override
   void updateMovementInput(VectorInput input) {}
+}
+
+class _MemorySaveStore implements SaveStore {
+  _MemorySaveStore(this.value);
+
+  SaveState value;
+
+  @override
+  Future<SaveState> load() async => value;
+
+  @override
+  Future<void> save(SaveState state) async => value = state;
+}
+
+class _MemoryAudioStore implements AudioSettingsStore {
+  AudioSettings value = AudioSettings.defaults;
+
+  @override
+  Future<AudioSettings> load() async => value;
+
+  @override
+  Future<void> save(AudioSettings settings) async => value = settings;
 }

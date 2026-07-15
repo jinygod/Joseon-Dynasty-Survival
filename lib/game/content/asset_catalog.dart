@@ -8,6 +8,7 @@ class AssetCatalog {
     ...augments.values,
     ...effects.values,
     ...stages.values,
+    ...lobby.values,
     ...player.values,
   ]);
 
@@ -58,6 +59,11 @@ class AssetCatalog {
 
   static const stages = <String, String>{
     'moonlit_abandoned_government_office_tile':
+        'assets/images/stages/moonlit_abandoned_government_office_tile_32.png',
+  };
+
+  static const lobby = <String, String>{
+    'government_office':
         'assets/images/stages/moonlit_abandoned_government_office_tile_32.png',
   };
 
