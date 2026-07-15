@@ -43,7 +43,7 @@
 - Produces: `AudioChannel`, `AudioCue`, and `AudioCueCatalog.channelFor(AudioCue cue)`.
 - Consumes: no platform or Flutter bindings.
 
-- [ ] **Step 1: Write failing cue mapping tests**
+- [x] **Step 1: Write failing cue mapping tests**
 
 ```dart
 test('every audio cue maps to exactly one supported channel', () {
@@ -74,13 +74,13 @@ test('combat and UI cues use their dedicated channels', () {
 });
 ```
 
-- [ ] **Step 2: Run tests and verify RED**
+- [x] **Step 2: Run tests and verify RED**
 
 Run: `flutter test test/game/audio_cue_test.dart`
 
 Expected: compilation fails because `audio_cue.dart`, `AudioCue`, `AudioChannel`, and `AudioCueCatalog` do not exist.
 
-- [ ] **Step 3: Implement the complete cue and channel mapping**
+- [x] **Step 3: Implement the complete cue and channel mapping**
 
 ```dart
 enum AudioChannel { music, sfx, ui }
@@ -118,13 +118,13 @@ abstract final class AudioCueCatalog {
 }
 ```
 
-- [ ] **Step 4: Run tests and verify GREEN**
+- [x] **Step 4: Run tests and verify GREEN**
 
 Run: `flutter test test/game/audio_cue_test.dart`
 
 Expected: 3 tests pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```powershell
 git add lib/game/audio/audio_cue.dart test/game/audio_cue_test.dart
@@ -141,7 +141,7 @@ git commit -m "feat: define typed game audio cues"
 - Consumes: `AudioCue` and `AudioChannel` from Task 1.
 - Produces: `AudioBackend` and `SilentAudioBackend` with `play`, `stopMusic`, `pauseAll`, `resumeAll`, and `dispose`.
 
-- [ ] **Step 1: Write the failing silent-backend test**
+- [x] **Step 1: Write the failing silent-backend test**
 
 ```dart
 test('silent backend accepts every command without platform bindings', () async {
@@ -154,13 +154,13 @@ test('silent backend accepts every command without platform bindings', () async 
 });
 ```
 
-- [ ] **Step 2: Run the test and verify RED**
+- [x] **Step 2: Run the test and verify RED**
 
 Run: `flutter test test/game/silent_audio_backend_test.dart`
 
 Expected: compilation fails because `AudioBackend` and `SilentAudioBackend` do not exist.
 
-- [ ] **Step 3: Implement the minimal backend API**
+- [x] **Step 3: Implement the minimal backend API**
 
 ```dart
 abstract interface class AudioBackend {
@@ -187,13 +187,13 @@ class SilentAudioBackend implements AudioBackend {
 }
 ```
 
-- [ ] **Step 4: Run the test and verify GREEN**
+- [x] **Step 4: Run the test and verify GREEN**
 
 Run: `flutter test test/game/silent_audio_backend_test.dart`
 
 Expected: 1 test passes without `TestWidgetsFlutterBinding.ensureInitialized()`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```powershell
 git add lib/game/audio/audio_backend.dart test/game/silent_audio_backend_test.dart
@@ -210,7 +210,7 @@ git commit -m "feat: add silent audio backend contract"
 - Consumes: an `AudioBackend` and optional `void Function(AudioDiagnostic)` reporter.
 - Produces: `AudioDiagnostic` and `GameAudioService.play`, `stopMusic`, `pauseAll`, `resumeAll`, and `dispose`.
 
-- [ ] **Step 1: Write failing delegation and lifecycle tests with a recording backend**
+- [x] **Step 1: Write failing delegation and lifecycle tests with a recording backend**
 
 ```dart
 test('service forwards a cue with its catalog channel', () async {
@@ -231,7 +231,7 @@ test('service forwards lifecycle commands in call order', () async {
 });
 ```
 
-- [ ] **Step 2: Write failing error-isolation and disposal tests**
+- [x] **Step 2: Write failing error-isolation and disposal tests**
 
 ```dart
 test('backend errors become one diagnostic and never escape', () async {
@@ -265,13 +265,13 @@ test('dispose is idempotent and suppresses later commands', () async {
 });
 ```
 
-- [ ] **Step 3: Run tests and verify RED**
+- [x] **Step 3: Run tests and verify RED**
 
 Run: `flutter test test/game/game_audio_service_test.dart`
 
 Expected: compilation fails because `GameAudioService` and `AudioDiagnostic` do not exist.
 
-- [ ] **Step 4: Implement guarded delegation and disposal**
+- [x] **Step 4: Implement guarded delegation and disposal**
 
 ```dart
 class AudioDiagnostic {
@@ -334,13 +334,13 @@ class GameAudioService {
 }
 ```
 
-- [ ] **Step 5: Run tests and verify GREEN**
+- [x] **Step 5: Run tests and verify GREEN**
 
 Run: `flutter test test/game/game_audio_service_test.dart test/game/audio_cue_test.dart test/game/silent_audio_backend_test.dart`
 
 Expected: 9 new tests pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```powershell
 git add lib/game/audio/game_audio_service.dart test/game/game_audio_service_test.dart
@@ -357,25 +357,25 @@ git commit -m "feat: isolate game audio service failures"
 - Consumes: fresh format, analysis, full-test, web-build, and Android-debug-build results.
 - Produces: checked execution steps and exact `AUD-001` evidence without changing `AUD-002` through `AUD-010`.
 
-- [ ] **Step 1: Run the complete release gate**
+- [x] **Step 1: Run the complete release gate**
 
 Run: `powershell -ExecutionPolicy Bypass -File tool/release_check.ps1 -IncludeAndroid`
 
 Expected: formatting unchanged, Dart analysis has zero issues, all 211 tests pass, web build succeeds, Android debug APK build succeeds, and the script exits 0.
 
-- [ ] **Step 2: Update the master TODO**
+- [x] **Step 2: Update the master TODO**
 
 Mark only `AUD-001` complete. Record 17 typed cues, 3 channels, the backend contract, silent backend, guarded service, 9 new tests, 211 total tests, and successful web/Android builds. Set the next independent Codex queue item to `AUD-006`; retain `AUD-002` through `AUD-005` as incomplete because they require sound-source policy or actual audio.
 
-- [ ] **Step 3: Check the implementation against the approved design**
+- [x] **Step 3: Check the implementation against the approved design**
 
 Confirm that no audio package, audio file, live game-event wiring, concurrency policy, pitch policy, volume setting, or haptic behavior was added.
 
-- [ ] **Step 4: Mark all verified plan steps complete**
+- [x] **Step 4: Mark all verified plan steps complete**
 
 Change every completed checkbox in this plan to `[x]` only after Steps 1 through 3 pass.
 
-- [ ] **Step 5: Commit release evidence**
+- [x] **Step 5: Commit release evidence**
 
 ```powershell
 git add docs/master-development-todo.md docs/superpowers/plans/2026-07-15-audio-foundation.md
