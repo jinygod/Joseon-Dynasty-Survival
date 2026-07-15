@@ -4,6 +4,7 @@ import 'package:flame/components.dart';
 
 import '../components/area_attack_component.dart';
 import '../components/enemy_component.dart';
+import '../components/frost_field_component.dart';
 import '../components/melee_arc_component.dart';
 import '../components/projectile_component.dart';
 import '../content/enemy_definitions.dart';
@@ -68,6 +69,7 @@ class WeaponSystem {
     final projectiles = <ProjectileComponent>[];
     final meleeArcs = <MeleeArcComponent>[];
     final areaAttacks = <AreaAttackComponent>[];
+    final frostFields = <FrostFieldComponent>[];
     final firedWeaponIds = <WeaponId>[];
 
     final hwandoEventCount = damageEvents.length + meleeArcs.length;
@@ -135,12 +137,75 @@ class WeaponSystem {
     if (areaAttacks.length > bombAreaCount) {
       firedWeaponIds.add(thunderCrashBomb);
     }
+    final wardDamageCount = damageEvents.length;
+    _fireWard(
+      dt: dt,
+      origin: origin,
+      enemies: aliveEnemies,
+      damageMultiplier:
+          damageMultiplier *
+          _elementDamageMultiplier(jangseungWard, elementDamageMultipliers),
+      attackSpeedMultiplier: attackSpeedMultiplier,
+      criticalChance: criticalChance,
+      sizeMultiplier: sizeMultiplier,
+      damageEvents: damageEvents,
+    );
+    if (damageEvents.length > wardDamageCount)
+      firedWeaponIds.add(jangseungWard);
+
+    final singijeonCount = projectiles.length;
+    _fireSingijeon(
+      dt: dt,
+      origin: origin,
+      enemies: aliveEnemies,
+      damageMultiplier:
+          damageMultiplier *
+          _elementDamageMultiplier(singijeonVolley, elementDamageMultipliers),
+      attackSpeedMultiplier: attackSpeedMultiplier,
+      criticalChance: criticalChance,
+      sizeMultiplier: sizeMultiplier,
+      projectiles: projectiles,
+    );
+    if (projectiles.length > singijeonCount)
+      firedWeaponIds.add(singijeonVolley);
+
+    final frostCount = frostFields.length;
+    _fireFrost(
+      dt: dt,
+      origin: origin,
+      enemies: aliveEnemies,
+      damageMultiplier:
+          damageMultiplier *
+          _elementDamageMultiplier(frostFlask, elementDamageMultipliers),
+      attackSpeedMultiplier: attackSpeedMultiplier,
+      criticalChance: criticalChance,
+      sizeMultiplier: sizeMultiplier,
+      frostFields: frostFields,
+    );
+    if (frostFields.length > frostCount) firedWeaponIds.add(frostFlask);
+
+    final fanArcCount = meleeArcs.length;
+    _fireFan(
+      dt: dt,
+      origin: origin,
+      enemies: aliveEnemies,
+      damageMultiplier:
+          damageMultiplier *
+          _elementDamageMultiplier(windThunderFan, elementDamageMultipliers),
+      attackSpeedMultiplier: attackSpeedMultiplier,
+      criticalChance: criticalChance,
+      sizeMultiplier: sizeMultiplier,
+      damageEvents: damageEvents,
+      meleeArcs: meleeArcs,
+    );
+    if (meleeArcs.length > fanArcCount) firedWeaponIds.add(windThunderFan);
 
     return WeaponTickResult(
       damageEvents: damageEvents,
       projectiles: projectiles,
       meleeArcs: meleeArcs,
       areaAttacks: areaAttacks,
+      frostFields: frostFields,
       firedWeaponIds: firedWeaponIds,
     );
   }
@@ -330,6 +395,166 @@ class WeaponSystem {
     }
   }
 
+  void _fireWard({
+    required double dt,
+    required Vector2 origin,
+    required List<EnemyComponent> enemies,
+    required double damageMultiplier,
+    required double attackSpeedMultiplier,
+    required double criticalChance,
+    required double sizeMultiplier,
+    required List<DamageEvent> damageEvents,
+  }) {
+    final level = levelOf(jangseungWard);
+    if (level == 0) return;
+    final stats = weaponLevelFor(jangseungWard, level);
+    if (!_consumeCooldown(
+      jangseungWard,
+      dt,
+      stats.cooldownSeconds / _positiveMultiplier(attackSpeedMultiplier),
+    ))
+      return;
+    final rangeSquared = pow(stats.range * sizeMultiplier, 2);
+    for (final enemy in enemies) {
+      if (enemy.position.distanceToSquared(origin) > rangeSquared) continue;
+      damageEvents.add(
+        _damageEvent(
+          weaponId: jangseungWard,
+          target: enemy,
+          origin: origin,
+          damage: stats.damage * damageMultiplier,
+          knockback: stats.knockback,
+          criticalChance: criticalChance,
+        ),
+      );
+    }
+  }
+
+  void _fireSingijeon({
+    required double dt,
+    required Vector2 origin,
+    required List<EnemyComponent> enemies,
+    required double damageMultiplier,
+    required double attackSpeedMultiplier,
+    required double criticalChance,
+    required double sizeMultiplier,
+    required List<ProjectileComponent> projectiles,
+  }) {
+    final level = levelOf(singijeonVolley);
+    if (level == 0) return;
+    final stats = weaponLevelFor(singijeonVolley, level);
+    if (!_consumeCooldown(
+      singijeonVolley,
+      dt,
+      stats.cooldownSeconds / _positiveMultiplier(attackSpeedMultiplier),
+    ))
+      return;
+    final baseDirection = _densestDirection(origin, enemies);
+    for (var index = 0; index < stats.projectileCount; index += 1) {
+      final spread = (index - (stats.projectileCount - 1) / 2) * .11;
+      final direction = baseDirection.clone()..rotate(spread);
+      projectiles.add(
+        ProjectileComponent(
+          weaponId: singijeonVolley,
+          damage: _rolledDamage(
+            stats.damage * damageMultiplier,
+            criticalChance,
+          ),
+          position: origin.clone(),
+          velocity: direction * 300,
+          pierce: stats.pierce,
+          knockback: stats.knockback,
+          size: Vector2.all(7 * sizeMultiplier),
+        ),
+      );
+    }
+  }
+
+  void _fireFrost({
+    required double dt,
+    required Vector2 origin,
+    required List<EnemyComponent> enemies,
+    required double damageMultiplier,
+    required double attackSpeedMultiplier,
+    required double criticalChance,
+    required double sizeMultiplier,
+    required List<FrostFieldComponent> frostFields,
+  }) {
+    final level = levelOf(frostFlask);
+    if (level == 0) return;
+    final stats = weaponLevelFor(frostFlask, level);
+    if (!_consumeCooldown(
+      frostFlask,
+      dt,
+      stats.cooldownSeconds / _positiveMultiplier(attackSpeedMultiplier),
+    ))
+      return;
+    final center = _densestCenter(enemies, stats.range * sizeMultiplier);
+    frostFields.add(
+      FrostFieldComponent(
+        weaponId: frostFlask,
+        damage: _rolledDamage(stats.damage * damageMultiplier, criticalChance),
+        radius: stats.range * sizeMultiplier,
+        durationSeconds: stats.durationSeconds,
+        slowFraction: stats.slowFraction,
+        knockback: stats.knockback,
+        position: center,
+      ),
+    );
+  }
+
+  void _fireFan({
+    required double dt,
+    required Vector2 origin,
+    required List<EnemyComponent> enemies,
+    required double damageMultiplier,
+    required double attackSpeedMultiplier,
+    required double criticalChance,
+    required double sizeMultiplier,
+    required List<DamageEvent> damageEvents,
+    required List<MeleeArcComponent> meleeArcs,
+  }) {
+    final level = levelOf(windThunderFan);
+    if (level == 0) return;
+    final stats = weaponLevelFor(windThunderFan, level);
+    if (!_consumeCooldown(
+      windThunderFan,
+      dt,
+      stats.cooldownSeconds / _positiveMultiplier(attackSpeedMultiplier),
+    ))
+      return;
+    final baseDirection = _direction(
+      origin,
+      _nearestEnemy(origin, enemies)!.position,
+    );
+    for (var index = 0; index < stats.projectileCount; index += 1) {
+      final direction = baseDirection.clone();
+      if (index.isOdd) direction.negate();
+      final arc = MeleeArcComponent(
+        weaponId: windThunderFan,
+        damage: stats.damage * damageMultiplier,
+        knockback: stats.knockback,
+        position: origin.clone(),
+        direction: direction,
+        range: stats.range * sizeMultiplier,
+        angleRadians: pi * .75,
+      );
+      meleeArcs.add(arc);
+      for (final enemy in enemies.where(arc.containsEnemy)) {
+        damageEvents.add(
+          _damageEvent(
+            weaponId: windThunderFan,
+            target: enemy,
+            origin: origin,
+            damage: stats.damage * damageMultiplier,
+            knockback: stats.knockback,
+            criticalChance: criticalChance,
+          ),
+        );
+      }
+    }
+  }
+
   DamageEvent _damageEvent({
     required WeaponId weaponId,
     required EnemyComponent target,
@@ -369,6 +594,45 @@ class WeaponSystem {
       return nearest.position.clone();
     }
     return enemies[_random.nextInt(enemies.length)].position.clone();
+  }
+
+  Vector2 _densestDirection(Vector2 origin, List<EnemyComponent> enemies) {
+    var best = _direction(origin, enemies.first.position);
+    var bestScore = -1;
+    final minimumDot = cos(pi / 6);
+    for (final candidate in enemies) {
+      final direction = _direction(origin, candidate.position);
+      var score = 0;
+      for (final enemy in enemies) {
+        if (direction.dot(_direction(origin, enemy.position)) >= minimumDot)
+          score += 1;
+      }
+      if (score > bestScore) {
+        bestScore = score;
+        best = direction;
+      }
+    }
+    return best;
+  }
+
+  Vector2 _densestCenter(List<EnemyComponent> enemies, double radius) {
+    var best = enemies.first;
+    var bestScore = -1;
+    final radiusSquared = radius * radius;
+    for (final candidate in enemies) {
+      final score = enemies
+          .where(
+            (enemy) =>
+                enemy.position.distanceToSquared(candidate.position) <=
+                radiusSquared,
+          )
+          .length;
+      if (score > bestScore) {
+        bestScore = score;
+        best = candidate;
+      }
+    }
+    return best.position.clone();
   }
 
   EnemyComponent? _nearestEnemy(Vector2 origin, List<EnemyComponent> enemies) {
@@ -418,6 +682,7 @@ class WeaponTickResult {
     this.projectiles = const [],
     this.meleeArcs = const [],
     this.areaAttacks = const [],
+    this.frostFields = const [],
     this.firedWeaponIds = const [],
   });
 
@@ -426,11 +691,13 @@ class WeaponTickResult {
       projectiles = const [],
       meleeArcs = const [],
       areaAttacks = const [],
+      frostFields = const [],
       firedWeaponIds = const [];
 
   final List<DamageEvent> damageEvents;
   final List<ProjectileComponent> projectiles;
   final List<MeleeArcComponent> meleeArcs;
   final List<AreaAttackComponent> areaAttacks;
+  final List<FrostFieldComponent> frostFields;
   final List<WeaponId> firedWeaponIds;
 }

@@ -161,6 +161,127 @@ void main() {
       expect(result.damageEvents, isEmpty);
     });
 
+    test('jangseung ward damages and knocks back every nearby enemy', () {
+      final nearEnemies = [
+        EnemyComponent(
+          enemyId: 'a',
+          maxHealth: 20,
+          moveSpeed: 0,
+          damage: 1,
+          position: Vector2(30, 0),
+        ),
+        EnemyComponent(
+          enemyId: 'b',
+          maxHealth: 20,
+          moveSpeed: 0,
+          damage: 1,
+          position: Vector2(-30, 0),
+        ),
+      ];
+      final farEnemy = EnemyComponent(
+        enemyId: 'far',
+        maxHealth: 20,
+        moveSpeed: 0,
+        damage: 1,
+        position: Vector2(200, 0),
+      );
+
+      final result = WeaponSystem(initialLevels: const {jangseungWard: 1}).tick(
+        dt: 1,
+        origin: Vector2.zero(),
+        enemies: [...nearEnemies, farEnemy],
+      );
+
+      expect(
+        result.damageEvents.map((event) => event.target).toSet(),
+        nearEnemies.toSet(),
+      );
+      expect(
+        result.damageEvents.every((event) => event.knockback == 18),
+        isTrue,
+      );
+    });
+
+    test('singijeon aims its fan toward the densest enemy cluster', () {
+      final enemies = [
+        for (var y = -20.0; y <= 20; y += 20)
+          EnemyComponent(
+            enemyId: 'east',
+            maxHealth: 20,
+            moveSpeed: 0,
+            damage: 1,
+            position: Vector2(120, y),
+          ),
+        EnemyComponent(
+          enemyId: 'west',
+          maxHealth: 20,
+          moveSpeed: 0,
+          damage: 1,
+          position: Vector2(-40, 0),
+        ),
+      ];
+
+      final result = WeaponSystem(
+        initialLevels: const {singijeonVolley: 1},
+      ).tick(dt: 3, origin: Vector2.zero(), enemies: enemies);
+
+      expect(result.projectiles, hasLength(4));
+      expect(result.projectiles.every((shot) => shot.velocity.x > 0), isTrue);
+    });
+
+    test('frost flask creates a tuned persistent field', () {
+      final target = EnemyComponent(
+        enemyId: 'target',
+        maxHealth: 20,
+        moveSpeed: 0,
+        damage: 1,
+        position: Vector2(70, 10),
+      );
+
+      final result = WeaponSystem(
+        initialLevels: const {frostFlask: 3},
+      ).tick(dt: 3, origin: Vector2.zero(), enemies: [target]);
+
+      expect(result.frostFields, hasLength(1));
+      expect(result.frostFields.single.position, target.position);
+      expect(result.frostFields.single.radius, 80);
+      expect(result.frostFields.single.durationSeconds, 3.5);
+      expect(result.frostFields.single.slowFraction, .30);
+    });
+
+    test('level five wind thunder fan sweeps forward and backward', () {
+      final enemies = [
+        EnemyComponent(
+          enemyId: 'east',
+          maxHealth: 30,
+          moveSpeed: 0,
+          damage: 1,
+          position: Vector2(50, 0),
+        ),
+        EnemyComponent(
+          enemyId: 'west',
+          maxHealth: 30,
+          moveSpeed: 0,
+          damage: 1,
+          position: Vector2(-50, 0),
+        ),
+      ];
+
+      final result = WeaponSystem(
+        initialLevels: const {windThunderFan: 5},
+      ).tick(dt: 2, origin: Vector2.zero(), enemies: enemies);
+
+      expect(result.meleeArcs, hasLength(2));
+      expect(
+        result.damageEvents.map((event) => event.target).toSet(),
+        enemies.toSet(),
+      );
+      expect(
+        result.damageEvents.every((event) => event.knockback == 100),
+        isTrue,
+      );
+    });
+
     test('tick reports every weapon that actually fires', () {
       final enemy = EnemyComponent(
         enemyId: 'target',
@@ -175,6 +296,10 @@ void main() {
           gakgungShot: 1,
           talismanThrow: 1,
           thunderCrashBomb: 1,
+          jangseungWard: 1,
+          singijeonVolley: 1,
+          frostFlask: 1,
+          windThunderFan: 1,
         },
         random: Random(1),
       );
@@ -190,6 +315,10 @@ void main() {
         gakgungShot,
         talismanThrow,
         thunderCrashBomb,
+        jangseungWard,
+        singijeonVolley,
+        frostFlask,
+        windThunderFan,
       ]);
     });
 
