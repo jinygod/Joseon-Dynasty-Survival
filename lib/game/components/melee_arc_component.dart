@@ -75,10 +75,11 @@ class MeleeArcComponent extends PositionComponent {
     final center = Offset(size.x / 2, size.y / 2);
     final facingAngle = math.atan2(direction.y, direction.x);
     final image = _effectImage;
-    if (image != null) {
+    final atlasRow = WeaponEffectAtlas.rowForWeapon(weaponId);
+    if (image != null && atlasRow != null) {
       final sprite = WeaponEffectAtlas.sprite(
         image,
-        row: WeaponEffectAtlas.hwandoRow,
+        row: atlasRow,
         frame: WeaponEffectAtlas.frameForProgress(_age / lifetime),
       );
       canvas

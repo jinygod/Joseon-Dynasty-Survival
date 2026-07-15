@@ -112,28 +112,41 @@ void main() {
       );
     });
 
-    test('filters content that has no runtime weapon or augment effect', () {
-      final choices = LevelUpSystem(random: Random(3)).choices(
-        unlockedWeaponIds: {hwandoSlash, jangseungWard, singijeonVolley},
-        unlockedAugmentIds: {martialTraining, goblinFire, lastStand},
-        currentWeaponLevels: const {},
-        currentAugmentLevels: const {},
-        maxChoices: 10,
-      );
+    test(
+      'offers every unlocked runtime weapon and filters missing augments',
+      () {
+        final choices = LevelUpSystem(random: Random(3)).choices(
+          unlockedWeaponIds: {
+            hwandoSlash,
+            jangseungWard,
+            singijeonVolley,
+            frostFlask,
+            windThunderFan,
+          },
+          unlockedAugmentIds: {martialTraining, goblinFire, lastStand},
+          currentWeaponLevels: const {},
+          currentAugmentLevels: const {},
+          maxChoices: 10,
+        );
 
-      expect(choices.map((choice) => choice.id).toSet(), {
-        hwandoSlash,
-        martialTraining,
-      });
-      expect(
-        choices.every(
-          (choice) =>
-              choice.effectDescription.contains('→') ||
-              choice.effectDescription.startsWith('신규'),
-        ),
-        isTrue,
-      );
-    });
+        expect(choices.map((choice) => choice.id).toSet(), {
+          hwandoSlash,
+          jangseungWard,
+          singijeonVolley,
+          frostFlask,
+          windThunderFan,
+          martialTraining,
+        });
+        expect(
+          choices.every(
+            (choice) =>
+                choice.effectDescription.contains('→') ||
+                choice.effectDescription.startsWith('신규'),
+          ),
+          isTrue,
+        );
+      },
+    );
 
     test('augment cards show cumulative production values', () {
       final choices = LevelUpSystem(random: Random(1)).choices(

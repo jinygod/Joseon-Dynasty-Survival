@@ -16,14 +16,17 @@ import 'components/combat_effect_component.dart';
 import 'components/damage_number_component.dart';
 import 'components/enemy_component.dart';
 import 'components/experience_gem_component.dart';
+import 'components/frost_field_component.dart';
 import 'components/player_component.dart';
 import 'components/projectile_component.dart';
+import 'components/ward_aura_component.dart';
 import 'content/augment_definitions.dart';
 import 'content/character_definitions.dart';
 import 'content/combat_effect_atlas.dart';
 import 'content/enemy_definitions.dart';
 import 'content/ids.dart';
 import 'content/weapon_definitions.dart';
+import 'content/weapon_level_definitions.dart';
 import 'models/player_slot.dart';
 import 'models/damage_event.dart';
 import 'models/run_choice_record.dart';
@@ -231,6 +234,7 @@ class PixelSurvivorGame extends FlameGame
     _updateWeapons(safeDt);
     _applyProjectileHits();
     _resolveAreaAttacks();
+    _resolveFrostFields();
     _recordNewEnemyDefeats();
     _dropExperienceForDeadEnemies();
     _resolveBossVictoryBeforePlayerDefeat();
@@ -396,6 +400,7 @@ class PixelSurvivorGame extends FlameGame
     if (player == null) {
       return;
     }
+    _ensureWardAura(player);
 
     final result = weaponSystem.tick(
       dt: dt,
@@ -420,6 +425,28 @@ class PixelSurvivorGame extends FlameGame
     for (final areaAttack in result.areaAttacks) {
       add(areaAttack);
     }
+    for (final frostField in result.frostFields) {
+      final activeFields = children.whereType<FrostFieldComponent>().toList();
+      if (activeFields.length >= 3) activeFields.first.removeFromParent();
+      add(frostField);
+    }
+  }
+
+  void _ensureWardAura(PlayerComponent player) {
+    final level = weaponSystem.levelOf(jangseungWard);
+    if (level == 0 || children.whereType<WardAuraComponent>().isNotEmpty)
+      return;
+    add(
+      WardAuraComponent(
+        positionProvider: () => player.position,
+        radiusProvider: () {
+          final currentLevel = weaponSystem.levelOf(jangseungWard);
+          if (currentLevel == 0) return 0;
+          return weaponLevelFor(jangseungWard, currentLevel).range *
+              weaponSizeMultiplier;
+        },
+      ),
+    );
   }
 
   void _updatePlayerMovement(double dt) {
@@ -496,6 +523,29 @@ class PixelSurvivorGame extends FlameGame
       } else {
         _applyDamageEvents(attack.collectDamageEvents(enemies));
       }
+    }
+  }
+
+  void _resolveFrostFields() {
+    final enemies = children
+        .whereType<EnemyComponent>()
+        .where((enemy) => !enemy.isDead)
+        .toList();
+    final fields = children
+        .whereType<FrostFieldComponent>()
+        .where((field) => !field.isExpired)
+        .toList();
+    for (final enemy in enemies) {
+      var strongestSlow = 0.0;
+      for (final field in fields) {
+        if (field.containsEnemy(enemy) && field.slowFraction > strongestSlow) {
+          strongestSlow = field.slowFraction;
+        }
+      }
+      enemy.setEnvironmentalSlow(strongestSlow);
+    }
+    for (final field in fields) {
+      _applyDamageEvents(field.collectDamageEvents(enemies));
     }
   }
 
@@ -836,6 +886,10 @@ class PixelSurvivorGame extends FlameGame
     gakgungShot => AudioCue.bowAttack,
     talismanThrow => AudioCue.talismanAttack,
     thunderCrashBomb => AudioCue.bombAttack,
+    jangseungWard => AudioCue.talismanAttack,
+    singijeonVolley => AudioCue.bowAttack,
+    frostFlask => AudioCue.talismanAttack,
+    windThunderFan => AudioCue.bombAttack,
     _ => AudioCue.hwandoAttack,
   };
 

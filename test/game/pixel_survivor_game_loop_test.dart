@@ -4,7 +4,9 @@ import 'package:flame/components.dart';
 import 'package:flame_test/flame_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/components/enemy_component.dart';
+import 'package:pixel_survivor/game/components/frost_field_component.dart';
 import 'package:pixel_survivor/game/components/projectile_component.dart';
+import 'package:pixel_survivor/game/components/ward_aura_component.dart';
 import 'package:pixel_survivor/game/audio/audio_cue.dart';
 import 'package:pixel_survivor/game/content/augment_definitions.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
@@ -196,6 +198,40 @@ void main() {
       expect(game.weaponSystem.levelOf(hwandoSlash), 1);
       expect(game.isLevelUpPending, isFalse);
     });
+
+    gameTester.testGameWidget(
+      'new field weapons join the live game loop with capped frost fields',
+      setUp: (game, _) async {
+        game.unlockedWeaponIds.addAll({jangseungWard, frostFlask});
+        game.weaponSystem
+          ..upgrade(jangseungWard, game.unlockedWeaponIds)
+          ..upgrade(frostFlask, game.unlockedWeaponIds);
+        await game.ensureAdd(
+          EnemyComponent(
+            enemyId: 'field_target',
+            maxHealth: 1000,
+            moveSpeed: 100,
+            damage: 0,
+            position: game.activePlayers.single.position + Vector2(30, 0),
+          ),
+        );
+      },
+      verify: (game, _) async {
+        game.update(.05);
+        game.update(.05);
+
+        expect(game.children.whereType<WardAuraComponent>(), hasLength(1));
+        expect(game.children.whereType<FrostFieldComponent>(), hasLength(1));
+
+        for (var cycle = 0; cycle < 4; cycle += 1) {
+          for (var frame = 0; frame < 60; frame += 1) game.update(.05);
+        }
+        expect(
+          game.children.whereType<FrostFieldComponent>().length,
+          lessThanOrEqualTo(3),
+        );
+      },
+    );
 
     test('applyLevelUpChoice upgrades an augment level', () {
       final game = newGame()..unlockedAugmentIds.add(martialTraining);
