@@ -15,6 +15,7 @@ void main() {
           channel: AudioChannel.sfx,
           priority: AudioPriority.high,
           pitch: 1,
+          volume: 0.8,
         ),
       );
       await expectLater(handle.completed, completes);

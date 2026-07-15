@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/audio/audio_backend.dart';
 import 'package:pixel_survivor/game/audio/audio_cue.dart';
 import 'package:pixel_survivor/game/audio/audio_playback_policy.dart';
+import 'package:pixel_survivor/game/audio/audio_settings.dart';
 import 'package:pixel_survivor/game/audio/game_audio_service.dart';
 
 void main() {
@@ -17,6 +18,85 @@ void main() {
     expect(backend.requests.single.cue, AudioCue.playerHit);
     expect(backend.requests.single.channel, AudioChannel.sfx);
     expect(backend.requests.single.priority, AudioPriority.high);
+    expect(backend.requests.single.pitch, 0.96);
+    expect(backend.requests.single.volume, 0.8);
+  });
+
+  test('service reads the latest settings for each playback', () async {
+    var settings = AudioSettings(
+      musicVolume: 0.2,
+      sfxVolume: 0.4,
+      vibrationEnabled: true,
+    );
+    final backend = RecordingAudioBackend();
+    final service = GameAudioService(
+      backend: backend,
+      readSettings: () => settings,
+    );
+
+    await service.play(AudioCue.battleMusic);
+    backend.handles.single.complete();
+    await Future<void>.delayed(Duration.zero);
+    settings = settings.copyWith(musicVolume: 0.6);
+    await service.play(AudioCue.menuMusic);
+
+    expect(backend.requests.map((request) => request.volume), [0.2, 0.6]);
+  });
+
+  test('zero music volume suppresses music only', () async {
+    final backend = RecordingAudioBackend();
+    final service = GameAudioService(
+      backend: backend,
+      readSettings: () => AudioSettings(
+        musicVolume: 0,
+        sfxVolume: 0.5,
+        vibrationEnabled: true,
+      ),
+    );
+
+    await service.play(AudioCue.battleMusic);
+    await service.play(AudioCue.playerHit);
+
+    expect(backend.requests.map((request) => request.cue), [AudioCue.playerHit]);
+    expect(backend.requests.single.volume, 0.5);
+  });
+
+  test('zero effects volume suppresses SFX and UI only', () async {
+    final backend = RecordingAudioBackend();
+    final service = GameAudioService(
+      backend: backend,
+      readSettings: () => AudioSettings(
+        musicVolume: 0.3,
+        sfxVolume: 0,
+        vibrationEnabled: true,
+      ),
+    );
+
+    await service.play(AudioCue.playerHit);
+    await service.play(AudioCue.uiConfirm);
+    await service.play(AudioCue.battleMusic);
+
+    expect(backend.requests.map((request) => request.cue), [
+      AudioCue.battleMusic,
+    ]);
+  });
+
+  test('muted SFX does not advance its pitch cycle', () async {
+    var settings = AudioSettings(
+      musicVolume: 0.7,
+      sfxVolume: 0,
+      vibrationEnabled: true,
+    );
+    final backend = RecordingAudioBackend();
+    final service = GameAudioService(
+      backend: backend,
+      readSettings: () => settings,
+    );
+
+    await service.play(AudioCue.hwandoAttack);
+    settings = settings.copyWith(sfxVolume: 0.8);
+    await service.play(AudioCue.hwandoAttack);
+
     expect(backend.requests.single.pitch, 0.96);
   });
 

@@ -47,7 +47,7 @@ void main() {
 
     final pitches = List.generate(
       7,
-      (_) => policy.requestFor(AudioCue.hwandoAttack).pitch,
+      (_) => policy.requestFor(AudioCue.hwandoAttack, volume: 0.8).pitch,
     );
 
     expect(pitches, [0.96, 0.98, 1.0, 1.02, 1.04, 0.96, 0.98]);
@@ -56,25 +56,39 @@ void main() {
   test('SFX pitch counters are independent per cue', () {
     final policy = AudioPlaybackPolicy();
 
-    expect(policy.requestFor(AudioCue.hwandoAttack).pitch, 0.96);
-    expect(policy.requestFor(AudioCue.hwandoAttack).pitch, 0.98);
-    expect(policy.requestFor(AudioCue.bowAttack).pitch, 0.96);
+    expect(policy.requestFor(AudioCue.hwandoAttack, volume: 0.8).pitch, 0.96);
+    expect(policy.requestFor(AudioCue.hwandoAttack, volume: 0.8).pitch, 0.98);
+    expect(policy.requestFor(AudioCue.bowAttack, volume: 0.8).pitch, 0.96);
   });
 
   test('music and UI always use neutral pitch', () {
     final policy = AudioPlaybackPolicy();
 
     for (var index = 0; index < 6; index += 1) {
-      expect(policy.requestFor(AudioCue.battleMusic).pitch, 1.0);
-      expect(policy.requestFor(AudioCue.uiConfirm).pitch, 1.0);
+      expect(policy.requestFor(AudioCue.battleMusic, volume: 0.7).pitch, 1.0);
+      expect(policy.requestFor(AudioCue.uiConfirm, volume: 0.8).pitch, 1.0);
     }
   });
 
   test('request carries catalog channel and priority', () {
-    final request = AudioPlaybackPolicy().requestFor(AudioCue.playerHit);
+    final request = AudioPlaybackPolicy().requestFor(
+      AudioCue.playerHit,
+      volume: 0.8,
+    );
 
     expect(request.cue, AudioCue.playerHit);
     expect(request.channel, AudioChannel.sfx);
     expect(request.priority, AudioPriority.high);
+    expect(request.volume, 0.8);
+  });
+
+  test('request clamps volume to the normalized range', () {
+    final policy = AudioPlaybackPolicy();
+
+    expect(
+      policy.requestFor(AudioCue.battleMusic, volume: 2).volume,
+      1,
+    );
+    expect(policy.requestFor(AudioCue.uiBack, volume: -1).volume, 0);
   });
 }

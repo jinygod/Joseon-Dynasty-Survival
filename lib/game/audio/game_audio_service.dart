@@ -3,6 +3,7 @@ import 'dart:async';
 import 'audio_backend.dart';
 import 'audio_cue.dart';
 import 'audio_playback_policy.dart';
+import 'audio_settings.dart';
 
 class AudioDiagnostic {
   const AudioDiagnostic({
@@ -22,13 +23,25 @@ class GameAudioService {
   factory GameAudioService({
     required AudioBackend backend,
     void Function(AudioDiagnostic)? reportDiagnostic,
-  }) => GameAudioService._(backend, reportDiagnostic, AudioPlaybackPolicy());
+    AudioSettings Function()? readSettings,
+  }) => GameAudioService._(
+    backend,
+    reportDiagnostic,
+    AudioPlaybackPolicy(),
+    readSettings ?? _readDefaultSettings,
+  );
 
-  GameAudioService._(this._backend, this._reportDiagnostic, this._policy);
+  GameAudioService._(
+    this._backend,
+    this._reportDiagnostic,
+    this._policy,
+    this._readSettings,
+  );
 
   final AudioBackend _backend;
   final void Function(AudioDiagnostic)? _reportDiagnostic;
   final AudioPlaybackPolicy _policy;
+  final AudioSettings Function() _readSettings;
   final List<_ActiveVoice> _activeVoices = [];
   Future<void> _admissionQueue = Future<void>.value();
   int _nextSequence = 0;
@@ -36,9 +49,14 @@ class GameAudioService {
 
   Future<void> play(AudioCue cue) {
     if (_disposed) return Future<void>.value();
-    final request = _policy.requestFor(cue);
+    final channel = AudioCueCatalog.channelFor(cue);
+    final volume = _readSettings().volumeFor(channel);
+    if (volume <= 0) return Future<void>.value();
+    final request = _policy.requestFor(cue, volume: volume);
     return _enqueue(() => _playRequest(request));
   }
+
+  static AudioSettings _readDefaultSettings() => AudioSettings.defaults;
 
   Future<void> stopMusic() {
     if (_disposed) return Future<void>.value();

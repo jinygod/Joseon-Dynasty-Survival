@@ -8,12 +8,14 @@ class AudioPlaybackRequest {
     required this.channel,
     required this.priority,
     required this.pitch,
+    required this.volume,
   });
 
   final AudioCue cue;
   final AudioChannel channel;
   final AudioPriority priority;
   final double pitch;
+  final double volume;
 }
 
 class AudioPlaybackPolicy {
@@ -34,13 +36,14 @@ class AudioPlaybackPolicy {
     _ => AudioPriority.normal,
   };
 
-  AudioPlaybackRequest requestFor(AudioCue cue) {
+  AudioPlaybackRequest requestFor(AudioCue cue, {required double volume}) {
     final channel = AudioCueCatalog.channelFor(cue);
     return AudioPlaybackRequest(
       cue: cue,
       channel: channel,
       priority: priorityFor(cue),
       pitch: _pitchFor(cue, channel),
+      volume: volume.isFinite ? volume.clamp(0.0, 1.0).toDouble() : 0,
     );
   }
 
