@@ -1,7 +1,13 @@
-import 'audio_cue.dart';
+import 'audio_playback_policy.dart';
+
+abstract interface class AudioPlaybackHandle {
+  Future<void> get completed;
+
+  Future<void> stop();
+}
 
 abstract interface class AudioBackend {
-  Future<void> play(AudioCue cue, AudioChannel channel);
+  Future<AudioPlaybackHandle> play(AudioPlaybackRequest request);
 
   Future<void> stopMusic();
 
@@ -16,7 +22,8 @@ class SilentAudioBackend implements AudioBackend {
   const SilentAudioBackend();
 
   @override
-  Future<void> play(AudioCue cue, AudioChannel channel) async {}
+  Future<AudioPlaybackHandle> play(AudioPlaybackRequest request) async =>
+      const SilentAudioPlaybackHandle();
 
   @override
   Future<void> stopMusic() async {}
@@ -29,4 +36,14 @@ class SilentAudioBackend implements AudioBackend {
 
   @override
   Future<void> dispose() async {}
+}
+
+class SilentAudioPlaybackHandle implements AudioPlaybackHandle {
+  const SilentAudioPlaybackHandle();
+
+  @override
+  Future<void> get completed => Future<void>.value();
+
+  @override
+  Future<void> stop() async {}
 }
