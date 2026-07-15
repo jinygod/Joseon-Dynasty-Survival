@@ -1,6 +1,16 @@
 class AssetCatalog {
   const AssetCatalog._();
 
+  static final Set<String> allPaths = Set.unmodifiable([
+    ...characters.values,
+    ...monsters.values,
+    ...weapons.values,
+    ...augments.values,
+    ...effects.values,
+    ...stages.values,
+    ...player.values,
+  ]);
+
   static const characters = <String, String>{
     'rookie_constable': 'assets/images/characters/rookie_constable_32.png',
     'exorcist_dosa': 'assets/images/characters/exorcist_dosa_32.png',
