@@ -8,6 +8,8 @@ enum ElementType { physical, magic, fire, ice, lightning }
 
 enum EnemyBehaviorType { chase, swarm, dash, tank }
 
+enum CharacterPassive { none, patrolGrit, exorcismScript, hawkEye }
+
 enum UnlockMetric {
   bestSurvivalSeconds,
   totalKills,
@@ -25,6 +27,9 @@ class CharacterDefinition {
     required this.moveSpeed,
     required this.damageMultiplier,
     required this.startingWeaponId,
+    this.passive = CharacterPassive.none,
+    this.passiveName = '',
+    this.passiveDescription = '',
   });
 
   final CharacterId id;
@@ -33,6 +38,9 @@ class CharacterDefinition {
   final double moveSpeed;
   final double damageMultiplier;
   final WeaponId startingWeaponId;
+  final CharacterPassive passive;
+  final String passiveName;
+  final String passiveDescription;
 }
 
 class WeaponDefinition {
