@@ -150,8 +150,9 @@ class WeaponSystem {
       sizeMultiplier: sizeMultiplier,
       damageEvents: damageEvents,
     );
-    if (damageEvents.length > wardDamageCount)
+    if (damageEvents.length > wardDamageCount) {
       firedWeaponIds.add(jangseungWard);
+    }
 
     final singijeonCount = projectiles.length;
     _fireSingijeon(
@@ -166,8 +167,9 @@ class WeaponSystem {
       sizeMultiplier: sizeMultiplier,
       projectiles: projectiles,
     );
-    if (projectiles.length > singijeonCount)
+    if (projectiles.length > singijeonCount) {
       firedWeaponIds.add(singijeonVolley);
+    }
 
     final frostCount = frostFields.length;
     _fireFrost(
@@ -412,8 +414,9 @@ class WeaponSystem {
       jangseungWard,
       dt,
       stats.cooldownSeconds / _positiveMultiplier(attackSpeedMultiplier),
-    ))
+    )) {
       return;
+    }
     final rangeSquared = pow(stats.range * sizeMultiplier, 2);
     for (final enemy in enemies) {
       if (enemy.position.distanceToSquared(origin) > rangeSquared) continue;
@@ -447,8 +450,9 @@ class WeaponSystem {
       singijeonVolley,
       dt,
       stats.cooldownSeconds / _positiveMultiplier(attackSpeedMultiplier),
-    ))
+    )) {
       return;
+    }
     final baseDirection = _densestDirection(origin, enemies);
     for (var index = 0; index < stats.projectileCount; index += 1) {
       final spread = (index - (stats.projectileCount - 1) / 2) * .11;
@@ -487,8 +491,9 @@ class WeaponSystem {
       frostFlask,
       dt,
       stats.cooldownSeconds / _positiveMultiplier(attackSpeedMultiplier),
-    ))
+    )) {
       return;
+    }
     final center = _densestCenter(enemies, stats.range * sizeMultiplier);
     frostFields.add(
       FrostFieldComponent(
@@ -521,8 +526,9 @@ class WeaponSystem {
       windThunderFan,
       dt,
       stats.cooldownSeconds / _positiveMultiplier(attackSpeedMultiplier),
-    ))
+    )) {
       return;
+    }
     final baseDirection = _direction(
       origin,
       _nearestEnemy(origin, enemies)!.position,
@@ -604,8 +610,9 @@ class WeaponSystem {
       final direction = _direction(origin, candidate.position);
       var score = 0;
       for (final enemy in enemies) {
-        if (direction.dot(_direction(origin, enemy.position)) >= minimumDot)
+        if (direction.dot(_direction(origin, enemy.position)) >= minimumDot) {
           score += 1;
+        }
       }
       if (score > bestScore) {
         bestScore = score;

@@ -224,7 +224,9 @@ void main() {
         expect(game.children.whereType<FrostFieldComponent>(), hasLength(1));
 
         for (var cycle = 0; cycle < 4; cycle += 1) {
-          for (var frame = 0; frame < 60; frame += 1) game.update(.05);
+          for (var frame = 0; frame < 60; frame += 1) {
+            game.update(.05);
+          }
         }
         expect(
           game.children.whereType<FrostFieldComponent>().length,

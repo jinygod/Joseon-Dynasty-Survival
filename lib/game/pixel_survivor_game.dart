@@ -434,8 +434,9 @@ class PixelSurvivorGame extends FlameGame
 
   void _ensureWardAura(PlayerComponent player) {
     final level = weaponSystem.levelOf(jangseungWard);
-    if (level == 0 || children.whereType<WardAuraComponent>().isNotEmpty)
+    if (level == 0 || children.whereType<WardAuraComponent>().isNotEmpty) {
       return;
+    }
     add(
       WardAuraComponent(
         positionProvider: () => player.position,
