@@ -4,6 +4,8 @@ import '../models/run_outcome.dart';
 
 class RunStatsTracker {
   int _kills = 0;
+  int _eliteKills = 0;
+  int _spiritJadeCollected = 0;
   bool _bossDefeated = false;
   final Map<String, int> _weaponKillCounts = {};
   final Map<String, double> _weaponDamageTotals = {};
@@ -13,10 +15,17 @@ class RunStatsTracker {
   int? _deathAtSeconds;
 
   int get kills => _kills;
+  int get eliteKills => _eliteKills;
+  int get spiritJadeCollected => _spiritJadeCollected;
   bool get bossDefeated => _bossDefeated;
 
-  void recordEnemyDefeat({required bool isBoss, String? weaponId}) {
+  void recordEnemyDefeat({
+    required bool isBoss,
+    bool isElite = false,
+    String? weaponId,
+  }) {
     _kills += 1;
+    if (isElite) _eliteKills += 1;
     _bossDefeated = _bossDefeated || isBoss;
     if (weaponId != null) {
       _weaponKillCounts.update(
@@ -25,6 +34,10 @@ class RunStatsTracker {
         ifAbsent: () => 1,
       );
     }
+  }
+
+  void recordSpiritJadeCollected() {
+    _spiritJadeCollected += 1;
   }
 
   void recordWeaponDamage({required String weaponId, required double amount}) {
@@ -75,6 +88,8 @@ class RunStatsTracker {
       totalDamageTaken: _totalDamageTaken,
       lastDamageSource: _lastDamageSource,
       deathAtSeconds: _deathAtSeconds,
+      eliteKills: _eliteKills,
+      spiritJadeCollected: _spiritJadeCollected,
     );
   }
 }

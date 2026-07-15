@@ -16,6 +16,8 @@ class RunResult {
     this.totalDamageTaken = 0,
     this.lastDamageSource,
     this.deathAtSeconds,
+    this.eliteKills = 0,
+    this.spiritJadeCollected = 0,
   });
 
   final RunOutcome outcome;
@@ -31,4 +33,6 @@ class RunResult {
   final double totalDamageTaken;
   final String? lastDamageSource;
   final int? deathAtSeconds;
+  final int eliteKills;
+  final int spiritJadeCollected;
 }

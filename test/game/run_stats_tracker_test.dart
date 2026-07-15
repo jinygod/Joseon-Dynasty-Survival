@@ -28,6 +28,24 @@ void main() {
       expect(result.weaponLevels, {hwandoSlash: 2});
     });
 
+    test('tracks elite kills and collected spirit jade', () {
+      final tracker = RunStatsTracker()
+        ..recordEnemyDefeat(isBoss: false, isElite: true)
+        ..recordEnemyDefeat(isBoss: false)
+        ..recordSpiritJadeCollected();
+
+      final result = tracker.toRunResult(
+        outcome: RunOutcome.defeat,
+        survivalSeconds: 30,
+        level: 2,
+        wonWithLowHealth: false,
+        weaponLevels: const {},
+      );
+
+      expect(result.eliteKills, 1);
+      expect(result.spiritJadeCollected, 1);
+    });
+
     test('accumulates effective damage and kills for the same weapon', () {
       final tracker = RunStatsTracker()
         ..recordWeaponDamage(weaponId: hwandoSlash, amount: 8.5)
