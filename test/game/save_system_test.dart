@@ -83,6 +83,18 @@ void main() {
     expect(restored.shopProgress.purchasedItemIds, {'manual.rookie_constable'});
     expect(restored.selectedCharacterId, rookieConstable);
     expect(restored.selectedStageId, moonlitAbandonedOffice);
+    expect(restored.claimedRewardIds, isEmpty);
+  });
+
+  test('claimed reward ids round trip without a schema bump', () {
+    final original = SaveState.defaults().copyWith(
+      claimedRewardIds: {'first_boss_spirit_jade', 'drop-1'},
+    );
+
+    final restored = SaveState.fromJson(original.toJson());
+
+    expect(restored.schemaVersion, 2);
+    expect(restored.claimedRewardIds, original.claimedRewardIds);
   });
 
   group('unsupported save schemas', () {

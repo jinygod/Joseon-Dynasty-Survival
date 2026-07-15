@@ -16,6 +16,7 @@ class SaveState {
     required Set<String> unlockedWeaponIds,
     required Set<String> unlockedAugmentIds,
     required Set<String> completedGoalIds,
+    Set<String> claimedRewardIds = const {},
     required this.wallet,
     required this.trainingProgress,
     required this.shopProgress,
@@ -30,7 +31,8 @@ class SaveState {
   }) : unlockedCharacterIds = Set.unmodifiable(unlockedCharacterIds),
        unlockedWeaponIds = Set.unmodifiable(unlockedWeaponIds),
        unlockedAugmentIds = Set.unmodifiable(unlockedAugmentIds),
-       completedGoalIds = Set.unmodifiable(completedGoalIds);
+       completedGoalIds = Set.unmodifiable(completedGoalIds),
+       claimedRewardIds = Set.unmodifiable(claimedRewardIds);
 
   static const currentSchemaVersion = 2;
 
@@ -48,6 +50,7 @@ class SaveState {
           .map((augment) => augment.id)
           .toSet(),
       completedGoalIds: const {},
+      claimedRewardIds: const {},
       wallet: Wallet.empty,
       trainingProgress: TrainingProgress.empty,
       shopProgress: ShopProgress.empty,
@@ -101,6 +104,7 @@ class SaveState {
         fallback: defaults.unlockedAugmentIds,
       ),
       completedGoalIds: _stringSet(json['completedGoalIds']),
+      claimedRewardIds: _stringSet(json['claimedRewardIds']),
       wallet: Wallet.fromJson(json['wallet']),
       trainingProgress: TrainingProgress.fromJson(json['trainingProgress']),
       shopProgress: ShopProgress.fromJson(json['shopProgress']),
@@ -123,6 +127,7 @@ class SaveState {
   final Set<String> unlockedWeaponIds;
   final Set<String> unlockedAugmentIds;
   final Set<String> completedGoalIds;
+  final Set<String> claimedRewardIds;
   final Wallet wallet;
   final TrainingProgress trainingProgress;
   final ShopProgress shopProgress;
@@ -141,6 +146,7 @@ class SaveState {
     Set<String>? unlockedWeaponIds,
     Set<String>? unlockedAugmentIds,
     Set<String>? completedGoalIds,
+    Set<String>? claimedRewardIds,
     Wallet? wallet,
     TrainingProgress? trainingProgress,
     ShopProgress? shopProgress,
@@ -163,6 +169,8 @@ class SaveState {
           unlockedAugmentIds ?? Set<String>.of(this.unlockedAugmentIds),
       completedGoalIds:
           completedGoalIds ?? Set<String>.of(this.completedGoalIds),
+      claimedRewardIds:
+          claimedRewardIds ?? Set<String>.of(this.claimedRewardIds),
       wallet: wallet ?? this.wallet,
       trainingProgress: trainingProgress ?? this.trainingProgress,
       shopProgress: shopProgress ?? this.shopProgress,
@@ -184,6 +192,7 @@ class SaveState {
       'unlockedWeaponIds': _sorted(unlockedWeaponIds),
       'unlockedAugmentIds': _sorted(unlockedAugmentIds),
       'completedGoalIds': _sorted(completedGoalIds),
+      'claimedRewardIds': _sorted(claimedRewardIds),
       'wallet': wallet.toJson(),
       'trainingProgress': trainingProgress.toJson(),
       'shopProgress': shopProgress.toJson(),
