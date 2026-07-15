@@ -16,11 +16,12 @@ class AudioDiagnostic {
 }
 
 class GameAudioService {
-  GameAudioService({
+  factory GameAudioService({
     required AudioBackend backend,
     void Function(AudioDiagnostic)? reportDiagnostic,
-  }) : _backend = backend,
-       _reportDiagnostic = reportDiagnostic;
+  }) => GameAudioService._(backend, reportDiagnostic);
+
+  GameAudioService._(this._backend, this._reportDiagnostic);
 
   final AudioBackend _backend;
   final void Function(AudioDiagnostic)? _reportDiagnostic;
