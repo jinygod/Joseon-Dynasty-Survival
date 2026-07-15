@@ -34,4 +34,19 @@ void main() {
       );
     }
   });
+
+  test('pubspec registers every audio asset subdirectory', () {
+    final pubspec = File('pubspec.yaml').readAsStringSync();
+    final directories = AudioAssetCatalog.assets.values
+        .map((asset) => asset.path.substring(0, asset.path.lastIndexOf('/')))
+        .toSet();
+
+    for (final directory in directories) {
+      expect(
+        pubspec,
+        contains('- assets/$directory/'),
+        reason: '$directory must be bundled by Flutter',
+      );
+    }
+  });
 }

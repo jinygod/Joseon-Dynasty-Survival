@@ -62,7 +62,9 @@ flutter:
     - assets/images/effects/
     - assets/images/stages/
     - assets/images/ui/
-    - assets/audio/
+    - assets/audio/music/
+    - assets/audio/sfx/
+    - assets/audio/ui/
 
   # To add assets to your application, add an assets section, like this:
   # assets:
