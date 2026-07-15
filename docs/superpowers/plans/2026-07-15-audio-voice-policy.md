@@ -24,11 +24,11 @@
 - Create: `lib/game/audio/audio_playback_policy.dart`
 - Create: `test/game/audio_playback_policy_test.dart`
 
-- [ ] Write failing tests for total priority mapping, channel limits, pitch cycle, per-cue counters, and fixed music/UI pitch.
-- [ ] Run the focused test and verify RED because the policy types do not exist.
-- [ ] Implement `AudioPriority`, cue priority mapping, channel limits, and deterministic request generation.
-- [ ] Run the focused test and verify GREEN.
-- [ ] Commit the policy and tests.
+- [x] Write failing tests for total priority mapping, channel limits, pitch cycle, per-cue counters, and fixed music/UI pitch.
+- [x] Run the focused test and verify RED because the policy types do not exist.
+- [x] Implement `AudioPriority`, cue priority mapping, channel limits, and deterministic request generation.
+- [x] Run the focused test and verify GREEN.
+- [x] Commit the policy and tests.
 
 ### Task 2: Upgrade the backend to playback handles
 
@@ -36,11 +36,11 @@
 - Modify: `lib/game/audio/audio_backend.dart`
 - Modify: `test/game/silent_audio_backend_test.dart`
 
-- [ ] Write a failing test proving silent playback returns a completed stoppable handle and preserves the full request.
-- [ ] Change `AudioBackend.play` to accept `AudioPlaybackRequest` and return `AudioPlaybackHandle`.
-- [ ] Implement the silent handle without platform bindings.
-- [ ] Run backend and policy tests and verify GREEN.
-- [ ] Commit the backend contract change.
+- [x] Write a failing test proving silent playback returns a completed stoppable handle.
+- [x] Change `AudioBackend.play` to accept `AudioPlaybackRequest` and return `AudioPlaybackHandle`.
+- [x] Implement the silent handle without platform bindings.
+- [x] Run backend and policy tests and verify GREEN.
+- [x] Commit the backend contract change.
 
 ### Task 3: Enforce active-voice admission in the service
 
@@ -48,13 +48,13 @@
 - Modify: `lib/game/audio/game_audio_service.dart`
 - Modify: `test/game/game_audio_service_test.dart`
 
-- [ ] Update test backends to the handle contract.
-- [ ] Write failing tests for completion cleanup, independent limits, equal/lower rejection, higher-priority preemption, oldest-victim selection, concurrent capacity, and stop/completion failure isolation.
-- [ ] Run service tests and verify RED for missing admission behavior.
-- [ ] Implement serialized admission, handle tracking, preemption, completion cleanup, and guarded failures.
-- [ ] Preserve existing delegation, lifecycle ordering, diagnostics, and idempotent disposal tests.
-- [ ] Run all audio tests and verify GREEN.
-- [ ] Commit service admission behavior.
+- [x] Update test backends to the handle contract.
+- [x] Write failing tests for completion cleanup, independent limits, equal/lower rejection, higher-priority preemption, oldest-victim selection, concurrent capacity, and stop/completion failure isolation.
+- [x] Run service tests and verify RED for missing admission behavior.
+- [x] Implement serialized admission, handle tracking, preemption, completion cleanup, and guarded failures.
+- [x] Preserve existing delegation, lifecycle ordering, diagnostics, and idempotent disposal tests.
+- [x] Run all audio tests and verify GREEN.
+- [x] Commit service admission behavior.
 
 ### Task 4: Verify and record `AUD-006`
 
@@ -62,11 +62,11 @@
 - Modify: `docs/master-development-todo.md`
 - Modify: `docs/superpowers/plans/2026-07-15-audio-voice-policy.md`
 
-- [ ] Run `powershell -ExecutionPolicy Bypass -File tool/release_check.ps1 -IncludeAndroid`.
-- [ ] Confirm format is clean, analysis reports no issues, all tests pass, and web plus Android builds succeed.
-- [ ] Confirm no audio assets, packages, event wiring, settings persistence, or haptics were added.
-- [ ] Mark only `AUD-006` complete and record exact fresh evidence in the master TODO.
-- [ ] Mark verified plan steps complete and commit the release evidence.
+- [x] Run `powershell -ExecutionPolicy Bypass -File tool/release_check.ps1 -IncludeAndroid`.
+- [x] Confirm format is clean, analysis reports no issues, all 227 tests pass, and web plus Android builds succeed.
+- [x] Confirm no audio assets, packages, event wiring, settings persistence, or haptics were added.
+- [x] Mark only `AUD-006` complete and record exact fresh evidence in the master TODO.
+- [x] Mark verified plan steps complete and commit the release evidence.
 
 ### Task 5: Integrate into development mainline
 
