@@ -2,93 +2,52 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/app/character_select_screen.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
-import 'package:pixel_survivor/game/models/player_slot.dart';
-import 'package:pixel_survivor/game/systems/save_system.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  TestWidgetsFlutterBinding.ensureInitialized();
-
-  testWidgets('defaults expose every playtest character', (tester) async {
-    SharedPreferences.setMockInitialValues({});
-    final preferences = await SharedPreferences.getInstance();
-    PlayerSlot? launched;
+  testWidgets('starts at saved character and returns the selected id', (
+    tester,
+  ) async {
+    String? selected;
     await tester.pumpWidget(
       MaterialApp(
+        theme: ThemeData(splashFactory: NoSplash.splashFactory),
         home: CharacterSelectScreen(
-          saveSystem: SaveSystem(preferences: preferences),
-          onStart: (slot) => launched = slot,
+          initialCharacterId: exorcistDosa,
+          unlockedCharacterIds: const {
+            rookieConstable,
+            exorcistDosa,
+            mountainHunter,
+          },
+          onSelected: (value) => selected = value,
         ),
       ),
     );
-    await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('character-rookie_constable')), findsOneWidget);
-    expect(find.byKey(const Key('character-exorcist_dosa')), findsOneWidget);
-    expect(find.byKey(const Key('character-mountain_hunter')), findsOneWidget);
-    for (final definition in characterDefinitions) {
-      expect(find.byKey(Key('character-lock-${definition.id}')), findsNothing);
-    }
-
-    await tester.tap(find.byKey(const Key('character-start')));
-    expect(launched?.characterId, rookieConstable);
-  });
-
-  testWidgets('mountain hunter can be selected and launched', (tester) async {
-    SharedPreferences.setMockInitialValues({});
-    final preferences = await SharedPreferences.getInstance();
-    PlayerSlot? launched;
-    await tester.pumpWidget(
-      MaterialApp(
-        home: CharacterSelectScreen(
-          saveSystem: SaveSystem(preferences: preferences),
-          onStart: (slot) => launched = slot,
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.byKey(const Key('character-mountain_hunter')));
-    await tester.pump();
-    expect(
-      find.byKey(const Key('character-selected-mountain_hunter')),
-      findsOneWidget,
-    );
-    await tester.tap(find.byKey(const Key('character-start')));
-
-    expect(launched?.characterId, mountainHunter);
-  });
-
-  testWidgets('an unlocked dosa can be selected and launched', (tester) async {
-    SharedPreferences.setMockInitialValues({});
-    final preferences = await SharedPreferences.getInstance();
-    final saveSystem = SaveSystem(preferences: preferences);
-    await saveSystem.save(
-      SaveState.defaults().copyWith(
-        unlockedCharacterIds: {rookieConstable, exorcistDosa},
-      ),
-    );
-    PlayerSlot? launched;
-    await tester.pumpWidget(
-      MaterialApp(
-        home: CharacterSelectScreen(
-          saveSystem: saveSystem,
-          onStart: (slot) => launched = slot,
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.byKey(const Key('character-exorcist_dosa')));
-    await tester.pump();
     expect(
       find.byKey(const Key('character-selected-exorcist_dosa')),
       findsOneWidget,
     );
-    await tester.tap(find.byKey(const Key('character-start')));
+    await tester.tap(find.byKey(const Key('character-confirm')));
+    expect(selected, exorcistDosa);
+  });
 
-    expect(launched?.characterId, exorcistDosa);
-    expect(launched?.index, 0);
-    expect(launched?.isActive, isTrue);
+  testWidgets('locked character cannot replace the current selection', (
+    tester,
+  ) async {
+    String? selected;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(splashFactory: NoSplash.splashFactory),
+        home: CharacterSelectScreen(
+          initialCharacterId: rookieConstable,
+          unlockedCharacterIds: const {rookieConstable},
+          onSelected: (value) => selected = value,
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('character-exorcist_dosa')));
+    await tester.tap(find.byKey(const Key('character-confirm')));
+    expect(selected, rookieConstable);
   });
 }

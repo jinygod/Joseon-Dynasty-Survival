@@ -3,106 +3,89 @@ import 'package:flutter/material.dart';
 import '../game/content/character_definitions.dart';
 import '../game/content/ids.dart';
 import '../game/content/weapon_definitions.dart';
-import '../game/models/player_slot.dart';
-import '../game/systems/save_system.dart';
 
 class CharacterSelectScreen extends StatefulWidget {
   const CharacterSelectScreen({
-    required this.onStart,
-    this.saveSystem,
+    required this.initialCharacterId,
+    required this.unlockedCharacterIds,
+    required this.onSelected,
     super.key,
   });
 
-  final ValueChanged<PlayerSlot> onStart;
-  final SaveSystem? saveSystem;
+  final String initialCharacterId;
+  final Set<String> unlockedCharacterIds;
+  final ValueChanged<String> onSelected;
 
   @override
   State<CharacterSelectScreen> createState() => _CharacterSelectScreenState();
 }
 
 class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
-  late final Future<SaveState> _saveState;
-  String? _selectedCharacterId;
+  late String _selectedCharacterId;
 
   @override
   void initState() {
     super.initState();
-    _saveState = (widget.saveSystem ?? SaveSystem()).load();
+    _selectedCharacterId =
+        widget.unlockedCharacterIds.contains(widget.initialCharacterId)
+        ? widget.initialCharacterId
+        : widget.unlockedCharacterIds.first;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('캐릭터 선택')),
-      body: FutureBuilder<SaveState>(
-        future: _saveState,
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final unlockedIds = snapshot.data!.unlockedCharacterIds;
-          _selectedCharacterId ??= characterDefinitions
-              .firstWhere((character) => unlockedIds.contains(character.id))
-              .id;
-          return SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
-              child: Column(
-                children: [
-                  Expanded(
-                    child: Row(
-                      children: [
-                        for (
-                          var index = 0;
-                          index < characterDefinitions.length;
-                          index++
-                        ) ...[
-                          if (index > 0) const SizedBox(width: 16),
-                          Expanded(
-                            child: _CharacterCard(
-                              definition: characterDefinitions[index],
-                              unlocked: unlockedIds.contains(
-                                characterDefinitions[index].id,
-                              ),
-                              selected:
-                                  _selectedCharacterId ==
-                                  characterDefinitions[index].id,
-                              onTap: () {
-                                if (!unlockedIds.contains(
-                                  characterDefinitions[index].id,
-                                )) {
-                                  return;
-                                }
-                                setState(() {
-                                  _selectedCharacterId =
-                                      characterDefinitions[index].id;
-                                });
-                              },
-                            ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
+          child: Column(
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    for (
+                      var index = 0;
+                      index < characterDefinitions.length;
+                      index++
+                    ) ...[
+                      if (index > 0) const SizedBox(width: 16),
+                      Expanded(
+                        child: _CharacterCard(
+                          definition: characterDefinitions[index],
+                          unlocked: widget.unlockedCharacterIds.contains(
+                            characterDefinitions[index].id,
                           ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  FilledButton.icon(
-                    key: const Key('character-start'),
-                    onPressed: _selectedCharacterId == null
-                        ? null
-                        : () => widget.onStart(
-                            PlayerSlot(
-                              index: 0,
-                              characterId: _selectedCharacterId!,
-                            ),
-                          ),
-                    icon: const Icon(Icons.play_arrow),
-                    label: const Text('출진'),
-                  ),
-                ],
+                          selected:
+                              _selectedCharacterId ==
+                              characterDefinitions[index].id,
+                          onTap: () {
+                            if (!widget.unlockedCharacterIds.contains(
+                              characterDefinitions[index].id,
+                            )) {
+                              return;
+                            }
+                            setState(() {
+                              _selectedCharacterId =
+                                  characterDefinitions[index].id;
+                            });
+                          },
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
-            ),
-          );
-        },
+              const SizedBox(height: 14),
+              FilledButton.icon(
+                key: const Key('character-confirm'),
+                onPressed: () => widget.onSelected(_selectedCharacterId),
+                icon: const Icon(Icons.check),
+                label: const Text('선택 완료'),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

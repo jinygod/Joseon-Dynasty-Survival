@@ -3,16 +3,30 @@ import 'package:flutter/material.dart';
 import '../game/content/stage_definitions.dart';
 
 class StageSelectScreen extends StatefulWidget {
-  const StageSelectScreen({required this.onStart, super.key});
+  const StageSelectScreen({
+    required this.initialStageId,
+    required this.onSelected,
+    super.key,
+  });
 
-  final ValueChanged<String> onStart;
+  final String initialStageId;
+  final ValueChanged<String> onSelected;
 
   @override
   State<StageSelectScreen> createState() => _StageSelectScreenState();
 }
 
 class _StageSelectScreenState extends State<StageSelectScreen> {
-  String _selectedStageId = stageDefinitions.first.id;
+  late String _selectedStageId;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedStageId =
+        stageDefinitions.any((stage) => stage.id == widget.initialStageId)
+        ? widget.initialStageId
+        : stageDefinitions.first.id;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -95,10 +109,10 @@ class _StageSelectScreenState extends State<StageSelectScreen> {
                     ),
                     const SizedBox(height: 26),
                     FilledButton.icon(
-                      key: const Key('stage-start'),
-                      onPressed: () => widget.onStart(_selectedStageId),
-                      icon: const Icon(Icons.play_arrow),
-                      label: const Text('전투 시작'),
+                      key: const Key('stage-confirm'),
+                      onPressed: () => widget.onSelected(_selectedStageId),
+                      icon: const Icon(Icons.check),
+                      label: const Text('선택 완료'),
                     ),
                   ],
                 ),
