@@ -248,6 +248,20 @@ void main() {
     expect(backend.requests, hasLength(2));
   });
 
+  test('a new music cue replaces the active music voice', () async {
+    final backend = RecordingAudioBackend();
+    final service = GameAudioService(backend: backend);
+
+    await service.play(AudioCue.menuMusic);
+    await service.play(AudioCue.battleMusic);
+
+    expect(backend.requests.map((request) => request.cue), [
+      AudioCue.menuMusic,
+      AudioCue.battleMusic,
+    ]);
+    expect(backend.handles.first.stopCount, 1);
+  });
+
   test('backend errors become one diagnostic and never escape', () async {
     final diagnostics = <AudioDiagnostic>[];
     final service = GameAudioService(

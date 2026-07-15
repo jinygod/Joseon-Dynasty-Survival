@@ -91,8 +91,22 @@ class GameAudioService {
     final channelVoices = _activeVoices
         .where((voice) => voice.request.channel == request.channel)
         .toList(growable: false);
-    if (channelVoices.length >= AudioPlaybackPolicy.limitFor(request.channel)) {
-      final victim = _lowestPriorityOldestVoice(channelVoices);
+    if (request.channel == AudioChannel.music && channelVoices.isNotEmpty) {
+      for (final voice in channelVoices) {
+        _activeVoices.remove(voice);
+        await _guard(
+          operation: 'stopVoice',
+          cue: voice.request.cue,
+          action: voice.handle.stop,
+        );
+      }
+    }
+    final remainingChannelVoices = _activeVoices
+        .where((voice) => voice.request.channel == request.channel)
+        .toList(growable: false);
+    if (remainingChannelVoices.length >=
+        AudioPlaybackPolicy.limitFor(request.channel)) {
+      final victim = _lowestPriorityOldestVoice(remainingChannelVoices);
       if (request.priority.index <= victim.request.priority.index) return;
       _activeVoices.remove(victim);
       await _guard(
