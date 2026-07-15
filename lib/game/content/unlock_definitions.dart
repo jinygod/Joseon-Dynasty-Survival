@@ -61,4 +61,18 @@ const unlockGoals = <UnlockGoalDefinition>[
     threshold: 1,
     unlocksAugmentId: lastStand,
   ),
+  UnlockGoalDefinition(
+    id: 'defeat_two_bosses',
+    description: 'Defeat two bosses total.',
+    metric: UnlockMetric.bossDefeats,
+    threshold: 2,
+    unlocksWeaponId: frostFlask,
+  ),
+  UnlockGoalDefinition(
+    id: 'unlock_six_weapons',
+    description: 'Unlock six weapons.',
+    metric: UnlockMetric.unlockedWeaponCount,
+    threshold: 6,
+    unlocksWeaponId: windThunderFan,
+  ),
 ];

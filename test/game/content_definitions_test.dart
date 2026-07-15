@@ -23,6 +23,38 @@ typedef ExpectedAugment = ({
 });
 
 void main() {
+  test('roster exposes eight weapons with five levels each', () {
+    expect(
+      weaponDefinitions.map((definition) => definition.id),
+      orderedEquals([
+        hwandoSlash,
+        gakgungShot,
+        talismanThrow,
+        thunderCrashBomb,
+        jangseungWard,
+        singijeonVolley,
+        frostFlask,
+        windThunderFan,
+      ]),
+    );
+    expect(
+      weaponLevels.keys,
+      containsAll(weaponDefinitions.map((item) => item.id)),
+    );
+    expect(weaponLevels.values.every((levels) => levels.length == 5), isTrue);
+    expect(weaponLevels.values.expand((levels) => levels), hasLength(40));
+  });
+
+  test('field weapons expose duration and slow tuning', () {
+    final ward = weaponLevelFor(jangseungWard, 5);
+    final frost = weaponLevelFor(frostFlask, 5);
+
+    expect(ward.range, 108);
+    expect(ward.knockback, 42);
+    expect(frost.durationSeconds, 4.5);
+    expect(frost.slowFraction, 0.45);
+  });
+
   test('first stage defines every field for all twenty weapon levels', () {
     const expectedLevels = <WeaponId, List<ExpectedWeaponLevel>>{
       hwandoSlash: [
@@ -235,7 +267,7 @@ void main() {
       ],
     };
 
-    expect(weaponLevels, hasLength(expectedLevels.length));
+    expect(weaponLevels.keys, containsAll(expectedLevels.keys));
     for (final MapEntry(key: weaponId, value: levels)
         in expectedLevels.entries) {
       expect(weaponLevels[weaponId], hasLength(levels.length));

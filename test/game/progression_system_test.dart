@@ -24,6 +24,34 @@ void main() {
     expect(evaluated.completedGoalIds, contains('defeat_fallen_general'));
   });
 
+  test('unlocks frost flask after two boss defeats', () {
+    final evaluated = const ProgressionSystem().evaluate(
+      SaveState.defaults().copyWith(bossDefeats: 2),
+    );
+
+    expect(evaluated.unlockedWeaponIds, contains(frostFlask));
+    expect(evaluated.completedGoalIds, contains('defeat_two_bosses'));
+  });
+
+  test('unlocks wind thunder fan after six weapons are unlocked', () {
+    final evaluated = const ProgressionSystem().evaluate(
+      SaveState.defaults().copyWith(
+        unlockedWeaponIds: {
+          hwandoSlash,
+          gakgungShot,
+          talismanThrow,
+          thunderCrashBomb,
+          jangseungWard,
+          singijeonVolley,
+        },
+        unlockedWeaponCount: 6,
+      ),
+    );
+
+    expect(evaluated.unlockedWeaponIds, contains(windThunderFan));
+    expect(evaluated.completedGoalIds, contains('unlock_six_weapons'));
+  });
+
   test('repeated evaluation does not duplicate or remove unlocks', () {
     final save = SaveState.defaults().copyWith(
       bestSurvivalSeconds: 180,
