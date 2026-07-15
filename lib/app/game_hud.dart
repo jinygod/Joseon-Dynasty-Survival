@@ -37,11 +37,27 @@ class _GameHudState extends State<GameHud> {
 
   @override
   Widget build(BuildContext context) {
+    final rewardSource = widget.source is RewardCollectionHudSource
+        ? widget.source as RewardCollectionHudSource
+        : null;
     return Material(
       color: Colors.transparent,
       child: SafeArea(
         child: Stack(
           children: [
+            if (rewardSource?.rewardCollectionSecondsRemaining
+                case final seconds?)
+              Positioned(
+                top: 150,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: _RewardCollectionNotice(
+                    seconds: seconds,
+                    retrying: rewardSource!.isSpiritJadeSaveRetrying,
+                  ),
+                ),
+              ),
             if (widget.source.bossHealthFraction case final health?)
               Positioned(
                 top: 8,
@@ -83,6 +99,41 @@ class _GameHudState extends State<GameHud> {
                 ),
               ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RewardCollectionNotice extends StatelessWidget {
+  const _RewardCollectionNotice({
+    required this.seconds,
+    required this.retrying,
+  });
+
+  final double seconds;
+  final bool retrying;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = retrying
+        ? '혼옥 저장 재시도 중'
+        : '혼옥 수거 ${seconds.ceil().clamp(0, 3)}초';
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: const Color(0xff2f1b25).withValues(alpha: 0.9),
+        border: Border.all(color: const Color(0xffffd166), width: 2),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+        child: Text(
+          label,
+          style: const TextStyle(
+            color: Color(0xfffff1b8),
+            fontSize: 18,
+            fontWeight: FontWeight.w900,
+          ),
         ),
       ),
     );

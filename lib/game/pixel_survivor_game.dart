@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:collection';
 import 'dart:math';
 
@@ -19,7 +20,9 @@ import 'components/experience_gem_component.dart';
 import 'components/frost_field_component.dart';
 import 'components/player_component.dart';
 import 'components/projectile_component.dart';
+import 'components/spirit_jade_component.dart';
 import 'components/ward_aura_component.dart';
+import 'balance/meta_reward_balance.dart';
 import 'content/augment_definitions.dart';
 import 'content/character_definitions.dart';
 import 'content/combat_effect_atlas.dart';
@@ -34,6 +37,7 @@ import 'models/run_result.dart';
 import 'models/run_outcome.dart';
 import 'models/vector_input.dart';
 import 'systems/level_up_system.dart';
+import 'systems/meta_reward_policy.dart';
 import 'systems/combat_feedback_tuning.dart';
 import 'systems/combat_system.dart';
 import 'systems/character_passive_modifiers.dart';
@@ -44,17 +48,24 @@ import 'systems/weapon_system.dart';
 
 class PixelSurvivorGame extends FlameGame
     with KeyboardEvents
-    implements GameHudSource {
+    implements GameHudSource, RewardCollectionHudSource {
   static const levelUpOverlayId = 'levelUp';
 
   PixelSurvivorGame({
     required this.playerSlot,
     required this.onRunEnded,
     this.onAudioCue,
+    this.persistSpiritJade,
+    this.firstBossRewardAvailable = false,
+    String? pickupIdPrefix,
+    double Function()? rewardRoll,
     Random? random,
   }) : weaponSystem = WeaponSystem(random: random),
        waveDirector = WaveDirector(random: random ?? Random()),
-       levelUpSystem = LevelUpSystem(random: random) {
+       levelUpSystem = LevelUpSystem(random: random),
+       pickupIdPrefix =
+           pickupIdPrefix ?? DateTime.now().microsecondsSinceEpoch.toString(),
+       _rewardRoll = rewardRoll ?? Random().nextDouble {
     if (!playerSlot.isActive) {
       throw ArgumentError.value(playerSlot, 'playerSlot', 'must be active');
     }
@@ -65,6 +76,11 @@ class PixelSurvivorGame extends FlameGame
   final PlayerSlot playerSlot;
   final void Function(RunResult result)? onRunEnded;
   final void Function(AudioCue cue)? onAudioCue;
+  final SpiritJadePersistence? persistSpiritJade;
+  bool firstBossRewardAvailable;
+  final String pickupIdPrefix;
+  final double Function() _rewardRoll;
+  final MetaRewardPolicy _metaRewardPolicy = const MetaRewardPolicy();
   final WeaponSystem weaponSystem;
   final WaveDirector waveDirector;
   final LevelUpSystem levelUpSystem;
@@ -80,6 +96,10 @@ class PixelSurvivorGame extends FlameGame
   final Map<AugmentId, int> augmentLevels = {};
   final Map<EnemyComponent, WeaponId> _lastWeaponHitByEnemy = {};
   final Set<EnemyComponent> _recordedEnemyDefeats = {};
+  final Map<EnemyComponent, bool> _pendingSpiritJadeDrops = {};
+  int _spiritJadeDropSequence = 0;
+  double? _rewardCollectionSecondsRemaining;
+  int _pendingBossSpiritJade = 0;
   List<LevelUpChoice> _pendingLevelUpChoices = const [];
 
   VectorInput movementInput = VectorInput.zero;
@@ -111,6 +131,16 @@ class PixelSurvivorGame extends FlameGame
   bool get isGameOver => _runOutcome != RunOutcome.inProgress;
   bool get canPauseRun =>
       _runOutcome == RunOutcome.inProgress && !isLevelUpPending;
+  @override
+  double? get rewardCollectionSecondsRemaining =>
+      _rewardCollectionSecondsRemaining;
+  @override
+  bool get isSpiritJadeSaveRetrying =>
+      _rewardCollectionSecondsRemaining != null &&
+      _rewardCollectionSecondsRemaining! <= 0 &&
+      children.whereType<SpiritJadeComponent>().any(
+        (jade) => jade.isBossDrop && !jade.isSaving && !jade.canRetry,
+      );
   int get bossRequestCount => _bossRequestCount;
   int get bossSpawnCount => _bossSpawnCount;
   int get currentEnemyCap => _currentEnemyCap;
@@ -228,6 +258,11 @@ class PixelSurvivorGame extends FlameGame
       return;
     }
 
+    if (_rewardCollectionSecondsRemaining != null) {
+      _updateRewardCollection(safeDt);
+      return;
+    }
+
     _advanceTime(safeDt);
     _spawnWaveEnemies(safeDt);
     _updatePlayerMovement(safeDt);
@@ -240,6 +275,7 @@ class PixelSurvivorGame extends FlameGame
     _resolveBossVictoryBeforePlayerDefeat();
     _applyEnemyContactDamage();
     _collectExperienceGems();
+    _collectSpiritJade();
   }
 
   void _advanceTime(double dt) {
@@ -642,6 +678,7 @@ class PixelSurvivorGame extends FlameGame
     );
     for (final enemy in deadEnemies.toList()) {
       _recordEnemyDefeat(enemy);
+      _spawnPendingSpiritJade(enemy);
       _recordedEnemyDefeats.remove(enemy);
       _spawnCombatEffect(
         CombatEffectKind.death,
@@ -671,10 +708,49 @@ class PixelSurvivorGame extends FlameGame
     final enemyDefinition = _enemyDefinitionFor(enemy.enemyId);
     runStats.recordEnemyDefeat(
       isBoss: enemyDefinition.isBoss,
+      isElite: enemy.isElite,
       weaponId: _lastWeaponHitByEnemy.remove(enemy),
     );
+    final firstBossReward = enemyDefinition.isBoss && firstBossRewardAvailable;
+    if (persistSpiritJade != null &&
+        _metaRewardPolicy.shouldDropSpiritJade(
+          isElite: enemy.isElite,
+          isBoss: enemyDefinition.isBoss,
+          firstBossRewardAvailable: firstBossReward,
+          roll: _rewardRoll(),
+        )) {
+      _pendingSpiritJadeDrops[enemy] = firstBossReward;
+    }
     combatSystem.forget(enemy);
     if (!enemyDefinition.isBoss) _emitAudio(AudioCue.enemyDeath);
+  }
+
+  void _spawnPendingSpiritJade(EnemyComponent enemy) {
+    final claimsFirstBossReward = _pendingSpiritJadeDrops.remove(enemy);
+    final persistence = persistSpiritJade;
+    if (claimsFirstBossReward == null || persistence == null) return;
+
+    final pickupId =
+        '$pickupIdPrefix-${enemy.enemyId}-${(_elapsedSeconds * 1000).round()}-'
+        '${_spiritJadeDropSequence++}';
+    final isBossDrop = _enemyDefinitionFor(enemy.enemyId).isBoss;
+    if (claimsFirstBossReward) firstBossRewardAvailable = false;
+    if (isBossDrop) _pendingBossSpiritJade += 1;
+    add(
+      SpiritJadeComponent(
+        pickup: SpiritJadePickup(
+          pickupId: pickupId,
+          claimsFirstBossReward: claimsFirstBossReward,
+        ),
+        persistPickup: persistence,
+        onCollected: () {
+          runStats.recordSpiritJadeCollected();
+          if (isBossDrop) _pendingBossSpiritJade -= 1;
+        },
+        isBossDrop: isBossDrop,
+        position: enemy.position.clone(),
+      ),
+    );
   }
 
   void _applyEnemyContactDamage() {
@@ -724,6 +800,46 @@ class PixelSurvivorGame extends FlameGame
     final boss = _boss;
     if (boss != null && boss.isDead) _recordEnemyDefeat(boss);
     if (runStats.bossDefeated) {
+      if (boss != null && _pendingSpiritJadeDrops.containsKey(boss)) {
+        _spawnPendingSpiritJade(boss);
+      }
+      if (_pendingBossSpiritJade > 0) {
+        _startRewardCollection();
+      } else {
+        _finishRun(RunOutcome.victory);
+      }
+    }
+  }
+
+  void _startRewardCollection() {
+    if (_rewardCollectionSecondsRemaining != null) return;
+    _rewardCollectionSecondsRemaining =
+        MetaRewardBalance.bossRewardCollectionSeconds;
+    for (final component in children.toList()) {
+      if (component is EnemyComponent ||
+          component is ProjectileComponent ||
+          component is AreaAttackComponent) {
+        component.removeFromParent();
+      }
+    }
+    _boss = null;
+    movementInput = VectorInput.zero;
+  }
+
+  void _updateRewardCollection(double dt) {
+    _updatePlayerMovement(dt);
+    _collectSpiritJade();
+    final remaining = _rewardCollectionSecondsRemaining!;
+    _rewardCollectionSecondsRemaining = max(0, remaining - dt);
+    if (_rewardCollectionSecondsRemaining! > 0) return;
+
+    for (final jade in children.whereType<SpiritJadeComponent>().where(
+      (jade) => jade.isBossDrop && jade.canRetry,
+    )) {
+      unawaited(jade.tryCollect());
+    }
+    if (_pendingBossSpiritJade == 0) {
+      _rewardCollectionSecondsRemaining = null;
       _finishRun(RunOutcome.victory);
     }
   }
@@ -749,6 +865,24 @@ class PixelSurvivorGame extends FlameGame
         gainExperience(gem.experienceValue);
         gem.removeFromParent();
       }
+    }
+  }
+
+  void _collectSpiritJade() {
+    final alivePlayers = _activePlayers
+        .where((player) => player.isMounted && player.isAlive)
+        .toList(growable: false);
+    if (alivePlayers.isEmpty) return;
+
+    for (final jade in children.whereType<SpiritJadeComponent>().toList()) {
+      if (!jade.canRetry) continue;
+      final canPickup = alivePlayers.any(
+        (player) => jade.canBePickedUpBy(
+          player,
+          additionalRadius: experiencePickupRadiusBonus,
+        ),
+      );
+      if (canPickup) unawaited(jade.tryCollect());
     }
   }
 
@@ -873,6 +1007,14 @@ class PixelSurvivorGame extends FlameGame
     }
     _resolveBossVictoryBeforePlayerDefeat();
     _applyEnemyContactDamage();
+  }
+
+  @visibleForTesting
+  void debugDefeatBoss() {
+    final boss = _boss;
+    if (boss == null) return;
+    boss.takeDamage(boss.currentHealth);
+    _resolveBossVictoryBeforePlayerDefeat();
   }
 
   @visibleForTesting

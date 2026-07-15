@@ -112,6 +112,8 @@ class _LobbyScreenState extends State<LobbyScreen> {
         ),
       ),
     );
+    if (!mounted) return;
+    await widget.controller.load();
     if (mounted) setState(() => _launching = false);
   }
 

@@ -290,9 +290,12 @@ class SaveSystem implements SaveStore {
   Future<void> save(SaveState state) async {
     final activePreferences =
         preferences ?? await SharedPreferences.getInstance();
-    await activePreferences.setString(
+    final saved = await activePreferences.setString(
       _saveStateKey,
       jsonEncode(state.toJson()),
     );
+    if (!saved) {
+      throw StateError('Failed to persist save state');
+    }
   }
 }

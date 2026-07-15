@@ -43,6 +43,38 @@ void main() {
   }, gameSize: Vector2(960, 540));
 
   group('PixelSurvivorGame run loop progression', () {
+    test('boss jade grants a three second collection phase', () async {
+      RunResult? result;
+      var persistenceCalls = 0;
+      final game = PixelSurvivorGame(
+        playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
+        onRunEnded: (value) => result = value,
+        firstBossRewardAvailable: true,
+        rewardRoll: () => .99,
+        persistSpiritJade: (_) async {
+          persistenceCalls += 1;
+          return true;
+        },
+      );
+      game.onGameResize(Vector2(960, 540));
+      await game.onLoad();
+      game.debugAdvanceTo(270);
+
+      game.debugDefeatBoss();
+
+      expect(game.rewardCollectionSecondsRemaining, 3);
+      expect(game.runOutcome, RunOutcome.inProgress);
+      for (var frame = 0; frame < 62; frame += 1) {
+        game.update(.05);
+        await Future<void>.delayed(Duration.zero);
+      }
+      game.update(.05);
+
+      expect(persistenceCalls, 1);
+      expect(result?.outcome, RunOutcome.victory);
+      expect(result?.spiritJadeCollected, 1);
+    });
+
     test('selected character contributes its passive modifiers', () {
       final constable = PixelSurvivorGame(
         playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),

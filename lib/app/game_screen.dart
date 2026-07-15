@@ -14,10 +14,13 @@ import '../game/audio/audio_settings_repository.dart';
 import '../game/audio/audio_cue.dart';
 import '../game/audio/game_audio_service.dart';
 import '../game/models/run_result.dart';
+import '../game/models/run_telemetry.dart';
 import '../game/models/vector_input.dart';
+import '../game/components/spirit_jade_component.dart';
 import '../game/content/stage_definitions.dart';
 import '../game/pixel_survivor_game.dart';
 import '../game/systems/progression_system.dart';
+import '../game/systems/meta_progression_service.dart';
 import '../game/systems/run_telemetry_service.dart';
 import '../game/systems/save_system.dart';
 import '../game/systems/telemetry_export_service.dart';
@@ -40,6 +43,7 @@ class GameScreen extends StatefulWidget {
     this.tutorialProgressRepository,
     this.audioSettingsController,
     this.audioService,
+    this.metaProgressionService,
     super.key,
   });
 
@@ -54,6 +58,7 @@ class GameScreen extends StatefulWidget {
   final TutorialProgressRepository? tutorialProgressRepository;
   final AudioSettingsController? audioSettingsController;
   final GameAudioService? audioService;
+  final MetaProgressionService? metaProgressionService;
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -69,9 +74,14 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   late final TelemetryExportService _telemetryExportService;
   late final TutorialProgressRepository _tutorialProgressRepository;
   late final AudioSettingsController _audioSettingsController;
+  late final MetaProgressionService _metaProgressionService;
   late final bool _ownsAudioSettingsController;
   late final DateTime _runStartedAtUtc;
   bool _handledRunEnd = false;
+  RunResult? _settlementFailure;
+  bool _settlingRewards = false;
+  RunSettlement? _completedSettlement;
+  RunTelemetry? _recordedTelemetry;
 
   @override
   void initState() {
@@ -83,6 +93,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         widget.telemetryExportService ?? TelemetryExportService();
     _tutorialProgressRepository =
         widget.tutorialProgressRepository ?? TutorialProgressRepository();
+    _metaProgressionService =
+        widget.metaProgressionService ??
+        MetaProgressionService(saveStore: SaveSystem());
     _ownsAudioSettingsController = widget.audioSettingsController == null;
     _audioSettingsController =
         widget.audioSettingsController ??
@@ -95,7 +108,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           playerSlot: widget.playerSlot,
           onRunEnded: _handleRunEnded,
           onAudioCue: _playAudio,
+          persistSpiritJade: _persistSpiritJade,
+          pickupIdPrefix: _runStartedAtUtc.microsecondsSinceEpoch.toString(),
         );
+    unawaited(_loadFirstBossRewardAvailability());
     _game.pauseWhenBackgrounded = false;
     if (widget.showFirstRunTutorial) {
       _game.pauseEngine();
@@ -155,6 +171,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           stageId: widget.stageId,
           audioService: widget.audioService,
           audioSettingsController: widget.audioSettingsController,
+          metaProgressionService: _metaProgressionService,
         ),
       ),
     );
@@ -185,17 +202,45 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     }
 
     _handledRunEnd = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final saveSystem = SaveSystem();
-      const progressionSystem = ProgressionSystem();
-      final before = await saveSystem.load();
-      final after = progressionSystem.applyRunResult(before, result);
-      await saveSystem.save(after);
-      final unlocks = ProgressionUnlocks.diff(before, after);
-      final telemetry = await _telemetryService.record(
-        result,
-        startedAtUtc: _runStartedAtUtc,
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_settleAndNavigate(result));
+    });
+  }
+
+  Future<void> _loadFirstBossRewardAvailability() async {
+    try {
+      _game.firstBossRewardAvailable = await _metaProgressionService
+          .loadFirstBossRewardAvailability();
+    } on Object {
+      _game.firstBossRewardAvailable = false;
+    }
+  }
+
+  Future<bool> _persistSpiritJade(SpiritJadePickup pickup) async {
+    await _metaProgressionService.collectSpiritJade(
+      pickupId: pickup.pickupId,
+      claimsFirstBossReward: pickup.claimsFirstBossReward,
+    );
+    return true;
+  }
+
+  Future<void> _settleAndNavigate(RunResult result) async {
+    if (_settlingRewards) return;
+    setState(() {
+      _settlingRewards = true;
+      _settlementFailure = null;
+    });
+    try {
+      final settlement =
+          _completedSettlement ??
+          await _metaProgressionService.settleRun(result);
+      _completedSettlement = settlement;
+      final unlocks = ProgressionUnlocks.diff(
+        settlement.before,
+        settlement.after,
       );
+      final telemetry = _recordedTelemetry ?? await _recordTelemetry(result);
+      _recordedTelemetry = telemetry;
 
       if (!mounted) {
         return;
@@ -206,6 +251,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           builder: (_) => RunSummaryScreen(
             result: result,
             unlocks: unlocks,
+            settlement: settlement,
             onFeedbackSubmitted: telemetry == null
                 ? null
                 : (feedback) async {
@@ -231,6 +277,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                     stageId: widget.stageId,
                     audioService: widget.audioService,
                     audioSettingsController: widget.audioSettingsController,
+                    metaProgressionService: _metaProgressionService,
                   ),
                 ),
               );
@@ -243,7 +290,24 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           ),
         ),
       );
-    });
+    } on Object {
+      if (!mounted) return;
+      setState(() {
+        _settlingRewards = false;
+        _settlementFailure = result;
+      });
+    }
+  }
+
+  Future<RunTelemetry?> _recordTelemetry(RunResult result) async {
+    try {
+      return await _telemetryService.record(
+        result,
+        startedAtUtc: _runStartedAtUtc,
+      );
+    } on Object {
+      return null;
+    }
   }
 
   void _playAudio(AudioCue cue) {
@@ -258,29 +322,66 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) _pauseGame();
       },
-      child: GameWidget<PixelSurvivorGame>(
-        game: _game,
-        overlayBuilderMap: {
-          'hud': (_, game) => GameHud(source: game, onPause: _pauseGame),
-          PixelSurvivorGame.levelUpOverlayId: (_, game) => LevelUpOverlay(
-            choices: game.pendingLevelUpChoices,
-            onChoiceSelected: game.applyLevelUpChoice,
-          ),
-          _pauseOverlayId: (_, _) => PauseMenuOverlay(
-            settingsController: _audioSettingsController,
-            onResume: _resumeGame,
-            onRestart: _restartGame,
-            onExitToMenu: _exitToMenu,
-          ),
-          _tutorialOverlayId: (_, _) => FirstRunTutorialOverlay(
-            onCompleted: () {
-              _completeTutorial();
+      child: Stack(
+        children: [
+          GameWidget<PixelSurvivorGame>(
+            game: _game,
+            overlayBuilderMap: {
+              'hud': (_, game) => GameHud(source: game, onPause: _pauseGame),
+              PixelSurvivorGame.levelUpOverlayId: (_, game) => LevelUpOverlay(
+                choices: game.pendingLevelUpChoices,
+                onChoiceSelected: game.applyLevelUpChoice,
+              ),
+              _pauseOverlayId: (_, _) => PauseMenuOverlay(
+                settingsController: _audioSettingsController,
+                onResume: _resumeGame,
+                onRestart: _restartGame,
+                onExitToMenu: _exitToMenu,
+              ),
+              _tutorialOverlayId: (_, _) => FirstRunTutorialOverlay(
+                onCompleted: () {
+                  _completeTutorial();
+                },
+              ),
             },
+            initialActiveOverlays: [
+              'hud',
+              if (widget.showFirstRunTutorial) _tutorialOverlayId,
+            ],
           ),
-        },
-        initialActiveOverlays: [
-          'hud',
-          if (widget.showFirstRunTutorial) _tutorialOverlayId,
+          if (_settlementFailure != null || _settlingRewards)
+            Positioned.fill(
+              child: ColoredBox(
+                color: Colors.black54,
+                child: Center(
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _settlementFailure == null
+                                ? '보상 저장 중'
+                                : '보상 저장에 실패했습니다',
+                          ),
+                          if (_settlementFailure case final failed?) ...[
+                            const SizedBox(height: 12),
+                            FilledButton(
+                              onPressed: () => _settleAndNavigate(failed),
+                              child: const Text('다시 시도'),
+                            ),
+                          ] else ...[
+                            const SizedBox(height: 12),
+                            const CircularProgressIndicator(),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );

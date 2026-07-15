@@ -14,3 +14,8 @@ abstract interface class GameHudSource {
 
   void updateMovementInput(VectorInput input);
 }
+
+abstract interface class RewardCollectionHudSource {
+  double? get rewardCollectionSecondsRemaining;
+  bool get isSpiritJadeSaveRetrying;
+}

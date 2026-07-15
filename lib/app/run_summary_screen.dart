@@ -8,6 +8,7 @@ import '../game/models/run_outcome.dart';
 import '../game/models/run_feedback.dart';
 import '../game/models/run_result.dart';
 import '../game/systems/progression_system.dart';
+import '../game/systems/meta_progression_service.dart';
 
 typedef FeedbackSubmitted = Future<void> Function(RunFeedback feedback);
 typedef JsonAction = Future<bool> Function();
@@ -18,6 +19,7 @@ class RunSummaryScreen extends StatefulWidget {
     required this.unlocks,
     required this.onStart,
     required this.onMenu,
+    this.settlement,
     this.onFeedbackSubmitted,
     this.onCopyRunJson,
     this.onExportAllJson,
@@ -28,6 +30,7 @@ class RunSummaryScreen extends StatefulWidget {
   final ProgressionUnlocks unlocks;
   final VoidCallback onStart;
   final VoidCallback onMenu;
+  final RunSettlement? settlement;
   final FeedbackSubmitted? onFeedbackSubmitted;
   final JsonAction? onCopyRunJson;
   final JsonAction? onExportAllJson;
@@ -95,6 +98,17 @@ class _RunSummaryScreenState extends State<RunSummaryScreen> {
                     label: AppStrings.reachedLevel,
                     value: widget.result.level.toString(),
                   ),
+                  if (widget.settlement case final settlement?) ...[
+                    const SizedBox(height: 18),
+                    Text('이번 판 보상', style: theme.textTheme.titleMedium),
+                    const SizedBox(height: 8),
+                    _StatRow(label: '엽전', value: '+${settlement.coinEarned}'),
+                    if (settlement.spiritJadeEarned > 0)
+                      _StatRow(
+                        label: '혼옥',
+                        value: '+${settlement.spiritJadeEarned}',
+                      ),
+                  ],
                   if (_weaponIds().isNotEmpty) ...[
                     const SizedBox(height: 18),
                     Text(
