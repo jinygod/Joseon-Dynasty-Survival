@@ -1,7 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/content/augment_definitions.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
+import 'package:pixel_survivor/game/content/stage_definitions.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
+import 'package:pixel_survivor/game/models/meta_progress.dart';
 import 'package:pixel_survivor/game/systems/save_system.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -9,12 +11,12 @@ void main() {
   test('save state writes the current schema version', () {
     final state = SaveState.defaults();
 
-    expect(SaveState.currentSchemaVersion, 1);
+    expect(SaveState.currentSchemaVersion, 2);
     expect(state.schemaVersion, SaveState.currentSchemaVersion);
     expect(state.toJson()['schemaVersion'], SaveState.currentSchemaVersion);
   });
 
-  test('versionless alpha save migrates to schema one', () {
+  test('versionless alpha save migrates to schema two', () {
     final restored = SaveState.fromJson({
       'unlockedCharacterIds': [rookieConstable, exorcistDosa],
       'unlockedWeaponIds': [hwandoSlash, gakgungShot, talismanThrow],
@@ -35,6 +37,52 @@ void main() {
     expect(restored.unlockedWeaponIds, contains(talismanThrow));
     expect(restored.unlockedAugmentIds, contains(rapidReload));
     expect(restored.completedGoalIds, contains('survive_3_minutes'));
+  });
+
+  test(
+    'schema one migration preserves progress and initializes meta state',
+    () {
+      final restored = SaveState.fromJson({
+        'schemaVersion': 1,
+        'unlockedCharacterIds': [rookieConstable, exorcistDosa],
+        'totalKills': 91,
+        'bestSurvivalSeconds': 240,
+      });
+
+      expect(restored.schemaVersion, 2);
+      expect(restored.unlockedCharacterIds, contains(exorcistDosa));
+      expect(restored.totalKills, 91);
+      expect(restored.wallet, Wallet.empty);
+      expect(restored.trainingProgress, TrainingProgress.empty);
+      expect(restored.shopProgress, ShopProgress.empty);
+      expect(restored.selectedCharacterId, rookieConstable);
+      expect(restored.selectedStageId, moonlitAbandonedOffice);
+    },
+  );
+
+  test('schema two sanitizes damaged meta fields and selections', () {
+    final restored = SaveState.fromJson({
+      'schemaVersion': 2,
+      'wallet': {'coin': -20, 'spiritJade': 'bad'},
+      'trainingProgress': {
+        'commonRanks': {'unknown': 9},
+        'characterRanks': {
+          'unknown': {'node': 1},
+        },
+        'activeCoreTraitIds': {'unknown': 'trait'},
+      },
+      'shopProgress': {
+        'purchasedItemIds': ['manual.rookie_constable', 7],
+      },
+      'selectedCharacterId': 'missing',
+      'selectedStageId': 'missing',
+    });
+
+    expect(restored.wallet, Wallet.empty);
+    expect(restored.trainingProgress, TrainingProgress.empty);
+    expect(restored.shopProgress.purchasedItemIds, {'manual.rookie_constable'});
+    expect(restored.selectedCharacterId, rookieConstable);
+    expect(restored.selectedStageId, moonlitAbandonedOffice);
   });
 
   group('unsupported save schemas', () {
@@ -75,7 +123,7 @@ void main() {
 
   test('save system loads defaults for unsupported stored schema', () async {
     SharedPreferences.setMockInitialValues({
-      'save_state': '{"schemaVersion":2,"totalKills":999}',
+      'save_state': '{"schemaVersion":3,"totalKills":999}',
     });
 
     final save = await SaveSystem().load();
