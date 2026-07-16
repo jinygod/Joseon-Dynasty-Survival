@@ -4,11 +4,12 @@ import '../game/audio/audio_settings_controller.dart';
 import '../game/audio/game_audio_service.dart';
 
 class AudioSettingsAudioBinding {
-  AudioSettingsAudioBinding({
+  factory AudioSettingsAudioBinding({
     required AudioSettingsController controller,
     required GameAudioService service,
-  }) : _controller = controller,
-       _service = service {
+  }) => AudioSettingsAudioBinding._(controller, service);
+
+  AudioSettingsAudioBinding._(this._controller, this._service) {
     _controller.addListener(_applySettings);
   }
 
