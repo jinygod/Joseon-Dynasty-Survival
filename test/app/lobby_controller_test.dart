@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/app/lobby_controller.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
 import 'package:pixel_survivor/game/content/stage_definitions.dart';
+import 'package:pixel_survivor/game/content/weapon_definitions.dart';
 import 'package:pixel_survivor/game/models/meta_progress.dart';
 import 'package:pixel_survivor/game/systems/save_system.dart';
 
@@ -50,6 +51,22 @@ void main() {
 
     expect(controller.state.selectedCharacterId, rookieConstable);
     expect(controller.state.selectedStageId, moonlitAbandonedOffice);
+  });
+
+  test('marking compendium entries seen persists namespaced keys', () async {
+    final store = _MemorySaveStore(SaveState.defaults());
+    final controller = LobbyController(store: store);
+    await controller.load();
+
+    await controller.markCompendiumEntriesSeen({
+      'character:$rookieConstable',
+      'weapon:$hwandoSlash',
+    });
+
+    expect(store.value.seenCompendiumEntryIds, {
+      'character:$rookieConstable',
+      'weapon:$hwandoSlash',
+    });
   });
 
   test('cannot persist a locked stage selection', () async {

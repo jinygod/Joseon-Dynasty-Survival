@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/app/game_screen.dart';
 import 'package:pixel_survivor/app/lobby_controller.dart';
 import 'package:pixel_survivor/app/lobby_screen.dart';
+import 'package:pixel_survivor/app/compendium_screen.dart';
 import 'package:pixel_survivor/game/audio/audio_settings.dart';
 import 'package:pixel_survivor/game/audio/audio_settings_controller.dart';
 import 'package:pixel_survivor/game/audio/audio_settings_repository.dart';
@@ -46,7 +47,30 @@ void main() {
     expect(find.byKey(const Key('lobby-stage')), findsOneWidget);
     expect(find.byKey(const Key('lobby-settings')), findsOneWidget);
     expect(find.byKey(const Key('lobby-records')), findsOneWidget);
+    expect(find.byKey(const Key('lobby-compendium')), findsOneWidget);
     expect(find.byKey(const Key('lobby-deploy')), findsOneWidget);
+  });
+
+  testWidgets('lobby opens the compendium destination', (tester) async {
+    final lobby = LobbyController(
+      store: _MemorySaveStore(SaveState.defaults()),
+    );
+    await lobby.load();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(splashFactory: NoSplash.splashFactory),
+        home: LobbyScreen(
+          controller: lobby,
+          audioSettingsController: _audioController(),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('lobby-compendium')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CompendiumScreen), findsOneWidget);
+    expect(find.text('도감'), findsOneWidget);
   });
 
   testWidgets('deploy uses the persisted character and stage', (tester) async {
@@ -117,19 +141,19 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(lobby.state.wallet, Wallet.empty);
-    expect(
-      lobby.state.unlockedCharacterIds,
-      SaveState.defaults().unlockedCharacterIds,
-    );
+      expect(
+        lobby.state.unlockedCharacterIds,
+        SaveState.defaults().unlockedCharacterIds,
+      );
       await tester.tap(find.byKey(const Key('lobby-stage')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('stage-confirm')));
       await tester.pumpAndSettle();
       expect(store.value.wallet, Wallet.empty);
-    expect(
-      store.value.unlockedCharacterIds,
-      SaveState.defaults().unlockedCharacterIds,
-    );
+      expect(
+        store.value.unlockedCharacterIds,
+        SaveState.defaults().unlockedCharacterIds,
+      );
     },
   );
 }
