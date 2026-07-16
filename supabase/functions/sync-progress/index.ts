@@ -4,6 +4,7 @@ import {
   requirePermanentUser,
 } from "../_shared/auth.ts";
 import { boundedJson, HttpError, json, respond } from "../_shared/http.ts";
+import { isValidProgress } from "../_shared/progress_contract.ts";
 
 interface SyncProgressInput {
   userId: string;
@@ -76,6 +77,9 @@ export async function handler(
       .byteLength;
     if (progressBytes > maxProgressBytes) {
       throw new HttpError(413, "progress_too_large");
+    }
+    if (!isValidProgress(schemaVersion as number, progress)) {
+      throw new HttpError(400, "invalid_progress");
     }
     const result = await deps.progress.sync({
       userId: user.id,

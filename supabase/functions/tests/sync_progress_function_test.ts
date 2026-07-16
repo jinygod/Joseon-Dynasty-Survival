@@ -58,9 +58,38 @@ function deps(
   };
 }
 
+const validProgress = {
+  schemaVersion: 3,
+  unlockedCharacterIds: ["rookie_constable"],
+  unlockedWeaponIds: ["hwando_slash"],
+  unlockedAugmentIds: ["martial_training"],
+  unlockedStageIds: ["moonlit_abandoned_office"],
+  completedGoalIds: [],
+  claimedRewardIds: [],
+  wallet: { coin: 0, spiritJade: 0 },
+  trainingProgress: {
+    commonRanks: {},
+    characterRanks: {},
+    activeCoreTraitIds: {},
+  },
+  shopProgress: { purchasedItemIds: [] },
+  selectedCharacterId: "rookie_constable",
+  selectedStageId: "moonlit_abandoned_office",
+  totalKills: 7,
+  bestSurvivalSeconds: 0,
+  levelReachedInRun: 0,
+  bossDefeats: 0,
+  unlockedWeaponCount: 1,
+  lowHealthWinCount: 0,
+  totalEliteKills: 0,
+  victoryCount: 0,
+  characterVictoryCounts: {},
+  seenCompendiumEntryIds: [],
+};
+
 const createBody = {
   schemaVersion: 3,
-  progress: { schemaVersion: 3, totalKills: 7 },
+  progress: validProgress,
   expectedRevision: null,
 };
 
@@ -122,6 +151,132 @@ Deno.test("sync progress rejects paid fields at any depth", async () => {
   equal(await body(response), { code: "paid_progress_forbidden" });
 });
 
+Deno.test("sync progress rejects unsupported or mismatched save schemas", async () => {
+  for (const [schemaVersion, progressVersion] of [[4, 4], [3, 2], [2, 3]]) {
+    const response = await handler(
+      request({
+        ...createBody,
+        schemaVersion,
+        progress: { ...validProgress, schemaVersion: progressVersion },
+      }),
+      deps(),
+    );
+    equal(response.status, 400);
+    equal(await body(response), { code: "invalid_progress" });
+  }
+});
+
+Deno.test("sync progress rejects unknown fields and content IDs", async () => {
+  for (
+    const progress of [
+      { ...validProgress, debugUnlockEverything: true },
+      { ...validProgress, unlockedCharacterIds: ["unknown_character"] },
+      { ...validProgress, completedGoalIds: ["unknown_goal"] },
+      { ...validProgress, selectedStageId: "unknown_stage" },
+      {
+        ...validProgress,
+        trainingProgress: {
+          ...validProgress.trainingProgress,
+          commonRanks: { "common.unknown": 1 },
+        },
+      },
+      {
+        ...validProgress,
+        trainingProgress: {
+          ...validProgress.trainingProgress,
+          characterRanks: { toString: { max_health: 1 } },
+        },
+      },
+      {
+        ...validProgress,
+        shopProgress: { purchasedItemIds: ["unknown_item"] },
+      },
+    ]
+  ) {
+    const response = await handler(
+      request({ ...createBody, progress }),
+      deps(),
+    );
+    equal(response.status, 400);
+    equal(await body(response), { code: "invalid_progress" });
+  }
+});
+
+Deno.test("sync progress rejects malformed unlock collections", async () => {
+  for (
+    const unlockedCharacterIds of [
+      "rookie_constable",
+      ["rookie_constable", "rookie_constable"],
+      [7],
+    ]
+  ) {
+    const response = await handler(
+      request({
+        ...createBody,
+        progress: { ...validProgress, unlockedCharacterIds },
+      }),
+      deps(),
+    );
+    equal(response.status, 400);
+    equal(await body(response), { code: "invalid_progress" });
+  }
+});
+
+Deno.test("sync progress rejects negative and unbounded counters", async () => {
+  for (
+    const progress of [
+      { ...validProgress, totalKills: -1 },
+      { ...validProgress, totalKills: 1_000_000_001 },
+      { ...validProgress, wallet: { coin: -1, spiritJade: 0 } },
+      {
+        ...validProgress,
+        trainingProgress: {
+          ...validProgress.trainingProgress,
+          commonRanks: { "common.max_health": 101 },
+        },
+      },
+      {
+        ...validProgress,
+        characterVictoryCounts: { rookie_constable: -1 },
+      },
+    ]
+  ) {
+    const response = await handler(
+      request({ ...createBody, progress }),
+      deps(),
+    );
+    equal(response.status, 400);
+    equal(await body(response), { code: "invalid_progress" });
+  }
+});
+
+Deno.test("sync progress accepts the complete current SaveState shape", async () => {
+  const progress = {
+    ...validProgress,
+    unlockedCharacterIds: ["rookie_constable", "exorcist_dosa"],
+    claimedRewardIds: ["daily:2026-07-17"],
+    wallet: { coin: 1_000_000_000, spiritJade: 1 },
+    trainingProgress: {
+      commonRanks: { "common.max_health": 100 },
+      characterRanks: { rookie_constable: { max_health: 100 } },
+      activeCoreTraitIds: { rookie_constable: "constable.stalwart" },
+    },
+    shopProgress: { purchasedItemIds: ["manual.rookie_constable"] },
+    characterVictoryCounts: { rookie_constable: 1 },
+    seenCompendiumEntryIds: [
+      "character:rookie_constable",
+      "weapon:hwando_slash",
+      "augment:martial_training",
+    ],
+  };
+  const response = await handler(
+    request({ ...createBody, progress }),
+    deps(async () => ({ revision: 1, progress, applied: true })),
+  );
+  equal(response.status, 200);
+  equal(await body(response), { revision: 1, progress, conflict: false });
+});
+
 Deno.test("sync progress rejects progress larger than 64 KiB", async () => {
   const response = await handler(
     request({
@@ -158,7 +313,7 @@ Deno.test("create forwards null revision and returns exact success shape", async
 });
 
 Deno.test("update success returns the incremented revision", async () => {
-  const progress = { schemaVersion: 3, totalKills: 9 };
+  const progress = { ...validProgress, totalKills: 9 };
   const response = await handler(
     request({ schemaVersion: 3, progress, expectedRevision: 4 }),
     deps(async () => ({ revision: 5, progress, applied: true })),
@@ -168,7 +323,7 @@ Deno.test("update success returns the incremented revision", async () => {
 });
 
 Deno.test("revision conflict returns the current server snapshot", async () => {
-  const current = { schemaVersion: 3, totalKills: 99 };
+  const current = { ...validProgress, totalKills: 99 };
   const response = await handler(
     request({ ...createBody, expectedRevision: 4 }),
     deps(async () => ({ revision: 8, progress: current, applied: false })),
