@@ -10,6 +10,27 @@ enum EnemyBehaviorType { chase, swarm, dash, tank }
 
 enum CharacterPassive { none, patrolGrit, exorcismScript, hawkEye }
 
+enum AugmentCategory { attack, survival, movementAcquisition, riskReward }
+
+enum AugmentStat {
+  weaponDamage,
+  fireDamage,
+  attackSpeed,
+  criticalChance,
+  weaponSize,
+  moveSpeed,
+  incomingContactDamage,
+  experienceGain,
+  pickupRadius,
+  experienceRequirement,
+  maxHealth,
+  healing,
+}
+
+enum AugmentEffectApplication { continuous, onAcquire }
+
+enum AugmentCondition { always, healthAtOrBelow35 }
+
 enum UnlockMetric {
   bestSurvivalSeconds,
   totalKills,
@@ -59,22 +80,38 @@ class WeaponDefinition {
   final bool startsUnlocked;
 }
 
+class AugmentEffect {
+  const AugmentEffect({
+    required this.stat,
+    required this.valuePerLevel,
+    this.application = AugmentEffectApplication.continuous,
+    this.condition = AugmentCondition.always,
+    this.isPenalty = false,
+  });
+
+  final AugmentStat stat;
+  final double valuePerLevel;
+  final AugmentEffectApplication application;
+  final AugmentCondition condition;
+  final bool isPenalty;
+}
+
 class AugmentDefinition {
   const AugmentDefinition({
     required this.id,
     required this.name,
     required this.maxLevel,
     required this.startsUnlocked,
-    this.effectDescription = '',
+    required this.category,
+    required this.effects,
   });
 
   final AugmentId id;
   final String name;
   final int maxLevel;
   final bool startsUnlocked;
-  final String effectDescription;
-
-  String effectDescriptionForLevel(int nextLevel) => effectDescription;
+  final AugmentCategory category;
+  final List<AugmentEffect> effects;
 }
 
 class EnemyDefinition {

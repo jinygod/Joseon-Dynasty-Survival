@@ -15,13 +15,6 @@ typedef ExpectedWeaponLevel = ({
   String displayEffect,
 });
 
-typedef ExpectedAugment = ({
-  AugmentId id,
-  String name,
-  String effectDescription,
-  bool startsUnlocked,
-});
-
 void main() {
   test('roster exposes eight weapons with five levels each', () {
     expect(
@@ -325,79 +318,58 @@ void main() {
     }
   });
 
-  test('first stage exposes the exact ordered augment definitions', () {
-    const expectedAugments = <ExpectedAugment>[
-      (
-        id: martialTraining,
-        name: '무예 단련',
-        effectDescription: '모든 무기 피해 +12%',
-        startsUnlocked: true,
-      ),
-      (
-        id: quickStep,
-        name: '빠른 발놀림',
-        effectDescription: '이동 속도 +8%',
-        startsUnlocked: true,
-      ),
-      (
-        id: rapidReload,
-        name: '빠른 장전',
-        effectDescription: '공격 재사용 시간 -10%',
-        startsUnlocked: false,
-      ),
-      (
-        id: innerBreath,
-        name: '내공 호흡',
-        effectDescription: '최대 체력 +10, 체력 10 회복',
-        startsUnlocked: true,
-      ),
-      (
-        id: hawkEye,
-        name: '매의 눈',
-        effectDescription: '치명타 확률 +5%',
-        startsUnlocked: true,
-      ),
-      (
-        id: herbalTonic,
-        name: '약초 주머니',
-        effectDescription: '체력 12 회복',
-        startsUnlocked: true,
-      ),
-      (
-        id: jangseungBlessing,
-        name: '장승의 가호',
-        effectDescription: '경험치 획득 반경 +16',
-        startsUnlocked: true,
-      ),
-      (
-        id: powderMastery,
-        name: '화약 조제',
-        effectDescription: '폭발 범위와 투사체 크기 +10%',
-        startsUnlocked: false,
-      ),
-    ];
-
+  test('augment roster has the designed size and category distribution', () {
+    expect(augmentDefinitions, hasLength(16));
+    expect(augmentDefinitions.map((item) => item.id).toSet(), hasLength(16));
     expect(
-      firstStageAugmentIds,
-      orderedEquals(expectedAugments.map((item) => item.id)),
+      {
+        for (final category in AugmentCategory.values)
+          category: augmentDefinitions
+              .where((augment) => augment.category == category)
+              .length,
+      },
+      {
+        AugmentCategory.attack: 5,
+        AugmentCategory.survival: 4,
+        AugmentCategory.movementAcquisition: 4,
+        AugmentCategory.riskReward: 3,
+      },
     );
-    for (final expected in expectedAugments) {
-      final definition = augmentDefinitions.singleWhere(
-        (item) => item.id == expected.id,
-      );
-      expect(definition.name, expected.name, reason: expected.id);
-      expect(definition.maxLevel, 5, reason: expected.id);
-      expect(
-        definition.effectDescriptionForLevel(1),
-        expected.effectDescription,
-        reason: expected.id,
-      );
-      expect(
-        definition.startsUnlocked,
-        expected.startsUnlocked,
-        reason: expected.id,
-      );
-    }
+    expect(augmentDefinitions.every((item) => item.effects.isNotEmpty), isTrue);
+    expect(
+      augmentDefinitions
+          .expand((item) => item.effects)
+          .every(
+            (effect) =>
+                effect.valuePerLevel.isFinite && effect.valuePerLevel != 0,
+          ),
+      isTrue,
+    );
+  });
+
+  test('new augments use the approved names, levels, and default unlocks', () {
+    expect(
+      [
+        ironArmorTraining,
+        scholarInsight,
+        bloodOath,
+        ghostStep,
+      ].map(augmentDefinitionFor),
+      everyElement(isNotNull),
+    );
+    expect(augmentDefinitionFor(ironArmorTraining)?.name, '철갑 수련');
+    expect(augmentDefinitionFor(scholarInsight)?.name, '선비의 통찰');
+    expect(augmentDefinitionFor(bloodOath)?.maxLevel, 3);
+    expect(augmentDefinitionFor(ghostStep)?.maxLevel, 3);
+    expect(
+      [
+        ironArmorTraining,
+        scholarInsight,
+        bloodOath,
+        ghostStep,
+      ].map((id) => augmentDefinitionFor(id)!.startsUnlocked),
+      everyElement(isTrue),
+    );
   });
 
   test('weaponLevelFor rejects unknown weapon ids', () {

@@ -12,6 +12,10 @@ const powderMastery = 'powder_mastery';
 const lastStand = 'last_stand';
 const ritualShortcut = 'ritual_shortcut';
 const heavyStrike = 'heavy_strike';
+const ironArmorTraining = 'iron_armor_training';
+const scholarInsight = 'scholar_insight';
+const bloodOath = 'blood_oath';
+const ghostStep = 'ghost_step';
 
 const augmentDefinitions = <AugmentDefinition>[
   AugmentDefinition(
@@ -19,80 +23,195 @@ const augmentDefinitions = <AugmentDefinition>[
     name: '무예 단련',
     maxLevel: 5,
     startsUnlocked: true,
-    effectDescription: '모든 무기 피해 +12%',
-  ),
-  AugmentDefinition(
-    id: quickStep,
-    name: '빠른 발놀림',
-    maxLevel: 5,
-    startsUnlocked: true,
-    effectDescription: '이동 속도 +8%',
-  ),
-  AugmentDefinition(
-    id: innerBreath,
-    name: '내공 호흡',
-    maxLevel: 5,
-    startsUnlocked: true,
-    effectDescription: '최대 체력 +10, 체력 10 회복',
-  ),
-  AugmentDefinition(
-    id: jangseungBlessing,
-    name: '장승의 가호',
-    maxLevel: 5,
-    startsUnlocked: true,
-    effectDescription: '경험치 획득 반경 +16',
-  ),
-  AugmentDefinition(
-    id: hawkEye,
-    name: '매의 눈',
-    maxLevel: 5,
-    startsUnlocked: true,
-    effectDescription: '치명타 확률 +5%',
-  ),
-  AugmentDefinition(
-    id: herbalTonic,
-    name: '약초 주머니',
-    maxLevel: 5,
-    startsUnlocked: true,
-    effectDescription: '체력 12 회복',
+    category: AugmentCategory.attack,
+    effects: [
+      AugmentEffect(stat: AugmentStat.weaponDamage, valuePerLevel: 0.12),
+    ],
   ),
   AugmentDefinition(
     id: rapidReload,
     name: '빠른 장전',
     maxLevel: 5,
     startsUnlocked: false,
-    effectDescription: '공격 재사용 시간 -10%',
+    category: AugmentCategory.attack,
+    effects: [
+      AugmentEffect(stat: AugmentStat.attackSpeed, valuePerLevel: 0.10),
+    ],
   ),
   AugmentDefinition(
-    id: goblinFire,
-    name: '도깨비불',
+    id: hawkEye,
+    name: '매의 눈',
     maxLevel: 5,
-    startsUnlocked: false,
+    startsUnlocked: true,
+    category: AugmentCategory.attack,
+    effects: [
+      AugmentEffect(stat: AugmentStat.criticalChance, valuePerLevel: 0.05),
+    ],
   ),
   AugmentDefinition(
     id: powderMastery,
     name: '화약 조제',
     maxLevel: 5,
     startsUnlocked: false,
-    effectDescription: '폭발 범위와 투사체 크기 +10%',
+    category: AugmentCategory.attack,
+    effects: [AugmentEffect(stat: AugmentStat.weaponSize, valuePerLevel: 0.10)],
+  ),
+  AugmentDefinition(
+    id: goblinFire,
+    name: '도깨비불',
+    maxLevel: 5,
+    startsUnlocked: false,
+    category: AugmentCategory.attack,
+    effects: [AugmentEffect(stat: AugmentStat.fireDamage, valuePerLevel: 0.15)],
+  ),
+  AugmentDefinition(
+    id: innerBreath,
+    name: '내공 호흡',
+    maxLevel: 5,
+    startsUnlocked: true,
+    category: AugmentCategory.survival,
+    effects: [
+      AugmentEffect(
+        stat: AugmentStat.maxHealth,
+        valuePerLevel: 10,
+        application: AugmentEffectApplication.onAcquire,
+      ),
+      AugmentEffect(
+        stat: AugmentStat.healing,
+        valuePerLevel: 10,
+        application: AugmentEffectApplication.onAcquire,
+      ),
+    ],
+  ),
+  AugmentDefinition(
+    id: herbalTonic,
+    name: '약초 주머니',
+    maxLevel: 5,
+    startsUnlocked: true,
+    category: AugmentCategory.survival,
+    effects: [
+      AugmentEffect(
+        stat: AugmentStat.healing,
+        valuePerLevel: 12,
+        application: AugmentEffectApplication.onAcquire,
+      ),
+    ],
+  ),
+  AugmentDefinition(
+    id: ironArmorTraining,
+    name: '철갑 수련',
+    maxLevel: 5,
+    startsUnlocked: true,
+    category: AugmentCategory.survival,
+    effects: [
+      AugmentEffect(
+        stat: AugmentStat.incomingContactDamage,
+        valuePerLevel: -0.06,
+      ),
+    ],
   ),
   AugmentDefinition(
     id: lastStand,
     name: '최후의 저항',
     maxLevel: 3,
     startsUnlocked: false,
+    category: AugmentCategory.survival,
+    effects: [
+      AugmentEffect(
+        stat: AugmentStat.incomingContactDamage,
+        valuePerLevel: -0.10,
+        condition: AugmentCondition.healthAtOrBelow35,
+      ),
+      AugmentEffect(
+        stat: AugmentStat.weaponDamage,
+        valuePerLevel: 0.20,
+        condition: AugmentCondition.healthAtOrBelow35,
+      ),
+    ],
+  ),
+  AugmentDefinition(
+    id: quickStep,
+    name: '빠른 발놀림',
+    maxLevel: 5,
+    startsUnlocked: true,
+    category: AugmentCategory.movementAcquisition,
+    effects: [AugmentEffect(stat: AugmentStat.moveSpeed, valuePerLevel: 0.08)],
+  ),
+  AugmentDefinition(
+    id: jangseungBlessing,
+    name: '장승의 가호',
+    maxLevel: 5,
+    startsUnlocked: true,
+    category: AugmentCategory.movementAcquisition,
+    effects: [AugmentEffect(stat: AugmentStat.pickupRadius, valuePerLevel: 16)],
+  ),
+  AugmentDefinition(
+    id: scholarInsight,
+    name: '선비의 통찰',
+    maxLevel: 5,
+    startsUnlocked: true,
+    category: AugmentCategory.movementAcquisition,
+    effects: [
+      AugmentEffect(stat: AugmentStat.experienceGain, valuePerLevel: 0.10),
+    ],
   ),
   AugmentDefinition(
     id: ritualShortcut,
     name: '의식 단축',
     maxLevel: 1,
     startsUnlocked: false,
+    category: AugmentCategory.movementAcquisition,
+    effects: [
+      AugmentEffect(
+        stat: AugmentStat.experienceRequirement,
+        valuePerLevel: -0.15,
+      ),
+    ],
   ),
   AugmentDefinition(
     id: heavyStrike,
     name: '강력한 일격',
     maxLevel: 5,
     startsUnlocked: false,
+    category: AugmentCategory.riskReward,
+    effects: [
+      AugmentEffect(stat: AugmentStat.weaponDamage, valuePerLevel: 0.18),
+      AugmentEffect(
+        stat: AugmentStat.attackSpeed,
+        valuePerLevel: -0.08,
+        isPenalty: true,
+      ),
+    ],
+  ),
+  AugmentDefinition(
+    id: bloodOath,
+    name: '피의 맹세',
+    maxLevel: 3,
+    startsUnlocked: true,
+    category: AugmentCategory.riskReward,
+    effects: [
+      AugmentEffect(stat: AugmentStat.weaponDamage, valuePerLevel: 0.20),
+      AugmentEffect(
+        stat: AugmentStat.incomingContactDamage,
+        valuePerLevel: 0.10,
+        isPenalty: true,
+      ),
+    ],
+  ),
+  AugmentDefinition(
+    id: ghostStep,
+    name: '귀신걸음',
+    maxLevel: 3,
+    startsUnlocked: true,
+    category: AugmentCategory.riskReward,
+    effects: [
+      AugmentEffect(stat: AugmentStat.moveSpeed, valuePerLevel: 0.15),
+      AugmentEffect(
+        stat: AugmentStat.pickupRadius,
+        valuePerLevel: -12,
+        isPenalty: true,
+      ),
+    ],
   ),
 ];
 
@@ -106,3 +225,10 @@ const firstStageAugmentIds = <AugmentId>[
   jangseungBlessing,
   powderMastery,
 ];
+
+AugmentDefinition? augmentDefinitionFor(AugmentId id) {
+  for (final definition in augmentDefinitions) {
+    if (definition.id == id) return definition;
+  }
+  return null;
+}
