@@ -35,6 +35,26 @@ Add `-IncludeAndroid` when the Android SDK is installed and configured. The
 script automatically maps the Flutter SDK and repository to temporary ASCII
 drive letters on Windows when either path contains non-ASCII characters.
 
+For changes that touch Supabase, authentication, cloud save, or Google Play
+billing, run the stricter backend gate:
+
+```powershell
+.\tool\backend_check.ps1
+```
+
+It adds pinned Deno checks and local Supabase pgTAP/database lint, then always
+builds web and an Android debug APK. Docker is mandatory; an unavailable Docker
+daemon is reported as `BLOCKED` with a non-zero exit. Use `-DryRun` to inspect
+the ordered gate list without executing tools.
+
+Production setup and release operations are documented in:
+
+- [`docs/backend/android-backend-operations.md`](docs/backend/android-backend-operations.md)
+- [`docs/backend/google-play-console-setup.md`](docs/backend/google-play-console-setup.md)
+
+Never commit Supabase service-role/database credentials, Google OAuth secrets,
+service-account JSON, Pub/Sub credentials, keystores, or populated env files.
+
 GitHub Actions runs formatting, analysis, all automated tests, a web release
 build, and an Android debug APK build for pushes and pull requests.
 
