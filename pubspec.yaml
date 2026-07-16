@@ -33,9 +33,12 @@ dependencies:
     sdk: flutter
   flame: ^1.18.0
   flame_audio: ^2.12.1
+  google_sign_in: 7.2.0
+  in_app_purchase: 3.3.0
   package_info_plus: ^10.2.0
   share_plus: ^13.2.0
   shared_preferences: ^2.2.3
+  supabase_flutter: 2.16.0
 
 dev_dependencies:
   flutter_test:
