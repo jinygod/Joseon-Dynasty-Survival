@@ -89,6 +89,7 @@ class PurchaseController extends ChangeNotifier {
   final Duration verificationTimeout;
   StreamSubscription<PurchaseUpdate>? _subscription;
   final _processingTokens = <String>{};
+  final _processingCompletions = <String, Completer<void>>{};
   final _completedTokens = <String>{};
   int _accountGeneration = 0;
   bool _initialized = false;
@@ -168,6 +169,8 @@ class PurchaseController extends ChangeNotifier {
     if (!session.isPermanent) return;
     final ownerUserId = session.userId!;
     try {
+      await _drainPurchaseProcessing();
+      if (!_isCurrentOwner(ownerUserId, generation)) return;
       await _gateway.recoverUnfinishedPurchases(
         applicationUserName: ownerUserId,
       );
@@ -279,6 +282,8 @@ class PurchaseController extends ChangeNotifier {
         !_processingTokens.add(token)) {
       return;
     }
+    final completion = Completer<void>();
+    _processingCompletions[token] = completion;
     try {
       if (!alreadyDurable) {
         await _retryStore.put(
@@ -334,6 +339,19 @@ class PurchaseController extends ChangeNotifier {
       }
     } finally {
       _processingTokens.remove(token);
+      if (identical(_processingCompletions[token], completion)) {
+        _processingCompletions.remove(token);
+      }
+      completion.complete();
+    }
+  }
+
+  Future<void> _drainPurchaseProcessing() async {
+    while (!_disposed && _processingCompletions.isNotEmpty) {
+      final active = _processingCompletions.values
+          .map((completion) => completion.future)
+          .toList();
+      await Future.wait(active);
     }
   }
 

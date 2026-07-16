@@ -367,6 +367,105 @@ void main() {
     },
   );
 
+  test(
+    'resume drains stale token work before retrying the current owner',
+    () async {
+      final session = AccountSession.google(
+        userId: 'owner-a',
+        email: 'a@example.com',
+      );
+      final firstVerification = Completer<void>();
+      final repository = FakeEconomyRepository(
+        verificationCompleters: [firstVerification],
+      );
+      final gateway = FakePurchaseGateway(products: products);
+      final retryStore = FakeRetryStore();
+      final controller = buildController(
+        gateway: gateway,
+        repository: repository,
+        retryStore: retryStore,
+        session: session,
+      );
+      await controller.start();
+      gateway.emit(
+        PurchaseUpdate.purchased(
+          ownerUserId: 'owner-a',
+          productId: PremiumProduct.smallId,
+          purchaseToken: 'overlap-token',
+        ),
+      );
+      await flushEvents();
+      expect(repository.verifiedTokens, ['overlap-token']);
+
+      var resumeCompleted = false;
+      final resume = controller
+          .onAccountChanged(session)
+          .then((_) => resumeCompleted = true);
+      await flushEvents();
+      expect(resumeCompleted, isFalse);
+
+      firstVerification.complete();
+      await resume;
+
+      expect(repository.verifiedTokens, ['overlap-token', 'overlap-token']);
+      expect(gateway.completed.single.purchaseToken, 'overlap-token');
+      expect(retryStore.entries, isEmpty);
+      controller.dispose();
+    },
+  );
+
+  test(
+    'account switch drains a foreign callback put before owner retry',
+    () async {
+      var session = AccountSession.google(
+        userId: 'owner-b',
+        email: 'b@example.com',
+      );
+      final putStarted = Completer<void>();
+      final releasePut = Completer<void>();
+      final retryStore = FakeRetryStore(
+        putStarted: putStarted,
+        putCompleter: releasePut,
+      );
+      final repository = FakeEconomyRepository();
+      final gateway = FakePurchaseGateway(products: products);
+      final controller = buildController(
+        gateway: gateway,
+        repository: repository,
+        retryStore: retryStore,
+        sessionProvider: () => session,
+      );
+      await controller.start();
+      gateway.emit(
+        PurchaseUpdate.purchased(
+          ownerUserId: 'owner-a',
+          productId: PremiumProduct.smallId,
+          purchaseToken: 'foreign-put-token',
+        ),
+      );
+      await putStarted.future;
+
+      session = AccountSession.google(
+        userId: 'owner-a',
+        email: 'a@example.com',
+      );
+      var accountChangeCompleted = false;
+      final accountChange = controller
+          .onAccountChanged(session)
+          .then((_) => accountChangeCompleted = true);
+      await flushEvents();
+      expect(accountChangeCompleted, isFalse);
+
+      releasePut.complete();
+      await accountChange;
+
+      expect(repository.verifiedTokens, ['foreign-put-token']);
+      expect(gateway.completed.single.purchaseToken, 'foreign-put-token');
+      expect(retryStore.entries, isEmpty);
+      controller.dispose();
+    },
+  );
+
   test('restored callback cannot reassign an existing token owner', () async {
     final repository = FakeEconomyRepository();
     final gateway = FakePurchaseGateway(products: products);
@@ -804,11 +903,13 @@ class FakeEconomyRepository implements EconomyRepository {
   FakeEconomyRepository({
     this.events,
     this.verificationCompleter,
+    this.verificationCompleters = const [],
     this.rejection,
   });
 
   final List<String>? events;
   final Completer<void>? verificationCompleter;
+  final List<Completer<void>> verificationCompleters;
   final PurchaseRejectedException? rejection;
   final verifiedTokens = <String>[];
   var wallet = PremiumWallet(balance: 100, debt: 0, version: 1);
@@ -827,18 +928,30 @@ class FakeEconomyRepository implements EconomyRepository {
     required String purchaseToken,
     required String packageName,
   }) async {
+    final callIndex = verifiedTokens.length;
     events?.add('repository.verify:$purchaseToken');
     verifiedTokens.add(purchaseToken);
     if (rejection case final error?) throw error;
-    if (verificationCompleter case final completer?) await completer.future;
+    if (callIndex < verificationCompleters.length) {
+      await verificationCompleters[callIndex].future;
+    } else if (verificationCompleter case final completer?) {
+      await completer.future;
+    }
     return const PurchaseVerificationResult(accepted: true, duplicate: false);
   }
 }
 
 class FakeRetryStore implements PurchaseRetryStore {
-  FakeRetryStore({this.events, this.putError});
+  FakeRetryStore({
+    this.events,
+    this.putError,
+    this.putStarted,
+    this.putCompleter,
+  });
   final List<String>? events;
   final Object? putError;
+  final Completer<void>? putStarted;
+  final Completer<void>? putCompleter;
   final entries = <PendingPurchase>{};
 
   @override
@@ -847,6 +960,10 @@ class FakeRetryStore implements PurchaseRetryStore {
   @override
   Future<void> put(PendingPurchase purchase) async {
     if (putError case final error?) throw error;
+    if (putStarted case final started?) {
+      if (!started.isCompleted) started.complete();
+    }
+    if (putCompleter case final completer?) await completer.future;
     events?.add('retry.put:${purchase.purchaseToken}');
     entries.add(purchase);
   }
