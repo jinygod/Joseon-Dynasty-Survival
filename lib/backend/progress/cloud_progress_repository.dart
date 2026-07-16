@@ -2,22 +2,9 @@ import 'dart:convert';
 
 import '../../game/systems/save_system.dart';
 
-class CloudRevision {
-  CloudRevision(int value) : value = _requireNonNegative('revision', value);
-
-  final int value;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) || other is CloudRevision && value == other.value;
-
-  @override
-  int get hashCode => value.hashCode;
-}
-
 class CloudProgressSnapshot {
   CloudProgressSnapshot({required int revision, required this.save})
-    : revision = _requireNonNegative('revision', revision);
+    : revision = _requirePositive('revision', revision);
 
   final int revision;
   final SaveState save;
@@ -58,9 +45,9 @@ class CloudSyncResult {
   int get hashCode => Object.hash(snapshot, hasConflict);
 }
 
-int _requireNonNegative(String name, int value) {
-  if (value < 0) {
-    throw ArgumentError.value(value, name, 'must not be negative');
+int _requirePositive(String name, int value) {
+  if (value < 1) {
+    throw ArgumentError.value(value, name, 'must be positive');
   }
   return value;
 }
@@ -81,6 +68,6 @@ abstract interface class CloudProgressRepository {
   Future<CloudProgressSnapshot> create(SaveState save);
   Future<CloudSyncResult> update({
     required SaveState save,
-    required CloudRevision expectedRevision,
+    required int expectedRevision,
   });
 }

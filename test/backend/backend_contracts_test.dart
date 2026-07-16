@@ -66,17 +66,30 @@ void main() {
   });
 
   group('cloud progress', () {
-    test('snapshot rejects a negative server revision', () {
+    test('snapshot requires a positive server revision', () {
       expect(
         () => CloudProgressSnapshot(revision: -1, save: SaveState.defaults()),
         throwsArgumentError,
       );
+      expect(
+        () => CloudProgressSnapshot(revision: 0, save: SaveState.defaults()),
+        throwsArgumentError,
+      );
     });
 
-    test('expected revision rejects negatives before adapter use', () {
-      expect(() => CloudRevision(-1), throwsArgumentError);
-      expect(CloudRevision(7).value, 7);
-    });
+    test(
+      'repository update accepts the brief-specified revision int',
+      () async {
+        final repository = _RecordingCloudProgressRepository();
+
+        await repository.update(
+          save: SaveState.defaults(),
+          expectedRevision: 7,
+        );
+
+        expect(repository.expectedRevision, 7);
+      },
+    );
 
     test('cloud snapshot carries the server revision and SaveState', () {
       final snapshot = CloudProgressSnapshot(
@@ -114,7 +127,6 @@ void main() {
 
       expect(first, second);
       expect(first.hashCode, second.hashCode);
-      expect(CloudRevision(2), CloudRevision(2));
     });
 
     test('progress equality ignores nested map insertion order', () {
@@ -252,5 +264,27 @@ class _RecordingPurchaseGateway implements PurchaseGateway {
   @override
   Future<void> recoverUnfinishedPurchases() async {
     recoveryCount += 1;
+  }
+}
+
+class _RecordingCloudProgressRepository implements CloudProgressRepository {
+  int? expectedRevision;
+
+  @override
+  Future<CloudProgressSnapshot> create(SaveState save) async =>
+      CloudProgressSnapshot(revision: 1, save: save);
+
+  @override
+  Future<CloudProgressSnapshot?> fetch() async => null;
+
+  @override
+  Future<CloudSyncResult> update({
+    required SaveState save,
+    required int expectedRevision,
+  }) async {
+    this.expectedRevision = expectedRevision;
+    return CloudSyncResult.updated(
+      CloudProgressSnapshot(revision: expectedRevision + 1, save: save),
+    );
   }
 }
