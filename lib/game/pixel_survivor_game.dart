@@ -37,6 +37,7 @@ import 'models/run_result.dart';
 import 'models/run_outcome.dart';
 import 'models/vector_input.dart';
 import 'systems/level_up_system.dart';
+import 'systems/augment_effect_resolver.dart';
 import 'systems/meta_reward_policy.dart';
 import 'systems/combat_feedback_tuning.dart';
 import 'systems/combat_system.dart';
@@ -81,6 +82,8 @@ class PixelSurvivorGame extends FlameGame
   final String pickupIdPrefix;
   final double Function() _rewardRoll;
   final MetaRewardPolicy _metaRewardPolicy = const MetaRewardPolicy();
+  final AugmentEffectResolver _augmentEffectResolver =
+      const AugmentEffectResolver();
   final WeaponSystem weaponSystem;
   final WaveDirector waveDirector;
   final LevelUpSystem levelUpSystem;
@@ -124,7 +127,10 @@ class PixelSurvivorGame extends FlameGame
   @override
   int get currentExperience => runProgression.currentExperience;
   @override
-  int get experienceToNextLevel => runProgression.experienceToNextLevel;
+  int get experienceToNextLevel => runProgression.experienceRequiredForLevel(
+    runProgression.level,
+    multiplier: experienceRequirementMultiplier,
+  );
   @override
   int get kills => runStats.kills;
   RunOutcome get runOutcome => _runOutcome;
@@ -149,46 +155,49 @@ class PixelSurvivorGame extends FlameGame
   @override
   double? get bossHealthFraction => _boss?.healthFraction;
   Vector2 get screenShakeOffset => _screenShakeOffset.clone();
-  double get weaponDamageMultiplier {
-    final martialTrainingLevel = augmentLevels[martialTraining] ?? 0;
-    final heavyStrikeLevel = augmentLevels[heavyStrike] ?? 0;
-    return 1 + (martialTrainingLevel * 0.12) + (heavyStrikeLevel * 0.18);
-  }
+  double get weaponDamageMultiplier =>
+      _resolvedAugmentModifiers.weaponDamageMultiplier;
 
-  double get moveSpeedMultiplier {
-    final quickStepLevel = augmentLevels[quickStep] ?? 0;
-    return 1 + (quickStepLevel * 0.08);
-  }
+  double get moveSpeedMultiplier =>
+      _resolvedAugmentModifiers.moveSpeedMultiplier;
 
-  double get attackSpeedMultiplier {
-    final rapidReloadLevel = augmentLevels[rapidReload] ?? 0;
-    return 1 + (rapidReloadLevel * 0.10);
-  }
+  double get attackSpeedMultiplier =>
+      _resolvedAugmentModifiers.attackSpeedMultiplier;
 
   double get criticalChance {
-    final hawkEyeLevel = augmentLevels[hawkEye] ?? 0;
-    return (hawkEyeLevel * 0.05 + _passiveModifiers.bonusCriticalChance)
+    return (_resolvedAugmentModifiers.criticalChanceBonus +
+            _passiveModifiers.bonusCriticalChance)
         .clamp(0, 1)
         .toDouble();
   }
 
   double get incomingContactDamageMultiplier =>
-      _passiveModifiers.incomingContactDamageMultiplier;
+      _passiveModifiers.incomingContactDamageMultiplier *
+      _resolvedAugmentModifiers.incomingContactDamageMultiplier;
 
-  Map<ElementType, double> get elementDamageMultipliers =>
-      _passiveModifiers.magicDamageMultiplier == 1
-      ? const {}
-      : {ElementType.magic: _passiveModifiers.magicDamageMultiplier};
-
-  double get weaponSizeMultiplier {
-    final powderMasteryLevel = augmentLevels[powderMastery] ?? 0;
-    return 1 + (powderMasteryLevel * 0.10);
+  Map<ElementType, double> get elementDamageMultipliers {
+    final multipliers = Map<ElementType, double>.of(
+      _resolvedAugmentModifiers.elementDamageMultipliers,
+    );
+    final passiveMagic = _passiveModifiers.magicDamageMultiplier;
+    if (passiveMagic != 1) {
+      multipliers[ElementType.magic] =
+          (multipliers[ElementType.magic] ?? 1) * passiveMagic;
+    }
+    return Map.unmodifiable(multipliers);
   }
 
-  double get experiencePickupRadiusBonus {
-    final blessingLevel = augmentLevels[jangseungBlessing] ?? 0;
-    return blessingLevel * 16.0;
-  }
+  double get weaponSizeMultiplier =>
+      _resolvedAugmentModifiers.weaponSizeMultiplier;
+
+  double get experienceGainMultiplier =>
+      _resolvedAugmentModifiers.experienceGainMultiplier;
+
+  double get experienceRequirementMultiplier =>
+      _resolvedAugmentModifiers.experienceRequirementMultiplier;
+
+  double get experiencePickupRadiusBonus =>
+      max(-21.0, _resolvedAugmentModifiers.pickupRadiusBonus);
 
   bool get isLevelUpPending => _pendingLevelUpChoices.isNotEmpty;
   List<PlayerComponent> get activePlayers => _activePlayersView;
@@ -288,7 +297,11 @@ class PixelSurvivorGame extends FlameGame
   }
 
   bool gainExperience(int amount) {
-    final leveledUp = runProgression.addExperience(amount);
+    final leveledUp = runProgression.addExperience(
+      amount,
+      gainMultiplier: experienceGainMultiplier,
+      requirementMultiplier: experienceRequirementMultiplier,
+    );
     if (leveledUp && !isLevelUpPending) {
       _queueLevelUpChoices();
     }
@@ -323,7 +336,7 @@ class PixelSurvivorGame extends FlameGame
         final currentLevel = augmentLevels[augmentId] ?? 0;
         if (currentLevel < definition.maxLevel) {
           augmentLevels[augmentId] = currentLevel + 1;
-          _applyImmediateAugmentEffect(augmentId);
+          _applyImmediateAugmentEffects(definition);
         }
         _applyAugmentEffects();
     }
@@ -945,13 +958,28 @@ class PixelSurvivorGame extends FlameGame
     }
   }
 
-  void _applyImmediateAugmentEffect(AugmentId augmentId) {
+  void _applyImmediateAugmentEffects(AugmentDefinition definition) {
     for (final player in _activePlayers.where((player) => player.isAlive)) {
-      switch (augmentId) {
-        case innerBreath:
-          player.increaseMaxHealth(10, healAmount: 10);
-        case herbalTonic:
-          player.heal(12);
+      for (final effect in definition.effects.where(
+        (effect) => effect.application == AugmentEffectApplication.onAcquire,
+      )) {
+        switch (effect.stat) {
+          case AugmentStat.maxHealth:
+            player.increaseMaxHealth(effect.valuePerLevel);
+          case AugmentStat.healing:
+            player.heal(effect.valuePerLevel);
+          case AugmentStat.weaponDamage:
+          case AugmentStat.fireDamage:
+          case AugmentStat.attackSpeed:
+          case AugmentStat.criticalChance:
+          case AugmentStat.weaponSize:
+          case AugmentStat.moveSpeed:
+          case AugmentStat.incomingContactDamage:
+          case AugmentStat.experienceGain:
+          case AugmentStat.pickupRadius:
+          case AugmentStat.experienceRequirement:
+            break;
+        }
       }
     }
   }
@@ -1049,6 +1077,16 @@ class PixelSurvivorGame extends FlameGame
       CharacterPassiveModifiers.forPassive(
         _characterDefinitionFor(playerSlot.characterId).passive,
       );
+
+  AugmentModifiers get _resolvedAugmentModifiers {
+    final player = _activePlayers
+        .where((player) => player.isMounted && player.isAlive)
+        .firstOrNull;
+    return _augmentEffectResolver.resolve(
+      levels: augmentLevels,
+      healthFraction: player?.healthFraction ?? 1,
+    );
+  }
 
   EnemyDefinition _enemyDefinitionFor(EnemyId enemyId) {
     return enemyDefinitions.firstWhere(

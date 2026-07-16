@@ -41,6 +41,34 @@ void main() {
       expect(progression.currentExperience, 0);
     });
 
+    test('fractional gain bonuses accumulate without rounding each pickup', () {
+      final progression = RunProgressionSystem();
+
+      progression.addExperience(5, gainMultiplier: 1.1);
+      progression.addExperience(5, gainMultiplier: 1.1);
+
+      expect(progression.level, 2);
+      expect(progression.currentExperience, 0);
+    });
+
+    test(
+      'requirement multiplier applies only when positive experience arrives',
+      () {
+        final progression = RunProgressionSystem()..addExperience(9);
+
+        expect(progression.level, 1);
+        expect(progression.experienceRequiredForLevel(1, multiplier: 0.85), 10);
+        expect(
+          progression.addExperience(0, requirementMultiplier: 0.85),
+          isFalse,
+        );
+        expect(
+          progression.addExperience(1, requirementMultiplier: 0.85),
+          isTrue,
+        );
+      },
+    );
+
     test('representative five-minute experience reaches nine upgrades', () {
       final system = RunProgressionSystem();
       var upgrades = 0;

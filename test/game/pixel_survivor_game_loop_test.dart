@@ -356,32 +356,79 @@ void main() {
       },
     );
 
-    test('augment levels expose combat and collection multipliers', () {
+    test('augment levels expose every resolved runtime modifier', () {
       final game = newGame();
       game.augmentLevels
-        ..[martialTraining] = 2
+        ..[martialTraining] = 1
+        ..[heavyStrike] = 1
+        ..[bloodOath] = 1
         ..[quickStep] = 1
-        ..[rapidReload] = 2
+        ..[ghostStep] = 1
+        ..[rapidReload] = 1
+        ..[ironArmorTraining] = 1
         ..[hawkEye] = 1
-        ..[powderMastery] = 3
+        ..[powderMastery] = 1
+        ..[goblinFire] = 2
+        ..[scholarInsight] = 2
+        ..[ritualShortcut] = 1
         ..[jangseungBlessing] = 2;
 
-      expect(game.weaponDamageMultiplier, closeTo(1.24, 0.0001));
-      expect(game.moveSpeedMultiplier, closeTo(1.08, 0.0001));
-      expect(game.attackSpeedMultiplier, closeTo(1.2, 0.0001));
+      expect(game.weaponDamageMultiplier, closeTo(1.50, 0.0001));
+      expect(game.moveSpeedMultiplier, closeTo(1.23, 0.0001));
+      expect(game.attackSpeedMultiplier, closeTo(1.02, 0.0001));
       expect(game.criticalChance, closeTo(0.05, 0.0001));
-      expect(game.weaponSizeMultiplier, closeTo(1.3, 0.0001));
-      expect(game.experiencePickupRadiusBonus, 32);
+      expect(game.weaponSizeMultiplier, closeTo(1.10, 0.0001));
+      expect(game.incomingContactDamageMultiplier, closeTo(0.9152, 0.0001));
+      expect(
+        game.elementDamageMultipliers[ElementType.fire],
+        closeTo(1.30, 0.0001),
+      );
+      expect(game.experienceGainMultiplier, closeTo(1.20, 0.0001));
+      expect(game.experienceRequirementMultiplier, closeTo(0.85, 0.0001));
+      expect(game.experienceToNextLevel, 10);
+      expect(game.experiencePickupRadiusBonus, 20);
     });
 
+    test('pickup radius keeps at least seven units of effective range', () {
+      final game = newGame()..augmentLevels[ghostStep] = 3;
+
+      expect(game.experiencePickupRadiusBonus, -21);
+    });
+
+    gameTester.testGameWidget(
+      'last stand activates at exactly thirty-five percent health',
+      setUp: (game, _) async {
+        game.augmentLevels[lastStand] = 2;
+        final player = game.activePlayers.single;
+        player.takeDamage(player.maxHealth - (player.maxHealth * 0.35));
+      },
+      verify: (game, _) async {
+        expect(game.activePlayers.single.healthFraction, closeTo(0.35, 0.0001));
+        expect(game.weaponDamageMultiplier, closeTo(1.40, 0.0001));
+        expect(game.incomingContactDamageMultiplier, closeTo(0.704, 0.0001));
+      },
+    );
+
     test(
-      'inner breath increases max health and heals only when selected',
+      'immediate augments apply once when selected, not from stored levels',
       () async {
         final game = newGame();
+        game.augmentLevels
+          ..[innerBreath] = 1
+          ..[herbalTonic] = 1;
         game.onGameResize(Vector2(960, 540));
         await game.onLoad();
-        final player = game.activePlayers.single..takeDamage(20);
-        const choice = LevelUpChoice(
+        final player = game.activePlayers.single;
+
+        expect(player.maxHealth, 105);
+        expect(player.currentHealth, 105);
+
+        player.takeDamage(20);
+        final initialMaxHealth = player.maxHealth;
+        final initialHealth = player.currentHealth;
+
+        game.augmentLevels.clear();
+        const innerBreathChoice = LevelUpChoice(
           id: innerBreath,
           displayName: '내공 호흡',
           effectDescription: '최대 체력 +10, 체력 10 회복',
@@ -389,12 +436,21 @@ void main() {
           currentLevel: 0,
           nextLevel: 1,
         );
+        const herbalTonicChoice = LevelUpChoice(
+          id: herbalTonic,
+          displayName: 'herbal tonic',
+          effectDescription: 'heal 12',
+          type: LevelUpChoiceType.augment,
+          currentLevel: 0,
+          nextLevel: 1,
+        );
 
-        game.applyLevelUpChoice(choice);
+        game.applyLevelUpChoice(innerBreathChoice);
+        game.applyLevelUpChoice(herbalTonicChoice);
         game.updateMovementInput(VectorInput.zero);
 
-        expect(player.maxHealth, 115);
-        expect(player.currentHealth, 95);
+        expect(player.maxHealth, initialMaxHealth + 10);
+        expect(player.currentHealth, initialHealth + 22);
       },
     );
 
