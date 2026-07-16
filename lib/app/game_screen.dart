@@ -127,6 +127,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     _audioSettingsController.removeListener(_applyAccessibilitySettings);
     _game.updateMovementInput(VectorInput.zero);
+    final audio = widget.audioService;
+    if (audio != null) unawaited(audio.stopNonMusic());
     if (_ownsAudioSettingsController) _audioSettingsController.dispose();
     super.dispose();
   }
@@ -261,7 +263,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         return;
       }
 
-      await Navigator.of(context).pushReplacement(
+      final navigator = Navigator.of(context);
+      final playerSlot = widget.playerSlot;
+      final stageId = widget.stageId;
+      final audioService = widget.audioService;
+      final audioSettingsController = widget.audioSettingsController;
+      final metaProgressionService = _metaProgressionService;
+      await navigator.pushReplacement(
         MaterialPageRoute<void>(
           builder: (_) => RunSummaryScreen(
             result: result,
@@ -285,22 +293,24 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                 ? null
                 : _telemetryExportService.exportAll,
             onStart: () {
-              Navigator.of(context).pushReplacement(
+              navigator.pushReplacement(
                 MaterialPageRoute<void>(
                   builder: (_) => GameScreen(
-                    playerSlot: widget.playerSlot,
-                    stageId: widget.stageId,
-                    audioService: widget.audioService,
-                    audioSettingsController: widget.audioSettingsController,
-                    metaProgressionService: _metaProgressionService,
+                    playerSlot: playerSlot,
+                    stageId: stageId,
+                    audioService: audioService,
+                    audioSettingsController: audioSettingsController,
+                    metaProgressionService: metaProgressionService,
                   ),
                 ),
               );
             },
             onMenu: () {
-              _playAudio(AudioCue.uiBack);
-              _playAudio(AudioCue.menuMusic);
-              Navigator.of(context).popUntil((route) => route.isFirst);
+              if (audioService != null) {
+                unawaited(audioService.play(AudioCue.uiBack));
+                unawaited(audioService.play(AudioCue.menuMusic));
+              }
+              navigator.popUntil((route) => route.isFirst);
             },
           ),
         ),

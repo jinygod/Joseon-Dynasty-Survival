@@ -67,14 +67,29 @@ class GameAudioService {
     });
   }
 
+  Future<void> stopNonMusic() {
+    if (_disposed) return Future<void>.value();
+    return _enqueue(() async {
+      final targets = _activeVoices
+          .where((voice) => voice.request.channel != AudioChannel.music)
+          .toList(growable: false);
+      for (final voice in targets) {
+        _activeVoices.remove(voice);
+        await _guard(
+          operation: 'stopVoice',
+          cue: voice.request.cue,
+          action: voice.handle.stop,
+        );
+      }
+    });
+  }
+
   Future<void> applySettings() {
     if (_disposed) return Future<void>.value();
     return _enqueue(() async {
       final settings = _readSettings();
       final targets = _activeVoices
-          .where(
-            (voice) => settings.volumeFor(voice.request.channel) <= 0,
-          )
+          .where((voice) => settings.volumeFor(voice.request.channel) <= 0)
           .toList(growable: false);
       for (final voice in targets) {
         _activeVoices.remove(voice);
