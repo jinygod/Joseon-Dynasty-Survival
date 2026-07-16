@@ -28,7 +28,15 @@ void main() {
         'lowHealthWinCount': 1,
       });
 
-      _expectOriginalFields(restored, kills: 101, survival: 180);
+      _expectOriginalFields(
+        restored,
+        kills: 101,
+        survival: 180,
+        level: 11,
+        bossDefeats: 1,
+        unlockedWeaponCount: 2,
+        lowHealthWins: 1,
+      );
       _expectPostV1Defaults(restored);
     },
   );
@@ -48,7 +56,15 @@ void main() {
       'lowHealthWinCount': 1,
     });
 
-    _expectOriginalFields(restored, kills: 202, survival: 210);
+    _expectOriginalFields(
+      restored,
+      kills: 202,
+      survival: 210,
+      level: 13,
+      bossDefeats: 2,
+      unlockedWeaponCount: 2,
+      lowHealthWins: 1,
+    );
     _expectPostV1Defaults(restored);
   });
 
@@ -59,7 +75,6 @@ void main() {
       'unlockedWeaponIds': [hwandoSlash, talismanThrow],
       'unlockedAugmentIds': [martialTraining, rapidReload],
       'completedGoalIds': ['survive_3_minutes'],
-      'claimedRewardIds': ['survive_3_minutes'],
       'wallet': {'coin': 77, 'spiritJade': 4},
       'trainingProgress': {
         'commonRanks': {'common.max_health': 2},
@@ -79,8 +94,16 @@ void main() {
       'lowHealthWinCount': 2,
     });
 
-    _expectOriginalFields(restored, kills: 303, survival: 240);
-    expect(restored.claimedRewardIds, contains('survive_3_minutes'));
+    _expectOriginalFields(
+      restored,
+      kills: 303,
+      survival: 240,
+      level: 15,
+      bossDefeats: 3,
+      unlockedWeaponCount: 2,
+      lowHealthWins: 2,
+    );
+    expect(restored.claimedRewardIds, isEmpty);
     expect(restored.wallet, const Wallet(coin: 77, spiritJade: 4));
     expect(restored.trainingProgress.commonRanks['common.max_health'], 2);
     expect(
@@ -106,8 +129,16 @@ void main() {
       'completedGoalIds': ['survive_3_minutes'],
       'claimedRewardIds': ['survive_3_minutes'],
       'wallet': {'coin': 88, 'spiritJade': 5},
-      'trainingProgress': <String, Object?>{},
-      'shopProgress': <String, Object?>{},
+      'trainingProgress': {
+        'commonRanks': {'common.max_health': 3},
+        'characterRanks': {
+          exorcistDosa: {'base_damage': 2},
+        },
+        'activeCoreTraitIds': {exorcistDosa: 'dosa.talisman_mastery'},
+      },
+      'shopProgress': {
+        'purchasedItemIds': ['manual.exorcist_dosa'],
+      },
       'selectedCharacterId': exorcistDosa,
       'selectedStageId': plagueMarket,
       'totalKills': 404,
@@ -125,8 +156,30 @@ void main() {
       ],
     });
 
-    _expectOriginalFields(restored, kills: 404, survival: 270);
+    _expectOriginalFields(
+      restored,
+      kills: 404,
+      survival: 270,
+      level: 17,
+      bossDefeats: 4,
+      unlockedWeaponCount: 2,
+      lowHealthWins: 3,
+    );
+    expect(restored.claimedRewardIds, contains('survive_3_minutes'));
     expect(restored.wallet, const Wallet(coin: 88, spiritJade: 5));
+    expect(restored.trainingProgress.commonRanks['common.max_health'], 3);
+    expect(
+      restored.trainingProgress.characterRanks[exorcistDosa]?['base_damage'],
+      2,
+    );
+    expect(
+      restored.trainingProgress.activeCoreTraitIds[exorcistDosa],
+      'dosa.talisman_mastery',
+    );
+    expect(
+      restored.shopProgress.purchasedItemIds,
+      contains('manual.exorcist_dosa'),
+    );
     expect(restored.selectedCharacterId, exorcistDosa);
     expect(restored.selectedStageId, plagueMarket);
     expect(restored.unlockedStageIds, contains(plagueMarket));
@@ -179,6 +232,10 @@ void _expectOriginalFields(
   SaveState restored, {
   required int kills,
   required int survival,
+  required int level,
+  required int bossDefeats,
+  required int unlockedWeaponCount,
+  required int lowHealthWins,
 }) {
   expect(restored.schemaVersion, SaveState.currentSchemaVersion);
   expect(restored.unlockedCharacterIds, contains(exorcistDosa));
@@ -187,6 +244,10 @@ void _expectOriginalFields(
   expect(restored.completedGoalIds, contains('survive_3_minutes'));
   expect(restored.totalKills, kills);
   expect(restored.bestSurvivalSeconds, survival);
+  expect(restored.levelReachedInRun, level);
+  expect(restored.bossDefeats, bossDefeats);
+  expect(restored.unlockedWeaponCount, unlockedWeaponCount);
+  expect(restored.lowHealthWinCount, lowHealthWins);
 }
 
 void _expectPostV1Defaults(SaveState restored) {
