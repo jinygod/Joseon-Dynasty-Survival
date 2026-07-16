@@ -13,45 +13,71 @@ val signingProperties = Properties().apply {
     }
 }
 
-fun signingValue(propertyName: String, environmentName: String): String? =
-    signingProperties.getProperty(propertyName)?.trim()?.takeIf { it.isNotEmpty() }
-        ?: providers.environmentVariable(environmentName).orNull?.trim()?.takeIf { it.isNotEmpty() }
-
-val releaseSigningValues = mapOf(
-    "storeFile" to signingValue("storeFile", "ANDROID_KEYSTORE_PATH"),
-    "storePassword" to signingValue("storePassword", "ANDROID_KEYSTORE_PASSWORD"),
-    "keyAlias" to signingValue("keyAlias", "ANDROID_KEY_ALIAS"),
-    "keyPassword" to signingValue("keyPassword", "ANDROID_KEY_PASSWORD"),
-)
 val releaseSigningEnvironmentNames = mapOf(
     "storeFile" to "ANDROID_KEYSTORE_PATH",
     "storePassword" to "ANDROID_KEYSTORE_PASSWORD",
     "keyAlias" to "ANDROID_KEY_ALIAS",
     "keyPassword" to "ANDROID_KEY_PASSWORD",
+    "uploadCertSha256" to "ANDROID_UPLOAD_CERT_SHA256",
 )
+val fileSigningValues = releaseSigningEnvironmentNames.keys.associateWith { key ->
+    signingProperties.getProperty(key)?.trim()?.takeIf { it.isNotEmpty() }
+}
+val environmentSigningValues = releaseSigningEnvironmentNames.mapValues { (_, environmentName) ->
+    providers.environmentVariable(environmentName).orNull?.trim()?.takeIf { it.isNotEmpty() }
+}
+val environmentSigningConfigured = environmentSigningValues.values.any { !it.isNullOrBlank() }
+val releaseSigningSourcesMixed = signingPropertiesFile.isFile && environmentSigningConfigured
+val releaseSigningValues = if (signingPropertiesFile.isFile) {
+    fileSigningValues
+} else {
+    environmentSigningValues
+}
 val missingReleaseSigningValues = releaseSigningValues
     .filterValues { it.isNullOrBlank() }
     .keys
     .sorted()
 val releaseStoreFile = releaseSigningValues["storeFile"]?.let(rootProject::file)
-val releaseTaskRequested = gradle.startParameter.taskNames.any {
-    it.contains("release", ignoreCase = true)
-}
+val uploadCertSha256 = releaseSigningValues["uploadCertSha256"]
+    ?.replace(":", "")
+    ?.uppercase()
+val releasePackagingTaskName = Regex(
+    "^(assemble|bundle|package).*release.*$",
+    RegexOption.IGNORE_CASE,
+)
 
-if (releaseTaskRequested && missingReleaseSigningValues.isNotEmpty()) {
-    val missingDescription = missingReleaseSigningValues.joinToString { key ->
-        "$key (${releaseSigningEnvironmentNames.getValue(key)})"
+gradle.taskGraph.whenReady {
+    val includesReleasePackaging = allTasks.any { task ->
+        task.project == project && releasePackagingTaskName.matches(task.name)
     }
-    throw GradleException(
-        "Release signing configuration is incomplete. Missing: $missingDescription. " +
-            "Configure android/key.properties or the listed environment variables.",
-    )
-}
-if (releaseTaskRequested && releaseStoreFile?.isFile != true) {
-    throw GradleException(
-        "Release signing keystore does not exist at the configured storeFile. " +
-            "Check android/key.properties or ANDROID_KEYSTORE_PATH.",
-    )
+    if (includesReleasePackaging) {
+        if (releaseSigningSourcesMixed) {
+            throw GradleException(
+                "Release signing configuration must not mix android/key.properties and " +
+                    "ANDROID_* environment variables. Use one complete source.",
+            )
+        }
+        if (missingReleaseSigningValues.isNotEmpty()) {
+            val missingDescription = missingReleaseSigningValues.joinToString { key ->
+                "$key (${releaseSigningEnvironmentNames.getValue(key)})"
+            }
+            throw GradleException(
+                "Release signing configuration is incomplete. Missing: $missingDescription. " +
+                    "Configure one complete source: android/key.properties or environment variables.",
+            )
+        }
+        if (releaseStoreFile?.isFile != true) {
+            throw GradleException(
+                "Release signing keystore does not exist at the configured storeFile. " +
+                    "Check android/key.properties or ANDROID_KEYSTORE_PATH.",
+            )
+        }
+        if (uploadCertSha256?.matches(Regex("^[0-9A-F]{64}$")) != true) {
+            throw GradleException(
+                "Release upload certificate SHA-256 must contain exactly 64 hexadecimal digits.",
+            )
+        }
+    }
 }
 
 android {
@@ -76,7 +102,10 @@ android {
     }
 
     val releaseSigningConfig = if (
-        missingReleaseSigningValues.isEmpty() && releaseStoreFile?.isFile == true
+        !releaseSigningSourcesMixed &&
+            missingReleaseSigningValues.isEmpty() &&
+            releaseStoreFile?.isFile == true &&
+            uploadCertSha256?.matches(Regex("^[0-9A-F]{64}$")) == true
     ) {
         signingConfigs.create("release") {
             storeFile = releaseStoreFile

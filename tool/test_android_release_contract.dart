@@ -6,6 +6,10 @@ void main() {
   final gitignore = _read('.gitignore', failures);
   final buildScript = _read('tool/build_android_release.ps1', failures);
   final verifyScript = _read('tool/verify_android_release.ps1', failures);
+  final restoreScript = _read(
+    'tool/restore_verify_android_release.ps1',
+    failures,
+  );
   final guide = _read('docs/release/android-signing.md', failures);
 
   _requiresAll(
@@ -16,8 +20,14 @@ void main() {
       'ANDROID_KEYSTORE_PASSWORD',
       'ANDROID_KEY_ALIAS',
       'ANDROID_KEY_PASSWORD',
+      'ANDROID_UPLOAD_CERT_SHA256',
       'GradleException',
       'Release signing configuration is incomplete',
+      'gradle.taskGraph.whenReady',
+      'assemble',
+      'bundle',
+      'package',
+      'must not mix',
     ],
     'Gradle release signing contract',
     failures,
@@ -51,16 +61,50 @@ void main() {
       '--split-debug-info',
       'Get-FileHash',
       'SHA256SUMS.txt',
+      'UPLOAD-CERT-SHA256.txt',
       'Copy-Item',
       'verify_android_release.ps1',
+      'restore_verify_android_release.ps1',
+      'overlap',
+      'Remove-Item',
     ],
     'release build script',
     failures,
   );
   _requiresAll(
     verifyScript,
-    ['jarsigner', '-verify', '-strict', 'Get-FileHash', 'SHA256'],
+    [
+      'jarsigner',
+      '-verify',
+      '-strict',
+      'ExpectedCertSha256',
+      'X509Certificate2',
+      'certificate fingerprint does not match',
+      'has expired',
+      'not yet valid',
+      'disabled algorithm',
+      'Get-FileHash',
+      'SHA256',
+    ],
     'release verification script',
+    failures,
+  );
+  _forbids(
+    verifyScript,
+    [r'$jarsignerExitCode -notin @(0, 4)'],
+    'jarsigner exit 4 must not be accepted generically',
+    failures,
+  );
+  _requiresAll(
+    restoreScript,
+    [
+      'SHA256SUMS.txt',
+      'Get-FileHash',
+      'UPLOAD-CERT-SHA256.txt',
+      'verify_android_release.ps1',
+      'Unexpected backup file',
+    ],
+    'restore verification script',
     failures,
   );
   _requiresAll(
@@ -68,6 +112,7 @@ void main() {
     [
       'key.properties',
       'ANDROID_KEYSTORE_PATH',
+      'ANDROID_UPLOAD_CERT_SHA256',
       'build_android_release.ps1',
       'verify_android_release.ps1',
       'SHA256SUMS.txt',

@@ -16,7 +16,7 @@
 
 ## 2. 서명 설정
 
-둘 중 한 방식만 사용한다. `android/key.properties`가 있으면 그 값이 환경 변수보다 우선한다.
+둘 중 한 방식만 사용한다. `android/key.properties`와 환경 변수는 혼합할 수 없으며 각 방식에 필요한 값을 모두 설정해야 한다.
 
 로컬 전용 `android/key.properties`:
 
@@ -25,6 +25,7 @@ storeFile=C:/secure/pixel-survivor-upload.jks
 storePassword=<keystore-password>
 keyAlias=upload
 keyPassword=<key-password>
+uploadCertSha256=<64-hex-upload-certificate-sha256>
 ```
 
 또는 CI/일회성 PowerShell 환경 변수:
@@ -34,7 +35,10 @@ $env:ANDROID_KEYSTORE_PATH = 'C:\secure\pixel-survivor-upload.jks'
 $env:ANDROID_KEYSTORE_PASSWORD = '<keystore-password>'
 $env:ANDROID_KEY_ALIAS = 'upload'
 $env:ANDROID_KEY_PASSWORD = '<key-password>'
+$env:ANDROID_UPLOAD_CERT_SHA256 = '<64-hex-upload-certificate-sha256>'
 ```
+
+`keytool -list -v -keystore <path> -alias <alias>`에 표시되는 SHA-256 인증서 지문에서 콜론을 제거해 사용한다. 지문은 비밀이 아니지만, 빌드가 의도한 업로드 인증서로 서명됐는지 확인하는 신뢰 기준이다. `android/key.properties`와 `ANDROID_*` 환경 변수는 혼합하지 않고 한 소스에 다섯 값을 모두 설정한다.
 
 `android/key.properties`, `*.jks`, `*.keystore`는 `.gitignore`에 포함되어 있다. 암호나 키를 소스, Gradle 파일, 빌드 로그에 넣지 않는다.
 
@@ -52,14 +56,25 @@ $env:ANDROID_KEY_PASSWORD = '<key-password>'
 - `symbols/`: 난독화된 스택 추적 복구에 필요한 split-debug-info
 - `SHA256SUMS.txt`: AAB, 심볼, 메타데이터의 SHA-256
 - `BUILD-METADATA.txt`: 재현할 빌드 명령과 버전
+- `UPLOAD-CERT-SHA256.txt`: 검증에 사용한 업로드 인증서 지문
 
 스크립트는 `jarsigner -verify -strict`가 모든 AAB 항목의 서명을 확인한 뒤 저장소 밖 `-BackupRoot`에 동일한 디렉터리를 복사하고 모든 파일 해시를 다시 비교한다. 자체 서명 업로드 인증서의 신뢰 체인은 Play Console에서 확인하므로 로컬 검증에는 경고가 표시될 수 있다. 기존 release-id나 백업을 덮어쓰지 않는다. 개별 AAB를 다시 검사하려면 다음을 실행한다.
 
 ```powershell
 .\tool\verify_android_release.ps1 `
   -AabPath '.\dist\android\<release-id>\pixel-survivor-<version>.aab' `
-  -SymbolsPath '.\dist\android\<release-id>\symbols'
+  -SymbolsPath '.\dist\android\<release-id>\symbols' `
+  -ExpectedCertSha256 '<64-hex-upload-certificate-sha256>'
 ```
+
+외부 백업을 복원한 뒤에는 manifest의 모든 파일을 다시 해시하고 AAB 인증서까지 재검증한다.
+
+```powershell
+.\tool\restore_verify_android_release.ps1 `
+  -ArtifactDirectory 'D:\pixel-survivor-release-backup\<release-id>'
+```
+
+`OutputRoot`와 `BackupRoot`는 동일하거나 서로의 상위/하위 디렉터리일 수 없다. 빌드·검증·백업 중 실패하면 해당 release-id의 부분 디렉터리만 제거하므로 같은 ID로 안전하게 재시도할 수 있다.
 
 한국어가 포함된 작업 경로에서 Flutter 도구가 실패하면 `tool/release_check.ps1`로 기본 검사를 먼저 수행하고, 임시 ASCII 드라이브에 저장소를 매핑한 셸에서 같은 빌드 스크립트를 실행한다.
 
