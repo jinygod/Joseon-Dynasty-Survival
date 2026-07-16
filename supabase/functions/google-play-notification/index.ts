@@ -27,6 +27,12 @@ interface NotificationDeps {
   };
 }
 
+function isUuid(value: string | undefined): value is string {
+  return value !== undefined &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      .test(value);
+}
+
 export async function handler(
   request: Request,
   deps: NotificationDeps,
@@ -104,7 +110,7 @@ export async function handler(
       const lineItem = purchase.lineItems[0];
       if (
         purchase.purchaseState !== "PURCHASED" ||
-        !purchase.obfuscatedExternalAccountId ||
+        !isUuid(purchase.obfuscatedExternalAccountId) ||
         purchase.lineItems.length !== 1 ||
         lineItem.productId !== notice.sku ||
         lineItem.quantity !== 1

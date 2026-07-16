@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(48);
+select plan(54);
 
 select has_schema('private');
 select ok(to_regclass('public.profiles') is not null, 'profiles exists');
@@ -99,6 +99,25 @@ select is((select count(*) from public.wallet_ledger where idempotency_key = 'go
   'duplicate voided purchase event records one ledger entry');
 select is((select royal_jade from public.wallets where user_id = '00000000-0000-0000-0000-000000000001'), 15::bigint,
   'duplicate voided purchase event debits once');
+
+select lives_ok($$ select * from private.record_google_play_purchase(
+  '00000000-0000-0000-0000-000000000003', 'royal_jade_small', 'ordering-token',
+  'ordering-order', 'PURCHASED', '{}') $$,
+  'type-1 reconciliation grant can precede retried void');
+select lives_ok($$ select * from private.apply_wallet_entry(
+  '00000000-0000-0000-0000-000000000003', -100, 'google_play_refund',
+  'google_play_notification', 'ordering-void', 'google-play-event:ordering-void', '{}') $$,
+  'retried void applies after grant');
+select lives_ok($$ select * from private.apply_wallet_entry(
+  '00000000-0000-0000-0000-000000000003', -100, 'google_play_refund',
+  'google_play_notification', 'ordering-void', 'google-play-event:ordering-void', '{}') $$,
+  'duplicate retried void remains idempotent');
+select is((select royal_jade from public.wallets where user_id = '00000000-0000-0000-0000-000000000003'), 0::bigint,
+  'grant then void leaves no spendable balance');
+select is((select count(*) from public.wallet_ledger where idempotency_key = 'google-play:ordering-token'), 1::bigint,
+  'ordered reconciliation records one grant');
+select is((select count(*) from public.wallet_ledger where idempotency_key = 'google-play-event:ordering-void'), 1::bigint,
+  'ordered reconciliation records one refund');
 
 reset role;
 insert into public.player_progress (user_id, schema_version, progress)

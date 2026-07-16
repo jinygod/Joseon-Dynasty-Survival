@@ -107,7 +107,7 @@ function notificationDeps(overrides: Record<string, unknown> = {}) {
           quantity: 1,
           consumptionState: "CONSUMPTION_STATE_YET_TO_BE_CONSUMED",
         }],
-        obfuscatedExternalAccountId: "user-1",
+        obfuscatedExternalAccountId: "00000000-0000-0000-0000-000000000001",
         raw: {},
       }),
       consume: async () => {},
@@ -592,7 +592,7 @@ Deno.test("one-time purchased notification verifies, grants, and consumes", asyn
               quantity: 1,
               consumptionState: "CONSUMPTION_STATE_YET_TO_BE_CONSUMED",
             }],
-            obfuscatedExternalAccountId: "user-1",
+            obfuscatedExternalAccountId: "00000000-0000-0000-0000-000000000001",
             raw: {},
           };
         },
@@ -611,6 +611,303 @@ Deno.test("one-time purchased notification verifies, grants, and consumes", asyn
   equal(response.status, 200);
   equal(await body(response), { accepted: true, duplicate: false });
   equal(calls, ["google.get", "economy.grant", "google.consume"]);
+});
+
+Deno.test("type-1 reconciliation retries when account binding is missing", async () => {
+  let grants = 0;
+  const event = btoa(JSON.stringify({
+    packageName: "com.example.game",
+    oneTimeProductNotification: {
+      purchaseToken: "missing-account-token",
+      notificationType: 1,
+      sku: "royal_jade_small",
+    },
+  }));
+  const response = await notification(
+    request(
+      { message: { messageId: "missing-account", data: event } },
+      "pubsub",
+    ),
+    notificationDeps({
+      google: {
+        getProductPurchase: async () => ({
+          purchaseState: "PURCHASED",
+          lineItems: [{
+            productId: "royal_jade_small",
+            quantity: 1,
+            consumptionState: "CONSUMPTION_STATE_YET_TO_BE_CONSUMED",
+          }],
+          raw: {},
+        }),
+      },
+      economy: {
+        grantPurchase: async () => {
+          grants++;
+          return { balance: 100, debt: 0, duplicate: false };
+        },
+      },
+    }),
+  );
+  equal(response.status, 503);
+  equal(await body(response), { code: "reconciliation_retry_required" });
+  equal(grants, 0);
+});
+
+Deno.test("type-1 reconciliation rejects malformed account UUID", async () => {
+  let grants = 0;
+  const event = btoa(JSON.stringify({
+    packageName: "com.example.game",
+    oneTimeProductNotification: {
+      purchaseToken: "malformed-account-token",
+      notificationType: 1,
+      sku: "royal_jade_small",
+    },
+  }));
+  const response = await notification(
+    request(
+      { message: { messageId: "malformed-account", data: event } },
+      "pubsub",
+    ),
+    notificationDeps({
+      google: {
+        getProductPurchase: async () => ({
+          purchaseState: "PURCHASED",
+          lineItems: [{
+            productId: "royal_jade_small",
+            quantity: 1,
+            consumptionState: "CONSUMPTION_STATE_YET_TO_BE_CONSUMED",
+          }],
+          obfuscatedExternalAccountId: "not-a-uuid",
+          raw: {},
+        }),
+      },
+      economy: {
+        grantPurchase: async () => {
+          grants++;
+          return { balance: 100, debt: 0, duplicate: false };
+        },
+      },
+    }),
+  );
+  equal(response.status, 503);
+  equal(await body(response), { code: "reconciliation_retry_required" });
+  equal(grants, 0);
+});
+
+Deno.test("type-1 reconciliation retries a Google SKU mismatch", async () => {
+  const event = btoa(JSON.stringify({
+    packageName: "com.example.game",
+    oneTimeProductNotification: {
+      purchaseToken: "sku-mismatch-token",
+      notificationType: 1,
+      sku: "royal_jade_small",
+    },
+  }));
+  const response = await notification(
+    request({ message: { messageId: "sku-mismatch", data: event } }, "pubsub"),
+    notificationDeps({
+      google: {
+        getProductPurchase: async () => ({
+          purchaseState: "PURCHASED",
+          lineItems: [{
+            productId: "royal_jade_medium",
+            quantity: 1,
+            consumptionState: "CONSUMPTION_STATE_YET_TO_BE_CONSUMED",
+          }],
+          obfuscatedExternalAccountId: "00000000-0000-0000-0000-000000000001",
+          raw: {},
+        }),
+      },
+    }),
+  );
+  equal(response.status, 503);
+  equal(await body(response), { code: "reconciliation_retry_required" });
+});
+
+Deno.test("type-1 reconciliation retries multiple line items", async () => {
+  const event = btoa(JSON.stringify({
+    packageName: "com.example.game",
+    oneTimeProductNotification: {
+      purchaseToken: "multi-line-token",
+      notificationType: 1,
+      sku: "royal_jade_small",
+    },
+  }));
+  const response = await notification(
+    request({ message: { messageId: "multi-line", data: event } }, "pubsub"),
+    notificationDeps({
+      google: {
+        getProductPurchase: async () => ({
+          purchaseState: "PURCHASED",
+          lineItems: [
+            {
+              productId: "royal_jade_small",
+              quantity: 1,
+              consumptionState: "CONSUMPTION_STATE_YET_TO_BE_CONSUMED",
+            },
+            {
+              productId: "royal_jade_medium",
+              quantity: 1,
+              consumptionState: "CONSUMPTION_STATE_YET_TO_BE_CONSUMED",
+            },
+          ],
+          obfuscatedExternalAccountId: "00000000-0000-0000-0000-000000000001",
+          raw: {},
+        }),
+      },
+    }),
+  );
+  equal(response.status, 503);
+  equal(await body(response), { code: "reconciliation_retry_required" });
+});
+
+Deno.test("type-1 reconciliation retries quantity greater than one", async () => {
+  const event = btoa(JSON.stringify({
+    packageName: "com.example.game",
+    oneTimeProductNotification: {
+      purchaseToken: "multi-quantity-token",
+      notificationType: 1,
+      sku: "royal_jade_small",
+    },
+  }));
+  const response = await notification(
+    request(
+      { message: { messageId: "multi-quantity", data: event } },
+      "pubsub",
+    ),
+    notificationDeps({
+      google: {
+        getProductPurchase: async () => ({
+          purchaseState: "PURCHASED",
+          lineItems: [{
+            productId: "royal_jade_small",
+            quantity: 2,
+            consumptionState: "CONSUMPTION_STATE_YET_TO_BE_CONSUMED",
+          }],
+          obfuscatedExternalAccountId: "00000000-0000-0000-0000-000000000001",
+          raw: {},
+        }),
+      },
+    }),
+  );
+  equal(response.status, 503);
+  equal(await body(response), { code: "reconciliation_retry_required" });
+});
+
+Deno.test("type-1 response-loss retry grants once and skips consumed token", async () => {
+  let lookups = 0;
+  let grants = 0;
+  let consumeCalls = 0;
+  const event = btoa(JSON.stringify({
+    packageName: "com.example.game",
+    oneTimeProductNotification: {
+      purchaseToken: "type1-response-loss-token",
+      notificationType: 1,
+      sku: "royal_jade_small",
+    },
+  }));
+  const deps = notificationDeps({
+    google: {
+      getProductPurchase: async () => ({
+        purchaseState: "PURCHASED",
+        lineItems: [{
+          productId: "royal_jade_small",
+          quantity: 1,
+          consumptionState: lookups++ === 0
+            ? "CONSUMPTION_STATE_YET_TO_BE_CONSUMED"
+            : "CONSUMPTION_STATE_CONSUMED",
+        }],
+        obfuscatedExternalAccountId: "00000000-0000-0000-0000-000000000001",
+        raw: {},
+      }),
+      consume: async () => {
+        consumeCalls++;
+      },
+    },
+    economy: {
+      grantPurchase: async () => ({
+        balance: 100,
+        debt: 0,
+        duplicate: grants++ > 0,
+      }),
+    },
+  });
+  const first = await notification(
+    request({ message: { messageId: "type1-first", data: event } }, "pubsub"),
+    deps,
+  );
+  const retry = await notification(
+    request({ message: { messageId: "type1-retry", data: event } }, "pubsub"),
+    deps,
+  );
+  equal(await body(first), { accepted: true, duplicate: false });
+  equal(await body(retry), { accepted: true, duplicate: true });
+  equal(grants, 2);
+  equal(consumeCalls, 1);
+});
+
+Deno.test("voided-before-grant retries then refunds after type-1 grant", async () => {
+  let known = false;
+  let balance = 0;
+  const token = "ordered-token";
+  const purchaseEvent = btoa(JSON.stringify({
+    packageName: "com.example.game",
+    oneTimeProductNotification: {
+      purchaseToken: token,
+      notificationType: 1,
+      sku: "royal_jade_small",
+    },
+  }));
+  const voidedEvent = btoa(JSON.stringify({
+    packageName: "com.example.game",
+    voidedPurchaseNotification: {
+      purchaseToken: token,
+      productType: 2,
+      refundType: 1,
+    },
+  }));
+  const deps = notificationDeps({
+    economy: {
+      grantPurchase: async () => {
+        const duplicate = known;
+        if (!known) {
+          known = true;
+          balance += 100;
+        }
+        return { balance, debt: 0, duplicate };
+      },
+      refund: async () => {
+        if (!known) return { ignored: true, reason: "unknown_token" };
+        balance -= 100;
+        return { balance, debt: 0 };
+      },
+    },
+  });
+  const earlyVoid = await notification(
+    request(
+      { message: { messageId: "ordered-void", data: voidedEvent } },
+      "pubsub",
+    ),
+    deps,
+  );
+  const grant = await notification(
+    request(
+      { message: { messageId: "ordered-grant", data: purchaseEvent } },
+      "pubsub",
+    ),
+    deps,
+  );
+  const retriedVoid = await notification(
+    request(
+      { message: { messageId: "ordered-void", data: voidedEvent } },
+      "pubsub",
+    ),
+    deps,
+  );
+  equal(earlyVoid.status, 503);
+  equal(await body(grant), { accepted: true, duplicate: false });
+  equal(await body(retriedVoid), { balance: 0, debt: 0 });
+  equal(balance, 0);
 });
 
 Deno.test("notification package mismatch is rejected", async () => {
