@@ -1,6 +1,10 @@
-[CmdletBinding()]
+[CmdletBinding(DefaultParameterSetName = 'Digest')]
 param(
     [Parameter(Mandatory = $true)] [string]$ArtifactDirectory,
+    [Parameter(Mandatory = $true, ParameterSetName = 'Digest')]
+    [string]$ExpectedManifestSha256,
+    [Parameter(Mandatory = $true, ParameterSetName = 'TrustAnchor')]
+    [string]$TrustAnchorPath,
     [string]$JarsignerPath,
     [string]$KeytoolPath
 )
@@ -18,6 +22,16 @@ function Get-RelativeFilePath {
     return [Uri]::UnescapeDataString($baseUri.MakeRelativeUri([Uri]$FilePath).ToString())
 }
 
+function Test-PathContains {
+    param(
+        [Parameter(Mandatory = $true)] [string]$Parent,
+        [Parameter(Mandatory = $true)] [string]$Candidate
+    )
+    $parentPrefix = $Parent.TrimEnd('\') + '\'
+    return $Candidate.Equals($Parent, [StringComparison]::OrdinalIgnoreCase) -or
+        $Candidate.StartsWith($parentPrefix, [StringComparison]::OrdinalIgnoreCase)
+}
+
 if (-not (Test-Path -LiteralPath $ArtifactDirectory -PathType Container)) {
     throw "Backup artifact directory not found: $ArtifactDirectory"
 }
@@ -26,6 +40,27 @@ $rootPrefix = $root.TrimEnd('\') + '\'
 $manifestPath = Join-Path $root 'SHA256SUMS.txt'
 if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
     throw "SHA256SUMS.txt not found in backup: $root"
+}
+
+if ($PSCmdlet.ParameterSetName -eq 'TrustAnchor') {
+    if (-not (Test-Path -LiteralPath $TrustAnchorPath -PathType Leaf)) {
+        throw "Manifest trust anchor file not found: $TrustAnchorPath"
+    }
+    $resolvedTrustAnchor = (Resolve-Path -LiteralPath $TrustAnchorPath).Path
+    $trustAnchorDirectory = [IO.Path]::GetFullPath((Split-Path -Parent $resolvedTrustAnchor)).TrimEnd('\')
+    if ((Test-PathContains -Parent $root -Candidate $trustAnchorDirectory) -or
+        (Test-PathContains -Parent $trustAnchorDirectory -Candidate $root)) {
+        throw 'Manifest trust anchor path and backup must not overlap or contain one another.'
+    }
+    $ExpectedManifestSha256 = (Get-Content -LiteralPath $resolvedTrustAnchor -Raw).Trim()
+}
+$expectedManifestHash = ($ExpectedManifestSha256 -replace '[:\s]', '').ToLowerInvariant()
+if ($expectedManifestHash -notmatch '^[0-9a-f]{64}$') {
+    throw 'ExpectedManifestSha256 or TrustAnchorPath must provide exactly 64 hexadecimal digits.'
+}
+$actualManifestHash = (Get-FileHash -LiteralPath $manifestPath -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($actualManifestHash -ne $expectedManifestHash) {
+    throw 'Manifest SHA-256 does not match trust anchor.'
 }
 
 $manifestEntries = [Collections.Generic.Dictionary[string, string]]::new(
@@ -85,6 +120,7 @@ $signature = & $verifyScript -AabPath $aabFiles[0].FullName `
 [PSCustomObject]@{
     ArtifactDirectory = $root
     ManifestEntries = $manifestEntries.Count
+    ManifestSha256 = $actualManifestHash
     AabPath = $aabFiles[0].FullName
     CertificateSha256 = $signature.CertificateSha256
 }

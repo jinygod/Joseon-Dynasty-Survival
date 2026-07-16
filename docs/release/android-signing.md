@@ -47,7 +47,9 @@ $env:ANDROID_UPLOAD_CERT_SHA256 = '<64-hex-upload-certificate-sha256>'
 백업 위치는 반드시 저장소 밖이어야 한다. 스크립트는 `flutter build appbundle --release --obfuscate --split-debug-info`를 실행하고, AAB 서명과 심볼을 검증한 뒤 SHA-256 목록과 백업 사본을 만든다.
 
 ```powershell
-.\tool\build_android_release.ps1 -BackupRoot 'D:\pixel-survivor-release-backup'
+.\tool\build_android_release.ps1 `
+  -BackupRoot 'D:\pixel-survivor-release-backup' `
+  -TrustAnchorRoot 'E:\pixel-survivor-release-trust'
 ```
 
 산출물은 `dist/android/<release-id>/`에 생성된다.
@@ -60,6 +62,8 @@ $env:ANDROID_UPLOAD_CERT_SHA256 = '<64-hex-upload-certificate-sha256>'
 
 스크립트는 `jarsigner -verify -strict`가 모든 AAB 항목의 서명을 확인한 뒤 저장소 밖 `-BackupRoot`에 동일한 디렉터리를 복사하고 모든 파일 해시를 다시 비교한다. 자체 서명 업로드 인증서의 신뢰 체인은 Play Console에서 확인하므로 로컬 검증에는 경고가 표시될 수 있다. 기존 release-id나 백업을 덮어쓰지 않는다. 개별 AAB를 다시 검사하려면 다음을 실행한다.
 
+`SHA256SUMS.txt` 자체의 SHA-256은 `<release-id>.MANIFEST-SHA256.txt`로 `-TrustAnchorRoot`에 별도 저장된다. 이 trust anchor가 backup 밖에 있어야 artifacts와 manifest를 함께 바꿔 다시 해시하는 변조도 탐지할 수 있다.
+
 ```powershell
 .\tool\verify_android_release.ps1 `
   -AabPath '.\dist\android\<release-id>\pixel-survivor-<version>.aab' `
@@ -71,10 +75,11 @@ $env:ANDROID_UPLOAD_CERT_SHA256 = '<64-hex-upload-certificate-sha256>'
 
 ```powershell
 .\tool\restore_verify_android_release.ps1 `
-  -ArtifactDirectory 'D:\pixel-survivor-release-backup\<release-id>'
+  -ArtifactDirectory 'D:\pixel-survivor-release-backup\<release-id>' `
+  -TrustAnchorPath 'E:\pixel-survivor-release-trust\<release-id>.MANIFEST-SHA256.txt'
 ```
 
-`OutputRoot`와 `BackupRoot`는 동일하거나 서로의 상위/하위 디렉터리일 수 없다. 빌드·검증·백업 중 실패하면 해당 release-id의 부분 디렉터리만 제거하므로 같은 ID로 안전하게 재시도할 수 있다.
+자동화 시스템이 digest를 별도 보안 저장소에서 전달할 때는 `-TrustAnchorPath` 대신 `-ExpectedManifestSha256 <64-hex>`를 사용할 수 있다. `OutputRoot`, `BackupRoot`, `TrustAnchorRoot`는 동일하거나 서로의 상위/하위 디렉터리일 수 없다. 빌드·검증·백업 중 실패하면 해당 release-id의 부분 디렉터리와 trust anchor만 제거하므로 같은 ID로 안전하게 재시도할 수 있다.
 
 한국어가 포함된 작업 경로에서 Flutter 도구가 실패하면 `tool/release_check.ps1`로 기본 검사를 먼저 수행하고, 임시 ASCII 드라이브에 저장소를 매핑한 셸에서 같은 빌드 스크립트를 실행한다.
 
@@ -85,7 +90,9 @@ R:
 $env:PUB_CACHE = 'C:\flutter-pub-cache'
 $env:ANDROID_HOME = 'S:\'
 $env:ANDROID_SDK_ROOT = 'S:\'
-.\tool\build_android_release.ps1 -BackupRoot 'D:\pixel-survivor-release-backup'
+.\tool\build_android_release.ps1 `
+  -BackupRoot 'D:\pixel-survivor-release-backup' `
+  -TrustAnchorRoot 'E:\pixel-survivor-release-trust'
 Remove-Item Env:PUB_CACHE
 Remove-Item Env:ANDROID_HOME
 Remove-Item Env:ANDROID_SDK_ROOT

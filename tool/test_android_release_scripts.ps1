@@ -38,6 +38,7 @@ $restoreScript = Join-Path $PSScriptRoot 'restore_verify_android_release.ps1'
 $testRoot = Join-Path ([IO.Path]::GetTempPath()) "pixel-survivor-release-script-test-$PID"
 $outputRoot = Join-Path $testRoot 'output'
 $backupRoot = Join-Path $testRoot 'backup'
+$trustRoot = Join-Path $testRoot 'trust'
 $fakeFlutter = Join-Path $testRoot 'flutter-fail.cmd'
 $oldEnvironment = @{}
 $signingNames = @(
@@ -49,19 +50,25 @@ foreach ($name in $signingNames) { $oldEnvironment[$name] = [Environment]::GetEn
 New-Item -ItemType Directory -Path $testRoot | Out-Null
 try {
     Assert-ThrowsLike -Pattern '*must not overlap*' -Action {
-        & $buildScript -OutputRoot $outputRoot -BackupRoot $outputRoot -ReleaseId 'overlap'
+        & $buildScript -OutputRoot $outputRoot -BackupRoot $outputRoot `
+            -TrustAnchorRoot $trustRoot -ReleaseId 'overlap'
     }
     Assert-ThrowsLike -Pattern '*must not overlap*' -Action {
         & $buildScript -OutputRoot $outputRoot -BackupRoot (Join-Path $outputRoot 'nested') `
-            -ReleaseId 'nested-overlap'
+            -TrustAnchorRoot $trustRoot -ReleaseId 'nested-overlap'
     }
     Assert-ThrowsLike -Pattern '*must not overlap*' -Action {
         & $buildScript -OutputRoot (Join-Path $backupRoot 'nested') -BackupRoot $backupRoot `
-            -ReleaseId 'reverse-nested-overlap'
+            -TrustAnchorRoot $trustRoot -ReleaseId 'reverse-nested-overlap'
+    }
+    Assert-ThrowsLike -Pattern '*trust anchor*must not overlap*' -Action {
+        & $buildScript -OutputRoot $outputRoot -BackupRoot $backupRoot `
+            -TrustAnchorRoot (Join-Path $backupRoot 'trust') -ReleaseId 'trust-overlap'
     }
     foreach ($name in $signingNames) { [Environment]::SetEnvironmentVariable($name, $null) }
     Assert-ThrowsLike -Pattern '*uploadCertSha256 must contain exactly 64 hexadecimal digits*' -Action {
-        & $buildScript -OutputRoot $outputRoot -BackupRoot $backupRoot -ReleaseId 'missing-fingerprint'
+        & $buildScript -OutputRoot $outputRoot -BackupRoot $backupRoot `
+            -TrustAnchorRoot $trustRoot -ReleaseId 'missing-fingerprint'
     }
 
     [IO.File]::WriteAllText($fakeFlutter, "@exit /b 23`r`n")
@@ -72,12 +79,12 @@ try {
     $env:ANDROID_UPLOAD_CERT_SHA256 = 'A' * 64
     foreach ($unsafeReleaseId in @('.', '..')) {
         Assert-ThrowsLike -Pattern '*ReleaseId must not be dot traversal*' -Action {
-            & $buildScript -OutputRoot $outputRoot -BackupRoot $backupRoot `
+            & $buildScript -OutputRoot $outputRoot -BackupRoot $backupRoot -TrustAnchorRoot $trustRoot `
                 -ReleaseId $unsafeReleaseId -FlutterExecutable $fakeFlutter
         }
     }
     Assert-ThrowsLike -Pattern '*flutter build appbundle failed*' -Action {
-        & $buildScript -OutputRoot $outputRoot -BackupRoot $backupRoot `
+        & $buildScript -OutputRoot $outputRoot -BackupRoot $backupRoot -TrustAnchorRoot $trustRoot `
             -ReleaseId 'retryable' -FlutterExecutable $fakeFlutter
     }
     if (Test-Path -LiteralPath (Join-Path $outputRoot 'retryable')) {
@@ -94,14 +101,29 @@ try {
     [IO.File]::WriteAllText((Join-Path $restoreRoot 'BUILD-METADATA.txt'), 'metadata')
     [IO.File]::WriteAllText((Join-Path $restoreRoot 'UPLOAD-CERT-SHA256.txt'), ('A' * 64))
     Write-HashManifest -Root $restoreRoot
+    $expectedManifestHash = (Get-FileHash -LiteralPath (Join-Path $restoreRoot 'SHA256SUMS.txt') `
+        -Algorithm SHA256).Hash
+    New-Item -ItemType Directory -Path $trustRoot -Force | Out-Null
+    $trustAnchorPath = Join-Path $trustRoot 'restore.MANIFEST-SHA256.txt'
+    [IO.File]::WriteAllText($trustAnchorPath, $expectedManifestHash)
+    $internalAnchorPath = Join-Path $restoreRoot 'untrusted-anchor.txt'
+    [IO.File]::WriteAllText($internalAnchorPath, $expectedManifestHash)
+    Assert-ThrowsLike -Pattern '*trust anchor path and backup must not overlap*' -Action {
+        & $restoreScript -ArtifactDirectory $restoreRoot -TrustAnchorPath $internalAnchorPath
+    }
+    Remove-Item -LiteralPath $internalAnchorPath
     [IO.File]::WriteAllText((Join-Path $restoreRoot 'unexpected.txt'), 'unexpected')
     Assert-ThrowsLike -Pattern '*Unexpected backup file*' -Action {
-        & $restoreScript -ArtifactDirectory $restoreRoot
+        & $restoreScript -ArtifactDirectory $restoreRoot -ExpectedManifestSha256 $expectedManifestHash
     }
     Remove-Item -LiteralPath (Join-Path $restoreRoot 'unexpected.txt')
     [IO.File]::AppendAllText((Join-Path $restoreRoot 'BUILD-METADATA.txt'), '-tampered')
     Assert-ThrowsLike -Pattern '*Backup hash mismatch*' -Action {
-        & $restoreScript -ArtifactDirectory $restoreRoot
+        & $restoreScript -ArtifactDirectory $restoreRoot -ExpectedManifestSha256 $expectedManifestHash
+    }
+    Write-HashManifest -Root $restoreRoot
+    Assert-ThrowsLike -Pattern '*Manifest SHA-256 does not match trust anchor*' -Action {
+        & $restoreScript -ArtifactDirectory $restoreRoot -TrustAnchorPath $trustAnchorPath
     }
 
     $global:LASTEXITCODE = 0

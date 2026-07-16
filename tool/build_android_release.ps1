@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)] [string]$BackupRoot,
+    [Parameter(Mandatory = $true)] [string]$TrustAnchorRoot,
     [string]$OutputRoot,
     [string]$ReleaseId,
     [string]$FlutterExecutable = 'flutter',
@@ -62,12 +63,22 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 if (-not $OutputRoot) { $OutputRoot = Join-Path $repoRoot 'dist\android' }
 $resolvedOutputRoot = [IO.Path]::GetFullPath($OutputRoot).TrimEnd('\')
 $resolvedBackupRoot = [IO.Path]::GetFullPath($BackupRoot).TrimEnd('\')
+$resolvedTrustAnchorRoot = [IO.Path]::GetFullPath($TrustAnchorRoot).TrimEnd('\')
 if (Test-PathContains -Parent $repoRoot -Candidate $resolvedBackupRoot) {
     throw 'BackupRoot must be outside the repository.'
+}
+if (Test-PathContains -Parent $repoRoot -Candidate $resolvedTrustAnchorRoot) {
+    throw 'TrustAnchorRoot must be outside the repository.'
 }
 if ((Test-PathContains -Parent $resolvedOutputRoot -Candidate $resolvedBackupRoot) -or
     (Test-PathContains -Parent $resolvedBackupRoot -Candidate $resolvedOutputRoot)) {
     throw 'OutputRoot and BackupRoot must not overlap or contain one another.'
+}
+if ((Test-PathContains -Parent $resolvedBackupRoot -Candidate $resolvedTrustAnchorRoot) -or
+    (Test-PathContains -Parent $resolvedTrustAnchorRoot -Candidate $resolvedBackupRoot) -or
+    (Test-PathContains -Parent $resolvedOutputRoot -Candidate $resolvedTrustAnchorRoot) -or
+    (Test-PathContains -Parent $resolvedTrustAnchorRoot -Candidate $resolvedOutputRoot)) {
+    throw 'Manifest trust anchor root must not overlap OutputRoot or BackupRoot.'
 }
 
 $signingEnvironmentNames = @(
@@ -114,12 +125,14 @@ if ($ReleaseId -in @('.', '..')) {
 $releaseDirectory = Join-Path $resolvedOutputRoot $ReleaseId
 $symbolsDirectory = Join-Path $releaseDirectory 'symbols'
 $backupDirectory = Join-Path $resolvedBackupRoot $ReleaseId
-foreach ($path in @($releaseDirectory, $backupDirectory)) {
+$trustAnchorPath = Join-Path $resolvedTrustAnchorRoot "$ReleaseId.MANIFEST-SHA256.txt"
+foreach ($path in @($releaseDirectory, $backupDirectory, $trustAnchorPath)) {
     if (Test-Path -LiteralPath $path) { throw "Refusing to overwrite an existing release directory: $path" }
 }
 
 $releaseDirectoryCreated = $false
 $backupDirectoryCreated = $false
+$trustAnchorCreated = $false
 try {
     New-Item -ItemType Directory -Path $symbolsDirectory -Force | Out-Null
     $releaseDirectoryCreated = $true
@@ -170,13 +183,26 @@ try {
     [IO.File]::WriteAllText(
         $manifestPath, (($manifestLines -join "`n") + "`n"), [Text.UTF8Encoding]::new($false)
     )
+    $manifestSha256 = (Get-FileHash -LiteralPath $manifestPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    New-Item -ItemType Directory -Path $resolvedTrustAnchorRoot -Force | Out-Null
+    $anchorBytes = [Text.UTF8Encoding]::new($false).GetBytes("$manifestSha256`n")
+    $anchorStream = [IO.File]::Open(
+        $trustAnchorPath,
+        [IO.FileMode]::CreateNew,
+        [IO.FileAccess]::Write,
+        [IO.FileShare]::None
+    )
+    $trustAnchorCreated = $true
+    try { $anchorStream.Write($anchorBytes, 0, $anchorBytes.Length) }
+    finally { $anchorStream.Dispose() }
 
     New-Item -ItemType Directory -Path $resolvedBackupRoot -Force | Out-Null
     Copy-Item -LiteralPath $releaseDirectory -Destination $backupDirectory -Recurse
     $backupDirectoryCreated = $true
     $restoreVerifyScript = Join-Path $PSScriptRoot 'restore_verify_android_release.ps1'
     & $restoreVerifyScript -ArtifactDirectory $backupDirectory `
-        -JarsignerPath $JarsignerPath -KeytoolPath $KeytoolPath | Out-Null
+        -TrustAnchorPath $trustAnchorPath -JarsignerPath $JarsignerPath `
+        -KeytoolPath $KeytoolPath | Out-Null
 
     [PSCustomObject]@{
         ReleaseId = $ReleaseId
@@ -184,6 +210,8 @@ try {
         SymbolsPath = $symbolsDirectory
         HashManifest = $manifestPath
         BackupPath = $backupDirectory
+        TrustAnchorPath = $trustAnchorPath
+        ManifestSha256 = $manifestSha256
         CertificateSha256 = $expectedFingerprint
     }
 }
@@ -193,6 +221,17 @@ catch {
     }
     if ($releaseDirectoryCreated -or (Test-Path -LiteralPath $releaseDirectory)) {
         Remove-PartialReleaseDirectory -Directory $releaseDirectory -ExpectedParent $resolvedOutputRoot
+    }
+    if ($trustAnchorCreated) {
+        $resolvedAnchor = [IO.Path]::GetFullPath($trustAnchorPath)
+        $expectedAnchorParent = [IO.Path]::GetFullPath((Split-Path -Parent $resolvedAnchor)).TrimEnd('\')
+        if (-not $expectedAnchorParent.Equals(
+            $resolvedTrustAnchorRoot,
+            [StringComparison]::OrdinalIgnoreCase
+        )) {
+            throw "Refusing unsafe trust anchor cleanup: $resolvedAnchor"
+        }
+        Remove-Item -LiteralPath $resolvedAnchor -Force
     }
     throw
 }
