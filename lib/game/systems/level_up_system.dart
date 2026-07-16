@@ -4,6 +4,7 @@ import '../content/augment_definitions.dart' as augment_content;
 import '../content/ids.dart';
 import '../content/weapon_definitions.dart' as weapon_content;
 import '../content/weapon_level_definitions.dart';
+import 'augment_effect_formatter.dart';
 
 enum LevelUpChoiceType { weapon, augment }
 
@@ -128,7 +129,7 @@ class LevelUpSystem {
     AugmentDefinition definition,
     Map<AugmentId, int> currentLevels,
   ) {
-    if (!_supportedAugmentIds.contains(definition.id)) {
+    if (definition.effects.isEmpty) {
       return null;
     }
     final currentLevel = currentLevels[definition.id] ?? 0;
@@ -139,10 +140,9 @@ class LevelUpSystem {
     return LevelUpChoice(
       id: definition.id,
       displayName: definition.name,
-      effectDescription: _augmentDeltaDescription(
-        definition.id,
+      effectDescription: const AugmentEffectFormatter().describeLevelChange(
+        definition,
         currentLevel,
-        currentLevel + 1,
       ),
       type: LevelUpChoiceType.augment,
       currentLevel: currentLevel,
@@ -150,18 +150,6 @@ class LevelUpSystem {
     );
   }
 }
-
-const _supportedAugmentIds = <AugmentId>{
-  augment_content.martialTraining,
-  augment_content.quickStep,
-  augment_content.innerBreath,
-  augment_content.jangseungBlessing,
-  augment_content.hawkEye,
-  augment_content.herbalTonic,
-  augment_content.rapidReload,
-  augment_content.powderMastery,
-  augment_content.heavyStrike,
-};
 
 String _weaponDeltaDescription(WeaponId id, int currentLevel) {
   final next = weaponLevelFor(id, currentLevel + 1);
@@ -198,24 +186,6 @@ String _weaponDeltaDescription(WeaponId id, int currentLevel) {
   }
   return changes.join(' · ');
 }
-
-String _augmentDeltaDescription(
-  AugmentId id,
-  int current,
-  int next,
-) => switch (id) {
-  augment_content.martialTraining => '무기 피해 +${current * 12}% → +${next * 12}%',
-  augment_content.quickStep => '이동 속도 +${current * 8}% → +${next * 8}%',
-  augment_content.innerBreath =>
-    '최대 체력 +${current * 10} → +${next * 10} · 체력 10 회복',
-  augment_content.jangseungBlessing => '획득 반경 +${current * 16} → +${next * 16}',
-  augment_content.hawkEye => '치명타 +${current * 5}% → +${next * 5}%',
-  augment_content.herbalTonic => '체력 12 회복',
-  augment_content.rapidReload => '공격 속도 +${current * 10}% → +${next * 10}%',
-  augment_content.powderMastery => '공격 크기 +${current * 10}% → +${next * 10}%',
-  augment_content.heavyStrike => '무기 피해 +${current * 18}% → +${next * 18}%',
-  _ => throw ArgumentError.value(id, 'id', 'Unsupported augment'),
-};
 
 String _number(double value) => value == value.roundToDouble()
     ? value.round().toString()

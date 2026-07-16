@@ -112,41 +112,40 @@ void main() {
       );
     });
 
-    test(
-      'offers every unlocked runtime weapon and filters missing augments',
-      () {
-        final choices = LevelUpSystem(random: Random(3)).choices(
-          unlockedWeaponIds: {
-            hwandoSlash,
-            jangseungWard,
-            singijeonVolley,
-            frostFlask,
-            windThunderFan,
-          },
-          unlockedAugmentIds: {martialTraining, goblinFire, lastStand},
-          currentWeaponLevels: const {},
-          currentAugmentLevels: const {},
-          maxChoices: 10,
-        );
-
-        expect(choices.map((choice) => choice.id).toSet(), {
+    test('offers every unlocked runtime weapon and typed augment', () {
+      final choices = LevelUpSystem(random: Random(3)).choices(
+        unlockedWeaponIds: {
           hwandoSlash,
           jangseungWard,
           singijeonVolley,
           frostFlask,
           windThunderFan,
-          martialTraining,
-        });
-        expect(
-          choices.every(
-            (choice) =>
-                choice.effectDescription.contains('→') ||
-                choice.effectDescription.startsWith('신규'),
-          ),
-          isTrue,
-        );
-      },
-    );
+        },
+        unlockedAugmentIds: {martialTraining, goblinFire, lastStand},
+        currentWeaponLevels: const {},
+        currentAugmentLevels: const {},
+        maxChoices: 10,
+      );
+
+      expect(choices.map((choice) => choice.id).toSet(), {
+        hwandoSlash,
+        jangseungWard,
+        singijeonVolley,
+        frostFlask,
+        windThunderFan,
+        martialTraining,
+        goblinFire,
+        lastStand,
+      });
+      expect(
+        choices.every(
+          (choice) =>
+              choice.effectDescription.contains('→') ||
+              choice.effectDescription.startsWith('신규'),
+        ),
+        isTrue,
+      );
+    });
 
     test('augment cards show cumulative production values', () {
       final choices = LevelUpSystem(random: Random(1)).choices(
@@ -169,6 +168,26 @@ void main() {
           '획득 반경 +16 → +32',
         }),
       );
+    });
+
+    test('augment cards derive compound copy from effect data', () {
+      final choices = LevelUpSystem(random: Random(1)).choices(
+        unlockedWeaponIds: const {},
+        unlockedAugmentIds: {heavyStrike, lastStand, herbalTonic},
+        currentWeaponLevels: const {},
+        currentAugmentLevels: const {heavyStrike: 1, lastStand: 1},
+        maxChoices: 3,
+      );
+      final copy = {
+        for (final choice in choices) choice.id: choice.effectDescription,
+      };
+
+      expect(copy[heavyStrike], '무기 피해 +18% → +36% · 공격 속도 -8% → -16%');
+      expect(
+        copy[lastStand],
+        '체력 35% 이하: 받는 접촉 피해 -10% → -20% · 무기 피해 +20% → +40%',
+      );
+      expect(copy[herbalTonic], '체력 12 회복');
     });
   });
 }
