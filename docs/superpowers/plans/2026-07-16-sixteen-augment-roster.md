@@ -20,7 +20,7 @@
 - `ritual_shortcut` never causes a level-up at selection time; its reduced threshold is used by the next positive experience gain and by the HUD immediately.
 - Cards must show cumulative current-to-next values, fixed immediate healing, conditions, and penalties from the effect data.
 - Do not add image assets, packages, save schema versions, unlock goals, or collection UI.
-- Run focused tests during tasks and the full Flutter suite once at completion. In this Windows session prefix test commands with `$env:TEMP='C:\codex-temp'; $env:TMP='C:\codex-temp'`.
+- Run focused tests during tasks and the full Flutter suite once at completion. In this Windows session prefix test commands with `$env:TEMP='C:\codex-temp'; $env:TMP='C:\codex-temp'` and invoke Flutter through `S:\bin\flutter.bat`; the physical SDK and original project paths contain non-ASCII characters that crash or corrupt Flutter shader assets.
 
 ## File Structure
 
@@ -99,7 +99,7 @@ test('new augments use the approved names, levels, and default unlocks', () {
 Run:
 
 ```powershell
-$env:TEMP='C:\codex-temp'; $env:TMP='C:\codex-temp'; flutter test test/game/content_definitions_test.dart
+$env:TEMP='C:\codex-temp'; $env:TMP='C:\codex-temp'; & 'S:\bin\flutter.bat' test test/game/content_definitions_test.dart
 ```
 
 Expected: FAIL because the new effect types, IDs, and four definitions do not exist.
@@ -190,7 +190,7 @@ Keep maximum levels `5,5,5,5,5,5,5,5,3,5,5,5,1,5,3,3` in table order from the de
 Run:
 
 ```powershell
-$env:TEMP='C:\codex-temp'; $env:TMP='C:\codex-temp'; flutter test test/game/content_definitions_test.dart test/app/korean_strings_test.dart
+$env:TEMP='C:\codex-temp'; $env:TMP='C:\codex-temp'; & 'S:\bin\flutter.bat' test test/game/content_definitions_test.dart test/app/korean_strings_test.dart
 ```
 
 Expected: PASS.
@@ -267,7 +267,7 @@ test('augment cards derive compound copy from effect data', () {
 Run:
 
 ```powershell
-$env:TEMP='C:\codex-temp'; $env:TMP='C:\codex-temp'; flutter test test/game/augment_effect_resolver_test.dart test/game/level_up_system_test.dart
+$env:TEMP='C:\codex-temp'; $env:TMP='C:\codex-temp'; & 'S:\bin\flutter.bat' test test/game/augment_effect_resolver_test.dart test/game/level_up_system_test.dart
 ```
 
 Expected: FAIL because the resolver and data-derived copy do not exist.
@@ -312,7 +312,7 @@ Delete `_supportedAugmentIds` and `_augmentDeltaDescription`. Keep weapon format
 Run:
 
 ```powershell
-$env:TEMP='C:\codex-temp'; $env:TMP='C:\codex-temp'; flutter test test/game/augment_effect_resolver_test.dart test/game/level_up_system_test.dart
+$env:TEMP='C:\codex-temp'; $env:TMP='C:\codex-temp'; & 'S:\bin\flutter.bat' test test/game/augment_effect_resolver_test.dart test/game/level_up_system_test.dart
 ```
 
 Expected: PASS.
@@ -371,7 +371,7 @@ expect(game.experienceToNextLevel, 10);
 Run:
 
 ```powershell
-$env:TEMP='C:\codex-temp'; $env:TMP='C:\codex-temp'; flutter test test/game/run_progression_system_test.dart test/game/pixel_survivor_game_loop_test.dart
+$env:TEMP='C:\codex-temp'; $env:TMP='C:\codex-temp'; & 'S:\bin\flutter.bat' test test/game/run_progression_system_test.dart test/game/pixel_survivor_game_loop_test.dart
 ```
 
 Expected: FAIL because progression does not accept multipliers and the game still uses ID-specific getters.
@@ -440,7 +440,7 @@ For immediate effects, find the selected definition and iterate only `onAcquire`
 Run:
 
 ```powershell
-$env:TEMP='C:\codex-temp'; $env:TMP='C:\codex-temp'; flutter test test/game/run_progression_system_test.dart test/game/pixel_survivor_game_loop_test.dart test/game/combat_system_test.dart test/game/weapon_system_test.dart
+$env:TEMP='C:\codex-temp'; $env:TMP='C:\codex-temp'; & 'S:\bin\flutter.bat' test test/game/run_progression_system_test.dart test/game/pixel_survivor_game_loop_test.dart test/game/combat_system_test.dart test/game/weapon_system_test.dart
 ```
 
 Expected: PASS.
@@ -486,7 +486,7 @@ Add a run-summary assertion using `bloodOath` and expect `피의 맹세`, provin
 Run:
 
 ```powershell
-$env:TEMP='C:\codex-temp'; $env:TMP='C:\codex-temp'; flutter test test/game/save_system_test.dart test/game/run_summary_progression_test.dart
+$env:TEMP='C:\codex-temp'; $env:TMP='C:\codex-temp'; & 'S:\bin\flutter.bat' test test/game/save_system_test.dart test/game/run_summary_progression_test.dart
 ```
 
 Expected: PASS. `SaveState._fromSupportedJson` already passes `defaults.unlockedAugmentIds` as `_stringSet` fallback, and `_displayName` already iterates `augmentDefinitions`. If either regression fails, repair only that generic behavior rather than adding new-ID branches.
@@ -496,7 +496,7 @@ Expected: PASS. `SaveState._fromSupportedJson` already passes `defaults.unlocked
 Run:
 
 ```powershell
-$env:TEMP='C:\codex-temp'; $env:TMP='C:\codex-temp'; flutter test test/game/content_definitions_test.dart test/game/augment_effect_resolver_test.dart test/game/level_up_system_test.dart test/game/run_progression_system_test.dart test/game/pixel_survivor_game_loop_test.dart test/game/save_system_test.dart test/game/run_summary_progression_test.dart
+$env:TEMP='C:\codex-temp'; $env:TMP='C:\codex-temp'; & 'S:\bin\flutter.bat' test test/game/content_definitions_test.dart test/game/augment_effect_resolver_test.dart test/game/level_up_system_test.dart test/game/run_progression_system_test.dart test/game/pixel_survivor_game_loop_test.dart test/game/save_system_test.dart test/game/run_summary_progression_test.dart
 ```
 
 Expected: PASS.
@@ -506,8 +506,8 @@ Expected: PASS.
 Run:
 
 ```powershell
-$env:TEMP='C:\codex-temp'; $env:TMP='C:\codex-temp'; flutter analyze
-$env:TEMP='C:\codex-temp'; $env:TMP='C:\codex-temp'; flutter test
+$env:TEMP='C:\codex-temp'; $env:TMP='C:\codex-temp'; & 'S:\bin\flutter.bat' analyze
+$env:TEMP='C:\codex-temp'; $env:TMP='C:\codex-temp'; & 'S:\bin\flutter.bat' test
 ```
 
 Expected: analyzer reports no issues and all tests pass.
