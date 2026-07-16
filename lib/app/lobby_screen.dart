@@ -12,6 +12,7 @@ import '../game/models/player_slot.dart';
 import '../game/systems/tutorial_progress_repository.dart';
 import '../l10n/app_strings.dart';
 import 'character_select_screen.dart';
+import 'compendium_screen.dart';
 import 'game_screen.dart';
 import 'lobby_controller.dart';
 import 'records_screen.dart';
@@ -81,6 +82,18 @@ class _LobbyScreenState extends State<LobbyScreen> {
         builder: (_) => SettingsScreen(
           controller: widget.audioSettingsController,
           resetProgress: widget.controller.resetProgress,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openCompendium() async {
+    final state = widget.controller.state;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => CompendiumScreen(
+          state: state,
+          onEntriesViewed: widget.controller.markCompendiumEntriesSeen,
         ),
       ),
     );
@@ -203,6 +216,13 @@ class _LobbyScreenState extends State<LobbyScreen> {
                                 icon: Icons.person_outline,
                                 label: '인물',
                                 onPressed: _openCharacterPicker,
+                              ),
+                              const SizedBox(height: 12),
+                              _LobbyMenuButton(
+                                buttonKey: const Key('lobby-compendium'),
+                                icon: Icons.menu_book_outlined,
+                                label: '도감',
+                                onPressed: _openCompendium,
                               ),
                               const SizedBox(height: 12),
                               _LobbyMenuButton(

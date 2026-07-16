@@ -48,6 +48,18 @@ class LobbyController extends ChangeNotifier {
     return _enqueue((current) => current.copyWith(selectedStageId: stageId));
   }
 
+  Future<void> markCompendiumEntriesSeen(Set<String> entryIds) {
+    if (entryIds.isEmpty) return Future<void>.value();
+    return _enqueue(
+      (current) => current.copyWith(
+        seenCompendiumEntryIds: {
+          ...current.seenCompendiumEntryIds,
+          ...entryIds,
+        },
+      ),
+    );
+  }
+
   Future<bool> resetProgress() {
     final operation = _saveQueue.then((_) => _persistReset());
     _saveQueue = operation.then<void>((_) {});

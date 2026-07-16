@@ -245,7 +245,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     try {
       final settlement =
           _completedSettlement ??
-          await _metaProgressionService.settleRun(result);
+          await _metaProgressionService.settleRun(
+            result,
+            characterId: widget.playerSlot.characterId,
+          );
       _completedSettlement = settlement;
       final unlocks = ProgressionUnlocks.diff(
         settlement.before,

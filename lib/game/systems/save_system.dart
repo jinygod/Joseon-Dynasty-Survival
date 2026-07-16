@@ -31,12 +31,16 @@ class SaveState {
     required this.lowHealthWinCount,
     this.totalEliteKills = 0,
     this.victoryCount = 0,
+    Map<String, int> characterVictoryCounts = const {},
+    Set<String> seenCompendiumEntryIds = const {},
   }) : unlockedCharacterIds = Set.unmodifiable(unlockedCharacterIds),
        unlockedWeaponIds = Set.unmodifiable(unlockedWeaponIds),
        unlockedAugmentIds = Set.unmodifiable(unlockedAugmentIds),
        unlockedStageIds = Set.unmodifiable(unlockedStageIds),
        completedGoalIds = Set.unmodifiable(completedGoalIds),
-       claimedRewardIds = Set.unmodifiable(claimedRewardIds);
+       claimedRewardIds = Set.unmodifiable(claimedRewardIds),
+       characterVictoryCounts = Map.unmodifiable(characterVictoryCounts),
+       seenCompendiumEntryIds = Set.unmodifiable(seenCompendiumEntryIds);
 
   static const currentSchemaVersion = 3;
 
@@ -69,6 +73,8 @@ class SaveState {
       lowHealthWinCount: 0,
       totalEliteKills: 0,
       victoryCount: 0,
+      characterVictoryCounts: const {},
+      seenCompendiumEntryIds: const {},
     );
   }
 
@@ -141,6 +147,13 @@ class SaveState {
       lowHealthWinCount: _intValue(json['lowHealthWinCount']),
       totalEliteKills: _intValue(json['totalEliteKills']),
       victoryCount: _intValue(json['victoryCount']),
+      characterVictoryCounts: _knownCountMap(
+        json['characterVictoryCounts'],
+        characterDefinitions.map((definition) => definition.id),
+      ),
+      seenCompendiumEntryIds: _knownCompendiumEntrySet(
+        json['seenCompendiumEntryIds'],
+      ),
     );
   }
 
@@ -164,6 +177,8 @@ class SaveState {
   final int lowHealthWinCount;
   final int totalEliteKills;
   final int victoryCount;
+  final Map<String, int> characterVictoryCounts;
+  final Set<String> seenCompendiumEntryIds;
 
   SaveState copyWith({
     int? schemaVersion,
@@ -186,6 +201,8 @@ class SaveState {
     int? lowHealthWinCount,
     int? totalEliteKills,
     int? victoryCount,
+    Map<String, int>? characterVictoryCounts,
+    Set<String>? seenCompendiumEntryIds,
   }) {
     return SaveState(
       schemaVersion: schemaVersion ?? this.schemaVersion,
@@ -214,6 +231,11 @@ class SaveState {
       lowHealthWinCount: lowHealthWinCount ?? this.lowHealthWinCount,
       totalEliteKills: totalEliteKills ?? this.totalEliteKills,
       victoryCount: victoryCount ?? this.victoryCount,
+      characterVictoryCounts:
+          characterVictoryCounts ??
+          Map<String, int>.of(this.characterVictoryCounts),
+      seenCompendiumEntryIds:
+          seenCompendiumEntryIds ?? Set<String>.of(this.seenCompendiumEntryIds),
     );
   }
 
@@ -239,6 +261,8 @@ class SaveState {
       'lowHealthWinCount': lowHealthWinCount,
       'totalEliteKills': totalEliteKills,
       'victoryCount': victoryCount,
+      'characterVictoryCounts': characterVictoryCounts,
+      'seenCompendiumEntryIds': _sorted(seenCompendiumEntryIds),
     };
   }
 
@@ -273,6 +297,34 @@ class SaveState {
     }
 
     return fallback;
+  }
+
+  static Map<String, int> _knownCountMap(
+    Object? value,
+    Iterable<String> knownIds,
+  ) {
+    if (value is! Map) return const {};
+    final known = knownIds.toSet();
+    final result = <String, int>{};
+    for (final entry in value.entries) {
+      if (entry.key is String &&
+          known.contains(entry.key) &&
+          entry.value is int &&
+          (entry.value as int) >= 0) {
+        result[entry.key as String] = entry.value as int;
+      }
+    }
+    return result;
+  }
+
+  static Set<String> _knownCompendiumEntrySet(Object? value) {
+    if (value is! Iterable) return const {};
+    final known = <String>{
+      ...characterDefinitions.map((item) => 'character:${item.id}'),
+      ...weaponDefinitions.map((item) => 'weapon:${item.id}'),
+      ...augmentDefinitions.map((item) => 'augment:${item.id}'),
+    };
+    return value.whereType<String>().where(known.contains).toSet();
   }
 
   static String _validSelectedCharacter(
