@@ -451,11 +451,12 @@ class PixelSurvivorGame extends FlameGame
     );
     _currentEnemyCap = min(wave.maxActiveEnemies, performanceBudget.maxEnemies);
     final initialEnemyCount = enemyCount;
-    final availableSlots = min(
-      max(0, _currentEnemyCap - initialEnemyCount),
-      max(0, performanceBudget.maxEnemies - _enemyComponentCount),
+    final admittedCount = performanceBudget.admitCount(
+      GamePopulationKind.enemy,
+      current: _enemyComponentCount,
+      requested: wave.spawnRequests.length,
+      secondaryAvailable: _currentEnemyCap - initialEnemyCount,
     );
-    final admittedCount = min(wave.spawnRequests.length, availableSlots);
     for (var index = 0; index < admittedCount; index += 1) {
       final request = wave.spawnRequests[index];
       _addEnemy(request.enemyId, initialEnemyCount + index);

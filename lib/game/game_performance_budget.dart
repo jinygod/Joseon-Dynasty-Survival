@@ -1,4 +1,5 @@
 import 'dart:collection';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
@@ -37,6 +38,19 @@ class GamePerformanceBudget {
 
   bool canAdd(GamePopulationKind kind, {required int current}) =>
       current < limitFor(kind);
+
+  int admitCount(
+    GamePopulationKind kind, {
+    required int current,
+    required int requested,
+    int? secondaryAvailable,
+  }) {
+    final primaryAvailable = max(0, limitFor(kind) - current);
+    final available = secondaryAvailable == null
+        ? primaryAvailable
+        : min(primaryAvailable, max(0, secondaryAvailable));
+    return min(max(0, requested), available);
+  }
 }
 
 @immutable
