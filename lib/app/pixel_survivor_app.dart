@@ -66,7 +66,7 @@ class _PixelSurvivorAppState extends State<PixelSurvivorApp> {
         config: widget.backendConfig,
         service: widget.accountService ?? SupabaseAccountService(),
         clearLocalState: () async {
-          _progressSyncController?.invalidateSession();
+          await _progressSyncController?.invalidateSession();
           await _lobbyController.clearAccountLocalState();
         },
         clearPaidCache: widget.clearPaidCache,
@@ -86,9 +86,9 @@ class _PixelSurvivorAppState extends State<PixelSurvivorApp> {
   void dispose() {
     _audioSettingsAudioBinding.dispose();
     unawaited(_audioService.dispose());
-    _lobbyController.dispose();
     _accountController?.dispose();
     _progressSyncController?.dispose();
+    _lobbyController.dispose();
     _audioSettingsController.dispose();
     super.dispose();
   }

@@ -110,6 +110,45 @@ void main() {
       );
     },
   );
+
+  test(
+    'dispose prevents an in-flight load from mutating or notifying',
+    () async {
+      final store = _BlockingLoadSaveStore();
+      final controller = LobbyController(store: store);
+      var notifications = 0;
+      controller.addListener(() => notifications++);
+
+      final loading = controller.load();
+      expect(notifications, 1);
+      controller.dispose();
+      store.loadResult.complete(SaveState.defaults().copyWith(totalKills: 999));
+      await loading;
+
+      expect(controller.state.totalKills, 0);
+      expect(notifications, 1);
+    },
+  );
+
+  test('dispose prevents queued saves from starting', () async {
+    final store = _BlockingSaveStore(
+      SaveState.defaults().copyWith(
+        unlockedCharacterIds: {rookieConstable, exorcistDosa},
+        unlockedStageIds: {moonlitAbandonedOffice, plagueMarket},
+      ),
+    );
+    final controller = LobbyController(store: store);
+    await controller.load();
+
+    final first = controller.selectCharacter(exorcistDosa);
+    await store.firstSaveStarted.future;
+    final queued = controller.selectStage(plagueMarket);
+    controller.dispose();
+    store.releaseFirstSave.complete();
+    await Future.wait([first, queued]);
+
+    expect(store.saveCount, 1);
+  });
 }
 
 class _MemorySaveStore implements SaveStore {
@@ -162,4 +201,14 @@ class _BlockingSaveStore implements SaveStore {
     }
     value = state;
   }
+}
+
+class _BlockingLoadSaveStore implements SaveStore {
+  final loadResult = Completer<SaveState>();
+
+  @override
+  Future<SaveState> load() => loadResult.future;
+
+  @override
+  Future<void> save(SaveState state) async {}
 }

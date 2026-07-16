@@ -223,8 +223,17 @@ class SaveStateValidator {
   }
 
   void _knownIds(Object? value, Set<String> known, String label) {
-    if (value is! Iterable ||
-        value.any((id) => id is! String || !known.contains(id))) {
+    if (value is! Iterable) {
+      throw FormatException('Unknown $label ID');
+    }
+    final ids = value.toList();
+    if (ids.length > known.length) {
+      throw FormatException('Invalid $label ID count');
+    }
+    if (ids.toSet().length != ids.length) {
+      throw FormatException('Invalid duplicate $label ID');
+    }
+    if (ids.any((id) => id is! String || !known.contains(id))) {
       throw FormatException('Unknown $label ID');
     }
   }

@@ -115,20 +115,22 @@ class AccountController extends ChangeNotifier {
   }) async {
     if (_disposed || busy) return;
     final operation = ++_operationGeneration;
+    final previousSession = session;
+    final previousAvailability = availability;
     busy = true;
     errorMessage = null;
     _notify();
     try {
       await endRemote();
+      if (!_isActive(operation)) return;
+      session = const AccountSession.signedOut();
+      await _clearAccountLocalState();
     } on Object {
       if (!_isActive(operation)) return;
+      session = previousSession;
+      availability = previousAvailability;
       errorMessage = failureMessage;
     } finally {
-      final wasActive = _isActive(operation);
-      if (wasActive) {
-        session = const AccountSession.signedOut();
-      }
-      await _clearAccountLocalState();
       if (_isActive(operation)) {
         busy = false;
         _notify();

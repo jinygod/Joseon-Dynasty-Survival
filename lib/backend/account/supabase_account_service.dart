@@ -88,16 +88,22 @@ class SupabaseAccountService implements AccountService {
 
   @override
   Future<void> signOut() async {
-    await _auth.signOut();
-    await _ensureGoogleInitialized();
-    await _google.signOut();
+    try {
+      await _auth.signOut();
+    } finally {
+      await _ensureGoogleInitialized();
+      await _google.signOut();
+    }
   }
 
   @override
   Future<void> deleteAccount() async {
-    await _auth.deleteAccount();
-    await _ensureGoogleInitialized();
-    await _google.signOut();
+    try {
+      await _auth.deleteAccount();
+    } finally {
+      await _ensureGoogleInitialized();
+      await _google.signOut();
+    }
   }
 
   Future<void> _ensureGoogleInitialized() {
@@ -166,14 +172,11 @@ class _SupabaseAccountAuthGateway implements AccountAuthGateway {
 
   @override
   Future<void> deleteAccount() async {
-    try {
-      final response = await _client.functions.invoke('delete-account');
-      if (response.status < 200 || response.status >= 300) {
-        throw StateError('Account deletion failed (${response.status})');
-      }
-    } finally {
-      await _client.auth.signOut(scope: SignOutScope.local);
+    final response = await _client.functions.invoke('delete-account');
+    if (response.status < 200 || response.status >= 300) {
+      throw StateError('Account deletion failed (${response.status})');
     }
+    await _client.auth.signOut(scope: SignOutScope.local);
   }
 
   static bool _identityAlreadyExists(AuthException error) {

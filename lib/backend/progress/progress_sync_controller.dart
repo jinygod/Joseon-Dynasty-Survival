@@ -43,7 +43,6 @@ class ProgressSyncController extends ChangeNotifier {
   final CloudProgressRepository repository;
   final SaveStateValidator validator;
   final Future<void> Function(Duration)? _injectedDelay;
-  final Completer<void> _disposedSignal = Completer<void>();
 
   SyncStatus status = SyncStatus.idle;
   int? revision;
@@ -67,13 +66,17 @@ class ProgressSyncController extends ChangeNotifier {
     return drain;
   }
 
-  void invalidateSession() {
+  Future<void> invalidateSession() async {
     if (_disposed) return;
     _observedSession = null;
     _sessionGeneration++;
     _accountId = null;
     revision = null;
     _syncRequested = false;
+    _cancelRetryWait();
+    final running = _drainFuture;
+    if (running != null) await running;
+    if (_disposed) return;
     status = SyncStatus.idle;
     lastError = null;
     _notify();
@@ -221,24 +224,41 @@ class ProgressSyncController extends ChangeNotifier {
 
   Future<bool> _waitForRetry(Duration duration) async {
     if (_disposed) return false;
-    final injected = _injectedDelay;
-    if (injected != null) {
-      return Future.any<bool>([
-        injected(duration).then((_) => true),
-        _disposedSignal.future.then((_) => false),
-      ]);
-    }
     final completer = Completer<bool>();
     _retryCompleter = completer;
-    _retryTimer = Timer(duration, () {
-      if (!completer.isCompleted) completer.complete(true);
-    });
+    final injected = _injectedDelay;
+    if (injected != null) {
+      unawaited(
+        injected(duration).then(
+          (_) {
+            if (!completer.isCompleted) completer.complete(true);
+          },
+          onError: (Object error, StackTrace stackTrace) {
+            if (!completer.isCompleted) {
+              completer.completeError(error, stackTrace);
+            }
+          },
+        ),
+      );
+    } else {
+      _retryTimer = Timer(duration, () {
+        if (!completer.isCompleted) completer.complete(true);
+      });
+    }
     final completed = await completer.future;
     if (identical(_retryCompleter, completer)) {
       _retryCompleter = null;
       _retryTimer = null;
     }
     return completed;
+  }
+
+  void _cancelRetryWait() {
+    _retryTimer?.cancel();
+    _retryTimer = null;
+    final retry = _retryCompleter;
+    _retryCompleter = null;
+    if (retry != null && !retry.isCompleted) retry.complete(false);
   }
 
   void _notify() {
@@ -250,10 +270,7 @@ class ProgressSyncController extends ChangeNotifier {
     if (_disposed) return;
     _disposed = true;
     _syncRequested = false;
-    _retryTimer?.cancel();
-    final retry = _retryCompleter;
-    if (retry != null && !retry.isCompleted) retry.complete(false);
-    if (!_disposedSignal.isCompleted) _disposedSignal.complete();
+    _cancelRetryWait();
     super.dispose();
   }
 }

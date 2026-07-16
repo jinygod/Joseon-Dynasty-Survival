@@ -88,11 +88,39 @@ void main() {
       expect(gateway.calls, contains('sign-out'));
     },
   );
+
+  test('native Google cleanup runs when Supabase signout fails', () async {
+    final gateway = _FakeGateway()..signOutError = Exception('supabase');
+    final google = _FakeGoogleProvider();
+    final service = SupabaseAccountService(
+      authGateway: gateway,
+      googleProvider: google,
+    );
+
+    await expectLater(service.signOut(), throwsException);
+
+    expect(google.signOutCalls, 1);
+  });
+
+  test('native Google cleanup runs when account deletion fails', () async {
+    final gateway = _FakeGateway()..deleteError = Exception('delete');
+    final google = _FakeGoogleProvider();
+    final service = SupabaseAccountService(
+      authGateway: gateway,
+      googleProvider: google,
+    );
+
+    await expectLater(service.deleteAccount(), throwsException);
+
+    expect(google.signOutCalls, 1);
+  });
 }
 
 class _FakeGateway implements AccountAuthGateway {
   AccountAuthUser? user;
   bool identityExists = false;
+  Object? signOutError;
+  Object? deleteError;
   final calls = <String>[];
   final controller = StreamController<AccountAuthUser?>.broadcast();
 
@@ -138,16 +166,21 @@ class _FakeGateway implements AccountAuthGateway {
   @override
   Future<void> signOut() async {
     calls.add('sign-out');
+    if (signOutError case final error?) throw error;
     user = null;
   }
 
   @override
-  Future<void> deleteAccount() async => user = null;
+  Future<void> deleteAccount() async {
+    if (deleteError case final error?) throw error;
+    user = null;
+  }
 }
 
 class _FakeGoogleProvider implements GoogleIdentityProvider {
   Object? signOutError;
   int initializeCalls = 0;
+  int signOutCalls = 0;
 
   @override
   Future<void> initialize({String? serverClientId}) async => initializeCalls++;
@@ -157,6 +190,7 @@ class _FakeGoogleProvider implements GoogleIdentityProvider {
 
   @override
   Future<void> signOut() async {
+    signOutCalls++;
     if (signOutError case final error?) throw error;
   }
 }

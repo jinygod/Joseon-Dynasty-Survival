@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pixel_survivor/backend/progress/save_state_validator.dart';
 import 'package:pixel_survivor/backend/progress/supabase_cloud_progress_repository.dart';
 import 'package:pixel_survivor/game/systems/save_system.dart';
 
@@ -99,6 +100,40 @@ void main() {
         api: malformed,
       ).update(save: SaveState.defaults(), expectedRevision: 1),
       throwsFormatException,
+    );
+  });
+
+  test('known ID arrays reject duplicate entries', () {
+    final json = SaveState.defaults().toJson();
+    final first = (json['unlockedCharacterIds'] as List).first;
+    json['unlockedCharacterIds'] = [first, first];
+
+    expect(
+      () => SaveStateValidator().validateJson(json),
+      throwsA(
+        isA<FormatException>().having(
+          (error) => error.message,
+          'message',
+          contains('duplicate'),
+        ),
+      ),
+    );
+  });
+
+  test('known ID arrays reject counts larger than the known catalog', () {
+    final json = SaveState.defaults().toJson();
+    final first = (json['unlockedCharacterIds'] as List).first;
+    json['unlockedCharacterIds'] = List.filled(4, first);
+
+    expect(
+      () => SaveStateValidator().validateJson(json),
+      throwsA(
+        isA<FormatException>().having(
+          (error) => error.message,
+          'message',
+          contains('count'),
+        ),
+      ),
     );
   });
 }

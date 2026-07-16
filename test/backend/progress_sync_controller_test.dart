@@ -315,6 +315,56 @@ void main() {
     },
   );
 
+  test(
+    'session invalidation drains an in-flight local save before reset',
+    () async {
+      final cloud = CloudProgressSnapshot(revision: 4, save: _save(kills: 400));
+      final store = _BlockingSaveStore(_save(kills: 1));
+      final controller = _controller(
+        local: store.state,
+        store: store,
+        repository: _FakeCloudRepository(cloud: cloud),
+      );
+
+      final sync = controller.syncNow();
+      await store.saveStarted.future;
+      var invalidated = false;
+      final invalidate = controller.invalidateSession().then(
+        (_) => invalidated = true,
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(invalidated, isFalse);
+
+      store.releaseSave.complete();
+      await Future.wait([sync, invalidate]);
+      await store.save(SaveState.defaults());
+
+      expect(store.state.totalKills, 0);
+    },
+  );
+
+  test('session invalidation immediately cancels a retry wait', () async {
+    final retryWait = Completer<void>();
+    final repository = _FakeCloudRepository()..failuresRemaining = 20;
+    var delayCalls = 0;
+    final controller = _controller(
+      local: _save(kills: 1),
+      repository: repository,
+      delay: (_) {
+        delayCalls++;
+        return retryWait.future;
+      },
+    );
+
+    final sync = controller.syncNow();
+    await _waitFor(() => delayCalls == 1);
+
+    await controller.invalidateSession();
+    await sync.timeout(const Duration(milliseconds: 100));
+
+    expect(repository.fetchCalls, 1);
+  });
+
   test('sync invoked after dispose starts no work', () async {
     final store = _MemorySaveStore(_save(kills: 1));
     final repository = _FakeCloudRepository();
@@ -372,6 +422,25 @@ class _MemorySaveStore implements SaveStore {
   @override
   Future<void> save(SaveState state) async {
     saveCalls++;
+    this.state = state;
+  }
+}
+
+class _BlockingSaveStore extends _MemorySaveStore {
+  _BlockingSaveStore(super.state);
+
+  final saveStarted = Completer<void>();
+  final releaseSave = Completer<void>();
+  var _blocked = false;
+
+  @override
+  Future<void> save(SaveState state) async {
+    saveCalls++;
+    if (!_blocked) {
+      _blocked = true;
+      saveStarted.complete();
+      await releaseSave.future;
+    }
     this.state = state;
   }
 }

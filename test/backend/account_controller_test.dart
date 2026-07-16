@@ -163,11 +163,14 @@ void main() {
   });
 
   test(
-    'sign out clears local and paid state even when service fails',
+    'remote sign out failure keeps the session and local account state',
     () async {
-      final service = _FakeAccountService(
-        current: AccountSession.google(userId: 'g', email: 'g@example.com'),
-      )..signOutError = Exception('native signout failed');
+      final original = AccountSession.google(
+        userId: 'g',
+        email: 'g@example.com',
+      );
+      final service = _FakeAccountService(current: original)
+        ..signOutError = Exception('remote signout failed');
       final calls = <String>[];
       final controller = AccountController(
         config: enabled,
@@ -182,8 +185,10 @@ void main() {
 
       await controller.signOut();
 
-      expect(calls, ['local', 'paid']);
-      expect(controller.session, const AccountSession.signedOut());
+      expect(calls, isEmpty);
+      expect(controller.session, original);
+      expect(controller.errorMessage, isNotNull);
+      expect(controller.busy, isFalse);
     },
   );
 
@@ -202,6 +207,25 @@ void main() {
     await controller.signOut();
 
     expect(local.totalKills, 0);
+  });
+
+  test('remote deletion failure keeps the existing session', () async {
+    final original = AccountSession.google(userId: 'g', email: 'g@example.com');
+    final service = _FakeAccountService(current: original)
+      ..deleteError = Exception('remote deletion failed');
+    var clears = 0;
+    final controller = AccountController(
+      config: enabled,
+      service: service,
+      clearLocalState: () async => clears++,
+    );
+    await controller.initialize();
+
+    await controller.deleteAccount();
+
+    expect(controller.session, original);
+    expect(controller.errorMessage, isNotNull);
+    expect(clears, 0);
   });
 
   test(
@@ -242,6 +266,7 @@ class _FakeAccountService implements AccountService {
   Object? ensureGuestError;
   Object? connectError;
   Object? signOutError;
+  Object? deleteError;
   Completer<AccountSession>? ensureGuestCompleter;
   int ensureGuestCalls = 0;
   int deleteCalls = 0;
@@ -274,13 +299,14 @@ class _FakeAccountService implements AccountService {
 
   @override
   Future<void> signOut() async {
-    _current = const AccountSession.signedOut();
     if (signOutError case final error?) throw error;
+    _current = const AccountSession.signedOut();
   }
 
   @override
   Future<void> deleteAccount() async {
     deleteCalls++;
+    if (deleteError case final error?) throw error;
     _current = const AccountSession.signedOut();
   }
 }
