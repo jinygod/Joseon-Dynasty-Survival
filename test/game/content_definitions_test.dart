@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/content/augment_definitions.dart';
+import 'package:pixel_survivor/game/content/content_integrity.dart';
 import 'package:pixel_survivor/game/content/ids.dart';
 import 'package:pixel_survivor/game/content/stage_definitions.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
@@ -34,6 +37,23 @@ typedef ExpectedAugment = ({
 });
 
 void main() {
+  test('complete production roster passes the aggregate integrity audit', () {
+    final report = validateContentIntegrity(
+      bundledImagePaths: bundledImagePathsFromDisk(),
+    );
+
+    expect(report.counts.characters, 3);
+    expect(report.counts.weapons, 8);
+    expect(report.counts.weaponLevels, 40);
+    expect(report.counts.augments, 16);
+    expect(report.counts.normalEnemies, 8);
+    expect(report.counts.eliteEnemies, 3);
+    expect(report.counts.stages, 2);
+    expect(report.counts.bosses, 3);
+    expect(report.counts.unlockGoals, 15);
+    expect(report.issues, isEmpty);
+  });
+
   test('roster exposes two stages with distinct presentation metadata', () {
     expect(stageDefinitions, hasLength(2));
     expect(
@@ -767,3 +787,9 @@ void main() {
     }
   });
 }
+
+Set<String> bundledImagePathsFromDisk() => Directory('assets/images')
+    .listSync(recursive: true)
+    .whereType<File>()
+    .map((file) => file.path.replaceAll('\\', '/'))
+    .toSet();
