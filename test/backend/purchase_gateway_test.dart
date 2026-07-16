@@ -2,6 +2,10 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:in_app_purchase/in_app_purchase.dart' as iap;
+// ignore: depend_on_referenced_packages
+import 'package:in_app_purchase_android/billing_client_wrappers.dart';
+// ignore: depend_on_referenced_packages
+import 'package:in_app_purchase_android/in_app_purchase_android.dart';
 import 'package:pixel_survivor/backend/economy/google_play_purchase_gateway.dart';
 import 'package:pixel_survivor/backend/economy/purchase_gateway.dart';
 
@@ -17,9 +21,12 @@ void main() {
       expect(client.listenerCount, 1);
       expect(client.queriedIds, PremiumProduct.ids);
       expect(products.map((item) => item.price), ['₩1,100', r'$4.99', '€8,99']);
-      await gateway.purchase(products.first);
+      await gateway.purchase(products.first, applicationUserName: 'user-a');
       expect(client.autoConsume, isFalse);
       expect(client.purchasedProductId, PremiumProduct.smallId);
+      expect(client.applicationUserName, 'user-a');
+      await gateway.recoverUnfinishedPurchases(applicationUserName: 'user-a');
+      expect(client.restoredApplicationUserName, 'user-a');
       await gateway.dispose();
     },
   );
@@ -40,6 +47,7 @@ void main() {
       await flush();
 
       expect(updates.single.purchaseToken, 'server-token');
+      expect(updates.single.ownerUserId, 'user-a');
       expect(client.completed, isEmpty);
       await gateway.complete(updates.single);
       expect(client.completed, [details]);
@@ -90,6 +98,16 @@ void main() {
 
       client.emitError(StateError('billing disconnected'));
       client.emit([
+        iap.PurchaseDetails(
+          productID: PremiumProduct.smallId,
+          verificationData: iap.PurchaseVerificationData(
+            localVerificationData: 'local',
+            serverVerificationData: 'generic-token',
+            source: 'test',
+          ),
+          transactionDate: null,
+          status: iap.PurchaseStatus.purchased,
+        ),
         purchaseDetails(
           status: iap.PurchaseStatus.purchased,
           token: 'unknown-token',
@@ -107,11 +125,12 @@ void main() {
   );
 }
 
-iap.PurchaseDetails purchaseDetails({
+GooglePlayPurchaseDetails purchaseDetails({
   required iap.PurchaseStatus status,
   String token = '',
   String productId = PremiumProduct.smallId,
-}) => iap.PurchaseDetails(
+  String? ownerUserId = 'user-a',
+}) => GooglePlayPurchaseDetails(
   purchaseID: 'purchase-id',
   productID: productId,
   verificationData: iap.PurchaseVerificationData(
@@ -121,6 +140,21 @@ iap.PurchaseDetails purchaseDetails({
   ),
   transactionDate: null,
   status: status,
+  billingClientPurchase: PurchaseWrapper(
+    orderId: 'order-id',
+    packageName: 'com.pixel.survivor.pixel_survivor',
+    purchaseTime: 1,
+    purchaseToken: token,
+    signature: 'signature',
+    products: [productId],
+    isAutoRenewing: false,
+    originalJson: '{}',
+    isAcknowledged: false,
+    purchaseState: status == iap.PurchaseStatus.pending
+        ? PurchaseStateWrapper.pending
+        : PurchaseStateWrapper.purchased,
+    obfuscatedAccountId: ownerUserId,
+  ),
 );
 
 Future<void> flush() => Future<void>.delayed(Duration.zero);
@@ -133,6 +167,8 @@ class FakeBillingClient implements GooglePlayBillingClient {
   Set<String>? queriedIds;
   bool? autoConsume;
   String? purchasedProductId;
+  String? applicationUserName;
+  String? restoredApplicationUserName;
   final completed = <iap.PurchaseDetails>[];
 
   FakeBillingClient() {
@@ -168,11 +204,15 @@ class FakeBillingClient implements GooglePlayBillingClient {
   }) async {
     this.autoConsume = autoConsume;
     purchasedProductId = purchaseParam.productDetails.id;
+    applicationUserName = purchaseParam.applicationUserName;
     return true;
   }
 
   @override
-  Future<void> restorePurchases() async {}
+  Future<void> restorePurchases({String? applicationUserName}) async {
+    restoredApplicationUserName = applicationUserName;
+  }
+
   @override
   Future<void> completePurchase(iap.PurchaseDetails purchase) async {
     completed.add(purchase);

@@ -35,41 +35,53 @@ class PurchaseUpdate {
   const PurchaseUpdate._({
     required this.productId,
     required this.status,
+    this.ownerUserId,
     this.purchaseToken,
     this.errorMessage,
   });
 
-  factory PurchaseUpdate.pending({required String productId}) =>
-      PurchaseUpdate._(
-        productId: _requireNonEmpty('productId', productId),
-        status: PurchaseStatus.pending,
-      );
+  factory PurchaseUpdate.pending({
+    required String productId,
+    String? ownerUserId,
+  }) => PurchaseUpdate._(
+    productId: _requireNonEmpty('productId', productId),
+    status: PurchaseStatus.pending,
+    ownerUserId: _optionalNonEmpty('ownerUserId', ownerUserId),
+  );
 
   factory PurchaseUpdate.purchased({
     required String productId,
     required String purchaseToken,
+    String? ownerUserId,
   }) => PurchaseUpdate._(
     productId: _requireNonEmpty('productId', productId),
     status: PurchaseStatus.purchased,
+    ownerUserId: _optionalNonEmpty('ownerUserId', ownerUserId),
     purchaseToken: _requireNonEmpty('purchaseToken', purchaseToken),
   );
 
-  factory PurchaseUpdate.canceled({required String productId}) =>
-      PurchaseUpdate._(
-        productId: _requireNonEmpty('productId', productId),
-        status: PurchaseStatus.canceled,
-      );
+  factory PurchaseUpdate.canceled({
+    required String productId,
+    String? ownerUserId,
+  }) => PurchaseUpdate._(
+    productId: _requireNonEmpty('productId', productId),
+    status: PurchaseStatus.canceled,
+    ownerUserId: _optionalNonEmpty('ownerUserId', ownerUserId),
+  );
 
   factory PurchaseUpdate.error({
     required String productId,
     required String message,
+    String? ownerUserId,
   }) => PurchaseUpdate._(
     productId: _requireNonEmpty('productId', productId),
     status: PurchaseStatus.error,
     errorMessage: _requireNonEmpty('message', message),
+    ownerUserId: _optionalNonEmpty('ownerUserId', ownerUserId),
   );
 
   final String productId;
+  final String? ownerUserId;
   final PurchaseStatus status;
   final String? purchaseToken;
   final String? errorMessage;
@@ -84,25 +96,34 @@ class PurchaseUpdate {
     return normalized;
   }
 
+  static String? _optionalNonEmpty(String name, String? value) =>
+      value == null ? null : _requireNonEmpty(name, value);
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is PurchaseUpdate &&
           productId == other.productId &&
+          ownerUserId == other.ownerUserId &&
           status == other.status &&
           purchaseToken == other.purchaseToken &&
           errorMessage == other.errorMessage;
 
   @override
   int get hashCode =>
-      Object.hash(productId, status, purchaseToken, errorMessage);
+      Object.hash(productId, ownerUserId, status, purchaseToken, errorMessage);
 }
 
 abstract interface class PurchaseGateway {
   Stream<PurchaseUpdate> get updates;
   Future<bool> isAvailable();
   Future<List<PremiumProduct>> loadProducts(Set<String> productIds);
-  Future<void> purchase(PremiumProduct product);
-  Future<void> recoverUnfinishedPurchases();
+  Future<void> purchase(
+    PremiumProduct product, {
+    required String applicationUserName,
+  });
+  Future<void> recoverUnfinishedPurchases({
+    required String applicationUserName,
+  });
   Future<void> complete(PurchaseUpdate purchase);
 }

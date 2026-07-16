@@ -99,7 +99,9 @@ class SharedPreferencesPurchaseRetryStore implements PurchaseRetryStore {
   Future<void> put(PendingPurchase purchase) => _serialize(() async {
     final entries = _read();
     final existing = entries.lookup(purchase);
-    if (existing != null && existing.ownerUserId != purchase.ownerUserId) {
+    if (existing != null &&
+        (existing.ownerUserId != purchase.ownerUserId ||
+            existing.productId != purchase.productId)) {
       throw PurchaseOwnershipException(purchase.purchaseToken);
     }
     entries.remove(purchase);

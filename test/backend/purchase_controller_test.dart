@@ -125,14 +125,25 @@ void main() {
       );
       await controller.start();
 
-      gateway.emit(PurchaseUpdate.pending(productId: PremiumProduct.smallId));
+      gateway.emit(
+        PurchaseUpdate.pending(
+          ownerUserId: 'u1',
+          productId: PremiumProduct.smallId,
+        ),
+      );
       await flushEvents();
       expect(controller.state.pendingProductIds, {PremiumProduct.smallId});
       expect(repository.verifiedTokens, isEmpty);
 
-      gateway.emit(PurchaseUpdate.canceled(productId: PremiumProduct.smallId));
+      gateway.emit(
+        PurchaseUpdate.canceled(
+          ownerUserId: 'u1',
+          productId: PremiumProduct.smallId,
+        ),
+      );
       gateway.emit(
         PurchaseUpdate.error(
+          ownerUserId: 'u1',
           productId: PremiumProduct.mediumId,
           message: 'declined',
         ),
@@ -163,6 +174,7 @@ void main() {
 
       gateway.emit(
         PurchaseUpdate.purchased(
+          ownerUserId: 'u1',
           productId: PremiumProduct.smallId,
           purchaseToken: 'token-1',
         ),
@@ -206,6 +218,7 @@ void main() {
         await controller.start();
         gateway.emit(
           PurchaseUpdate.purchased(
+            ownerUserId: 'u1',
             productId: PremiumProduct.smallId,
             purchaseToken: 'retry-token',
           ),
@@ -270,6 +283,7 @@ void main() {
       );
       await controller.start();
       final update = PurchaseUpdate.purchased(
+        ownerUserId: 'u1',
         productId: PremiumProduct.largeId,
         purchaseToken: 'duplicate-token',
       );
@@ -335,6 +349,7 @@ void main() {
       await controller.start();
       gateway.emit(
         PurchaseUpdate.purchased(
+          ownerUserId: 'owner-a',
           productId: PremiumProduct.smallId,
           purchaseToken: 'switch-token',
         ),
@@ -372,6 +387,7 @@ void main() {
     await controller.start();
     gateway.emit(
       PurchaseUpdate.purchased(
+        ownerUserId: 'owner-a',
         productId: PremiumProduct.smallId,
         purchaseToken: 'shared-token',
       ),
@@ -394,6 +410,7 @@ void main() {
     await controller.start();
     gateway.emit(
       PurchaseUpdate.purchased(
+        ownerUserId: 'u1',
         productId: PremiumProduct.smallId,
         purchaseToken: 'not-durable',
       ),
@@ -419,6 +436,7 @@ void main() {
       repository.walletError = StateError('wallet offline');
       gateway.emit(
         PurchaseUpdate.purchased(
+          ownerUserId: 'u1',
           productId: PremiumProduct.smallId,
           purchaseToken: 'wallet-token',
         ),
@@ -446,9 +464,18 @@ void main() {
     await controller.start();
     gateway.emitError(StateError('billing stream down'));
     gateway.emit(
-      PurchaseUpdate.purchased(productId: 'unknown', purchaseToken: 'bad'),
+      PurchaseUpdate.purchased(
+        ownerUserId: 'u1',
+        productId: 'unknown',
+        purchaseToken: 'bad',
+      ),
     );
-    gateway.emit(PurchaseUpdate.pending(productId: PremiumProduct.smallId));
+    gateway.emit(
+      PurchaseUpdate.pending(
+        ownerUserId: 'u1',
+        productId: PremiumProduct.smallId,
+      ),
+    );
     await flushEvents();
     expect(controller.state.message, contains('billing stream down'));
     expect(repository.verifiedTokens, isEmpty);
@@ -468,6 +495,7 @@ void main() {
     await controller.start();
     gateway.emit(
       PurchaseUpdate.purchased(
+        ownerUserId: 'u1',
         productId: PremiumProduct.smallId,
         purchaseToken: 'dispose-token',
       ),
@@ -490,6 +518,7 @@ void main() {
         gateway: gateway,
         repository: FakeEconomyRepository(),
         retryStore: FakeRetryStore(),
+        session: AccountSession.google(userId: 'u1', email: 'a@example.com'),
       );
       await controller.onStartup();
       expect(controller.state.storeStatus, PurchaseStoreStatus.error);
@@ -506,6 +535,7 @@ void main() {
       gateway: gateway,
       repository: FakeEconomyRepository(),
       retryStore: FakeRetryStore(),
+      session: AccountSession.google(userId: 'u1', email: 'a@example.com'),
     );
     await controller.onStartup();
     await controller.onResume();
@@ -542,18 +572,152 @@ void main() {
       gateway: gateway,
       repository: FakeEconomyRepository(),
       retryStore: FakeRetryStore(),
+      session: AccountSession.google(userId: 'u1', email: 'a@example.com'),
     );
     await controller.start();
     gateway
-      ..emit(PurchaseUpdate.pending(productId: PremiumProduct.smallId))
-      ..emit(PurchaseUpdate.pending(productId: PremiumProduct.smallId));
+      ..emit(
+        PurchaseUpdate.pending(
+          ownerUserId: 'u1',
+          productId: PremiumProduct.smallId,
+        ),
+      )
+      ..emit(
+        PurchaseUpdate.pending(
+          ownerUserId: 'u1',
+          productId: PremiumProduct.smallId,
+        ),
+      );
     await flushEvents();
     expect(controller.state.pendingProductCounts[PremiumProduct.smallId], 2);
-    gateway.emit(PurchaseUpdate.canceled(productId: PremiumProduct.smallId));
+    gateway.emit(
+      PurchaseUpdate.canceled(
+        ownerUserId: 'u1',
+        productId: PremiumProduct.smallId,
+      ),
+    );
     await flushEvents();
     expect(controller.state.pendingProductCounts[PremiumProduct.smallId], 1);
     controller.dispose();
   });
+
+  test(
+    'delayed owner A callback after switch to B is durable but not verified',
+    () async {
+      var session = AccountSession.google(userId: 'owner-a', email: 'a@test');
+      final gateway = FakePurchaseGateway(products: products);
+      final repository = FakeEconomyRepository();
+      final retryStore = FakeRetryStore();
+      final controller = buildController(
+        gateway: gateway,
+        repository: repository,
+        retryStore: retryStore,
+        sessionProvider: () => session,
+      );
+      await controller.start();
+      session = AccountSession.google(userId: 'owner-b', email: 'b@test');
+      await controller.onAccountChanged(session);
+      gateway.emit(
+        PurchaseUpdate.purchased(
+          ownerUserId: 'owner-a',
+          productId: PremiumProduct.smallId,
+          purchaseToken: 'delayed-a',
+        ),
+      );
+      await flushEvents();
+
+      expect(repository.verifiedTokens, isEmpty);
+      expect(retryStore.entries.single.ownerUserId, 'owner-a');
+      controller.dispose();
+    },
+  );
+
+  test('pending and retry state includes only the current owner', () async {
+    final gateway = FakePurchaseGateway(products: products);
+    final retryStore = FakeRetryStore()
+      ..entries.add(
+        const PendingPurchase(
+          ownerUserId: 'owner-a',
+          productId: PremiumProduct.smallId,
+          purchaseToken: 'foreign-token',
+        ),
+      );
+    final controller = buildController(
+      gateway: gateway,
+      repository: FakeEconomyRepository(),
+      retryStore: retryStore,
+      session: AccountSession.google(userId: 'owner-b', email: 'b@test'),
+    );
+    await controller.start();
+    expect(controller.state.retryPending, isFalse);
+    gateway.emit(
+      PurchaseUpdate.pending(
+        ownerUserId: 'owner-a',
+        productId: PremiumProduct.smallId,
+      ),
+    );
+    await flushEvents();
+    expect(controller.state.pendingProductCounts, isEmpty);
+    gateway.emit(
+      PurchaseUpdate.pending(
+        ownerUserId: 'owner-b',
+        productId: PremiumProduct.smallId,
+      ),
+    );
+    await flushEvents();
+    expect(controller.state.pendingProductCounts[PremiumProduct.smallId], 1);
+    controller.dispose();
+  });
+
+  test('guest account change clears wallet and owner UI caches', () async {
+    var session = AccountSession.google(userId: 'owner-a', email: 'a@test');
+    final gateway = FakePurchaseGateway(products: products);
+    final controller = buildController(
+      gateway: gateway,
+      repository: FakeEconomyRepository(),
+      retryStore: FakeRetryStore(),
+      sessionProvider: () => session,
+    );
+    await controller.start();
+    gateway.emit(
+      PurchaseUpdate.pending(
+        ownerUserId: 'owner-a',
+        productId: PremiumProduct.smallId,
+      ),
+    );
+    await flushEvents();
+    session = const AccountSession.signedOut();
+    await controller.onAccountChanged(session);
+
+    expect(controller.state.wallet, isNull);
+    expect(controller.state.walletStale, isTrue);
+    expect(controller.state.pendingProductCounts, isEmpty);
+    expect(controller.state.retryPending, isFalse);
+    controller.dispose();
+  });
+
+  test(
+    'same product purchases bind each sequential account explicitly',
+    () async {
+      var session = AccountSession.google(userId: 'owner-a', email: 'a@test');
+      final gateway = FakePurchaseGateway(products: products);
+      final controller = buildController(
+        gateway: gateway,
+        repository: FakeEconomyRepository(),
+        retryStore: FakeRetryStore(),
+        sessionProvider: () => session,
+      );
+      await controller.start();
+      await controller.purchase(products.first);
+      session = AccountSession.google(userId: 'owner-b', email: 'b@test');
+      await controller.onAccountChanged(session);
+      await controller.purchase(products.first);
+
+      expect(gateway.purchaseApplicationUserNames, ['owner-a', 'owner-b']);
+      expect(gateway.recoveryApplicationUserNames, ['owner-a', 'owner-b']);
+      controller.dispose();
+    },
+  );
 }
 
 Future<void> flushEvents() async {
@@ -582,6 +746,8 @@ class FakePurchaseGateway implements PurchaseGateway {
   int recoveryCount = 0;
   Set<String>? requestedProductIds;
   final purchases = <PremiumProduct>[];
+  final purchaseApplicationUserNames = <String>[];
+  final recoveryApplicationUserNames = <String>[];
   final completed = <PurchaseUpdate>[];
 
   void emit(PurchaseUpdate update) => _updates.add(update);
@@ -616,10 +782,19 @@ class FakePurchaseGateway implements PurchaseGateway {
   }
 
   @override
-  Future<void> purchase(PremiumProduct product) async => purchases.add(product);
+  Future<void> purchase(
+    PremiumProduct product, {
+    required String applicationUserName,
+  }) async {
+    purchases.add(product);
+    purchaseApplicationUserNames.add(applicationUserName);
+  }
 
   @override
-  Future<void> recoverUnfinishedPurchases() async {
+  Future<void> recoverUnfinishedPurchases({
+    required String applicationUserName,
+  }) async {
+    recoveryApplicationUserNames.add(applicationUserName);
     final attempt = recoveryCount++;
     if (attempt < recoveryErrors.length) throw recoveryErrors[attempt];
   }

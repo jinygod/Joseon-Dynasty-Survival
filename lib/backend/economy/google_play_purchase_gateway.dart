@@ -1,6 +1,9 @@
 import 'dart:async';
 
 import 'package:in_app_purchase/in_app_purchase.dart' as iap;
+// The Android implementation is supplied transitively by in_app_purchase.
+// ignore: depend_on_referenced_packages
+import 'package:in_app_purchase_android/in_app_purchase_android.dart';
 
 import 'purchase_gateway.dart';
 
@@ -12,7 +15,7 @@ abstract interface class GooglePlayBillingClient {
     required iap.PurchaseParam purchaseParam,
     required bool autoConsume,
   });
-  Future<void> restorePurchases();
+  Future<void> restorePurchases({String? applicationUserName});
   Future<void> completePurchase(iap.PurchaseDetails purchase);
 }
 
@@ -38,7 +41,8 @@ class InAppPurchaseBillingClient implements GooglePlayBillingClient {
     autoConsume: autoConsume,
   );
   @override
-  Future<void> restorePurchases() => _instance.restorePurchases();
+  Future<void> restorePurchases({String? applicationUserName}) =>
+      _instance.restorePurchases(applicationUserName: applicationUserName);
   @override
   Future<void> completePurchase(iap.PurchaseDetails purchase) =>
       _instance.completePurchase(purchase);
@@ -97,18 +101,26 @@ class GooglePlayPurchaseGateway implements PurchaseGateway {
   }
 
   @override
-  Future<void> purchase(PremiumProduct product) async {
+  Future<void> purchase(
+    PremiumProduct product, {
+    required String applicationUserName,
+  }) async {
     final details = _productDetails[product.id];
     if (details == null) throw StateError('product was not loaded');
     final launched = await _client.buyConsumable(
-      purchaseParam: iap.PurchaseParam(productDetails: details),
+      purchaseParam: iap.PurchaseParam(
+        productDetails: details,
+        applicationUserName: applicationUserName,
+      ),
       autoConsume: false,
     );
     if (!launched) throw StateError('Google Play purchase did not start');
   }
 
   @override
-  Future<void> recoverUnfinishedPurchases() => _client.restorePurchases();
+  Future<void> recoverUnfinishedPurchases({
+    required String applicationUserName,
+  }) => _client.restorePurchases(applicationUserName: applicationUserName);
 
   @override
   Future<void> complete(PurchaseUpdate purchase) async {
@@ -124,11 +136,22 @@ class GooglePlayPurchaseGateway implements PurchaseGateway {
   void _onPurchases(List<iap.PurchaseDetails> values) {
     if (_disposed) return;
     for (final details in values) {
-      if (!PremiumProduct.ids.contains(details.productID)) continue;
+      if (details is! GooglePlayPurchaseDetails ||
+          !PremiumProduct.ids.contains(details.productID)) {
+        continue;
+      }
+      final ownerUserId = details.billingClientPurchase.obfuscatedAccountId
+          ?.trim();
+      if (ownerUserId == null || ownerUserId.isEmpty) continue;
       final token = details.verificationData.serverVerificationData.trim();
       switch (details.status) {
         case iap.PurchaseStatus.pending:
-          _updates.add(PurchaseUpdate.pending(productId: details.productID));
+          _updates.add(
+            PurchaseUpdate.pending(
+              productId: details.productID,
+              ownerUserId: ownerUserId,
+            ),
+          );
         case iap.PurchaseStatus.purchased:
         case iap.PurchaseStatus.restored:
           if (token.isEmpty) {
@@ -136,6 +159,7 @@ class GooglePlayPurchaseGateway implements PurchaseGateway {
               PurchaseUpdate.error(
                 productId: details.productID,
                 message: 'Google Play returned an empty purchase token',
+                ownerUserId: ownerUserId,
               ),
             );
           } else {
@@ -144,16 +168,23 @@ class GooglePlayPurchaseGateway implements PurchaseGateway {
               PurchaseUpdate.purchased(
                 productId: details.productID,
                 purchaseToken: token,
+                ownerUserId: ownerUserId,
               ),
             );
           }
         case iap.PurchaseStatus.canceled:
-          _updates.add(PurchaseUpdate.canceled(productId: details.productID));
+          _updates.add(
+            PurchaseUpdate.canceled(
+              productId: details.productID,
+              ownerUserId: ownerUserId,
+            ),
+          );
         case iap.PurchaseStatus.error:
           _updates.add(
             PurchaseUpdate.error(
               productId: details.productID,
               message: details.error?.message ?? 'Google Play purchase failed',
+              ownerUserId: ownerUserId,
             ),
           );
       }

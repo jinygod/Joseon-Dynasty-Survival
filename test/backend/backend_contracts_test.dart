@@ -205,7 +205,7 @@ void main() {
     test('gateway exposes unfinished purchase recovery', () async {
       final gateway = _RecordingPurchaseGateway();
 
-      await gateway.recoverUnfinishedPurchases();
+      await gateway.recoverUnfinishedPurchases(applicationUserName: 'user-a');
 
       expect(gateway.recoveryCount, 1);
     });
@@ -259,10 +259,15 @@ class _RecordingPurchaseGateway implements PurchaseGateway {
   Future<List<PremiumProduct>> loadProducts(Set<String> productIds) async => [];
 
   @override
-  Future<void> purchase(PremiumProduct product) async {}
+  Future<void> purchase(
+    PremiumProduct product, {
+    required String applicationUserName,
+  }) async {}
 
   @override
-  Future<void> recoverUnfinishedPurchases() async {
+  Future<void> recoverUnfinishedPurchases({
+    required String applicationUserName,
+  }) async {
     recoveryCount += 1;
   }
 }

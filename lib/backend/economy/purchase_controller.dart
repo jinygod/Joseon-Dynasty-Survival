@@ -53,10 +53,11 @@ class PurchaseState {
     bool? retryPending,
     bool? accountLinkRequired,
     String? message,
+    bool clearWallet = false,
   }) => PurchaseState(
     storeStatus: storeStatus ?? this.storeStatus,
     products: products ?? this.products,
-    wallet: wallet ?? this.wallet,
+    wallet: clearWallet ? null : wallet ?? this.wallet,
     walletStale: walletStale ?? this.walletStale,
     pendingProductCounts: pendingProductCounts ?? this.pendingProductCounts,
     inFlightProductIds: inFlightProductIds ?? this.inFlightProductIds,
@@ -89,7 +90,7 @@ class PurchaseController extends ChangeNotifier {
   StreamSubscription<PurchaseUpdate>? _subscription;
   final _processingTokens = <String>{};
   final _completedTokens = <String>{};
-  final _launchOwners = <String, String>{};
+  int _accountGeneration = 0;
   bool _initialized = false;
   bool _disposed = false;
   PurchaseState _state = const PurchaseState();
@@ -97,7 +98,10 @@ class PurchaseController extends ChangeNotifier {
   PurchaseState get state => _state;
 
   Future<void> onStartup() => start();
-  Future<void> onResume() => resume();
+  Future<void> onResume() => onAccountChanged(_sessionProvider());
+
+  Future<void> onAccountChanged(AccountSession session) =>
+      _applyAccountChanged(session, propagateRecoveryError: false);
 
   Future<void> start() async {
     if (_disposed || _initialized) return;
@@ -107,15 +111,8 @@ class PurchaseController extends ChangeNotifier {
     );
     _setState(_state.copyWith(storeStatus: PurchaseStoreStatus.loading));
     try {
-      await _gateway.recoverUnfinishedPurchases();
-      if (_disposed) return;
       final session = _sessionProvider();
-      _setState(_state.copyWith(accountLinkRequired: !session.isPermanent));
-      if (session.isPermanent) {
-        await _refreshWallet(session.userId!, strict: false);
-        if (_disposed) return;
-        await _retryDurablePurchases();
-      }
+      await _applyAccountChanged(session, propagateRecoveryError: true);
       if (_disposed) return;
       if (!await _gateway.isAvailable()) {
         _setState(
@@ -149,19 +146,40 @@ class PurchaseController extends ChangeNotifier {
   }
 
   Future<void> resume() async {
+    await onResume();
+  }
+
+  Future<void> _applyAccountChanged(
+    AccountSession session, {
+    required bool propagateRecoveryError,
+  }) async {
     if (_disposed) return;
+    final generation = ++_accountGeneration;
+    _setState(
+      _state.copyWith(
+        clearWallet: true,
+        walletStale: true,
+        pendingProductCounts: const {},
+        inFlightProductIds: const {},
+        retryPending: false,
+        accountLinkRequired: !session.isPermanent,
+      ),
+    );
+    if (!session.isPermanent) return;
+    final ownerUserId = session.userId!;
     try {
-      await _gateway.recoverUnfinishedPurchases();
-      if (_disposed) return;
-      final session = _sessionProvider();
-      _setState(_state.copyWith(accountLinkRequired: !session.isPermanent));
-      if (session.isPermanent) {
-        await _refreshWallet(session.userId!, strict: false);
-        if (_disposed) return;
-        await _retryDurablePurchases();
-      }
+      await _gateway.recoverUnfinishedPurchases(
+        applicationUserName: ownerUserId,
+      );
+      if (!_isCurrentOwner(ownerUserId, generation)) return;
+      await _refreshWallet(ownerUserId, generation: generation, strict: false);
+      if (!_isCurrentOwner(ownerUserId, generation)) return;
+      await _retryDurablePurchases(ownerUserId, generation);
     } catch (error) {
-      _setState(_state.copyWith(message: error.toString()));
+      if (_isCurrentOwner(ownerUserId, generation)) {
+        _setState(_state.copyWith(message: error.toString()));
+      }
+      if (propagateRecoveryError) rethrow;
     }
   }
 
@@ -177,15 +195,13 @@ class PurchaseController extends ChangeNotifier {
       return PurchaseStartResult.unavailable;
     }
     final userId = session.userId!;
-    _launchOwners[product.id] = userId;
     _setInFlight(product.id, true);
     try {
-      await _gateway.purchase(product);
+      await _gateway.purchase(product, applicationUserName: userId);
       return _disposed
           ? PurchaseStartResult.error
           : PurchaseStartResult.started;
     } catch (error) {
-      _launchOwners.remove(product.id);
       _setState(_state.copyWith(message: error.toString()));
       return PurchaseStartResult.error;
     } finally {
@@ -194,24 +210,31 @@ class PurchaseController extends ChangeNotifier {
   }
 
   void _handleUpdate(PurchaseUpdate update) {
-    if (_disposed || !PremiumProduct.ids.contains(update.productId)) return;
+    final ownerUserId = update.ownerUserId;
+    if (_disposed ||
+        ownerUserId == null ||
+        !PremiumProduct.ids.contains(update.productId)) {
+      return;
+    }
+    final isCurrentOwner = _isCurrentOwner(ownerUserId);
     switch (update.status) {
       case PurchaseStatus.pending:
-        _changePending(update.productId, 1);
+        if (isCurrentOwner) _changePending(update.productId, 1);
       case PurchaseStatus.canceled:
       case PurchaseStatus.error:
-        _changePending(update.productId, -1);
-        _launchOwners.remove(update.productId);
-        if (update.status == PurchaseStatus.error) {
+        if (isCurrentOwner) _changePending(update.productId, -1);
+        if (isCurrentOwner && update.status == PurchaseStatus.error) {
           _setState(_state.copyWith(message: update.errorMessage));
         }
       case PurchaseStatus.purchased:
-        _changePending(update.productId, -1);
-        final owner =
-            _launchOwners.remove(update.productId) ?? _currentPermanentUserId();
-        if (owner != null) {
-          unawaited(_processPurchased(update, ownerUserId: owner));
-        }
+        if (isCurrentOwner) _changePending(update.productId, -1);
+        unawaited(
+          _processPurchased(
+            update,
+            ownerUserId: ownerUserId,
+            generation: _accountGeneration,
+          ),
+        );
     }
   }
 
@@ -219,27 +242,35 @@ class PurchaseController extends ChangeNotifier {
     _setState(_state.copyWith(message: error.toString()));
   }
 
-  Future<void> _retryDurablePurchases() async {
+  Future<void> _retryDurablePurchases(
+    String ownerUserId,
+    int generation,
+  ) async {
     final entries = await _retryStore.load();
-    if (_disposed) return;
-    _setState(_state.copyWith(retryPending: entries.isNotEmpty));
-    for (final entry in entries) {
-      if (!_isCurrentOwner(entry.ownerUserId)) continue;
+    if (!_isCurrentOwner(ownerUserId, generation)) return;
+    final ownerEntries = entries
+        .where((entry) => entry.ownerUserId == ownerUserId)
+        .toList();
+    _setState(_state.copyWith(retryPending: ownerEntries.isNotEmpty));
+    for (final entry in ownerEntries) {
       await _processPurchased(
         PurchaseUpdate.purchased(
+          ownerUserId: entry.ownerUserId,
           productId: entry.productId,
           purchaseToken: entry.purchaseToken,
         ),
         ownerUserId: entry.ownerUserId,
+        generation: generation,
         alreadyDurable: true,
       );
-      if (_disposed) return;
+      if (!_isCurrentOwner(ownerUserId, generation)) return;
     }
   }
 
   Future<void> _processPurchased(
     PurchaseUpdate update, {
     required String ownerUserId,
+    required int generation,
     bool alreadyDurable = false,
   }) async {
     final token = update.purchaseToken!;
@@ -268,7 +299,7 @@ class PurchaseController extends ChangeNotifier {
           return;
         }
       }
-      if (!_isCurrentOwner(ownerUserId)) return;
+      if (!_isCurrentOwner(ownerUserId, generation)) return;
       _setState(_state.copyWith(retryPending: true));
       final result = await _repository
           .verifyPurchase(
@@ -277,18 +308,30 @@ class PurchaseController extends ChangeNotifier {
             packageName: _packageName,
           )
           .timeout(verificationTimeout);
-      if (!result.accepted || !_isCurrentOwner(ownerUserId)) return;
-      await _refreshWallet(ownerUserId, strict: true);
-      if (!_isCurrentOwner(ownerUserId)) return;
+      if (!result.accepted || !_isCurrentOwner(ownerUserId, generation)) return;
+      await _refreshWallet(ownerUserId, generation: generation, strict: true);
+      if (!_isCurrentOwner(ownerUserId, generation)) return;
       await _gateway.complete(update);
       if (_disposed) return;
       await _retryStore.remove(token);
       if (_disposed) return;
       _completedTokens.add(token);
       final remaining = await _retryStore.load();
-      _setState(_state.copyWith(retryPending: remaining.isNotEmpty));
+      if (_isCurrentOwner(ownerUserId, generation)) {
+        _setState(
+          _state.copyWith(
+            retryPending: remaining.any(
+              (entry) => entry.ownerUserId == ownerUserId,
+            ),
+          ),
+        );
+      }
     } catch (error) {
-      _setState(_state.copyWith(retryPending: true, message: error.toString()));
+      if (_isCurrentOwner(ownerUserId, generation)) {
+        _setState(
+          _state.copyWith(retryPending: true, message: error.toString()),
+        );
+      }
     } finally {
       _processingTokens.remove(token);
     }
@@ -296,15 +339,20 @@ class PurchaseController extends ChangeNotifier {
 
   Future<void> _refreshWallet(
     String ownerUserId, {
+    required int generation,
     required bool strict,
   }) async {
-    if (!_isCurrentOwner(ownerUserId)) return;
+    if (!_isCurrentOwner(ownerUserId, generation)) return;
     try {
       final wallet = await _repository.fetchWallet();
-      if (!_isCurrentOwner(ownerUserId)) return;
+      if (!_isCurrentOwner(ownerUserId, generation)) return;
       _setState(_state.copyWith(wallet: wallet, walletStale: false));
     } catch (error) {
-      _setState(_state.copyWith(walletStale: true, message: error.toString()));
+      if (_isCurrentOwner(ownerUserId, generation)) {
+        _setState(
+          _state.copyWith(walletStale: true, message: error.toString()),
+        );
+      }
       if (strict) rethrow;
     }
   }
@@ -314,8 +362,10 @@ class PurchaseController extends ChangeNotifier {
     return session.isPermanent ? session.userId : null;
   }
 
-  bool _isCurrentOwner(String ownerUserId) =>
-      !_disposed && _currentPermanentUserId() == ownerUserId;
+  bool _isCurrentOwner(String ownerUserId, [int? generation]) =>
+      !_disposed &&
+      (generation == null || generation == _accountGeneration) &&
+      _currentPermanentUserId() == ownerUserId;
 
   void _changePending(String productId, int delta) {
     final counts = {..._state.pendingProductCounts};

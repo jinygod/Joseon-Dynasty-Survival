@@ -76,12 +76,18 @@ void main() {
           .onPressed,
       isNull,
     );
-    gateway.emit(PurchaseUpdate.pending(productId: PremiumProduct.smallId));
+    gateway.emit(
+      PurchaseUpdate.pending(
+        ownerUserId: 'u1',
+        productId: PremiumProduct.smallId,
+      ),
+    );
     await tester.pump();
     expect(find.text('결제 승인 대기 중'), findsOneWidget);
 
     gateway.emit(
       PurchaseUpdate.purchased(
+        ownerUserId: 'u1',
         productId: PremiumProduct.smallId,
         purchaseToken: 'retry-token',
       ),
@@ -210,13 +216,18 @@ class ShopGateway implements PurchaseGateway {
         ),
       ];
   @override
-  Future<void> purchase(PremiumProduct product) async {
+  Future<void> purchase(
+    PremiumProduct product, {
+    required String applicationUserName,
+  }) async {
     purchases.add(product);
     if (purchaseCompleter case final completer?) await completer.future;
   }
 
   @override
-  Future<void> recoverUnfinishedPurchases() async {}
+  Future<void> recoverUnfinishedPurchases({
+    required String applicationUserName,
+  }) async {}
 }
 
 class ShopRepository implements EconomyRepository {

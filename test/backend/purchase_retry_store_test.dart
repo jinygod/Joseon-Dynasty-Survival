@@ -98,6 +98,28 @@ void main() {
       );
     },
   );
+
+  test('a token owner and product are both immutable', () async {
+    final preferences = await SharedPreferences.getInstance();
+    final store = SharedPreferencesPurchaseRetryStore(preferences);
+    const original = PendingPurchase(
+      ownerUserId: 'owner-a',
+      productId: PremiumProduct.smallId,
+      purchaseToken: 'immutable-token',
+    );
+    await store.put(original);
+    await expectLater(
+      store.put(
+        const PendingPurchase(
+          ownerUserId: 'owner-a',
+          productId: PremiumProduct.largeId,
+          purchaseToken: 'immutable-token',
+        ),
+      ),
+      throwsA(isA<PurchaseOwnershipException>()),
+    );
+    expect(await store.load(), {original});
+  });
 }
 
 class FailingPurchasePreferences implements PurchasePreferences {
