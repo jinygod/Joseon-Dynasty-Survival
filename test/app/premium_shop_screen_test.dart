@@ -1,0 +1,261 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:pixel_survivor/app/premium_shop_screen.dart';
+import 'package:pixel_survivor/app/premium_wallet_badge.dart';
+import 'package:pixel_survivor/backend/account/account_session.dart';
+import 'package:pixel_survivor/backend/economy/premium_wallet.dart';
+import 'package:pixel_survivor/backend/economy/purchase_controller.dart';
+import 'package:pixel_survivor/backend/economy/purchase_gateway.dart';
+import 'package:pixel_survivor/backend/economy/purchase_retry_store.dart';
+import 'package:pixel_survivor/backend/economy/supabase_economy_repository.dart';
+
+void main() {
+  testWidgets('shows only store-localized prices and fresh wallet', (
+    tester,
+  ) async {
+    final gateway = ShopGateway();
+    final controller = shopController(gateway: gateway);
+    await controller.start();
+
+    await tester.pumpWidget(
+      MaterialApp(home: PremiumShopScreen(controller: controller)),
+    );
+
+    expect(find.text('금옥 100'), findsOneWidget);
+    expect(find.text('₩1,100'), findsOneWidget);
+    expect(find.text(r'$4.99'), findsOneWidget);
+    expect(find.text('€8,99'), findsOneWidget);
+    expect(find.text(r'$0.99'), findsNothing);
+    controller.dispose();
+  });
+
+  testWidgets('guest purchase opens account-link prompt', (tester) async {
+    final gateway = ShopGateway();
+    var prompts = 0;
+    final controller = shopController(
+      gateway: gateway,
+      session: AccountSession.anonymous(userId: 'guest'),
+    );
+    await controller.start();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PremiumShopScreen(
+          controller: controller,
+          onAccountLinkRequired: () => prompts += 1,
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('premium-buy-royal_jade_small')));
+    await tester.pump();
+
+    expect(prompts, 1);
+    expect(gateway.purchases, isEmpty);
+    controller.dispose();
+  });
+
+  testWidgets('stale wallet and pending or retry states use required copy', (
+    tester,
+  ) async {
+    final gateway = ShopGateway();
+    final repository = ShopRepository()..walletError = StateError('offline');
+    final controller = shopController(gateway: gateway, repository: repository);
+    await controller.start();
+    await tester.pumpWidget(
+      MaterialApp(home: PremiumShopScreen(controller: controller)),
+    );
+
+    expect(find.text('금옥 —'), findsOneWidget);
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.byKey(const Key('premium-buy-royal_jade_small')),
+          )
+          .onPressed,
+      isNull,
+    );
+    gateway.emit(
+      PurchaseUpdate.pending(
+        ownerUserId: 'u1',
+        productId: PremiumProduct.smallId,
+      ),
+    );
+    await tester.pump();
+    expect(find.text('결제 승인 대기 중'), findsOneWidget);
+
+    gateway.emit(
+      PurchaseUpdate.purchased(
+        ownerUserId: 'u1',
+        productId: PremiumProduct.smallId,
+        purchaseToken: 'retry-token',
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 10));
+    expect(find.text('구매 확인 다시 시도'), findsOneWidget);
+    controller.dispose();
+  });
+
+  testWidgets('loading and unavailable states show clear feedback', (
+    tester,
+  ) async {
+    final gateway = ShopGateway()..available = false;
+    final controller = shopController(gateway: gateway);
+    await tester.pumpWidget(
+      MaterialApp(home: PremiumShopScreen(controller: controller)),
+    );
+    expect(find.text('상점 불러오는 중'), findsOneWidget);
+
+    await controller.start();
+    await tester.pump();
+    expect(find.text('스토어를 사용할 수 없습니다'), findsOneWidget);
+    expect(
+      await controller.purchase(
+        const PremiumProduct(
+          id: PremiumProduct.smallId,
+          title: '소형',
+          description: '100 금옥',
+          price: '₩1,100',
+        ),
+      ),
+      PurchaseStartResult.unavailable,
+    );
+    expect(controller.state.message, isNotEmpty);
+    controller.dispose();
+  });
+
+  testWidgets('purchase button is disabled while billing launch is in flight', (
+    tester,
+  ) async {
+    final gateway = ShopGateway()..purchaseCompleter = Completer<void>();
+    final controller = shopController(gateway: gateway);
+    await controller.start();
+    await tester.pumpWidget(
+      MaterialApp(home: PremiumShopScreen(controller: controller)),
+    );
+    final button = find.byKey(const Key('premium-buy-royal_jade_small'));
+    await tester.tap(button);
+    await tester.pump();
+    expect(tester.widget<FilledButton>(button).onPressed, isNull);
+    gateway.purchaseCompleter!.complete();
+    await tester.pump();
+    controller.dispose();
+  });
+
+  testWidgets('wallet badge exposes unavailable semantics when stale', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PremiumWalletBadge(
+            wallet: PremiumWallet(balance: 99, debt: 0, version: 1),
+            stale: true,
+          ),
+        ),
+      ),
+    );
+    expect(find.text('금옥 —'), findsOneWidget);
+    expect(
+      tester.getSemantics(find.byType(PremiumWalletBadge)),
+      matchesSemantics(label: '금옥 잔액을 확인할 수 없음'),
+    );
+  });
+}
+
+PurchaseController shopController({
+  required ShopGateway gateway,
+  ShopRepository? repository,
+  AccountSession? session,
+}) => PurchaseController(
+  gateway: gateway,
+  repository: repository ?? ShopRepository(),
+  retryStore: ShopRetryStore(),
+  sessionProvider: () =>
+      session ?? AccountSession.google(userId: 'u1', email: 'a@example.com'),
+  packageName: 'com.pixel.survivor.pixel_survivor',
+  verificationTimeout: const Duration(milliseconds: 1),
+);
+
+class ShopGateway implements PurchaseGateway {
+  final _updates = StreamController<PurchaseUpdate>.broadcast();
+  final purchases = <PremiumProduct>[];
+  bool available = true;
+  Completer<void>? purchaseCompleter;
+
+  void emit(PurchaseUpdate value) => _updates.add(value);
+
+  @override
+  Stream<PurchaseUpdate> get updates => _updates.stream;
+  @override
+  Future<void> complete(PurchaseUpdate purchase) async {}
+  @override
+  Future<bool> isAvailable() async => available;
+  @override
+  Future<List<PremiumProduct>> loadProducts(Set<String> productIds) async =>
+      const [
+        PremiumProduct(
+          id: PremiumProduct.smallId,
+          title: '소형',
+          description: '100 금옥',
+          price: '₩1,100',
+        ),
+        PremiumProduct(
+          id: PremiumProduct.mediumId,
+          title: '중형',
+          description: '550 금옥',
+          price: r'$4.99',
+        ),
+        PremiumProduct(
+          id: PremiumProduct.largeId,
+          title: '대형',
+          description: '1200 금옥',
+          price: '€8,99',
+        ),
+      ];
+  @override
+  Future<void> purchase(
+    PremiumProduct product, {
+    required String applicationUserName,
+  }) async {
+    purchases.add(product);
+    if (purchaseCompleter case final completer?) await completer.future;
+  }
+
+  @override
+  Future<void> recoverUnfinishedPurchases({
+    required String applicationUserName,
+  }) async {}
+}
+
+class ShopRepository implements EconomyRepository {
+  Object? walletError;
+  @override
+  Future<PremiumWallet> fetchWallet() async {
+    if (walletError case final error?) throw error;
+    return PremiumWallet(balance: 100, debt: 0, version: 1);
+  }
+
+  @override
+  Future<PurchaseVerificationResult> verifyPurchase({
+    required String productId,
+    required String purchaseToken,
+    required String packageName,
+  }) async {
+    await Completer<void>().future;
+    return const PurchaseVerificationResult(accepted: true, duplicate: false);
+  }
+}
+
+class ShopRetryStore implements PurchaseRetryStore {
+  final entries = <PendingPurchase>{};
+  @override
+  Future<Set<PendingPurchase>> load() async => Set.of(entries);
+  @override
+  Future<void> put(PendingPurchase purchase) async => entries.add(purchase);
+  @override
+  Future<void> remove(String purchaseToken) async =>
+      entries.removeWhere((entry) => entry.purchaseToken == purchaseToken);
+}
