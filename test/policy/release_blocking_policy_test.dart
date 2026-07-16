@@ -18,6 +18,13 @@ void main() {
     for (final field in ['owner', 'target date', 'workaround', 'release owner']) {
       expect(policy.toLowerCase(), contains(field));
     }
+    for (final p2Field in [
+      'qa-verified workaround',
+      'user and operational risk',
+      'evaluation time',
+    ]) {
+      expect(policy.toLowerCase(), contains(p2Field));
+    }
     for (final evidence in [
       'regression test',
       'reproduction',

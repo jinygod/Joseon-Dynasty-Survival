@@ -21,10 +21,31 @@ every log hash and mtime, and rejects evidence older than one hour or dated in
 the future. A nonzero command exit, changed/missing artifact, stale timestamp,
 or repository mismatch blocks the candidate.
 
-Open P2 defects require one record per defect with `owner`, `approvedBy`, and a
-future `expiresAt`. Open P3 defects require one record per defect with `owner`
-and `milestone`. Pass JSON arrays with `-P2ExceptionsJson` and
+Open P2 defects require one record per defect with `owner`, `approvedBy`,
+`expiresAt`, `verifiedWorkaround`, and `userOperationalRisk`. The expiry must
+be later than both manifest generation and the report's current UTC evaluation
+time. Workaround and risk text is trimmed, must contain at least 12 characters,
+and cannot be a placeholder. Open P3 defects require one record per defect with
+`owner` and `milestone`. Pass JSON arrays with `-P2ExceptionsJson` and
 `-P3RecordsJson`; counts and records must agree. P0 and P1 must be zero.
+
+Example P2 exception input:
+
+```json
+[
+  {
+    "owner": "qa-owner",
+    "approvedBy": "release-owner",
+    "expiresAt": "2026-07-31T00:00:00Z",
+    "verifiedWorkaround": "QA verified that reopening the records tab refreshes totals.",
+    "userOperationalRisk": "Users may briefly see stale totals; operations receives no bad data."
+  }
+]
+```
+
+The wrapper preserves these keys in `defects.p2Exceptions` in the evidence
+manifest. The report repeats accepted P2 details so reviewers can audit the
+workaround, risk, approval, and expiry used for the decision.
 
 The generated report describes the source commit in the manifest. Commit the
 report afterward. Any production, dependency, asset, build configuration, test,

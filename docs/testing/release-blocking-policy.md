@@ -31,7 +31,7 @@ Examples: one-pixel alignment drift; harmless punctuation inconsistency.
 - Missing required evidence: BLOCK
 - Failed required evidence: BLOCK
 - Open P2 without an approved exception: BLOCK
-- Open P2 with a named owner, verified workaround, risk statement, written release owner approval, and unexpired exception: conditionally non-blocking
+- Open P2 with a named owner, concrete QA-verified workaround, concrete user/operational risk statement, written release owner approval, and an exception that remains unexpired at report evaluation time: conditionally non-blocking
 - Open P3 with an issue owner and target milestone: non-blocking
 
 Required evidence is the candidate commit and branch, application version/build number, clean static analysis, full automated test result, web build result, QA-003 actual 18,000-frame production-game result, QA-006 golden result, and defect records for every severity. Evidence is stale after any production, dependency, asset, build-configuration, test, or golden change and must be regenerated.
@@ -48,7 +48,7 @@ Every exception must link the defect and include:
 - user and operational risk;
 - written release owner decision and expiry date.
 
-An exception expires on its target date, when scope or reproduction changes, or when the workaround fails. Expired exceptions return the candidate to BLOCK.
+Workaround and risk text must be specific enough for another reviewer to act on; placeholders such as `TBD`, `N/A`, `none`, or `low risk` are not evidence. An exception expiry must be after both evidence generation and the report's current evaluation time. An exception also expires when scope or reproduction changes, or when the workaround fails. Expired exceptions return the candidate to BLOCK.
 
 ## Blocking and unblock workflow
 

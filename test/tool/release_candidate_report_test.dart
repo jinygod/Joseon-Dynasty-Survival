@@ -28,11 +28,12 @@ void main() {
     List<DefectRecord> p3 = const [],
     bool identityVerified = true,
     String? identityFailure,
+    DateTime? generatedAtOverride,
   }) => ReleaseCandidateEvidence(
     branch: 'codex/qa-release-candidate',
     commit: '1234567890abcdef1234567890abcdef12345678',
     version: '0.1.0+1',
-    generatedAt: generatedAt,
+    generatedAt: generatedAtOverride ?? generatedAt,
     gates: gates ?? {for (final name in requiredReleaseGates) name: gate()},
     openP0: 0,
     openP1: 0,
@@ -54,16 +55,23 @@ void main() {
             owner: 'qa-owner',
             approvedBy: 'release-owner',
             expiresAt: generatedAt.add(const Duration(days: 7)),
+            verifiedWorkaround:
+                'QA verified that reopening the records tab refreshes totals.',
+            userOperationalRisk:
+                'Users may briefly see stale totals; operations receives no bad data.',
           ),
         ],
         p3: const [DefectRecord(owner: 'ui-owner', milestone: '0.1.1')],
       ),
+      now: generatedAt.add(const Duration(days: 1)),
     );
 
     expect(report.decision, ReleaseDecision.ready);
     expect(report.blockingReasons, isEmpty);
     expect(report.markdown, contains('Report — READY'));
     expect(report.markdown, contains('fiveMinuteProfile'));
+    expect(report.markdown, contains('QA-verified workaround'));
+    expect(report.markdown, contains('2026-07-17T12:00:00.000Z'));
   });
 
   test('arbitrary success cannot override nonzero command exit', () {
@@ -138,6 +146,94 @@ void main() {
     expect(
       report.blockingReasons,
       contains('every open P3 requires owner and milestone'),
+    );
+  });
+
+  test('P2 without verified workaround and risk cannot produce READY', () {
+    final report = generateReleaseCandidateReport(
+      evidence(
+        openP2: 1,
+        p2: [
+          DefectRecord(
+            owner: 'qa-owner',
+            approvedBy: 'release-owner',
+            expiresAt: generatedAt.add(const Duration(days: 7)),
+          ),
+        ],
+      ),
+      now: generatedAt.add(const Duration(days: 1)),
+    );
+
+    expect(report.decision, ReleaseDecision.blocked);
+    expect(
+      report.blockingReasons,
+      contains('P2 exception requires a concrete QA-verified workaround'),
+    );
+    expect(
+      report.blockingReasons,
+      contains(
+        'P2 exception requires a concrete user/operational risk statement',
+      ),
+    );
+  });
+
+  test('P2 expiry after old evidence but before report time is blocked', () {
+    final oldGeneratedAt = DateTime.utc(2020, 1, 1);
+    final report = generateReleaseCandidateReport(
+      evidence(
+        generatedAtOverride: oldGeneratedAt,
+        openP2: 1,
+        p2: [
+          DefectRecord(
+            owner: 'qa-owner',
+            approvedBy: 'release-owner',
+            expiresAt: oldGeneratedAt.add(const Duration(days: 1)),
+            verifiedWorkaround:
+                'QA verified that reopening the records tab refreshes totals.',
+            userOperationalRisk:
+                'Users may briefly see stale totals; operations receives no bad data.',
+          ),
+        ],
+      ),
+      now: oldGeneratedAt.add(const Duration(days: 2)),
+    );
+
+    expect(report.decision, ReleaseDecision.blocked);
+    expect(
+      report.blockingReasons,
+      contains(
+        'P2 exception expiry must be after evidence generation and report time',
+      ),
+    );
+  });
+
+  test('placeholder workaround and risk are not concrete P2 evidence', () {
+    final report = generateReleaseCandidateReport(
+      evidence(
+        openP2: 1,
+        p2: [
+          DefectRecord(
+            owner: 'qa-owner',
+            approvedBy: 'release-owner',
+            expiresAt: generatedAt.add(const Duration(days: 7)),
+            verifiedWorkaround: 'TBD',
+            userOperationalRisk: 'low risk',
+          ),
+        ],
+      ),
+      now: generatedAt.add(const Duration(days: 1)),
+    );
+
+    expect(report.decision, ReleaseDecision.blocked);
+    expect(
+      report.blockingReasons,
+      contains('P2 exception requires a concrete QA-verified workaround'),
+    );
+    expect(
+      report.blockingReasons,
+      contains(
+        'P2 exception requires a concrete user/operational risk statement',
+      ),
     );
   });
 }

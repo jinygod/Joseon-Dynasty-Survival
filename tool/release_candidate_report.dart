@@ -39,12 +39,16 @@ class DefectRecord {
     this.approvedBy,
     this.expiresAt,
     this.milestone,
+    this.verifiedWorkaround,
+    this.userOperationalRisk,
   });
 
   final String owner;
   final String? approvedBy;
   final DateTime? expiresAt;
   final String? milestone;
+  final String? verifiedWorkaround;
+  final String? userOperationalRisk;
 }
 
 class ReleaseCandidateEvidence {
@@ -94,8 +98,10 @@ class ReleaseCandidateReport {
 }
 
 ReleaseCandidateReport generateReleaseCandidateReport(
-  ReleaseCandidateEvidence evidence,
-) {
+  ReleaseCandidateEvidence evidence, {
+  DateTime? now,
+}) {
+  final reportNow = (now ?? DateTime.now()).toUtc();
   final reasons = <String>[];
   if (!evidence.repositoryIdentityVerified) {
     reasons.add(
@@ -128,6 +134,19 @@ ReleaseCandidateReport generateReleaseCandidateReport(
       reasons.add('P2 exception requires owner, approval, and future expiry');
       break;
     }
+    if (!record.expiresAt!.isAfter(reportNow)) {
+      reasons.add(
+        'P2 exception expiry must be after evidence generation and report time',
+      );
+    }
+    if (!_isConcreteP2Narrative(record.verifiedWorkaround)) {
+      reasons.add('P2 exception requires a concrete QA-verified workaround');
+    }
+    if (!_isConcreteP2Narrative(record.userOperationalRisk)) {
+      reasons.add(
+        'P2 exception requires a concrete user/operational risk statement',
+      );
+    }
   }
   if (evidence.p3Records.length != evidence.openP3 ||
       evidence.p3Records.any(
@@ -144,7 +163,7 @@ ReleaseCandidateReport generateReleaseCandidateReport(
     evidence: evidence,
     decision: decision,
     blockingReasons: List.unmodifiable(reasons),
-    markdown: _renderMarkdown(evidence, decision, reasons),
+    markdown: _renderMarkdown(evidence, decision, reasons, reportNow),
   );
 }
 
@@ -229,6 +248,8 @@ Future<ReleaseCandidateEvidence> loadAndVerifyEvidence(
         ? null
         : DateTime.parse(value['expiresAt'] as String).toUtc(),
     milestone: value['milestone'] as String?,
+    verifiedWorkaround: value['verifiedWorkaround'] as String?,
+    userOperationalRisk: value['userOperationalRisk'] as String?,
   );
   final defects = json['defects'] as Map;
   return ReleaseCandidateEvidence(
@@ -250,6 +271,12 @@ Future<ReleaseCandidateEvidence> loadAndVerifyEvidence(
     repositoryIdentityVerified: failures.isEmpty,
     repositoryIdentityFailure: failures.join('; '),
   );
+}
+
+bool _isConcreteP2Narrative(String? value) {
+  final text = value?.trim() ?? '';
+  if (text.length < 12) return false;
+  return !const {'n/a', 'none', 'tbd', 'unknown'}.contains(text.toLowerCase());
 }
 
 Future<void> main(List<String> args) async {
@@ -284,6 +311,7 @@ String _renderMarkdown(
   ReleaseCandidateEvidence evidence,
   ReleaseDecision decision,
   List<String> reasons,
+  DateTime reportNow,
 ) {
   final gateRows = requiredReleaseGates
       .map((gate) {
@@ -300,9 +328,22 @@ String _renderMarkdown(
   final reasonLines = reasons.isEmpty
       ? '- None.'
       : reasons.map((reason) => '- $reason').join('\n');
+  final p2Rows = evidence.p2Exceptions.isEmpty
+      ? '| None | - | - | - | - |'
+      : evidence.p2Exceptions
+            .map(
+              (record) =>
+                  '| ${_markdownCell(record.owner)} | '
+                  '${_markdownCell(record.approvedBy)} | '
+                  '${record.expiresAt?.toUtc().toIso8601String() ?? '-'} | '
+                  '${_markdownCell(record.verifiedWorkaround)} | '
+                  '${_markdownCell(record.userOperationalRisk)} |',
+            )
+            .join('\n');
   return '''# Release Candidate Report — ${decision.name.toUpperCase()}
 
 - Generated: ${evidence.generatedAt.toIso8601String()}
+- Evaluated: ${reportNow.toIso8601String()}
 - Branch: `${evidence.branch}`
 - Commit: `${evidence.commit}`
 - Version: `${evidence.version}`
@@ -319,11 +360,21 @@ $gateRows
 | --- | ---: | --- |
 | P0 | ${evidence.openP0} | Must be zero |
 | P1 | ${evidence.openP1} | Must be zero |
-| P2 | ${evidence.openP2} | Owner, approval, future expiry |
+| P2 | ${evidence.openP2} | Owner, approval, expiry after report time, verified workaround, risk |
 | P3 | ${evidence.openP3} | Owner, milestone |
+
+## P2 exception records
+
+| Owner | Approved by | Expires | QA-verified workaround | User/operational risk |
+| --- | --- | --- | --- | --- |
+$p2Rows
 
 ## Blocking reasons
 
 $reasonLines
 ''';
 }
+
+String _markdownCell(String? value) => (value?.trim().isEmpty ?? true)
+    ? '-'
+    : value!.trim().replaceAll('|', r'\|');
