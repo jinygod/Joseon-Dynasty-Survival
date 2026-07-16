@@ -6,9 +6,11 @@ import 'package:flame/components.dart';
 import 'package:flutter/services.dart';
 
 import '../content/enemy_definitions.dart';
+import '../content/enemy_behavior_definitions.dart';
 import '../content/ids.dart';
 import '../content/safe_asset_loader.dart';
 import '../systems/combat_feedback_tuning.dart';
+import '../systems/enemy_behavior_controller.dart';
 import 'player_component.dart';
 
 typedef TargetPositionProvider = Vector2? Function(Vector2 enemyPosition);
@@ -92,7 +94,8 @@ class EnemyComponent
     required this.damage,
     this.experienceValue = 1,
     this.behaviorType = EnemyBehaviorType.chase,
-    this.isElite = false,
+    this.rank = EnemyRank.normal,
+    EnemyBehaviorProfile? behaviorProfile,
     this.targetPositionProvider,
     this.nearbyEnemiesProvider,
     double? currentHealth,
@@ -104,28 +107,31 @@ class EnemyComponent
          size: size ?? Vector2.all(18),
          anchor: Anchor.center,
          autoResize: false,
-       );
+       ) {
+    _behaviorProfile = behaviorProfile ?? _legacyProfileFor(behaviorType);
+    _behaviorController = EnemyBehaviorController(profile: _behaviorProfile);
+  }
 
   factory EnemyComponent.fromDefinition(
     EnemyDefinition definition, {
-    bool isElite = false,
+    bool? isElite,
     TargetPositionProvider? targetPositionProvider,
     NearbyEnemiesProvider? nearbyEnemiesProvider,
     Vector2? position,
   }) {
-    final eliteScale = isElite ? 1.35 : 1.0;
     return EnemyComponent(
       enemyId: definition.id,
-      maxHealth: definition.maxHealth * (isElite ? 2.5 : 1),
+      maxHealth: definition.maxHealth,
       moveSpeed: definition.moveSpeed,
-      damage: definition.damage * (isElite ? 1.4 : 1),
-      experienceValue: definition.experience * (isElite ? 3 : 1),
+      damage: definition.damage,
+      experienceValue: definition.experience,
       behaviorType: definition.behaviorType,
-      isElite: isElite,
+      rank: definition.rank,
+      behaviorProfile: enemyBehaviorProfileFor(definition.behaviorProfileId),
       targetPositionProvider: targetPositionProvider,
       nearbyEnemiesProvider: nearbyEnemiesProvider,
       position: position,
-      size: Vector2.all(18 * eliteScale),
+      size: Vector2.all(definition.isElite ? 40 : 18),
     );
   }
 
@@ -136,21 +142,21 @@ class EnemyComponent
   final double damage;
   final int experienceValue;
   final EnemyBehaviorType behaviorType;
-  final bool isElite;
+  final EnemyRank rank;
   final TargetPositionProvider? targetPositionProvider;
   final NearbyEnemiesProvider? nearbyEnemiesProvider;
+  late final EnemyBehaviorProfile _behaviorProfile;
+  late final EnemyBehaviorController _behaviorController;
+  final List<EnemyAttackRequest> _attackRequests = [];
 
-  static const _dashTrackingSeconds = 2.4;
-  static const _dashDurationSeconds = 0.35;
-  static const _dashSpeedMultiplier = 3.2;
   static const _hitFlashSeconds = 0.18;
 
-  double _dashTrackingElapsed = 0;
-  double _dashRemaining = 0;
   double _hitFlashRemaining = 0;
   double _visualStateRemaining = 0;
   double _deathVisualElapsed = 0;
   double _environmentalSlowFraction = 0;
+  double _environmentalHasteFraction = 0;
+  bool _deathZonePending = false;
   final Vector2 knockbackVelocity = Vector2.zero();
   EnemyAnimationState visualState = EnemyAnimationState.moving;
 
@@ -158,10 +164,21 @@ class EnemyComponent
       isDead && _deathVisualElapsed >= EnemySpriteSheet.deathDurationSeconds;
 
   bool get isDead => currentHealth <= 0;
-  bool get isDashing => _dashRemaining > 0;
+  bool get isElite => rank == EnemyRank.elite;
+  bool get isDashing =>
+      _behaviorController.phase == EnemyBehaviorPhase.active &&
+      (_behaviorProfile.kind == EnemyBehaviorKind.dash ||
+          _behaviorProfile.kind == EnemyBehaviorKind.dive ||
+          _behaviorProfile.kind == EnemyBehaviorKind.doubleDash);
   bool get isHitFlashing => _hitFlashRemaining > 0;
   double get environmentalSlowFraction => _environmentalSlowFraction;
-  double get effectiveMoveSpeed => moveSpeed * (1 - _environmentalSlowFraction);
+  double get environmentalHasteFraction => _environmentalHasteFraction;
+  double get effectiveMoveSpeed =>
+      moveSpeed *
+      (1 + _environmentalHasteFraction) *
+      (1 - _environmentalSlowFraction);
+  EnemyBehaviorProfile get behaviorProfile => _behaviorProfile;
+  EnemyBehaviorPhase get attackPhase => _behaviorController.phase;
 
   void setEnvironmentalSlow(double fraction) {
     if (!fraction.isFinite || fraction < 0 || fraction >= .8) {
@@ -170,14 +187,37 @@ class EnemyComponent
     _environmentalSlowFraction = fraction;
   }
 
+  void setEnvironmentalHaste(double fraction) {
+    if (!fraction.isFinite || fraction < 0 || fraction >= .8) {
+      throw ArgumentError.value(fraction, 'fraction', 'Must be from 0 to 0.8');
+    }
+    _environmentalHasteFraction = fraction;
+  }
+
+  List<EnemyAttackRequest> drainAttackRequests() {
+    final result = List<EnemyAttackRequest>.unmodifiable(_attackRequests);
+    _attackRequests.clear();
+    return result;
+  }
+
+  bool consumeDeathZone() {
+    if (!_deathZonePending) return false;
+    _deathZonePending = false;
+    return true;
+  }
+
   void takeDamage(double amount) {
     if (amount <= 0 || isDead) {
       return;
     }
 
+    final wasAlive = !isDead;
     currentHealth = (currentHealth - amount).clamp(0, maxHealth).toDouble();
     _hitFlashRemaining = _hitFlashSeconds;
     if (isDead) {
+      if (wasAlive && _behaviorProfile.kind == EnemyBehaviorKind.deathZone) {
+        _deathZonePending = true;
+      }
       _setVisualState(EnemyAnimationState.death);
     } else {
       _visualStateRemaining = EnemySpriteSheet.hitDurationSeconds;
@@ -244,8 +284,7 @@ class EnemyComponent
       }
     }
 
-    final speedMultiplier = isDashing ? _dashSpeedMultiplier : 1.0;
-    position.add(direction * effectiveMoveSpeed * speedMultiplier * dt);
+    position.add(direction * effectiveMoveSpeed * dt);
     if (visualState != EnemyAnimationState.hit &&
         visualState != EnemyAnimationState.attacking &&
         !isDead) {
@@ -286,10 +325,24 @@ class EnemyComponent
       _deathVisualElapsed += dt;
     }
 
-    final wasDashing = isDashing;
     final target = targetPositionProvider?.call(position);
     if (target != null && !isDead) {
-      moveToward(target, dt);
+      final behavior = _tickBehavior(dt, target);
+      if (isDashing) {
+        position.add(
+          _behaviorController.lockedDirection *
+              effectiveMoveSpeed *
+              behavior.movementMultiplier *
+              dt,
+        );
+      } else if (!_blocksMovementForPhase()) {
+        if (_behaviorProfile.kind == EnemyBehaviorKind.dive &&
+            _behaviorController.phase == EnemyBehaviorPhase.tracking) {
+          _moveCrowToward(target, dt);
+        } else {
+          moveToward(target, dt);
+        }
+      }
     }
 
     if (!isDead && knockbackVelocity.length2 > 0) {
@@ -301,17 +354,6 @@ class EnemyComponent
     }
 
     _hitFlashRemaining = math.max(0.0, _hitFlashRemaining - dt);
-    if (behaviorType == EnemyBehaviorType.dash && !isDead) {
-      if (wasDashing) {
-        _dashRemaining = math.max(0.0, _dashRemaining - dt);
-      } else {
-        _dashTrackingElapsed += dt;
-        if (_dashTrackingElapsed >= _dashTrackingSeconds) {
-          _dashTrackingElapsed = 0;
-          _dashRemaining = _dashDurationSeconds;
-        }
-      }
-    }
     if (isDashing && visualState != EnemyAnimationState.hit) {
       playAttack();
     }
@@ -321,6 +363,49 @@ class EnemyComponent
         _setVisualState(EnemyAnimationState.moving);
       }
     }
+  }
+
+  EnemyBehaviorTick _tickBehavior(double dt, Vector2 target) {
+    var remaining = dt.isFinite && dt > 0 ? dt : 0.0;
+    var result = _behaviorController.tick(
+      dt: 0,
+      origin: position,
+      target: target,
+    );
+    while (remaining > 0) {
+      final step = math.min(.05, remaining);
+      result = _behaviorController.tick(
+        dt: step,
+        origin: position,
+        target: target,
+      );
+      final attack = result.attack;
+      if (attack != null) {
+        if (_attackRequests.length == 2) _attackRequests.removeAt(0);
+        _attackRequests.add(attack);
+      }
+      remaining -= step;
+    }
+    return result;
+  }
+
+  bool _blocksMovementForPhase() {
+    if (_behaviorController.phase != EnemyBehaviorPhase.warning &&
+        _behaviorController.phase != EnemyBehaviorPhase.recovery) {
+      return false;
+    }
+    return _behaviorProfile.kind == EnemyBehaviorKind.thrust ||
+        _behaviorProfile.kind == EnemyBehaviorKind.shockwave ||
+        _behaviorProfile.kind == EnemyBehaviorKind.scream;
+  }
+
+  void _moveCrowToward(Vector2 target, double dt) {
+    final toward = target - position;
+    if (toward.length2 == 0) return;
+    toward.normalize();
+    final direction = toward * .45 + Vector2(-toward.y, toward.x) * .55;
+    direction.normalize();
+    position.add(direction * effectiveMoveSpeed * dt);
   }
 
   void _setVisualState(EnemyAnimationState state) {
@@ -360,6 +445,7 @@ class EnemyComponent
 
   @override
   void render(Canvas canvas) {
+    _renderWarning(canvas);
     if (animations != null) {
       super.render(canvas);
       return;
@@ -380,4 +466,32 @@ class EnemyComponent
     canvas.drawRect(rect, bodyPaint);
     canvas.drawRect(rect, outlinePaint);
   }
+
+  void _renderWarning(Canvas canvas) {
+    if (_behaviorController.phase != EnemyBehaviorPhase.warning) return;
+    final paint = Paint()
+      ..color = const Color(0xaaffd166)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+    final center = Offset(size.x / 2, size.y / 2);
+    if (_behaviorProfile.kind == EnemyBehaviorKind.shockwave ||
+        _behaviorProfile.kind == EnemyBehaviorKind.scream) {
+      canvas.drawCircle(center, _behaviorProfile.range, paint);
+      return;
+    }
+    final direction = _behaviorController.lockedDirection;
+    canvas.drawLine(
+      center,
+      center + Offset(direction.x, direction.y) * _behaviorProfile.range,
+      paint,
+    );
+  }
 }
+
+EnemyBehaviorProfile _legacyProfileFor(EnemyBehaviorType type) =>
+    enemyBehaviorProfileFor(switch (type) {
+      EnemyBehaviorType.chase => 'chase',
+      EnemyBehaviorType.swarm => 'swarm',
+      EnemyBehaviorType.dash => 'dash',
+      EnemyBehaviorType.tank => 'tank',
+    });

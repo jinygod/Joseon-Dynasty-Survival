@@ -27,6 +27,7 @@ class BossComponent extends EnemyComponent {
          damage: definition.damage,
          experienceValue: definition.experience,
          behaviorType: EnemyBehaviorType.tank,
+         rank: EnemyRank.boss,
          targetPositionProvider: targetPositionProvider,
          size: Vector2.all(42),
        );
