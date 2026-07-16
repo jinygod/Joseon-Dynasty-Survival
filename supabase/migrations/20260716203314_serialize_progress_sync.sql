@@ -13,7 +13,7 @@ declare v_current public.player_progress%rowtype;
 begin
   perform private.assert_permanent_user(p_user_id);
   if p_schema_version <= 0 or jsonb_typeof(p_progress) <> 'object'
-     or p_progress ? 'royal_jade' or pg_column_size(p_progress) > 65536 then
+     or p_progress ? 'royal_jade' then
     raise exception using errcode = '22023', message = 'invalid_progress';
   end if;
 
