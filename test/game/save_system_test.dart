@@ -11,12 +11,12 @@ void main() {
   test('save state writes the current schema version', () {
     final state = SaveState.defaults();
 
-    expect(SaveState.currentSchemaVersion, 2);
+    expect(SaveState.currentSchemaVersion, 3);
     expect(state.schemaVersion, SaveState.currentSchemaVersion);
     expect(state.toJson()['schemaVersion'], SaveState.currentSchemaVersion);
   });
 
-  test('versionless alpha save migrates to schema two', () {
+  test('versionless alpha save migrates to current schema', () {
     final restored = SaveState.fromJson({
       'unlockedCharacterIds': [rookieConstable, exorcistDosa],
       'unlockedWeaponIds': [hwandoSlash, gakgungShot, talismanThrow],
@@ -49,7 +49,7 @@ void main() {
         'bestSurvivalSeconds': 240,
       });
 
-      expect(restored.schemaVersion, 2);
+      expect(restored.schemaVersion, 3);
       expect(restored.unlockedCharacterIds, contains(exorcistDosa));
       expect(restored.totalKills, 91);
       expect(restored.wallet, Wallet.empty);
@@ -84,6 +84,9 @@ void main() {
     expect(restored.selectedCharacterId, rookieConstable);
     expect(restored.selectedStageId, moonlitAbandonedOffice);
     expect(restored.claimedRewardIds, isEmpty);
+    expect(restored.unlockedStageIds, {moonlitAbandonedOffice});
+    expect(restored.totalEliteKills, 0);
+    expect(restored.victoryCount, 0);
   });
 
   test('claimed reward ids round trip without a schema bump', () {
@@ -93,7 +96,7 @@ void main() {
 
     final restored = SaveState.fromJson(original.toJson());
 
-    expect(restored.schemaVersion, 2);
+    expect(restored.schemaVersion, 3);
     expect(restored.claimedRewardIds, original.claimedRewardIds);
   });
 
@@ -107,11 +110,7 @@ void main() {
 
       expect(restored.schemaVersion, SaveState.currentSchemaVersion);
       expect(restored.totalKills, 0);
-      expect(restored.unlockedCharacterIds, {
-        rookieConstable,
-        exorcistDosa,
-        mountainHunter,
-      });
+      expect(restored.unlockedCharacterIds, {rookieConstable});
     });
 
     test('negative schema returns defaults', () {
@@ -135,18 +134,14 @@ void main() {
 
   test('save system loads defaults for unsupported stored schema', () async {
     SharedPreferences.setMockInitialValues({
-      'save_state': '{"schemaVersion":3,"totalKills":999}',
+      'save_state': '{"schemaVersion":4,"totalKills":999}',
     });
 
     final save = await SaveSystem().load();
 
     expect(save.schemaVersion, SaveState.currentSchemaVersion);
     expect(save.totalKills, 0);
-    expect(save.unlockedCharacterIds, {
-      rookieConstable,
-      exorcistDosa,
-      mountainHunter,
-    });
+    expect(save.unlockedCharacterIds, {rookieConstable});
   });
 
   test('defaults include the starting character, weapons, and augments', () {
@@ -159,6 +154,9 @@ void main() {
     expect(save.unlockedCharacterIds, contains(rookieConstable));
     expect(save.unlockedWeaponIds, containsAll([hwandoSlash, gakgungShot]));
     expect(save.unlockedAugmentIds, containsAll(startingAugmentIds));
+    expect(save.unlockedStageIds, {moonlitAbandonedOffice});
+    expect(save.unlockedCharacterIds, isNot(contains(exorcistDosa)));
+    expect(save.unlockedCharacterIds, isNot(contains(mountainHunter)));
   });
 
   test(
@@ -189,15 +187,14 @@ void main() {
       bossDefeats: 2,
       unlockedWeaponCount: 4,
       lowHealthWinCount: 1,
+      unlockedStageIds: {moonlitAbandonedOffice, plagueMarket},
+      totalEliteKills: 17,
+      victoryCount: 2,
     );
 
     final restored = SaveState.fromJson(original.toJson());
 
-    expect(restored.unlockedCharacterIds, {
-      rookieConstable,
-      exorcistDosa,
-      mountainHunter,
-    });
+    expect(restored.unlockedCharacterIds, {rookieConstable, exorcistDosa});
     expect(restored.unlockedWeaponIds, original.unlockedWeaponIds);
     expect(
       restored.unlockedAugmentIds,
@@ -210,6 +207,47 @@ void main() {
     expect(restored.bossDefeats, original.bossDefeats);
     expect(restored.unlockedWeaponCount, original.unlockedWeaponCount);
     expect(restored.lowHealthWinCount, original.lowHealthWinCount);
+    expect(restored.unlockedStageIds, original.unlockedStageIds);
+    expect(restored.totalEliteKills, original.totalEliteKills);
+    expect(restored.victoryCount, original.victoryCount);
+  });
+
+  test('schema two migrates new unlock progress fields safely', () {
+    final restored = SaveState.fromJson({
+      'schemaVersion': 2,
+      'unlockedCharacterIds': [rookieConstable, exorcistDosa],
+      'completedGoalIds': ['survive_3_minutes'],
+      'totalKills': 120,
+    });
+
+    expect(restored.schemaVersion, 3);
+    expect(restored.unlockedStageIds, {moonlitAbandonedOffice});
+    expect(restored.totalEliteKills, 0);
+    expect(restored.victoryCount, 0);
+    expect(restored.completedGoalIds, {'survive_3_minutes'});
+  });
+
+  test('damaged unlock collections keep only known string ids', () {
+    final restored = SaveState.fromJson({
+      'schemaVersion': SaveState.currentSchemaVersion,
+      'unlockedCharacterIds': [exorcistDosa, 'missing', 7],
+      'unlockedWeaponIds': [talismanThrow, 'missing'],
+      'unlockedAugmentIds': [rapidReload, 'missing'],
+      'unlockedStageIds': [plagueMarket, 'missing'],
+      'completedGoalIds': ['survive_3_minutes', 'missing'],
+      'totalEliteKills': -3,
+      'victoryCount': 'bad',
+    });
+
+    expect(restored.unlockedCharacterIds, {rookieConstable, exorcistDosa});
+    expect(restored.unlockedWeaponIds, contains(talismanThrow));
+    expect(restored.unlockedWeaponIds, isNot(contains('missing')));
+    expect(restored.unlockedAugmentIds, contains(rapidReload));
+    expect(restored.unlockedAugmentIds, isNot(contains('missing')));
+    expect(restored.unlockedStageIds, {moonlitAbandonedOffice, plagueMarket});
+    expect(restored.completedGoalIds, {'survive_3_minutes'});
+    expect(restored.totalEliteKills, 0);
+    expect(restored.victoryCount, 0);
   });
 
   test('fromJson merges missing unlock fields with defaults', () {

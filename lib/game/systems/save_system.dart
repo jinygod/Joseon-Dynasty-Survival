@@ -4,8 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../content/augment_definitions.dart';
 import '../content/character_definitions.dart';
-import '../content/playtest_roster.dart';
 import '../content/stage_definitions.dart';
+import '../content/unlock_definitions.dart';
 import '../content/weapon_definitions.dart';
 import '../models/meta_progress.dart';
 
@@ -15,6 +15,7 @@ class SaveState {
     required Set<String> unlockedCharacterIds,
     required Set<String> unlockedWeaponIds,
     required Set<String> unlockedAugmentIds,
+    Set<String> unlockedStageIds = const {moonlitAbandonedOffice},
     required Set<String> completedGoalIds,
     Set<String> claimedRewardIds = const {},
     required this.wallet,
@@ -28,13 +29,16 @@ class SaveState {
     required this.bossDefeats,
     required this.unlockedWeaponCount,
     required this.lowHealthWinCount,
+    this.totalEliteKills = 0,
+    this.victoryCount = 0,
   }) : unlockedCharacterIds = Set.unmodifiable(unlockedCharacterIds),
        unlockedWeaponIds = Set.unmodifiable(unlockedWeaponIds),
        unlockedAugmentIds = Set.unmodifiable(unlockedAugmentIds),
+       unlockedStageIds = Set.unmodifiable(unlockedStageIds),
        completedGoalIds = Set.unmodifiable(completedGoalIds),
        claimedRewardIds = Set.unmodifiable(claimedRewardIds);
 
-  static const currentSchemaVersion = 2;
+  static const currentSchemaVersion = 3;
 
   factory SaveState.defaults() {
     final startingWeaponIds = weaponDefinitions
@@ -43,12 +47,13 @@ class SaveState {
         .toSet();
 
     return SaveState(
-      unlockedCharacterIds: PlaytestRoster.resolveUnlocked({rookieConstable}),
+      unlockedCharacterIds: const {rookieConstable},
       unlockedWeaponIds: startingWeaponIds,
       unlockedAugmentIds: augmentDefinitions
           .where((augment) => augment.startsUnlocked)
           .map((augment) => augment.id)
           .toSet(),
+      unlockedStageIds: const {moonlitAbandonedOffice},
       completedGoalIds: const {},
       claimedRewardIds: const {},
       wallet: Wallet.empty,
@@ -62,6 +67,8 @@ class SaveState {
       bossDefeats: 0,
       unlockedWeaponCount: startingWeaponIds.length,
       lowHealthWinCount: 0,
+      totalEliteKills: 0,
+      victoryCount: 0,
     );
   }
 
@@ -79,9 +86,15 @@ class SaveState {
 
   static SaveState _fromSupportedJson(Map<String, dynamic> json) {
     final defaults = SaveState.defaults();
-    final unlockedCharacterIds = _stringSet(
+    final unlockedCharacterIds = _knownStringSet(
       json['unlockedCharacterIds'],
+      characterDefinitions.map((definition) => definition.id),
       fallback: defaults.unlockedCharacterIds,
+    );
+    final unlockedStageIds = _knownStringSet(
+      json['unlockedStageIds'],
+      stageDefinitions.map((definition) => definition.id),
+      fallback: defaults.unlockedStageIds,
     );
     final selectedCharacterId = _validSelectedCharacter(
       json['selectedCharacterId'],
@@ -90,20 +103,27 @@ class SaveState {
     );
     final selectedStageId = _validSelectedStage(
       json['selectedStageId'],
+      unlockedStageIds,
       defaults.selectedStageId,
     );
     return SaveState(
       schemaVersion: currentSchemaVersion,
       unlockedCharacterIds: unlockedCharacterIds,
-      unlockedWeaponIds: _stringSet(
+      unlockedWeaponIds: _knownStringSet(
         json['unlockedWeaponIds'],
+        weaponDefinitions.map((definition) => definition.id),
         fallback: defaults.unlockedWeaponIds,
       ),
-      unlockedAugmentIds: _stringSet(
+      unlockedAugmentIds: _knownStringSet(
         json['unlockedAugmentIds'],
+        augmentDefinitions.map((definition) => definition.id),
         fallback: defaults.unlockedAugmentIds,
       ),
-      completedGoalIds: _stringSet(json['completedGoalIds']),
+      unlockedStageIds: unlockedStageIds,
+      completedGoalIds: _knownStringSet(
+        json['completedGoalIds'],
+        unlockGoals.map((goal) => goal.id),
+      ),
       claimedRewardIds: _stringSet(json['claimedRewardIds']),
       wallet: Wallet.fromJson(json['wallet']),
       trainingProgress: TrainingProgress.fromJson(json['trainingProgress']),
@@ -119,6 +139,8 @@ class SaveState {
         fallback: defaults.unlockedWeaponCount,
       ),
       lowHealthWinCount: _intValue(json['lowHealthWinCount']),
+      totalEliteKills: _intValue(json['totalEliteKills']),
+      victoryCount: _intValue(json['victoryCount']),
     );
   }
 
@@ -126,6 +148,7 @@ class SaveState {
   final Set<String> unlockedCharacterIds;
   final Set<String> unlockedWeaponIds;
   final Set<String> unlockedAugmentIds;
+  final Set<String> unlockedStageIds;
   final Set<String> completedGoalIds;
   final Set<String> claimedRewardIds;
   final Wallet wallet;
@@ -139,12 +162,15 @@ class SaveState {
   final int bossDefeats;
   final int unlockedWeaponCount;
   final int lowHealthWinCount;
+  final int totalEliteKills;
+  final int victoryCount;
 
   SaveState copyWith({
     int? schemaVersion,
     Set<String>? unlockedCharacterIds,
     Set<String>? unlockedWeaponIds,
     Set<String>? unlockedAugmentIds,
+    Set<String>? unlockedStageIds,
     Set<String>? completedGoalIds,
     Set<String>? claimedRewardIds,
     Wallet? wallet,
@@ -158,6 +184,8 @@ class SaveState {
     int? bossDefeats,
     int? unlockedWeaponCount,
     int? lowHealthWinCount,
+    int? totalEliteKills,
+    int? victoryCount,
   }) {
     return SaveState(
       schemaVersion: schemaVersion ?? this.schemaVersion,
@@ -167,6 +195,8 @@ class SaveState {
           unlockedWeaponIds ?? Set<String>.of(this.unlockedWeaponIds),
       unlockedAugmentIds:
           unlockedAugmentIds ?? Set<String>.of(this.unlockedAugmentIds),
+      unlockedStageIds:
+          unlockedStageIds ?? Set<String>.of(this.unlockedStageIds),
       completedGoalIds:
           completedGoalIds ?? Set<String>.of(this.completedGoalIds),
       claimedRewardIds:
@@ -182,6 +212,8 @@ class SaveState {
       bossDefeats: bossDefeats ?? this.bossDefeats,
       unlockedWeaponCount: unlockedWeaponCount ?? this.unlockedWeaponCount,
       lowHealthWinCount: lowHealthWinCount ?? this.lowHealthWinCount,
+      totalEliteKills: totalEliteKills ?? this.totalEliteKills,
+      victoryCount: victoryCount ?? this.victoryCount,
     );
   }
 
@@ -191,6 +223,7 @@ class SaveState {
       'unlockedCharacterIds': _sorted(unlockedCharacterIds),
       'unlockedWeaponIds': _sorted(unlockedWeaponIds),
       'unlockedAugmentIds': _sorted(unlockedAugmentIds),
+      'unlockedStageIds': _sorted(unlockedStageIds),
       'completedGoalIds': _sorted(completedGoalIds),
       'claimedRewardIds': _sorted(claimedRewardIds),
       'wallet': wallet.toJson(),
@@ -204,6 +237,8 @@ class SaveState {
       'bossDefeats': bossDefeats,
       'unlockedWeaponCount': unlockedWeaponCount,
       'lowHealthWinCount': lowHealthWinCount,
+      'totalEliteKills': totalEliteKills,
+      'victoryCount': victoryCount,
     };
   }
 
@@ -220,6 +255,16 @@ class SaveState {
     }
 
     return fallback;
+  }
+
+  static Set<String> _knownStringSet(
+    Object? value,
+    Iterable<String> knownIds, {
+    Set<String> fallback = const {},
+  }) {
+    final known = knownIds.toSet();
+    if (value is! Iterable) return fallback;
+    return {...fallback, ...value.whereType<String>().where(known.contains)};
   }
 
   static int _intValue(Object? value, {int fallback = 0}) {
@@ -243,8 +288,14 @@ class SaveState {
     return fallback;
   }
 
-  static String _validSelectedStage(Object? value, String fallback) {
-    if (value is String && stageDefinitions.any((stage) => stage.id == value)) {
+  static String _validSelectedStage(
+    Object? value,
+    Set<String> unlockedStageIds,
+    String fallback,
+  ) {
+    if (value is String &&
+        unlockedStageIds.contains(value) &&
+        stageDefinitions.any((stage) => stage.id == value)) {
       return value;
     }
     return fallback;

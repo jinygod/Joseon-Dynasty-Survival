@@ -59,7 +59,11 @@ enum UnlockMetric {
   bossDefeats,
   unlockedWeaponCount,
   lowHealthWinCount,
+  totalEliteKills,
+  victoryCount,
 }
+
+enum UnlockRewardType { character, weapon, augment, stage }
 
 class CharacterDefinition {
   const CharacterDefinition({
@@ -172,6 +176,7 @@ class UnlockGoalDefinition {
     this.unlocksCharacterId,
     this.unlocksWeaponId,
     this.unlocksAugmentId,
+    this.unlocksStageId,
   });
 
   final UnlockGoalId id;
@@ -181,4 +186,18 @@ class UnlockGoalDefinition {
   final CharacterId? unlocksCharacterId;
   final WeaponId? unlocksWeaponId;
   final AugmentId? unlocksAugmentId;
+  final String? unlocksStageId;
+
+  UnlockRewardType get rewardType {
+    if (unlocksCharacterId != null) return UnlockRewardType.character;
+    if (unlocksWeaponId != null) return UnlockRewardType.weapon;
+    if (unlocksAugmentId != null) return UnlockRewardType.augment;
+    return UnlockRewardType.stage;
+  }
+
+  String get rewardId =>
+      unlocksCharacterId ??
+      unlocksWeaponId ??
+      unlocksAugmentId ??
+      unlocksStageId!;
 }

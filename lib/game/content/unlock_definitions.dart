@@ -1,6 +1,7 @@
 import 'augment_definitions.dart';
 import 'character_definitions.dart';
 import 'ids.dart';
+import 'stage_definitions.dart';
 import 'weapon_definitions.dart';
 
 const unlockGoals = <UnlockGoalDefinition>[
@@ -24,7 +25,6 @@ const unlockGoals = <UnlockGoalDefinition>[
     metric: UnlockMetric.levelReachedInRun,
     threshold: 10,
     unlocksWeaponId: jangseungWard,
-    unlocksAugmentId: rapidReload,
   ),
   UnlockGoalDefinition(
     id: 'defeat_fallen_general',
@@ -74,5 +74,40 @@ const unlockGoals = <UnlockGoalDefinition>[
     metric: UnlockMetric.unlockedWeaponCount,
     threshold: 6,
     unlocksWeaponId: windThunderFan,
+  ),
+  UnlockGoalDefinition(
+    id: 'reach_level_5',
+    description: 'Reach level 5 in one run.',
+    metric: UnlockMetric.levelReachedInRun,
+    threshold: 5,
+    unlocksAugmentId: rapidReload,
+  ),
+  UnlockGoalDefinition(
+    id: 'defeat_50_elites',
+    description: 'Defeat 50 elite enemies total.',
+    metric: UnlockMetric.totalEliteKills,
+    threshold: 50,
+    unlocksAugmentId: ritualShortcut,
+  ),
+  UnlockGoalDefinition(
+    id: 'reach_level_15',
+    description: 'Reach level 15 in one run.',
+    metric: UnlockMetric.levelReachedInRun,
+    threshold: 15,
+    unlocksAugmentId: heavyStrike,
+  ),
+  UnlockGoalDefinition(
+    id: 'defeat_three_bosses',
+    description: 'Defeat three bosses total.',
+    metric: UnlockMetric.bossDefeats,
+    threshold: 3,
+    unlocksCharacterId: mountainHunter,
+  ),
+  UnlockGoalDefinition(
+    id: 'win_first_run',
+    description: 'Win a run.',
+    metric: UnlockMetric.victoryCount,
+    threshold: 1,
+    unlocksStageId: plagueMarket,
   ),
 ];
