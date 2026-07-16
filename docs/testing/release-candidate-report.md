@@ -1,20 +1,20 @@
 # Release Candidate Report — READY
 
-- Generated: 2026-07-16T15:47:51.617680Z
-- Evaluated: 2026-07-16T15:48:00.910467Z
-- Branch: `codex/qa-release-candidate`
-- Commit: `67462c83832df4e255d44e8f2a7d99769e18c49b`
+- Generated: 2026-07-16T16:06:06.703453Z
+- Evaluated: 2026-07-16T16:06:15.417841Z
+- Branch: `master`
+- Commit: `e1015d8b771dc180e94cc8ff6341db11ef2f3252`
 - Version: `0.1.0+1`
 
 ## Required evidence
 
 | Gate | Status | Command | Artifact |
 | --- | --- | --- | --- |
-| analyze | PASS | A:\bin\dart.bat analyze | build/qa/release-gates/analyze.log |
-| tests | PASS | A:\bin\flutter.bat test -r compact | build/qa/release-gates/tests.log |
-| webBuild | PASS | A:\bin\flutter.bat build web | build/qa/release-gates/web-build.log |
-| fiveMinuteProfile | PASS | A:\bin\flutter.bat test test/game/five_minute_performance_development_log_test.dart -r compact | build/qa/release-gates/five-minute-profile.log |
-| goldens | PASS | A:\bin\flutter.bat test test/app/release_surface_golden_test.dart -r compact | build/qa/release-gates/goldens.log |
+| analyze | PASS | O:\bin\dart.bat analyze | build/qa/release-gates/analyze.log |
+| tests | PASS | O:\bin\flutter.bat test -r compact | build/qa/release-gates/tests.log |
+| webBuild | PASS | O:\bin\flutter.bat build web | build/qa/release-gates/web-build.log |
+| fiveMinuteProfile | PASS | O:\bin\flutter.bat test test/game/five_minute_performance_development_log_test.dart -r compact | build/qa/release-gates/five-minute-profile.log |
+| goldens | PASS | O:\bin\flutter.bat test test/app/release_surface_golden_test.dart -r compact | build/qa/release-gates/goldens.log |
 
 ## Open defects
 
