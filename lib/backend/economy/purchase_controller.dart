@@ -91,6 +91,7 @@ class PurchaseController extends ChangeNotifier {
   final _processingTokens = <String>{};
   final _processingCompletions = <String, Completer<void>>{};
   final _completedTokens = <String>{};
+  final _disposeSignal = Completer<void>();
   int _accountGeneration = 0;
   bool _initialized = false;
   bool _disposed = false;
@@ -347,12 +348,11 @@ class PurchaseController extends ChangeNotifier {
   }
 
   Future<void> _drainPurchaseProcessing() async {
-    while (!_disposed && _processingCompletions.isNotEmpty) {
-      final active = _processingCompletions.values
-          .map((completion) => completion.future)
-          .toList();
-      await Future.wait(active);
-    }
+    if (_disposed || _processingCompletions.isEmpty) return;
+    final activeAtTransition = _processingCompletions.values
+        .map((completion) => completion.future)
+        .toList();
+    await Future.any([Future.wait(activeAtTransition), _disposeSignal.future]);
   }
 
   Future<void> _refreshWallet(
@@ -412,6 +412,7 @@ class PurchaseController extends ChangeNotifier {
   void dispose() {
     if (_disposed) return;
     _disposed = true;
+    if (!_disposeSignal.isCompleted) _disposeSignal.complete();
     unawaited(_subscription?.cancel());
     super.dispose();
   }

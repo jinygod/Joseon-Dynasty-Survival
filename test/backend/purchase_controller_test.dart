@@ -466,6 +466,116 @@ void main() {
     },
   );
 
+  test('dispose releases a lifecycle drain blocked by verification', () async {
+    final session = AccountSession.google(
+      userId: 'owner-a',
+      email: 'a@example.com',
+    );
+    final neverCompletes = Completer<void>();
+    final repository = FakeEconomyRepository(
+      verificationCompleters: [neverCompletes],
+    );
+    final gateway = FakePurchaseGateway(products: products);
+    final controller = buildController(
+      gateway: gateway,
+      repository: repository,
+      retryStore: FakeRetryStore(),
+      session: session,
+    );
+    await controller.start();
+    gateway.emit(
+      PurchaseUpdate.purchased(
+        ownerUserId: 'owner-a',
+        productId: PremiumProduct.smallId,
+        purchaseToken: 'hung-token',
+      ),
+    );
+    await flushEvents();
+
+    final accountChange = controller.onAccountChanged(session);
+    await flushEvents();
+    controller.dispose();
+
+    await accountChange.timeout(const Duration(milliseconds: 100));
+  });
+
+  test(
+    'callbacks arriving during a lifecycle drain do not starve it or leak owner',
+    () async {
+      final session = AccountSession.google(
+        userId: 'owner-a',
+        email: 'a@example.com',
+      );
+      final firstVerification = Completer<void>();
+      final laterVerification = Completer<void>();
+      final repository = FakeEconomyRepository(
+        verificationCompleters: [firstVerification, laterVerification],
+      );
+      final gateway = FakePurchaseGateway(products: products);
+      final retryStore = FakeRetryStore();
+      final controller = buildController(
+        gateway: gateway,
+        repository: repository,
+        retryStore: retryStore,
+        session: session,
+      );
+      await controller.start();
+      gateway.emit(
+        PurchaseUpdate.purchased(
+          ownerUserId: 'owner-a',
+          productId: PremiumProduct.smallId,
+          purchaseToken: 'snapshot-token',
+        ),
+      );
+      await flushEvents();
+
+      final accountChange = controller.onAccountChanged(session);
+      await flushEvents();
+      gateway
+        ..emit(
+          PurchaseUpdate.purchased(
+            ownerUserId: 'owner-a',
+            productId: PremiumProduct.mediumId,
+            purchaseToken: 'later-token',
+          ),
+        )
+        ..emit(
+          PurchaseUpdate.purchased(
+            ownerUserId: 'owner-b',
+            productId: PremiumProduct.largeId,
+            purchaseToken: 'foreign-token',
+          ),
+        );
+      await flushEvents();
+
+      firstVerification.complete();
+      await accountChange.timeout(const Duration(milliseconds: 100));
+
+      expect(repository.verifiedTokens, [
+        'snapshot-token',
+        'later-token',
+        'snapshot-token',
+      ]);
+      expect(repository.verifiedTokens, isNot(contains('foreign-token')));
+      expect(
+        retryStore.entries.any(
+          (entry) =>
+              entry.purchaseToken == 'foreign-token' &&
+              entry.ownerUserId == 'owner-b',
+        ),
+        isTrue,
+      );
+
+      laterVerification.complete();
+      await flushEvents();
+      expect(
+        gateway.completed.map((purchase) => purchase.purchaseToken),
+        containsAll(['snapshot-token', 'later-token']),
+      );
+      controller.dispose();
+    },
+  );
+
   test('restored callback cannot reassign an existing token owner', () async {
     final repository = FakeEconomyRepository();
     final gateway = FakePurchaseGateway(products: products);
