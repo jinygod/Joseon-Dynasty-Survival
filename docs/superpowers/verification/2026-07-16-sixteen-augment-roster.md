@@ -3,7 +3,8 @@
 - Branch: `codex/sixteen-augment-roster`
 - Date: 2026-07-16
 - Base commit for this completion task: `ada1710`
-- Feature commits: `ad0342d`, `981c3ba`, `4f48ac0`, `ada1710`
+- Feature commits: `ad0342d`, `981c3ba`, `4f48ac0`, `ada1710`, `6c6151b`,
+  `22463bf`
 - Scope: `CNT-005`, `CNT-006`
 
 ## Regression coverage
@@ -51,7 +52,20 @@
    $env:TEMP='C:\codex-temp'; $env:TMP='C:\codex-temp'; & 'S:\bin\flutter.bat' test
    ```
 
-   Result: `310/310` tests passed.
+   Result after final review fixes: `318/318` tests passed.
+
+5. Final review regression suite
+
+   ```powershell
+   $env:TEMP='C:\codex-temp'; $env:TMP='C:\codex-temp'; & 'S:\bin\flutter.bat' test test/game/run_progression_system_test.dart test/game/augment_effect_resolver_test.dart test/game/pixel_survivor_game_loop_test.dart
+   ```
+
+   Result: `39/39` tests passed. This covers fractional experience remainder
+   normalization, unknown augment choice rejection, modifier safety clamps,
+   Last Stand recovery, and actual gem/spirit-jade pickup boundaries.
+
+The final whole-branch review found no remaining Critical, Important, or Minor
+issues and returned `Ready to merge: Yes` for `22463bf`.
 
 ## Environment note
 
