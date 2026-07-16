@@ -172,7 +172,7 @@ a web deletion resource. See [Google Play account deletion requirements](https:/
 ## 8. Launch and rollback checklist
 
 Before rollout, confirm the backend migration/Function deployment commit, all
-four Function smoke tests, Pub/Sub test notification, three license purchases,
+five Function smoke tests, Pub/Sub test notification, three license purchases,
 privacy/deletion URLs, Data safety approval, and key inventory. Start with a
 small staged rollout and watch Function failures, Google API errors, Pub/Sub
 backlog, and refund/debt metrics.

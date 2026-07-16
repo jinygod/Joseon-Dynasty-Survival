@@ -17,7 +17,7 @@ values into this file.
       `PUBSUB_AUDIENCE`, and `PUBSUB_SERVICE_ACCOUNT_EMAIL`.
 - [ ] Run `.\tool\backend_check.ps1`, `supabase migration list --linked`, and
       `supabase db push --linked --dry-run` from a clean release commit.
-- [ ] Confirm backup/PITR recovery point, then push migrations and deploy all four
+- [ ] Confirm backup/PITR recovery point, then push migrations and deploy all five
       Edge Functions using the documented order.
 
 ## Google and Play Console

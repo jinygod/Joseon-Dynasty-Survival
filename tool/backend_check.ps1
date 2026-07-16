@@ -109,7 +109,7 @@ if ($DryRun) {
     'deno fmt --check supabase/functions',
     'deno lint supabase/functions',
     'deno test supabase/functions/tests',
-    'deno check four Edge Function entrypoints',
+    'deno check five Edge Function entrypoints',
     'docker info (BLOCKED with non-zero exit when unavailable)',
     'supabase db reset --local',
     'supabase test db',
@@ -227,7 +227,8 @@ try {
       'verify-google-play-purchase/index.ts',
       'google-play-notification/index.ts',
       'spend-royal-jade/index.ts',
-      'delete-account/index.ts'
+      'delete-account/index.ts',
+      'sync-progress/index.ts'
     )) {
       Invoke-Tool $npxExecutable @(
         '--yes', 'deno@2.5.6', 'check', '--config',

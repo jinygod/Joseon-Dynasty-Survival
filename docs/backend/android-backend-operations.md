@@ -13,6 +13,7 @@ supplied by the release operator.
   - `google-play-notification`
   - `spend-royal-jade`
   - `delete-account`
+  - `sync-progress`
 - Google Play consumables: `royal_jade_small`, `royal_jade_medium`, and
   `royal_jade_large`
 - Database changes are committed only as files under `supabase/migrations/`.
@@ -150,13 +151,14 @@ Use one operator and one terminal for a project.
    ```
 
 5. Set or verify secrets by name.
-6. Deploy all four Functions from the same commit:
+6. Deploy all five Functions from the same commit:
 
    ```powershell
    npx supabase functions deploy verify-google-play-purchase --project-ref {PROJECT_REF}
    npx supabase functions deploy google-play-notification --project-ref {PROJECT_REF}
    npx supabase functions deploy spend-royal-jade --project-ref {PROJECT_REF}
    npx supabase functions deploy delete-account --project-ref {PROJECT_REF}
+   npx supabase functions deploy sync-progress --project-ref {PROJECT_REF}
    ```
 
    `google-play-notification` has `verify_jwt = false` in `config.toml` because
