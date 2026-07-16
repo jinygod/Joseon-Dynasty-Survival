@@ -12,7 +12,7 @@ class RunSettlement {
     required this.after,
     required this.coinEarned,
     required this.spiritJadeEarned,
-    required this.unlocks,
+    this.unlocks = const ProgressionUnlocks(),
   });
 
   final SaveState before;
