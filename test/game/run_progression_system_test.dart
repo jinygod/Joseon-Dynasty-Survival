@@ -51,6 +51,17 @@ void main() {
       expect(progression.currentExperience, 0);
     });
 
+    test('floating-point threshold leaves zero public experience', () {
+      final progression = RunProgressionSystem();
+
+      for (var pickup = 0; pickup < 10; pickup += 1) {
+        progression.addExperience(1, gainMultiplier: 1.1);
+      }
+
+      expect(progression.level, 2);
+      expect(progression.currentExperience, 0);
+    });
+
     test(
       'requirement multiplier applies only when positive experience arrives',
       () {

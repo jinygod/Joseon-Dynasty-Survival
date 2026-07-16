@@ -310,6 +310,13 @@ class PixelSurvivorGame extends FlameGame
   }
 
   void applyLevelUpChoice(LevelUpChoice choice) {
+    final selectedAugment = choice.type == LevelUpChoiceType.augment
+        ? augmentDefinitionFor(choice.id)
+        : null;
+    if (choice.type == LevelUpChoiceType.augment && selectedAugment == null) {
+      return;
+    }
+
     runStats.recordChoice(
       RunChoiceRecord(
         type: switch (choice.type) {
@@ -329,10 +336,7 @@ class PixelSurvivorGame extends FlameGame
       case LevelUpChoiceType.augment:
         final augmentId = choice.id;
         unlockedAugmentIds.add(augmentId);
-        final definition = augmentDefinitions.firstWhere(
-          (definition) => definition.id == augmentId,
-          orElse: () => augmentDefinitions.first,
-        );
+        final definition = selectedAugment!;
         final currentLevel = augmentLevels[augmentId] ?? 0;
         if (currentLevel < definition.maxLevel) {
           augmentLevels[augmentId] = currentLevel + 1;

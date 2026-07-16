@@ -47,4 +47,42 @@ void main() {
       0.8,
     );
   });
+
+  test('extreme real augment levels respect modifier bounds', () {
+    final result = const AugmentEffectResolver().resolve(
+      levels: const {
+        heavyStrike: 100,
+        ghostStep: 100,
+        ironArmorTraining: 100,
+        hawkEye: 100,
+        ritualShortcut: 100,
+      },
+    );
+
+    expect(result.attackSpeedMultiplier, 0.1);
+    expect(result.moveSpeedMultiplier, 16);
+    expect(result.incomingContactDamageMultiplier, 0);
+    expect(result.criticalChanceBonus, 1);
+    expect(result.experienceRequirementMultiplier, 0.2);
+  });
+
+  test('on-acquire inner breath effects are not continuous modifiers', () {
+    final result = const AugmentEffectResolver().resolve(
+      levels: const {innerBreath: 100},
+    );
+
+    expect(result.weaponDamageMultiplier, 1);
+    expect(result.moveSpeedMultiplier, 1);
+    expect(result.incomingContactDamageMultiplier, 1);
+  });
+
+  test('last stand does not activate at zero health', () {
+    final result = const AugmentEffectResolver().resolve(
+      levels: const {lastStand: 3},
+      healthFraction: 0,
+    );
+
+    expect(result.weaponDamageMultiplier, 1);
+    expect(result.incomingContactDamageMultiplier, 1);
+  });
 }

@@ -20,7 +20,7 @@ class SpiritJadePickup {
 
 typedef SpiritJadePersistence = Future<bool> Function(SpiritJadePickup pickup);
 
-class SpiritJadeComponent extends SpriteComponent {
+class SpiritJadeComponent extends PositionComponent {
   SpiritJadeComponent({
     required this.pickup,
     required this.persistPickup,

@@ -4,8 +4,10 @@ import 'package:flame/components.dart';
 import 'package:flame_test/flame_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/components/enemy_component.dart';
+import 'package:pixel_survivor/game/components/experience_gem_component.dart';
 import 'package:pixel_survivor/game/components/frost_field_component.dart';
 import 'package:pixel_survivor/game/components/projectile_component.dart';
+import 'package:pixel_survivor/game/components/spirit_jade_component.dart';
 import 'package:pixel_survivor/game/components/ward_aura_component.dart';
 import 'package:pixel_survivor/game/audio/audio_cue.dart';
 import 'package:pixel_survivor/game/content/augment_definitions.dart';
@@ -283,6 +285,25 @@ void main() {
       expect(game.augmentLevels[martialTraining], 1);
     });
 
+    test('unknown augment choice fails closed without recording state', () {
+      final game = newGame();
+      const choice = LevelUpChoice(
+        id: 'unknown_augment',
+        displayName: 'unknown',
+        effectDescription: 'unknown',
+        type: LevelUpChoiceType.augment,
+        currentLevel: 0,
+        nextLevel: 1,
+      );
+
+      game.applyLevelUpChoice(choice);
+
+      expect(game.currentRunResult().choices, isEmpty);
+      expect(game.unlockedAugmentIds, isNot(contains(choice.id)));
+      expect(game.augmentLevels, isNot(contains(choice.id)));
+      expect(game.augmentLevels[martialTraining], isNull);
+    });
+
     test('applyLevelUpChoice records selection order and game time', () {
       final game = newGame()..debugAdvanceTo(42);
       const choice = LevelUpChoice(
@@ -396,6 +417,75 @@ void main() {
     });
 
     gameTester.testGameWidget(
+      'ghost step minimum radius collects only real experience gems inside seven units',
+      setUp: (game, _) async {
+        game.augmentLevels[ghostStep] = 3;
+        final playerPosition = game.activePlayers.single.position;
+        await game.ensureAdd(
+          ExperienceGemComponent(
+            experienceValue: 2,
+            position: playerPosition + Vector2(6.9, 0),
+          ),
+        );
+        await game.ensureAdd(
+          ExperienceGemComponent(
+            experienceValue: 4,
+            position: playerPosition + Vector2(7.1, 0),
+          ),
+        );
+      },
+      verify: (game, _) async {
+        game.update(0);
+
+        expect(game.currentExperience, 2);
+      },
+    );
+
+    final persistedPickupIds = <String>[];
+    gameTester.testGameWidget(
+      'ghost step minimum radius persists only real spirit jade inside seven units',
+      setUp: (game, _) async {
+        persistedPickupIds.clear();
+        game.augmentLevels[ghostStep] = 3;
+        final playerPosition = game.activePlayers.single.position;
+        final insideJade = SpiritJadeComponent(
+          pickup: const SpiritJadePickup(
+            pickupId: 'inside-seven',
+            claimsFirstBossReward: false,
+          ),
+          persistPickup: (pickup) async {
+            persistedPickupIds.add(pickup.pickupId);
+            return true;
+          },
+          onCollected: () {},
+          isBossDrop: false,
+          position: playerPosition + Vector2(6.9, 0),
+        );
+        await game.ensureAdd(insideJade);
+        final outsideJade = SpiritJadeComponent(
+          pickup: const SpiritJadePickup(
+            pickupId: 'outside-seven',
+            claimsFirstBossReward: false,
+          ),
+          persistPickup: (pickup) async {
+            persistedPickupIds.add(pickup.pickupId);
+            return true;
+          },
+          onCollected: () {},
+          isBossDrop: false,
+          position: playerPosition + Vector2(7.1, 0),
+        );
+        await game.ensureAdd(outsideJade);
+      },
+      verify: (game, tester) async {
+        game.update(0);
+        await tester.pump();
+
+        expect(persistedPickupIds, ['inside-seven']);
+      },
+    );
+
+    gameTester.testGameWidget(
       'last stand activates at exactly thirty-five percent health',
       setUp: (game, _) async {
         game.augmentLevels[lastStand] = 2;
@@ -406,6 +496,23 @@ void main() {
         expect(game.activePlayers.single.healthFraction, closeTo(0.35, 0.0001));
         expect(game.weaponDamageMultiplier, closeTo(1.40, 0.0001));
         expect(game.incomingContactDamageMultiplier, closeTo(0.704, 0.0001));
+      },
+    );
+
+    gameTester.testGameWidget(
+      'last stand modifiers revert after healing above thirty-five percent',
+      setUp: (game, _) async {
+        game.augmentLevels[lastStand] = 2;
+        final player = game.activePlayers.single;
+        player.takeDamage(player.maxHealth - (player.maxHealth * 0.35));
+        expect(game.weaponDamageMultiplier, closeTo(1.40, 0.0001));
+        expect(game.incomingContactDamageMultiplier, closeTo(0.704, 0.0001));
+        player.heal(1);
+      },
+      verify: (game, _) async {
+        expect(game.activePlayers.single.healthFraction, greaterThan(0.35));
+        expect(game.weaponDamageMultiplier, 1);
+        expect(game.incomingContactDamageMultiplier, 0.88);
       },
     );
 

@@ -20,12 +20,16 @@ class RunProgressionSystem {
     final safeGain = gainMultiplier.isFinite ? max(0, gainMultiplier) : 1.0;
     _currentExperience += amount * safeGain;
     var leveledUp = false;
-    while (_currentExperience + 1e-9 >=
-        experienceRequiredForLevel(_level, multiplier: requirementMultiplier)) {
-      _currentExperience -= experienceRequiredForLevel(
+    while (true) {
+      final requiredExperience = experienceRequiredForLevel(
         _level,
         multiplier: requirementMultiplier,
       );
+      if (_currentExperience + 1e-9 < requiredExperience) break;
+      _currentExperience -= requiredExperience;
+      if (_currentExperience < 0 && _currentExperience > -1e-9) {
+        _currentExperience = 0;
+      }
       _level += 1;
       leveledUp = true;
     }
