@@ -1,5 +1,6 @@
 .worktrees/
 .superpowers/
+node_modules/
 
 # Miscellaneous
 *.class
@@ -49,3 +50,9 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Supabase local state and function secrets
+/supabase/.branches/
+/supabase/.temp/
+/supabase/.env*
+!/supabase/.env.example

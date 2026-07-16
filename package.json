@@ -1,0 +1,11 @@
+{
+  "private": true,
+  "devDependencies": {
+    "supabase": "2.109.1"
+  },
+  "scripts": {
+    "supabase:start": "supabase start",
+    "supabase:reset": "supabase db reset --local",
+    "supabase:test": "supabase test db"
+  }
+}
