@@ -16,4 +16,14 @@ class BackendConfig {
   final String publishableKey;
 
   bool get enabled => url.isNotEmpty && publishableKey.isNotEmpty;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is BackendConfig &&
+          url == other.url &&
+          publishableKey == other.publishableKey;
+
+  @override
+  int get hashCode => Object.hash(url, publishableKey);
 }
