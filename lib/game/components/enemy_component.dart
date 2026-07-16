@@ -114,7 +114,6 @@ class EnemyComponent
 
   factory EnemyComponent.fromDefinition(
     EnemyDefinition definition, {
-    bool? isElite,
     TargetPositionProvider? targetPositionProvider,
     NearbyEnemiesProvider? nearbyEnemiesProvider,
     Vector2? position,
@@ -179,6 +178,11 @@ class EnemyComponent
       (1 - _environmentalSlowFraction);
   EnemyBehaviorProfile get behaviorProfile => _behaviorProfile;
   EnemyBehaviorPhase get attackPhase => _behaviorController.phase;
+  double get hasteAuraFraction =>
+      _behaviorProfile.kind == EnemyBehaviorKind.hasteAura
+      ? _behaviorProfile.effectMultiplier
+      : 0;
+  double get slowAuraFraction => enemyId == sorrowfulMaidenGhost ? .25 : 0;
 
   void setEnvironmentalSlow(double fraction) {
     if (!fraction.isFinite || fraction < 0 || fraction >= .8) {

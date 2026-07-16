@@ -118,6 +118,23 @@ void main() {
       expect(player.visualState, PlayerAnimationState.death);
     });
 
+    test('environmental slow reduces movement and resets', () {
+      final player = PlayerComponent(
+        slotIndex: 0,
+        maxHealth: 100,
+        moveSpeed: 100,
+      );
+
+      player.setEnvironmentalSlow(.25);
+      player.applyInput(const VectorInput(1, 0), 1);
+      expect(player.position.x, 75);
+      expect(player.environmentalSlowFraction, .25);
+
+      player.setEnvironmentalSlow(0);
+      player.applyInput(const VectorInput(1, 0), 1);
+      expect(player.position.x, 175);
+    });
+
     test('sprite sheet contract maps 6 walk, 2 hit, and 8 death frames', () {
       expect(PlayerSpriteSheet.walkFrames, [0, 1, 2, 3, 4, 5]);
       expect(PlayerSpriteSheet.hitFrames, [6, 7]);

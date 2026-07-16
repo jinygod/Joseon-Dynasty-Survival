@@ -4,6 +4,7 @@ import 'package:flame/components.dart';
 import 'package:flame_test/flame_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/components/enemy_component.dart';
+import 'package:pixel_survivor/game/components/enemy_hazard_component.dart';
 import 'package:pixel_survivor/game/components/experience_gem_component.dart';
 import 'package:pixel_survivor/game/components/frost_field_component.dart';
 import 'package:pixel_survivor/game/components/projectile_component.dart';
@@ -13,6 +14,7 @@ import 'package:pixel_survivor/game/audio/audio_cue.dart';
 import 'package:pixel_survivor/game/content/augment_definitions.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
 import 'package:pixel_survivor/game/content/ids.dart';
+import 'package:pixel_survivor/game/content/enemy_definitions.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
 import 'package:pixel_survivor/game/models/player_slot.dart';
 import 'package:pixel_survivor/game/models/run_choice_record.dart';
@@ -266,6 +268,52 @@ void main() {
           game.children.whereType<FrostFieldComponent>().length,
           lessThanOrEqualTo(3),
         );
+      },
+    );
+
+    gameTester.testGameWidget(
+      'herbalist death creates one poison zone',
+      setUp: (game, _) async {
+        final herbalist = game.debugSpawnEnemy(
+          rottenHerbalist,
+          position: game.activePlayers.single.position.clone(),
+        );
+        herbalist.takeDamage(herbalist.maxHealth);
+      },
+      verify: (game, _) async {
+        game.update(EnemySpriteSheet.deathDurationSeconds);
+        expect(
+          game.children.whereType<EnemyHazardComponent>().where(
+            (hazard) => hazard.kind == EnemyHazardKind.poison,
+          ),
+          hasLength(1),
+        );
+        game.update(.05);
+        expect(
+          game.children.whereType<EnemyHazardComponent>().where(
+            (hazard) => hazard.kind == EnemyHazardKind.poison,
+          ),
+          hasLength(1),
+        );
+      },
+    );
+
+    gameTester.testGameWidget(
+      'grave ember haste and maiden slow use one strongest aura',
+      setUp: (game, _) async {
+        final origin = game.activePlayers.single.position.clone();
+        game.debugSpawnEnemy(bandit, position: origin + Vector2(20, 0));
+        game.debugSpawnEnemy(graveEmber, position: origin + Vector2(25, 0));
+        game.debugSpawnEnemy(graveEmber, position: origin + Vector2(30, 0));
+        game.debugSpawnEnemy(sorrowfulMaidenGhost, position: origin);
+      },
+      verify: (game, _) async {
+        game.update(.05);
+        final target = game.children.whereType<EnemyComponent>().singleWhere(
+          (enemy) => enemy.enemyId == bandit,
+        );
+        expect(target.environmentalHasteFraction, .2);
+        expect(game.activePlayers.single.environmentalSlowFraction, .25);
       },
     );
 

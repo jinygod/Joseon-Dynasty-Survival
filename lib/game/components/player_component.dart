@@ -91,12 +91,21 @@ class PlayerComponent
   double currentHealth;
   final double moveSpeed;
   double moveSpeedMultiplier = 1;
+  double _environmentalSlowFraction = 0;
   double _nextDamageAt = double.negativeInfinity;
   PlayerAnimationState visualState = PlayerAnimationState.idle;
   double _hitAnimationRemaining = 0;
   bool _isMoving = false;
 
   bool get isAlive => currentHealth > 0;
+  double get environmentalSlowFraction => _environmentalSlowFraction;
+
+  void setEnvironmentalSlow(double fraction) {
+    if (!fraction.isFinite || fraction < 0 || fraction >= .8) {
+      throw ArgumentError.value(fraction, 'fraction', 'Must be from 0 to 0.8');
+    }
+    _environmentalSlowFraction = fraction;
+  }
 
   double get healthFraction {
     if (maxHealth <= 0) {
@@ -156,7 +165,13 @@ class PlayerComponent
       direction.normalize();
     }
 
-    position.add(direction * moveSpeed * moveSpeedMultiplier * dt);
+    position.add(
+      direction *
+          moveSpeed *
+          moveSpeedMultiplier *
+          (1 - _environmentalSlowFraction) *
+          dt,
+    );
     if (bounds != null) {
       final minX = size.x / 2;
       final minY = size.y / 2;

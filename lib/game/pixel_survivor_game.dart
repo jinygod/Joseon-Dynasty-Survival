@@ -16,6 +16,7 @@ import 'components/boss_component.dart';
 import 'components/combat_effect_component.dart';
 import 'components/damage_number_component.dart';
 import 'components/enemy_component.dart';
+import 'components/enemy_hazard_component.dart';
 import 'components/experience_gem_component.dart';
 import 'components/frost_field_component.dart';
 import 'components/player_component.dart';
@@ -42,6 +43,8 @@ import 'systems/meta_reward_policy.dart';
 import 'systems/combat_feedback_tuning.dart';
 import 'systems/combat_system.dart';
 import 'systems/character_passive_modifiers.dart';
+import 'systems/enemy_aura_resolver.dart';
+import 'systems/enemy_behavior_controller.dart';
 import 'systems/run_progression_system.dart';
 import 'systems/run_stats_tracker.dart';
 import 'systems/wave_director.dart';
@@ -279,6 +282,9 @@ class PixelSurvivorGame extends FlameGame
     _applyProjectileHits();
     _resolveAreaAttacks();
     _resolveFrostFields();
+    _resolveEnemyActions();
+    _resolveEnemyHazards();
+    _resolveEnemyAuras();
     _recordNewEnemyDefeats();
     _dropExperienceForDeadEnemies();
     _resolveBossVictoryBeforePlayerDefeat();
@@ -393,11 +399,7 @@ class PixelSurvivorGame extends FlameGame
     final initialEnemyCount = enemyCount;
     for (var index = 0; index < wave.spawnRequests.length; index += 1) {
       final request = wave.spawnRequests[index];
-      _addEnemy(
-        request.enemyId,
-        initialEnemyCount + index,
-        isElite: request.isElite,
-      );
+      _addEnemy(request.enemyId, initialEnemyCount + index);
     }
     if (wave.spawnBoss) {
       _bossRequestCount += 1;
@@ -432,17 +434,17 @@ class PixelSurvivorGame extends FlameGame
     }
   }
 
-  void _addEnemy(EnemyId enemyId, int spawnIndex, {bool isElite = false}) {
-    final enemyDefinition = _enemyDefinitionFor(enemyId);
+  void _addEnemy(EnemyId enemyId, int spawnIndex) {
     final offset = _spawnOffsetFor(spawnIndex);
-    add(
-      EnemyComponent.fromDefinition(
-        enemyDefinition,
-        isElite: isElite,
-        position: Vector2(size.x / 2, size.y / 2) + offset,
-        targetPositionProvider: _nearestActivePlayerPosition,
-        nearbyEnemiesProvider: () => children.whereType<EnemyComponent>(),
-      ),
+    add(_createEnemy(enemyId, Vector2(size.x / 2, size.y / 2) + offset));
+  }
+
+  EnemyComponent _createEnemy(EnemyId enemyId, Vector2 position) {
+    return EnemyComponent.fromDefinition(
+      _enemyDefinitionFor(enemyId),
+      position: position,
+      targetPositionProvider: _nearestActivePlayerPosition,
+      nearbyEnemiesProvider: () => children.whereType<EnemyComponent>(),
     );
   }
 
@@ -603,6 +605,147 @@ class PixelSurvivorGame extends FlameGame
     }
   }
 
+  void _resolveEnemyActions() {
+    for (final enemy in children.whereType<EnemyComponent>().where(
+      (enemy) => !enemy.isDead,
+    )) {
+      for (final request in enemy.drainAttackRequests()) {
+        switch (request.kind) {
+          case EnemyAttackKind.dive:
+          case EnemyAttackKind.thrust:
+          case EnemyAttackKind.dash:
+            final end = request.origin + request.direction * request.range;
+            for (final player in _activePlayers.where(
+              (player) => player.isAlive,
+            )) {
+              if (_distanceToSegment(player.position, request.origin, end) <=
+                  player.size.x / 2 + enemy.size.x / 2) {
+                _damagePlayerFromEnemy(player, enemy, enemy.damage);
+              }
+            }
+            break;
+          case EnemyAttackKind.shockwave:
+            _addCappedHazard(
+              EnemyHazardComponent.shockwave(
+                position: request.origin,
+                radius: request.range,
+                damage: enemy.damage * enemy.behaviorProfile.effectMultiplier,
+                sourceId: enemy.enemyId,
+              ),
+            );
+            break;
+          case EnemyAttackKind.scream:
+            _addCappedHazard(
+              EnemyHazardComponent.scream(
+                position: request.origin,
+                radius: request.range,
+                damage: enemy.damage * enemy.behaviorProfile.effectMultiplier,
+                sourceId: enemy.enemyId,
+              ),
+            );
+            break;
+        }
+      }
+    }
+  }
+
+  void _resolveEnemyHazards() {
+    for (final hazard in children.whereType<EnemyHazardComponent>().where(
+      (hazard) => !hazard.isExpired,
+    )) {
+      for (final player in _activePlayers.where((player) => player.isAlive)) {
+        final damage = hazard.damageFor(player);
+        if (damage <= 0) continue;
+        final healthBefore = player.currentHealth;
+        if (player.takeDamage(damage, now: _elapsedSeconds)) {
+          _recordPlayerDamage(
+            player: player,
+            healthBefore: healthBefore,
+            sourceId: hazard.sourceId,
+          );
+        }
+      }
+    }
+  }
+
+  void _resolveEnemyAuras() {
+    final enemies = children
+        .whereType<EnemyComponent>()
+        .where((enemy) => !enemy.isDead)
+        .toList(growable: false);
+    final hasteSources = enemies.where((enemy) => enemy.hasteAuraFraction > 0);
+    for (final enemy in enemies.where(
+      (enemy) => enemy.rank == EnemyRank.normal,
+    )) {
+      final fractions = hasteSources
+          .where((source) {
+            if (identical(source, enemy)) return false;
+            final range = source.behaviorProfile.range;
+            return source.position.distanceToSquared(enemy.position) <=
+                range * range;
+          })
+          .map((source) => source.hasteAuraFraction);
+      enemy.setEnvironmentalHaste(
+        const EnemyAuraResolver()
+            .resolve(hasteFractions: fractions, slowFractions: const [])
+            .hasteFraction,
+      );
+    }
+    final slowSources = enemies.where((enemy) => enemy.slowAuraFraction > 0);
+    for (final player in _activePlayers) {
+      final fractions = slowSources
+          .where((source) {
+            final range = source.behaviorProfile.range;
+            return source.position.distanceToSquared(player.position) <=
+                range * range;
+          })
+          .map((source) => source.slowAuraFraction);
+      player.setEnvironmentalSlow(
+        const EnemyAuraResolver()
+            .resolve(hasteFractions: const [], slowFractions: fractions)
+            .slowFraction,
+      );
+    }
+  }
+
+  void _damagePlayerFromEnemy(
+    PlayerComponent player,
+    EnemyComponent enemy,
+    double damage,
+  ) {
+    final healthBefore = player.currentHealth;
+    if (player.takeDamage(damage, now: _elapsedSeconds)) {
+      _recordPlayerDamage(
+        player: player,
+        healthBefore: healthBefore,
+        sourceId: enemy.enemyId,
+      );
+    }
+  }
+
+  static double _distanceToSegment(Vector2 point, Vector2 start, Vector2 end) {
+    final segment = end - start;
+    if (segment.length2 == 0) return point.distanceTo(start);
+    final projection = ((point - start).dot(segment) / segment.length2)
+        .clamp(0, 1)
+        .toDouble();
+    return point.distanceTo(start + segment * projection);
+  }
+
+  void _addCappedHazard(EnemyHazardComponent hazard) {
+    final candidates = children
+        .whereType<EnemyHazardComponent>()
+        .where(
+          (item) => hazard.kind == EnemyHazardKind.poison
+              ? item.kind == EnemyHazardKind.poison
+              : item.kind != EnemyHazardKind.poison,
+        )
+        .toList();
+    final cap = hazard.kind == EnemyHazardKind.poison ? 12 : 24;
+    if (candidates.length >= cap) candidates.first.removeFromParent();
+    add(hazard);
+  }
+
   void _applyDamageEvents(Iterable<DamageEvent> events) {
     for (final event in events) {
       if (event.target.isDead) continue;
@@ -716,6 +859,15 @@ class PixelSurvivorGame extends FlameGame
     for (final enemy in children.whereType<EnemyComponent>().where(
       (enemy) => enemy.isDead,
     )) {
+      if (enemy.consumeDeathZone()) {
+        _addCappedHazard(
+          EnemyHazardComponent.poison(
+            position: enemy.position.clone(),
+            damage: enemy.damage * enemy.behaviorProfile.effectMultiplier,
+            sourceId: enemy.enemyId,
+          ),
+        );
+      }
       _recordEnemyDefeat(enemy);
     }
   }
@@ -1005,6 +1157,13 @@ class PixelSurvivorGame extends FlameGame
       pauseEngine();
     }
     onRunEnded?.call(currentRunResult());
+  }
+
+  @visibleForTesting
+  EnemyComponent debugSpawnEnemy(EnemyId enemyId, {required Vector2 position}) {
+    final enemy = _createEnemy(enemyId, position);
+    add(enemy);
+    return enemy;
   }
 
   @visibleForTesting
