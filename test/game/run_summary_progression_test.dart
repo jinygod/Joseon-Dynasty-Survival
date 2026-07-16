@@ -3,12 +3,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/app/run_summary_screen.dart';
 import 'package:pixel_survivor/game/content/augment_definitions.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
+import 'package:pixel_survivor/game/content/stage_definitions.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
 import 'package:pixel_survivor/game/models/run_outcome.dart';
 import 'package:pixel_survivor/game/models/run_feedback.dart';
 import 'package:pixel_survivor/game/models/run_result.dart';
 import 'package:pixel_survivor/game/systems/progression_system.dart';
 import 'package:pixel_survivor/game/systems/save_system.dart';
+import 'package:pixel_survivor/l10n/app_strings.dart';
 
 void main() {
   test('applies run result statistics and evaluates unlocks', () {
@@ -173,6 +175,32 @@ void main() {
 
     expect(started, isTrue);
     expect(openedMenu, isFalse);
+  });
+
+  testWidgets('run summary shows a stage-only unlock reward', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: RunSummaryScreen(
+          result: const RunResult(
+            outcome: RunOutcome.victory,
+            survivalSeconds: 300,
+            kills: 100,
+            level: 10,
+            bossDefeated: true,
+            wonWithLowHealth: false,
+            weaponKillCounts: {},
+            weaponLevels: {},
+          ),
+          unlocks: const ProgressionUnlocks(stageIds: [plagueMarket]),
+          onStart: () {},
+          onMenu: () {},
+        ),
+      ),
+    );
+
+    expect(find.text('스테이지'), findsOneWidget);
+    expect(find.text(stageDefinitionFor(plagueMarket).name), findsOneWidget);
+    expect(find.text(AppStrings.noNewUnlocks), findsNothing);
   });
 
   testWidgets('result navigation commits only the first rapid action', (

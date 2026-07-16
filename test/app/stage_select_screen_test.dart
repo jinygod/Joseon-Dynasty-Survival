@@ -11,6 +11,7 @@ void main() {
         theme: ThemeData(splashFactory: NoSplash.splashFactory),
         home: StageSelectScreen(
           initialStageId: moonlitAbandonedOffice,
+          unlockedStageIds: const {moonlitAbandonedOffice, plagueMarket},
           onSelected: (value) => selected = value,
         ),
       ),
@@ -29,6 +30,7 @@ void main() {
         theme: ThemeData(splashFactory: NoSplash.splashFactory),
         home: StageSelectScreen(
           initialStageId: moonlitAbandonedOffice,
+          unlockedStageIds: const {moonlitAbandonedOffice, plagueMarket},
           onSelected: (value) => selected = value,
         ),
       ),
@@ -42,5 +44,27 @@ void main() {
     expect(find.textContaining('위험'), findsOneWidget);
     await tester.tap(find.byKey(const Key('stage-confirm')));
     expect(selected, plagueMarket);
+  });
+
+  testWidgets('locked plague market cannot be selected or confirmed', (
+    tester,
+  ) async {
+    String? selected;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(splashFactory: NoSplash.splashFactory),
+        home: StageSelectScreen(
+          initialStageId: plagueMarket,
+          unlockedStageIds: const {moonlitAbandonedOffice},
+          onSelected: (value) => selected = value,
+        ),
+      ),
+    );
+
+    expect(find.byKey(const Key('stage-lock-plague_market')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('stage-plague_market')));
+    await tester.tap(find.byKey(const Key('stage-confirm')));
+
+    expect(selected, moonlitAbandonedOffice);
   });
 }

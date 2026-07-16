@@ -36,13 +36,10 @@ void main() {
 
   test('load normalizes selections that are not unlocked', () async {
     final store = _MemorySaveStore(
-      SaveState.fromJson({
-        'schemaVersion': SaveState.currentSchemaVersion,
-        'unlockedCharacterIds': [rookieConstable],
-        'unlockedStageIds': [moonlitAbandonedOffice],
-        'selectedCharacterId': exorcistDosa,
-        'selectedStageId': plagueMarket,
-      }),
+      SaveState.defaults().copyWith(
+        selectedCharacterId: exorcistDosa,
+        selectedStageId: plagueMarket,
+      ),
     );
     final controller = LobbyController(store: store);
 
@@ -50,6 +47,17 @@ void main() {
 
     expect(controller.state.selectedCharacterId, rookieConstable);
     expect(controller.state.selectedStageId, moonlitAbandonedOffice);
+  });
+
+  test('cannot persist a locked stage selection', () async {
+    final store = _MemorySaveStore(SaveState.defaults());
+    final controller = LobbyController(store: store);
+    await controller.load();
+
+    await controller.selectStage(plagueMarket);
+
+    expect(controller.state.selectedStageId, moonlitAbandonedOffice);
+    expect(store.value.selectedStageId, moonlitAbandonedOffice);
   });
 }
 

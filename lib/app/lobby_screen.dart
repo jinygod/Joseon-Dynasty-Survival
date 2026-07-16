@@ -66,6 +66,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
       MaterialPageRoute<void>(
         builder: (pickerContext) => StageSelectScreen(
           initialStageId: widget.controller.state.selectedStageId,
+          unlockedStageIds: widget.controller.state.unlockedStageIds,
           onSelected: (stageId) {
             unawaited(_saveStage(pickerContext, stageId));
           },

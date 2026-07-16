@@ -177,7 +177,14 @@ class UnlockGoalDefinition {
     this.unlocksWeaponId,
     this.unlocksAugmentId,
     this.unlocksStageId,
-  });
+  }) : assert(
+         (unlocksCharacterId != null ? 1 : 0) +
+                 (unlocksWeaponId != null ? 1 : 0) +
+                 (unlocksAugmentId != null ? 1 : 0) +
+                 (unlocksStageId != null ? 1 : 0) ==
+             1,
+         'Unlock goals require exactly one reward.',
+       );
 
   final UnlockGoalId id;
   final String description;

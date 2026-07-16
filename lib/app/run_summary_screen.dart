@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../l10n/app_strings.dart';
 import '../game/content/augment_definitions.dart';
 import '../game/content/character_definitions.dart';
+import '../game/content/stage_definitions.dart';
 import '../game/content/weapon_definitions.dart';
 import '../game/models/run_outcome.dart';
 import '../game/models/run_feedback.dart';
@@ -143,6 +144,7 @@ class _RunSummaryScreenState extends State<RunSummaryScreen> {
                       label: AppStrings.augment,
                       ids: widget.unlocks.augmentIds,
                     ),
+                    _UnlockGroup(label: '스테이지', ids: widget.unlocks.stageIds),
                   ],
                   if (widget.onFeedbackSubmitted != null) ...[
                     const SizedBox(height: 24),
@@ -393,6 +395,9 @@ String _displayName(String id) {
     if (definition.id == id) return definition.name;
   }
   for (final definition in characterDefinitions) {
+    if (definition.id == id) return definition.name;
+  }
+  for (final definition in stageDefinitions) {
     if (definition.id == id) return definition.name;
   }
   return id;
