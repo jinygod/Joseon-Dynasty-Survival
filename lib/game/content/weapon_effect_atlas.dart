@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import 'ids.dart';
 import 'safe_asset_loader.dart';
+import 'visual_asset_load_policy.dart';
 
 abstract final class WeaponEffectAtlas {
   static const assetKey = 'effects/weapon_effects_atlas_64.png';
@@ -37,6 +38,7 @@ abstract final class WeaponEffectAtlas {
   }
 
   static Future<Image?> load(PositionComponent component) async {
+    if (!shouldLoadVisualAssets(component)) return null;
     try {
       ServicesBinding.instance;
     } on AssertionError {

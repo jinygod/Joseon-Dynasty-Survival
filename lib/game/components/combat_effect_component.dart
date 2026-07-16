@@ -30,8 +30,8 @@ class CombatEffectComponent extends PositionComponent {
   bool get isExpired => _age >= lifetime;
 
   @override
-  Future<void> onLoad() async {
-    await super.onLoad();
+  void onLoad() {
+    super.onLoad();
     unawaited(_loadAtlas());
   }
 

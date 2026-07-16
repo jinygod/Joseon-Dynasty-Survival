@@ -5,6 +5,7 @@ import 'package:flame/components.dart';
 import 'package:flutter/services.dart';
 
 import '../content/safe_asset_loader.dart';
+import '../content/visual_asset_load_policy.dart';
 import '../models/vector_input.dart';
 import '../systems/combat_feedback_tuning.dart';
 
@@ -189,9 +190,9 @@ class PlayerComponent
   }
 
   @override
-  Future<void> onLoad() async {
-    await super.onLoad();
-    unawaited(_loadAnimations());
+  void onLoad() {
+    super.onLoad();
+    if (shouldLoadVisualAssets(this)) unawaited(_loadAnimations());
   }
 
   Future<void> _loadAnimations() async {

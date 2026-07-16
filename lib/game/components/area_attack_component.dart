@@ -47,8 +47,8 @@ class AreaAttackComponent extends PositionComponent {
   bool get hasTriggered => _hasTriggered;
 
   @override
-  Future<void> onLoad() async {
-    await super.onLoad();
+  void onLoad() {
+    super.onLoad();
     if (weaponId == 'thunder_crash_bomb') {
       unawaited(_loadEffect());
     }

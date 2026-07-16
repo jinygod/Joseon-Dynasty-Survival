@@ -49,8 +49,8 @@ class SpiritJadeComponent extends PositionComponent {
   bool get canRetry => !_saving && _retryRemaining <= 0;
 
   @override
-  Future<void> onLoad() async {
-    await super.onLoad();
+  void onLoad() {
+    super.onLoad();
     unawaited(_loadAtlas());
   }
 
