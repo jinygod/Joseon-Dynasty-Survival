@@ -164,6 +164,46 @@ void main() {
     },
   );
 
+  test(
+    'boss request survives a full enemy component budget at 270 seconds',
+    () async {
+      const budget = GamePerformanceBudget(
+        maxEnemies: 2,
+        maxProjectiles: 1,
+        maxDamageNumbers: 1,
+        maxCombatEffects: 1,
+      );
+      final game = PixelSurvivorGame(
+        playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
+        onRunEnded: null,
+        performanceBudget: budget,
+      );
+      game.onGameResize(Vector2(960, 540));
+      await game.onLoad();
+      for (var index = 0; index < budget.maxEnemies; index += 1) {
+        await game.ensureAdd(
+          EnemyComponent(
+            enemyId: 'boss-budget-blocker-$index',
+            maxHealth: 10000,
+            moveSpeed: 0,
+            damage: 0,
+            position: Vector2(200.0 + index, 200),
+          ),
+        );
+      }
+
+      game.debugAdvanceTo(270);
+      for (var frame = 0; frame < 3; frame += 1) {
+        game.update(0);
+      }
+
+      expect(game.bossRequestCount, 1);
+      expect(game.bossSpawnCount, 1);
+      expect(game.bossId, isNotNull);
+      expect(game.performanceSnapshot.isWithinBudget, isTrue);
+    },
+  );
+
   test('diagnostic reporter failures cannot escape the game loop', () async {
     const budget = GamePerformanceBudget(
       maxEnemies: 1,

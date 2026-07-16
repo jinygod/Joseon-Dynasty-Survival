@@ -133,6 +133,7 @@ class PixelSurvivorGame extends FlameGame
   double _elapsedSeconds = 0;
   int _bossRequestCount = 0;
   int _bossSpawnCount = 0;
+  bool _bossSpawnPending = false;
   int _currentEnemyCap = 24;
   RunOutcome _runOutcome = RunOutcome.inProgress;
   BossComponent? _boss;
@@ -304,9 +305,20 @@ class PixelSurvivorGame extends FlameGame
   }
 
   @override
+  void onDispose() {
+    processLifecycleEvents();
+    while (children.isNotEmpty) {
+      removeAll(children.toList(growable: false));
+      processLifecycleEvents();
+    }
+    super.onDispose();
+  }
+
+  @override
   void update(double dt) {
     final safeDt = dt.clamp(0, 0.05).toDouble();
     super.update(safeDt);
+    _trySpawnPendingBoss();
     _updateScreenShake(safeDt);
     if (_runOutcome != RunOutcome.inProgress || isLevelUpPending) {
       return;
@@ -456,15 +468,25 @@ class PixelSurvivorGame extends FlameGame
       _bossRequestCount += 1;
       _emitAudio(AudioCue.bossWarning);
       _emitAudio(AudioCue.bossMusic);
-      _spawnBoss();
+      _requestBossSpawn();
     }
   }
 
-  void _spawnBoss() {
+  void _requestBossSpawn() {
     if (_bossSpawnCount > 0) return;
+    _bossSpawnPending = true;
+    _trySpawnPendingBoss();
+  }
+
+  void _trySpawnPendingBoss() {
+    if (!_bossSpawnPending || _bossSpawnCount > 0) return;
     if (_enemyComponentCount >= performanceBudget.maxEnemies) {
-      _rejectPopulation(GamePopulationKind.enemy, 1);
-      return;
+      final nonBoss = children
+          .whereType<EnemyComponent>()
+          .where((enemy) => enemy is! BossComponent && !enemy.isRemoving)
+          .firstOrNull;
+      nonBoss?.removeFromParent();
+      if (_enemyComponentCount >= performanceBudget.maxEnemies) return;
     }
 
     final definition = bossDefinitionForStage(stageId, roll: _bossRoll());
@@ -476,6 +498,7 @@ class PixelSurvivorGame extends FlameGame
       onAreaAttack: (attack) => add(attack),
       onSummonEnemiesRequested: _summonBossMinions,
     );
+    _bossSpawnPending = false;
     _boss = boss;
     _bossSpawnCount += 1;
     add(boss);
@@ -1274,7 +1297,7 @@ class PixelSurvivorGame extends FlameGame
       _bossRequestCount += 1;
       _emitAudio(AudioCue.bossWarning);
       _emitAudio(AudioCue.bossMusic);
-      _spawnBoss();
+      _requestBossSpawn();
     }
   }
 

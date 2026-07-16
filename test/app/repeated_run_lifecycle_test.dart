@@ -38,7 +38,7 @@ void main() {
     final progression = MetaProgressionService(
       saveStore: _MemorySaveStore(SaveState.defaults()),
     );
-    var retiredGameCount = 0;
+    final games = <PixelSurvivorGame>[];
 
     await tester.pumpWidget(
       MaterialApp(
@@ -49,35 +49,58 @@ void main() {
         ),
       ),
     );
-    await tester.pump(const Duration(milliseconds: 100));
+    await _pumpUntil(
+      tester,
+      () => find.byGame<PixelSurvivorGame>().evaluate().isNotEmpty,
+      'first game widget',
+    );
 
     for (var run = 0; run < 20; run += 1) {
       final game = _activeGame(tester);
+      games.add(game);
       await tester.runAsync(game.ready);
       expect(game.performanceSnapshot.isWithinBudget, isTrue);
 
       game.debugAdvanceTo(300);
       game.debugKillPlayer();
       game.update(.016);
-      await tester.pump();
-      await tester.pump();
-      await tester.runAsync(
-        () => Future<void>.delayed(const Duration(milliseconds: 20)),
+      await _pumpUntil(
+        tester,
+        () => find.byType(RunSummaryScreen).evaluate().isNotEmpty,
+        'summary for run $run',
       );
-      for (var attempt = 0; attempt < 20; attempt += 1) {
-        if (find.byType(RunSummaryScreen).evaluate().isNotEmpty) break;
-        await tester.pump(const Duration(milliseconds: 50));
-      }
       expect(find.byType(RunSummaryScreen), findsOneWidget, reason: 'run $run');
-      await tester.pump(const Duration(milliseconds: 100));
-      retiredGameCount += 1;
+      await _pumpUntil(
+        tester,
+        () => !game.isAttached,
+        'run $run game detachment',
+      );
+      await _pumpUntil(
+        tester,
+        () => game.children.isEmpty,
+        'run $run game children teardown',
+      );
+      await _pumpUntil(
+        tester,
+        () => backend.activeNonMusicHandles == 0,
+        'run $run audio teardown',
+      );
+      expect(game.isAttached, isFalse, reason: 'run $run game widget');
+      expect(game.children, isEmpty, reason: 'run $run game children');
+      expect(backend.activeNonMusicHandles, 0, reason: 'run $run audio');
+      expect(backend.activeHandles, lessThanOrEqualTo(1), reason: 'run $run');
 
       if (run < 19) {
         tester
             .widget<RunSummaryScreen>(find.byType(RunSummaryScreen))
             .onStart();
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 500));
+        await _pumpUntil(
+          tester,
+          () =>
+              find.byGame<PixelSurvivorGame>().evaluate().isNotEmpty &&
+              !identical(_activeGame(tester), game),
+          'replacement game for run $run',
+        );
         expect(find.byGame<PixelSurvivorGame>(), findsOneWidget);
         expect(_activeGame(tester), isNot(same(game)));
         // Test-only lifecycle probe; the factory controller cannot be subclassed.
@@ -88,12 +111,20 @@ void main() {
     }
 
     await tester.pumpWidget(const SizedBox.shrink());
-    await tester.pump(const Duration(milliseconds: 300));
+    await _pumpUntil(
+      tester,
+      () => games.every((game) => !game.isAttached && game.children.isEmpty),
+      'all games removed',
+    );
     // Test-only lifecycle probe; every GameScreen/ListenableBuilder is gone.
     // ignore: invalid_use_of_protected_member
     expect(settingsController.hasListeners, isFalse);
-    expect(retiredGameCount, 20);
+    expect(games, hasLength(20));
+    expect(games.every((game) => !game.isAttached), isTrue);
+    expect(games.every((game) => game.children.isEmpty), isTrue);
     expect(find.byGame<PixelSurvivorGame>(), findsNothing);
+    expect(backend.activeNonMusicHandles, 0);
+    expect(backend.activeHandles, lessThanOrEqualTo(1));
     expect(tester.takeException(), isNull);
 
     await audioService.dispose();
@@ -108,6 +139,19 @@ PixelSurvivorGame _activeGame(WidgetTester tester) => tester
     .last
     .game!;
 
+Future<void> _pumpUntil(
+  WidgetTester tester,
+  bool Function() condition,
+  String description,
+) async {
+  for (var attempt = 0; attempt < 180; attempt += 1) {
+    if (condition()) return;
+    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+    await tester.pump(const Duration(milliseconds: 16));
+  }
+  fail('Timed out waiting for $description');
+}
+
 class _TrackingAudioBackend implements AudioBackend {
   final List<_TrackingAudioHandle> handles = [];
   int disposeCount = 0;
@@ -118,6 +162,13 @@ class _TrackingAudioBackend implements AudioBackend {
       .where(
         (handle) =>
             !handle.isStopped && handle.request.channel == AudioChannel.music,
+      )
+      .length;
+
+  int get activeNonMusicHandles => handles
+      .where(
+        (handle) =>
+            !handle.isStopped && handle.request.channel != AudioChannel.music,
       )
       .length;
 
