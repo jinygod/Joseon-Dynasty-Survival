@@ -3,6 +3,7 @@ import { handler as verifyPurchase } from "../verify-google-play-purchase/index.
 import { handler as notification } from "../google-play-notification/index.ts";
 import { handler as spend } from "../spend-royal-jade/index.ts";
 import { handler as deleteAccount } from "../delete-account/index.ts";
+import { parseGooglePurchase } from "../_shared/google_play_client.ts";
 
 function equal(actual: unknown, expected: unknown, message = "values differ") {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) {
@@ -52,6 +53,8 @@ function verifyDeps(overrides: Record<string, unknown> = {}) {
       ) => ({
         purchaseState: "PURCHASED",
         productIds: [productId],
+        lineItems: [{ productId, quantity: 1 }],
+        obfuscatedExternalAccountId: "user-1",
         orderId: "order-1",
         raw: {},
       }),
@@ -83,6 +86,35 @@ function verifyDeps(overrides: Record<string, unknown> = {}) {
   };
   return deps;
 }
+
+Deno.test("ProductPurchaseV2 parser keeps account and line item quantity", () => {
+  equal(
+    parseGooglePurchase({
+      purchaseStateContext: { purchaseState: "PURCHASED" },
+      obfuscatedExternalAccountId: "user-1",
+      productLineItem: [{
+        productId: "royal_jade_small",
+        productOfferDetails: { quantity: 1 },
+      }],
+      orderId: "order-1",
+    }),
+    {
+      purchaseState: "PURCHASED",
+      lineItems: [{ productId: "royal_jade_small", quantity: 1 }],
+      obfuscatedExternalAccountId: "user-1",
+      orderId: "order-1",
+      raw: {
+        purchaseStateContext: { purchaseState: "PURCHASED" },
+        obfuscatedExternalAccountId: "user-1",
+        productLineItem: [{
+          productId: "royal_jade_small",
+          productOfferDetails: { quantity: 1 },
+        }],
+        orderId: "order-1",
+      },
+    },
+  );
+});
 
 Deno.test("missing JWT is rejected", async () => {
   const response = await verifyPurchase(
@@ -188,6 +220,112 @@ Deno.test("invalid Google purchase grants nothing", async () => {
   equal(deps.ledgerEntries.length, 0);
 });
 
+Deno.test("purchase without obfuscated account id is rejected", async () => {
+  const deps = verifyDeps({
+    google: {
+      getProductPurchase: async () => ({
+        purchaseState: "PURCHASED",
+        productIds: ["royal_jade_small"],
+        lineItems: [{ productId: "royal_jade_small", quantity: 1 }],
+        raw: {},
+      }),
+      consume: async () => {},
+    },
+  });
+  const response = await verifyPurchase(
+    request({
+      productId: "royal_jade_small",
+      purchaseToken: "token-no-account",
+      packageName: "com.example.game",
+    }),
+    deps,
+  );
+  equal(response.status, 422);
+  equal((await body(response)).code, "account_mismatch");
+  equal(deps.ledgerEntries.length, 0);
+});
+
+Deno.test("purchase for another obfuscated account is rejected", async () => {
+  const deps = verifyDeps({
+    google: {
+      getProductPurchase: async () => ({
+        purchaseState: "PURCHASED",
+        productIds: ["royal_jade_small"],
+        lineItems: [{ productId: "royal_jade_small", quantity: 1 }],
+        obfuscatedExternalAccountId: "user-2",
+        raw: {},
+      }),
+      consume: async () => {},
+    },
+  });
+  const response = await verifyPurchase(
+    request({
+      productId: "royal_jade_small",
+      purchaseToken: "token-wrong-account",
+      packageName: "com.example.game",
+    }),
+    deps,
+  );
+  equal(response.status, 422);
+  equal((await body(response)).code, "account_mismatch");
+  equal(deps.ledgerEntries.length, 0);
+});
+
+Deno.test("multi-quantity purchase is rejected", async () => {
+  const deps = verifyDeps({
+    google: {
+      getProductPurchase: async () => ({
+        purchaseState: "PURCHASED",
+        productIds: ["royal_jade_small"],
+        lineItems: [{ productId: "royal_jade_small", quantity: 2 }],
+        obfuscatedExternalAccountId: "user-1",
+        raw: {},
+      }),
+      consume: async () => {},
+    },
+  });
+  const response = await verifyPurchase(
+    request({
+      productId: "royal_jade_small",
+      purchaseToken: "token-quantity",
+      packageName: "com.example.game",
+    }),
+    deps,
+  );
+  equal(response.status, 422);
+  equal((await body(response)).code, "product_mismatch");
+  equal(deps.ledgerEntries.length, 0);
+});
+
+Deno.test("multiple Google line items are rejected", async () => {
+  const deps = verifyDeps({
+    google: {
+      getProductPurchase: async () => ({
+        purchaseState: "PURCHASED",
+        productIds: ["royal_jade_small", "royal_jade_medium"],
+        lineItems: [
+          { productId: "royal_jade_small", quantity: 1 },
+          { productId: "royal_jade_medium", quantity: 1 },
+        ],
+        obfuscatedExternalAccountId: "user-1",
+        raw: {},
+      }),
+      consume: async () => {},
+    },
+  });
+  const response = await verifyPurchase(
+    request({
+      productId: "royal_jade_small",
+      purchaseToken: "token-multiple",
+      packageName: "com.example.game",
+    }),
+    deps,
+  );
+  equal(response.status, 422);
+  equal((await body(response)).code, "product_mismatch");
+  equal(deps.ledgerEntries.length, 0);
+});
+
 Deno.test("purchased token grants trusted catalog amount", async () => {
   const deps = verifyDeps();
   const response = await verifyPurchase(
@@ -200,9 +338,7 @@ Deno.test("purchased token grants trusted catalog amount", async () => {
   );
   equal(response.status, 200);
   const result = await body(response);
-  equal(result.balance, 100);
-  equal(result.accepted, true);
-  equal(result.duplicate, false);
+  equal(result, { accepted: true, duplicate: false });
   equal(deps.ledgerEntries.length, 1);
 });
 
@@ -226,12 +362,8 @@ Deno.test("duplicate verified token returns one grant", async () => {
   );
   const firstBody = await body(first);
   const secondBody = await body(second);
-  equal(firstBody.balance, 100);
-  equal(secondBody.balance, 100);
-  equal(firstBody.accepted, true);
-  equal(firstBody.duplicate, false);
-  equal(secondBody.accepted, true);
-  equal(secondBody.duplicate, true);
+  equal(firstBody, { accepted: true, duplicate: false });
+  equal(secondBody, { accepted: true, duplicate: true });
   equal(deps.ledgerEntries.length, 1);
 });
 
@@ -253,8 +385,10 @@ Deno.test("consume failure remains retryable without duplicate grant", async () 
     }),
     deps,
   );
-  equal((await body(first)).consumePending, true);
-  equal((await body(second)).balance, 100);
+  equal(first.status, 503);
+  equal(await body(first), { code: "consume_retry_required" });
+  equal(second.status, 200);
+  equal(await body(second), { accepted: true, duplicate: true });
   equal(deps.ledgerEntries.length, 1);
 });
 
@@ -262,6 +396,7 @@ Deno.test("PubSub authentication failure is rejected", async () => {
   const response = await notification(
     request({ message: { data: "e30=" } }, "bad"),
     {
+      expectedPackage: "com.example.game",
       pubsub: { authenticate: async () => false },
       economy: { refund: async () => ({ balance: 0, debt: 0 }) },
     },
@@ -269,19 +404,100 @@ Deno.test("PubSub authentication failure is rejected", async () => {
   equal(response.status, 401);
 });
 
-Deno.test("refund notification creates debt when funds were spent", async () => {
+Deno.test("one-time pending cancellation is ignored without refund", async () => {
+  let calls = 0;
+  const event = btoa(JSON.stringify({
+    packageName: "com.example.game",
+    oneTimeProductNotification: {
+      purchaseToken: "token-pending",
+      notificationType: 2,
+    },
+  }));
+  const response = await notification(
+    request({ message: { messageId: "event-pending", data: event } }, "pubsub"),
+    {
+      expectedPackage: "com.example.game",
+      pubsub: { authenticate: async () => true },
+      economy: {
+        refund: async () => {
+          calls++;
+          return { balance: 0, debt: 0 };
+        },
+      },
+    },
+  );
+  equal(response.status, 200);
+  equal(await body(response), { ignored: true, reason: "pending_cancelled" });
+  equal(calls, 0);
+});
+
+Deno.test("one-time purchased notification requests reconciliation without refund", async () => {
+  let calls = 0;
+  const event = btoa(JSON.stringify({
+    packageName: "com.example.game",
+    oneTimeProductNotification: {
+      purchaseToken: "token-purchased",
+      notificationType: 1,
+    },
+  }));
+  const response = await notification(
+    request(
+      { message: { messageId: "event-purchased", data: event } },
+      "pubsub",
+    ),
+    {
+      expectedPackage: "com.example.game",
+      pubsub: { authenticate: async () => true },
+      economy: {
+        refund: async () => {
+          calls++;
+          return {};
+        },
+      },
+    },
+  );
+  equal(response.status, 200);
+  equal(await body(response), { ignored: true, reason: "reconcile_required" });
+  equal(calls, 0);
+});
+
+Deno.test("notification package mismatch is rejected", async () => {
+  const event = btoa(JSON.stringify({
+    packageName: "evil.pkg",
+    voidedPurchaseNotification: {
+      purchaseToken: "token-1",
+      productType: 2,
+      refundType: 1,
+    },
+  }));
+  const response = await notification(
+    request({ message: { messageId: "event-package", data: event } }, "pubsub"),
+    {
+      expectedPackage: "com.example.game",
+      pubsub: { authenticate: async () => true },
+      economy: { refund: async () => ({ balance: 0, debt: 0 }) },
+    },
+  );
+  equal(response.status, 400);
+  equal((await body(response)).code, "package_mismatch");
+});
+
+Deno.test("voided one-time purchase creates debt when funds were spent", async () => {
   let input: unknown;
   const event = btoa(
     JSON.stringify({
-      oneTimeProductNotification: {
+      packageName: "com.example.game",
+      voidedPurchaseNotification: {
         purchaseToken: "token-1",
-        notificationType: 2,
+        productType: 2,
+        refundType: 1,
       },
     }),
   );
   const response = await notification(
     request({ message: { messageId: "event-1", data: event } }, "pubsub"),
     {
+      expectedPackage: "com.example.game",
       pubsub: { authenticate: async () => true },
       economy: {
         refund: async (value: unknown) => {
@@ -296,8 +512,31 @@ Deno.test("refund notification creates debt when funds were spent", async () => 
   equal(input, {
     purchaseToken: "token-1",
     eventId: "event-1",
-    notificationType: 2,
+    refundType: 1,
   });
+});
+
+Deno.test("unknown voided token is acknowledged without retry storm", async () => {
+  const event = btoa(JSON.stringify({
+    packageName: "com.example.game",
+    voidedPurchaseNotification: {
+      purchaseToken: "unknown-token",
+      productType: 2,
+      refundType: 1,
+    },
+  }));
+  const response = await notification(
+    request({ message: { messageId: "event-unknown", data: event } }, "pubsub"),
+    {
+      expectedPackage: "com.example.game",
+      pubsub: { authenticate: async () => true },
+      economy: {
+        refund: async () => ({ ignored: true, reason: "unknown_token" }),
+      },
+    },
+  );
+  equal(response.status, 200);
+  equal(await body(response), { ignored: true, reason: "unknown_token" });
 });
 
 Deno.test("spend endpoint returns trusted atomic result", async () => {

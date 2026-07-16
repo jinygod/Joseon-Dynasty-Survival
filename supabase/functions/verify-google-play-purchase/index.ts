@@ -68,7 +68,14 @@ export async function handler(
     if (purchase.purchaseState !== "PURCHASED") {
       throw new HttpError(422, "purchase_invalid");
     }
-    if (!purchase.productIds.includes(body.productId)) {
+    if (purchase.obfuscatedExternalAccountId !== user.id) {
+      throw new HttpError(422, "account_mismatch");
+    }
+    if (
+      purchase.lineItems.length !== 1 ||
+      purchase.lineItems[0].productId !== body.productId ||
+      purchase.lineItems[0].quantity !== 1
+    ) {
       throw new HttpError(422, "product_mismatch");
     }
     const result = await deps.economy.grantPurchase({
@@ -79,7 +86,6 @@ export async function handler(
       grantAmount: product.grantAmount,
       rawVerification: purchase.raw,
     });
-    let consumePending = false;
     try {
       await deps.google.consume(
         body.packageName,
@@ -87,9 +93,9 @@ export async function handler(
         body.purchaseToken,
       );
     } catch {
-      consumePending = true;
+      throw new HttpError(503, "consume_retry_required");
     }
-    return json(200, { accepted: true, ...result, consumePending });
+    return json(200, { accepted: true, duplicate: result.duplicate });
   });
 }
 

@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(37);
+select plan(41);
 
 select has_schema('private');
 select ok(to_regclass('public.profiles') is not null, 'profiles exists');
@@ -86,6 +86,19 @@ select results_eq(
   $$ select royal_jade, royal_jade_debt from public.wallets where user_id = '00000000-0000-0000-0000-000000000001' $$,
   $$ values (25::bigint, 0::bigint) $$,
   'refund debt settles before a later grant');
+
+select lives_ok($$ select * from private.apply_wallet_entry(
+  '00000000-0000-0000-0000-000000000001', -10, 'google_play_refund',
+  'google_play_notification', 'event-1', 'google-play-event:event-1', '{}') $$,
+  'voided purchase event applies once');
+select lives_ok($$ select * from private.apply_wallet_entry(
+  '00000000-0000-0000-0000-000000000001', -10, 'google_play_refund',
+  'google_play_notification', 'event-1', 'google-play-event:event-1', '{}') $$,
+  'duplicate voided purchase event is accepted');
+select is((select count(*) from public.wallet_ledger where idempotency_key = 'google-play-event:event-1'), 1::bigint,
+  'duplicate voided purchase event records one ledger entry');
+select is((select royal_jade from public.wallets where user_id = '00000000-0000-0000-0000-000000000001'), 15::bigint,
+  'duplicate voided purchase event debits once');
 
 select throws_ok($$ update public.wallet_ledger set reason = 'tamper' $$, '42501');
 select throws_ok($$ delete from public.wallet_ledger $$, '42501');

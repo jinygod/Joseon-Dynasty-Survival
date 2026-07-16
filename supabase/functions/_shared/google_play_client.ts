@@ -1,6 +1,7 @@
 export interface GooglePurchase {
   purchaseState: string;
-  productIds: string[];
+  lineItems: Array<{ productId: string; quantity: number }>;
+  obfuscatedExternalAccountId?: string;
   orderId?: string;
   raw: unknown;
 }
@@ -16,6 +17,34 @@ export interface GooglePlayClient {
     productId: string,
     purchaseToken: string,
   ): Promise<void>;
+}
+
+interface ProductPurchaseV2Json {
+  purchaseStateContext?: { purchaseState?: string };
+  productLineItem?: Array<{
+    productId?: string;
+    productOfferDetails?: { quantity?: number };
+  }>;
+  obfuscatedExternalAccountId?: string;
+  orderId?: string;
+}
+
+export function parseGooglePurchase(
+  raw: ProductPurchaseV2Json,
+): GooglePurchase {
+  return {
+    purchaseState: raw.purchaseStateContext?.purchaseState ?? "UNKNOWN",
+    lineItems: (raw.productLineItem ?? []).map((item: {
+      productId?: string;
+      productOfferDetails?: { quantity?: number };
+    }) => ({
+      productId: item.productId ?? "",
+      quantity: item.productOfferDetails?.quantity ?? 1,
+    })),
+    obfuscatedExternalAccountId: raw.obfuscatedExternalAccountId,
+    orderId: raw.orderId,
+    raw,
+  };
 }
 
 interface ServiceAccount {
@@ -102,14 +131,7 @@ export function createGooglePlayClient(
           encodeURIComponent(packageName)
         }/purchases/productsv2/tokens/${encodeURIComponent(purchaseToken)}`;
       const raw = await (await call(url)).json();
-      return {
-        purchaseState: raw.purchaseStateContext?.purchaseState ?? "UNKNOWN",
-        productIds: (raw.productLineItem ?? []).map((
-          item: { productId?: string },
-        ) => item.productId).filter(Boolean),
-        orderId: raw.orderId,
-        raw,
-      };
+      return parseGooglePurchase(raw);
     },
     async consume(packageName, productId, purchaseToken) {
       const url =

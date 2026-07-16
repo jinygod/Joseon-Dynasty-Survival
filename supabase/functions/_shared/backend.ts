@@ -46,19 +46,24 @@ export async function createBackend(databaseUrl: string) {
         input: {
           purchaseToken: string;
           eventId: string;
-          notificationType: number;
+          refundType: number;
         },
       ) {
         return await sql.begin(async (tx) => {
           const purchase =
-            await tx`select user_id, granted_amount from private.google_play_purchases where purchase_token = ${input.purchaseToken} for update`;
-          if (!purchase[0]?.user_id) throw new Error("purchase not found");
+            await tx`select user_id, granted_amount, revoked_at from private.google_play_purchases where purchase_token = ${input.purchaseToken} for update`;
+          if (!purchase[0]) {
+            return { ignored: true, reason: "unknown_token" };
+          }
+          if (!purchase[0].user_id || purchase[0].revoked_at) {
+            return { ignored: true, reason: "already_revoked" };
+          }
           const result = await tx`select * from private.apply_wallet_entry(
             ${purchase[0].user_id}::uuid, ${-Number(
             purchase[0].granted_amount,
           )}, 'google_play_refund',
             'google_play_notification', ${input.eventId}, ${`google-play-event:${input.eventId}`},
-            ${tx.json({ notificationType: input.notificationType })}::jsonb)`;
+            ${tx.json({ refundType: input.refundType })}::jsonb)`;
           await tx`update private.google_play_purchases set purchase_state = 'REVOKED', revoked_at = coalesce(revoked_at, now()), updated_at = now() where purchase_token = ${input.purchaseToken}`;
           return {
             balance: Number(result[0].balance),

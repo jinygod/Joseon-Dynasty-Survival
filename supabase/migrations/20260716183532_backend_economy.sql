@@ -326,6 +326,13 @@ begin
     return;
   end if;
   perform 1 from public.wallets w where w.user_id = p_user_id for update;
+  select pe.* into v_existing from public.player_entitlements pe
+  where pe.user_id = p_user_id and pe.entitlement_key = v_item.entitlement_key;
+  if found then
+    return query select v_existing.entitlement_key, v_existing.ledger_id,
+      (select w.royal_jade from public.wallets w where w.user_id = p_user_id), true;
+    return;
+  end if;
   if not exists (select 1 from public.wallets w where w.user_id = p_user_id and w.royal_jade >= v_item.royal_jade_price and w.royal_jade_debt = 0) then
     raise exception using errcode = 'P0001', message = 'insufficient_funds';
   end if;

@@ -1,15 +1,16 @@
 import { boundedJson, HttpError, json, respond } from "../_shared/http.ts";
 
 interface NotificationDeps {
+  expectedPackage: string;
   pubsub: { authenticate(request: Request): Promise<boolean> };
   economy: {
     refund(
       input: {
         purchaseToken: string;
         eventId: string;
-        notificationType: number;
+        refundType: number;
       },
-    ): Promise<{ balance: number; debt: number }>;
+    ): Promise<Record<string, unknown>>;
   };
 }
 
@@ -31,9 +32,15 @@ export async function handler(
       throw new HttpError(400, "invalid_body");
     }
     let event: {
+      packageName?: string;
       oneTimeProductNotification?: {
         purchaseToken?: string;
         notificationType?: number;
+      };
+      voidedPurchaseNotification?: {
+        purchaseToken?: string;
+        productType?: number;
+        refundType?: number;
       };
     };
     try {
@@ -41,17 +48,40 @@ export async function handler(
     } catch {
       throw new HttpError(400, "invalid_body");
     }
+    if (event.packageName !== deps.expectedPackage) {
+      throw new HttpError(400, "package_mismatch");
+    }
+    const voided = event.voidedPurchaseNotification;
+    if (voided) {
+      if (
+        !voided.purchaseToken || typeof voided.productType !== "number" ||
+        typeof voided.refundType !== "number"
+      ) {
+        throw new HttpError(400, "invalid_body");
+      }
+      if (voided.productType !== 2) {
+        return json(200, { ignored: true, reason: "non_one_time_product" });
+      }
+      return json(
+        200,
+        await deps.economy.refund({
+          purchaseToken: voided.purchaseToken,
+          eventId: envelope.message.messageId,
+          refundType: voided.refundType,
+        }),
+      );
+    }
     const notice = event.oneTimeProductNotification;
     if (!notice?.purchaseToken || typeof notice.notificationType !== "number") {
       throw new HttpError(400, "invalid_body");
     }
-    if (notice.notificationType !== 2) return json(200, { ignored: true });
-    const result = await deps.economy.refund({
-      purchaseToken: notice.purchaseToken,
-      eventId: envelope.message.messageId,
-      notificationType: notice.notificationType,
-    });
-    return json(200, result);
+    if (notice.notificationType === 1) {
+      return json(200, { ignored: true, reason: "reconcile_required" });
+    }
+    if (notice.notificationType === 2) {
+      return json(200, { ignored: true, reason: "pending_cancelled" });
+    }
+    return json(200, { ignored: true, reason: "unknown_one_time_type" });
   });
 }
 
@@ -62,6 +92,7 @@ if (import.meta.main) {
   const email = Deno.env.get("PUBSUB_SERVICE_ACCOUNT_EMAIL")!;
   Deno.serve((request) =>
     handler(request, {
+      expectedPackage: Deno.env.get("ANDROID_PACKAGE_NAME")!,
       pubsub: {
         async authenticate(req) {
           const token = req.headers.get("authorization")?.replace(
