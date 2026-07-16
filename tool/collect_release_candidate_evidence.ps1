@@ -44,10 +44,14 @@ function Invoke-EvidenceGate {
   $log = Join-Path $qaRoot "$Name.log"
   Push-Location $repoRoot
   try {
+    $previousErrorPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
     & $Executable @Arguments *>&1 | Tee-Object -FilePath $log | Out-Host
     $code = $LASTEXITCODE
+    $ErrorActionPreference = $previousErrorPreference
   }
   finally {
+    $ErrorActionPreference = 'Stop'
     Pop-Location
   }
   $completed = [datetime]::UtcNow
