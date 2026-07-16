@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../backend/progress/progress_sync_controller.dart';
@@ -10,7 +12,7 @@ class LobbyController extends ChangeNotifier {
 
   final SaveStore store;
   ProgressSyncController? progressSyncController;
-  Future<void> _saveQueue = Future<void>.value();
+  Future<void> _operationQueue = Future<void>.value();
   bool _disposed = false;
   int _generation = 0;
 
@@ -19,11 +21,28 @@ class LobbyController extends ChangeNotifier {
   bool saving = false;
   String? _recoveryNotice;
 
-  Future<void> load() async {
-    if (_disposed) return;
-    final generation = _generation;
+  Future<void> load() {
+    if (_disposed) return Future<void>.value();
     loading = true;
     _notify();
+    return _enqueueOperation(
+      (generation) => _load(generation, announce: false),
+    );
+  }
+
+  Future<void> syncNow() => _enqueueOperation((generation) async {
+    final sync = progressSyncController;
+    if (sync != null) await sync.syncNow();
+    if (!_isActive(generation)) return;
+    await _load(generation, announce: true);
+  });
+
+  Future<void> _load(int generation, {required bool announce}) async {
+    if (!_isActive(generation)) return;
+    if (announce) {
+      loading = true;
+      _notify();
+    }
     try {
       final loaded = await store.load();
       if (!_isActive(generation)) return;
@@ -40,23 +59,17 @@ class LobbyController extends ChangeNotifier {
     }
   }
 
-  Future<void> syncNow() async {
-    if (_disposed) return;
-    final generation = _generation;
-    final sync = progressSyncController;
-    if (sync != null) await sync.syncNow();
-    if (!_isActive(generation)) return;
-    await load();
-  }
-
   Future<void> selectCharacter(String characterId) {
     if (_disposed ||
         !state.unlockedCharacterIds.contains(characterId) ||
         !characterDefinitions.any((character) => character.id == characterId)) {
       return Future<void>.value();
     }
-    return _enqueue(
-      (current) => current.copyWith(selectedCharacterId: characterId),
+    return _enqueueOperation(
+      (generation) => _persist(
+        (current) => current.copyWith(selectedCharacterId: characterId),
+        generation,
+      ),
     );
   }
 
@@ -66,28 +79,31 @@ class LobbyController extends ChangeNotifier {
         !stageDefinitions.any((stage) => stage.id == stageId)) {
       return Future<void>.value();
     }
-    return _enqueue((current) => current.copyWith(selectedStageId: stageId));
-  }
-
-  Future<void> markCompendiumEntriesSeen(Set<String> entryIds) {
-    if (_disposed || entryIds.isEmpty) return Future<void>.value();
-    return _enqueue(
-      (current) => current.copyWith(
-        seenCompendiumEntryIds: {
-          ...current.seenCompendiumEntryIds,
-          ...entryIds,
-        },
+    return _enqueueOperation(
+      (generation) => _persist(
+        (current) => current.copyWith(selectedStageId: stageId),
+        generation,
       ),
     );
   }
 
-  Future<bool> resetProgress() {
-    if (_disposed) return Future<bool>.value(false);
-    final generation = _generation;
-    final operation = _saveQueue.then((_) => _persistReset(generation));
-    _saveQueue = operation.then<void>((_) {});
-    return operation;
+  Future<void> markCompendiumEntriesSeen(Set<String> entryIds) {
+    if (_disposed || entryIds.isEmpty) return Future<void>.value();
+    return _enqueueOperation(
+      (generation) => _persist(
+        (current) => current.copyWith(
+          seenCompendiumEntryIds: {
+            ...current.seenCompendiumEntryIds,
+            ...entryIds,
+          },
+        ),
+        generation,
+      ),
+    );
   }
+
+  Future<bool> resetProgress() =>
+      _enqueueOperation((generation) => _persistReset(generation));
 
   Future<void> clearAccountLocalState() async {
     if (!await resetProgress()) {
@@ -101,12 +117,29 @@ class LobbyController extends ChangeNotifier {
     return notice;
   }
 
-  Future<void> _enqueue(SaveState Function(SaveState current) update) {
-    if (_disposed) return Future<void>.value();
+  Future<T> _enqueueOperation<T>(Future<T> Function(int generation) action) {
+    if (_disposed) {
+      return Future<T>.value(_disposedResult<T>());
+    }
     final generation = _generation;
-    final operation = _saveQueue.then((_) => _persist(update, generation));
-    _saveQueue = operation;
-    return operation;
+    final result = Completer<T>();
+    _operationQueue = _operationQueue.then((_) async {
+      if (!_isActive(generation)) {
+        result.complete(_disposedResult<T>());
+        return;
+      }
+      try {
+        result.complete(await action(generation));
+      } catch (error, stackTrace) {
+        result.completeError(error, stackTrace);
+      }
+    });
+    return result.future;
+  }
+
+  T _disposedResult<T>() {
+    if (T == bool) return false as T;
+    return null as T;
   }
 
   Future<void> _persist(

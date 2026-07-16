@@ -72,7 +72,7 @@ class _PixelSurvivorAppState extends State<PixelSurvivorApp> {
         clearPaidCache: widget.clearPaidCache,
       );
       _progressSyncController = ProgressSyncController(
-        readAccount: () => _accountController!.session,
+        readAccount: () => _accountController!.syncSession,
         store: _saveStore,
         repository: SupabaseCloudProgressRepository(),
       );

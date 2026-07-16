@@ -27,6 +27,8 @@ class AccountSection extends StatelessWidget {
       ]),
       builder: (context, _) {
         final session = controller.session;
+        final transitionBlocked =
+            controller.availability == AccountAvailability.blocked;
         return Card(
           child: Padding(
             padding: const EdgeInsets.all(12),
@@ -47,6 +49,17 @@ class AccountSection extends StatelessWidget {
                   Text(message, style: const TextStyle(color: Colors.red)),
                 ],
                 const SizedBox(height: 8),
+                if (transitionBlocked) ...[
+                  FilledButton.icon(
+                    key: const Key('retry-account-cleanup'),
+                    onPressed: controller.busy
+                        ? null
+                        : () => unawaited(controller.retryBlockedTransition()),
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Retry account cleanup'),
+                  ),
+                  const SizedBox(height: 8),
+                ],
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
@@ -55,7 +68,7 @@ class AccountSection extends StatelessWidget {
                           if (onSyncNow != null)
                             OutlinedButton.icon(
                               key: const Key('sync-now'),
-                              onPressed: controller.busy
+                              onPressed: controller.busy || transitionBlocked
                                   ? null
                                   : () => unawaited(onSyncNow!()),
                               icon: const Icon(Icons.sync),
@@ -63,14 +76,14 @@ class AccountSection extends StatelessWidget {
                             ),
                           TextButton(
                             key: const Key('account-sign-out'),
-                            onPressed: controller.busy
+                            onPressed: controller.busy || transitionBlocked
                                 ? null
                                 : () => unawaited(controller.signOut()),
                             child: const Text('로그아웃'),
                           ),
                           TextButton(
                             key: const Key('delete-account'),
-                            onPressed: controller.busy
+                            onPressed: controller.busy || transitionBlocked
                                 ? null
                                 : () => unawaited(_confirmDelete(context)),
                             child: const Text('계정 삭제'),
@@ -81,6 +94,7 @@ class AccountSection extends StatelessWidget {
                             key: const Key('connect-google'),
                             onPressed:
                                 controller.busy ||
+                                    transitionBlocked ||
                                     controller.availability ==
                                         AccountAvailability.disabled
                                 ? null

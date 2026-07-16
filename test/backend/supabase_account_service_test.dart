@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pixel_survivor/backend/account/account_service.dart';
 import 'package:pixel_survivor/backend/account/account_session.dart';
 import 'package:pixel_survivor/backend/account/supabase_account_service.dart';
 
@@ -67,6 +68,23 @@ void main() {
   });
 
   test(
+    'failed existing-account fallback leaves the service signed out',
+    () async {
+      final gateway = _FakeGateway()
+        ..identityExists = true
+        ..signInGoogleError = Exception('offline');
+      final service = SupabaseAccountService(
+        authGateway: gateway,
+        googleProvider: _FakeGoogleProvider(),
+      );
+
+      await expectLater(service.connectGoogle(), throwsException);
+
+      expect(service.current, const AccountSession.signedOut());
+    },
+  );
+
+  test(
     'Supabase remains signed out when native Google signout fails',
     () async {
       final gateway = _FakeGateway()
@@ -82,7 +100,16 @@ void main() {
         googleProvider: google,
       );
 
-      await expectLater(service.signOut(), throwsException);
+      await expectLater(
+        service.signOut(),
+        throwsA(
+          isA<AccountEndException>().having(
+            (error) => error.remoteCompleted,
+            'remote completed',
+            isTrue,
+          ),
+        ),
+      );
 
       expect(gateway.user, isNull);
       expect(gateway.calls, contains('sign-out'));
@@ -119,6 +146,7 @@ void main() {
 class _FakeGateway implements AccountAuthGateway {
   AccountAuthUser? user;
   bool identityExists = false;
+  Object? signInGoogleError;
   Object? signOutError;
   Object? deleteError;
   final calls = <String>[];
@@ -155,6 +183,7 @@ class _FakeGateway implements AccountAuthGateway {
   @override
   Future<AccountAuthUser> signInGoogle(String idToken) async {
     calls.add('google:$idToken');
+    if (signInGoogleError case final error?) throw error;
     return user = const AccountAuthUser(
       id: 'existing-google',
       email: 'existing@test',

@@ -137,6 +137,85 @@ void main() {
     expect(controller.busy, isFalse);
   });
 
+  test(
+    'identity fallback failure reflects the actual signed-out session',
+    () async {
+      final guest = AccountSession.anonymous(userId: 'guest-1');
+      final service = _FakeAccountService(current: guest)
+        ..connectError = Exception('existing account sign-in failed')
+        ..connectCurrentOnError = const AccountSession.signedOut();
+      final controller = AccountController(config: enabled, service: service);
+      await controller.initialize();
+
+      await controller.connectGoogle();
+
+      expect(controller.session, const AccountSession.signedOut());
+      expect(controller.errorMessage, isNotNull);
+    },
+  );
+
+  test(
+    'external account switch cleans old state before syncing new owner',
+    () async {
+      final accountA = AccountSession.google(userId: 'a', email: 'a@test');
+      final accountB = AccountSession.google(userId: 'b', email: 'b@test');
+      final service = _FakeAccountService(current: accountA);
+      final calls = <String>[];
+      late AccountController controller;
+      controller = AccountController(
+        config: enabled,
+        service: service,
+        clearLocalState: () async => calls.add('local'),
+        clearPaidCache: () async => calls.add('paid'),
+        onPermanentAccount: () async {
+          calls.add('sync:${controller.session.userId}');
+        },
+      );
+      await controller.initialize();
+      calls.clear();
+
+      service.emit(accountB);
+      await flushAccountEvents();
+
+      expect(calls, ['local', 'paid', 'sync:b']);
+      expect(controller.session, accountB);
+    },
+  );
+
+  test('failed transition cleanup blocks sync and can be retried', () async {
+    final accountA = AccountSession.google(userId: 'a', email: 'a@test');
+    final accountB = AccountSession.google(userId: 'b', email: 'b@test');
+    final service = _FakeAccountService(current: accountA);
+    var cleanupFails = true;
+    var syncCalls = 0;
+    final controller = AccountController(
+      config: enabled,
+      service: service,
+      clearLocalState: () async {
+        if (cleanupFails) throw StateError('disk');
+      },
+      onPermanentAccount: () async => syncCalls++,
+    );
+    await controller.initialize();
+    syncCalls = 0;
+
+    service.emit(accountB);
+    await flushAccountEvents();
+
+    expect(controller.availability, AccountAvailability.blocked);
+    expect(controller.session, accountA);
+    expect(controller.purchaseReady, isFalse);
+    expect(controller.syncSession, const AccountSession.signedOut());
+    expect(syncCalls, 0);
+
+    cleanupFails = false;
+    await controller.retryBlockedTransition();
+
+    expect(controller.availability, AccountAvailability.ready);
+    expect(controller.session, accountB);
+    expect(syncCalls, 1);
+  });
+
   test('sign out and deletion clear paid cache', () async {
     final service = _FakeAccountService(
       current: AccountSession.google(userId: 'g', email: 'g@example.com'),
@@ -209,6 +288,35 @@ void main() {
     expect(local.totalKills, 0);
   });
 
+  test(
+    'remote success with native cleanup error does not restore old session',
+    () async {
+      final original = AccountSession.google(
+        userId: 'g',
+        email: 'g@example.com',
+      );
+      final service = _FakeAccountService(current: original)
+        ..signOutError = AccountEndException(
+          remoteCompleted: true,
+          cause: Exception('native cleanup'),
+        )
+        ..endCurrentOnError = const AccountSession.signedOut();
+      var clears = 0;
+      final controller = AccountController(
+        config: enabled,
+        service: service,
+        clearLocalState: () async => clears++,
+      );
+      await controller.initialize();
+
+      await controller.signOut();
+
+      expect(controller.session, const AccountSession.signedOut());
+      expect(clears, 1);
+      expect(controller.errorMessage, isNotNull);
+    },
+  );
+
   test('remote deletion failure keeps the existing session', () async {
     final original = AccountSession.google(userId: 'g', email: 'g@example.com');
     final service = _FakeAccountService(current: original)
@@ -265,13 +373,20 @@ class _FakeAccountService implements AccountService {
   AccountSession? connectResult;
   Object? ensureGuestError;
   Object? connectError;
+  AccountSession? connectCurrentOnError;
   Object? signOutError;
   Object? deleteError;
+  AccountSession? endCurrentOnError;
   Completer<AccountSession>? ensureGuestCompleter;
   int ensureGuestCalls = 0;
   int deleteCalls = 0;
 
   void setCurrent(AccountSession value) => _current = value;
+
+  void emit(AccountSession value) {
+    _current = value;
+    _changes.add(value);
+  }
 
   @override
   Stream<AccountSession> get changes => _changes.stream;
@@ -292,14 +407,20 @@ class _FakeAccountService implements AccountService {
 
   @override
   Future<AccountSession> connectGoogle() async {
-    if (connectError case final error?) throw error;
+    if (connectError case final error?) {
+      if (connectCurrentOnError case final next?) _current = next;
+      throw error;
+    }
     _current = connectResult ?? _current;
     return _current;
   }
 
   @override
   Future<void> signOut() async {
-    if (signOutError case final error?) throw error;
+    if (signOutError case final error?) {
+      if (endCurrentOnError case final next?) _current = next;
+      throw error;
+    }
     _current = const AccountSession.signedOut();
   }
 
@@ -308,5 +429,11 @@ class _FakeAccountService implements AccountService {
     deleteCalls++;
     if (deleteError case final error?) throw error;
     _current = const AccountSession.signedOut();
+  }
+}
+
+Future<void> flushAccountEvents() async {
+  for (var i = 0; i < 8; i++) {
+    await Future<void>.delayed(Duration.zero);
   }
 }

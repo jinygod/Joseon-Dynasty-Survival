@@ -87,22 +87,33 @@ class SupabaseAccountService implements AccountService {
   }
 
   @override
-  Future<void> signOut() async {
-    try {
-      await _auth.signOut();
-    } finally {
-      await _ensureGoogleInitialized();
-      await _google.signOut();
-    }
-  }
+  Future<void> signOut() => _endAccount(_auth.signOut);
 
   @override
-  Future<void> deleteAccount() async {
+  Future<void> deleteAccount() => _endAccount(_auth.deleteAccount);
+
+  Future<void> _endAccount(Future<void> Function() remoteAction) async {
+    Object? remoteError;
+    Object? nativeError;
+    var remoteCompleted = false;
     try {
-      await _auth.deleteAccount();
-    } finally {
+      await remoteAction();
+      remoteCompleted = true;
+    } on Object catch (error) {
+      remoteError = error;
+    }
+    try {
       await _ensureGoogleInitialized();
       await _google.signOut();
+    } on Object catch (error) {
+      nativeError = error;
+    }
+    if (remoteError != null || nativeError != null) {
+      throw AccountEndException(
+        remoteCompleted: remoteCompleted,
+        cause: remoteError ?? nativeError!,
+        nativeCleanupError: nativeError,
+      );
     }
   }
 

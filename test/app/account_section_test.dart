@@ -71,6 +71,37 @@ void main() {
     await tester.pumpAndSettle();
     expect(service.deleteCalls, 1);
   });
+
+  testWidgets('blocked transition disables account actions and offers retry', (
+    tester,
+  ) async {
+    final service = _FakeAccountService(
+      AccountSession.google(userId: 'a', email: 'a@example.com'),
+    );
+    final controller = AccountController(
+      config: enabled,
+      service: service,
+      clearLocalState: () async => throw StateError('disk unavailable'),
+    );
+    await controller.initialize();
+    service.emit(AccountSession.google(userId: 'b', email: 'b@example.com'));
+    await tester.pump();
+    await tester.pump();
+
+    await tester.pumpWidget(
+      _app(AccountSection(controller: controller, onSyncNow: () async {})),
+    );
+
+    expect(
+      tester.widget<OutlinedButton>(find.byKey(const Key('sync-now'))).onPressed,
+      isNull,
+    );
+    expect(
+      tester.widget<TextButton>(find.byKey(const Key('account-sign-out'))).onPressed,
+      isNull,
+    );
+    expect(find.byKey(const Key('retry-account-cleanup')), findsOneWidget);
+  });
 }
 
 Widget _app(Widget child) => MaterialApp(home: Scaffold(body: child));
@@ -81,6 +112,11 @@ class _FakeAccountService implements AccountService {
   final _changes = StreamController<AccountSession>.broadcast();
   AccountSession _current;
   int deleteCalls = 0;
+
+  void emit(AccountSession next) {
+    _current = next;
+    _changes.add(next);
+  }
 
   @override
   Stream<AccountSession> get changes => _changes.stream;
