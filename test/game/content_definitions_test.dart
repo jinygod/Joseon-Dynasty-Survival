@@ -15,6 +15,23 @@ typedef ExpectedWeaponLevel = ({
   String displayEffect,
 });
 
+typedef ExpectedAugmentEffect = ({
+  AugmentStat stat,
+  double valuePerLevel,
+  AugmentEffectApplication application,
+  AugmentCondition condition,
+  bool isPenalty,
+});
+
+typedef ExpectedAugment = ({
+  AugmentId id,
+  String name,
+  AugmentCategory category,
+  int maxLevel,
+  bool startsUnlocked,
+  List<ExpectedAugmentEffect> effects,
+});
+
 void main() {
   test('roster exposes eight weapons with five levels each', () {
     expect(
@@ -347,28 +364,357 @@ void main() {
     );
   });
 
-  test('new augments use the approved names, levels, and default unlocks', () {
+  test('augment roster exactly matches the approved definitions', () {
+    const continuous = AugmentEffectApplication.continuous;
+    const onAcquire = AugmentEffectApplication.onAcquire;
+    const always = AugmentCondition.always;
+    const lowHealth = AugmentCondition.healthAtOrBelow35;
+    const expected = <ExpectedAugment>[
+      (
+        id: martialTraining,
+        name: '무예 단련',
+        category: AugmentCategory.attack,
+        maxLevel: 5,
+        startsUnlocked: true,
+        effects: [
+          (
+            stat: AugmentStat.weaponDamage,
+            valuePerLevel: 0.12,
+            application: continuous,
+            condition: always,
+            isPenalty: false,
+          ),
+        ],
+      ),
+      (
+        id: rapidReload,
+        name: '빠른 장전',
+        category: AugmentCategory.attack,
+        maxLevel: 5,
+        startsUnlocked: false,
+        effects: [
+          (
+            stat: AugmentStat.attackSpeed,
+            valuePerLevel: 0.10,
+            application: continuous,
+            condition: always,
+            isPenalty: false,
+          ),
+        ],
+      ),
+      (
+        id: hawkEye,
+        name: '매의 눈',
+        category: AugmentCategory.attack,
+        maxLevel: 5,
+        startsUnlocked: true,
+        effects: [
+          (
+            stat: AugmentStat.criticalChance,
+            valuePerLevel: 0.05,
+            application: continuous,
+            condition: always,
+            isPenalty: false,
+          ),
+        ],
+      ),
+      (
+        id: powderMastery,
+        name: '화약 조제',
+        category: AugmentCategory.attack,
+        maxLevel: 5,
+        startsUnlocked: false,
+        effects: [
+          (
+            stat: AugmentStat.weaponSize,
+            valuePerLevel: 0.10,
+            application: continuous,
+            condition: always,
+            isPenalty: false,
+          ),
+        ],
+      ),
+      (
+        id: goblinFire,
+        name: '도깨비불',
+        category: AugmentCategory.attack,
+        maxLevel: 5,
+        startsUnlocked: false,
+        effects: [
+          (
+            stat: AugmentStat.fireDamage,
+            valuePerLevel: 0.15,
+            application: continuous,
+            condition: always,
+            isPenalty: false,
+          ),
+        ],
+      ),
+      (
+        id: innerBreath,
+        name: '내공 호흡',
+        category: AugmentCategory.survival,
+        maxLevel: 5,
+        startsUnlocked: true,
+        effects: [
+          (
+            stat: AugmentStat.maxHealth,
+            valuePerLevel: 10,
+            application: onAcquire,
+            condition: always,
+            isPenalty: false,
+          ),
+          (
+            stat: AugmentStat.healing,
+            valuePerLevel: 10,
+            application: onAcquire,
+            condition: always,
+            isPenalty: false,
+          ),
+        ],
+      ),
+      (
+        id: herbalTonic,
+        name: '약초 주머니',
+        category: AugmentCategory.survival,
+        maxLevel: 5,
+        startsUnlocked: true,
+        effects: [
+          (
+            stat: AugmentStat.healing,
+            valuePerLevel: 12,
+            application: onAcquire,
+            condition: always,
+            isPenalty: false,
+          ),
+        ],
+      ),
+      (
+        id: ironArmorTraining,
+        name: '철갑 수련',
+        category: AugmentCategory.survival,
+        maxLevel: 5,
+        startsUnlocked: true,
+        effects: [
+          (
+            stat: AugmentStat.incomingContactDamage,
+            valuePerLevel: -0.06,
+            application: continuous,
+            condition: always,
+            isPenalty: false,
+          ),
+        ],
+      ),
+      (
+        id: lastStand,
+        name: '최후의 저항',
+        category: AugmentCategory.survival,
+        maxLevel: 3,
+        startsUnlocked: false,
+        effects: [
+          (
+            stat: AugmentStat.incomingContactDamage,
+            valuePerLevel: -0.10,
+            application: continuous,
+            condition: lowHealth,
+            isPenalty: false,
+          ),
+          (
+            stat: AugmentStat.weaponDamage,
+            valuePerLevel: 0.20,
+            application: continuous,
+            condition: lowHealth,
+            isPenalty: false,
+          ),
+        ],
+      ),
+      (
+        id: quickStep,
+        name: '빠른 발놀림',
+        category: AugmentCategory.movementAcquisition,
+        maxLevel: 5,
+        startsUnlocked: true,
+        effects: [
+          (
+            stat: AugmentStat.moveSpeed,
+            valuePerLevel: 0.08,
+            application: continuous,
+            condition: always,
+            isPenalty: false,
+          ),
+        ],
+      ),
+      (
+        id: jangseungBlessing,
+        name: '장승의 가호',
+        category: AugmentCategory.movementAcquisition,
+        maxLevel: 5,
+        startsUnlocked: true,
+        effects: [
+          (
+            stat: AugmentStat.pickupRadius,
+            valuePerLevel: 16,
+            application: continuous,
+            condition: always,
+            isPenalty: false,
+          ),
+        ],
+      ),
+      (
+        id: scholarInsight,
+        name: '선비의 통찰',
+        category: AugmentCategory.movementAcquisition,
+        maxLevel: 5,
+        startsUnlocked: true,
+        effects: [
+          (
+            stat: AugmentStat.experienceGain,
+            valuePerLevel: 0.10,
+            application: continuous,
+            condition: always,
+            isPenalty: false,
+          ),
+        ],
+      ),
+      (
+        id: ritualShortcut,
+        name: '의식 단축',
+        category: AugmentCategory.movementAcquisition,
+        maxLevel: 1,
+        startsUnlocked: false,
+        effects: [
+          (
+            stat: AugmentStat.experienceRequirement,
+            valuePerLevel: -0.15,
+            application: continuous,
+            condition: always,
+            isPenalty: false,
+          ),
+        ],
+      ),
+      (
+        id: heavyStrike,
+        name: '강력한 일격',
+        category: AugmentCategory.riskReward,
+        maxLevel: 5,
+        startsUnlocked: false,
+        effects: [
+          (
+            stat: AugmentStat.weaponDamage,
+            valuePerLevel: 0.18,
+            application: continuous,
+            condition: always,
+            isPenalty: false,
+          ),
+          (
+            stat: AugmentStat.attackSpeed,
+            valuePerLevel: -0.08,
+            application: continuous,
+            condition: always,
+            isPenalty: true,
+          ),
+        ],
+      ),
+      (
+        id: bloodOath,
+        name: '피의 맹세',
+        category: AugmentCategory.riskReward,
+        maxLevel: 3,
+        startsUnlocked: true,
+        effects: [
+          (
+            stat: AugmentStat.weaponDamage,
+            valuePerLevel: 0.20,
+            application: continuous,
+            condition: always,
+            isPenalty: false,
+          ),
+          (
+            stat: AugmentStat.incomingContactDamage,
+            valuePerLevel: 0.10,
+            application: continuous,
+            condition: always,
+            isPenalty: true,
+          ),
+        ],
+      ),
+      (
+        id: ghostStep,
+        name: '귀신걸음',
+        category: AugmentCategory.riskReward,
+        maxLevel: 3,
+        startsUnlocked: true,
+        effects: [
+          (
+            stat: AugmentStat.moveSpeed,
+            valuePerLevel: 0.15,
+            application: continuous,
+            condition: always,
+            isPenalty: false,
+          ),
+          (
+            stat: AugmentStat.pickupRadius,
+            valuePerLevel: -12,
+            application: continuous,
+            condition: always,
+            isPenalty: true,
+          ),
+        ],
+      ),
+    ];
+
     expect(
-      [
-        ironArmorTraining,
-        scholarInsight,
-        bloodOath,
-        ghostStep,
-      ].map(augmentDefinitionFor),
-      everyElement(isNotNull),
+      augmentDefinitions.map((item) => item.id),
+      orderedEquals(expected.map((item) => item.id)),
     );
-    expect(augmentDefinitionFor(ironArmorTraining)?.name, '철갑 수련');
-    expect(augmentDefinitionFor(scholarInsight)?.name, '선비의 통찰');
-    expect(augmentDefinitionFor(bloodOath)?.maxLevel, 3);
-    expect(augmentDefinitionFor(ghostStep)?.maxLevel, 3);
+    for (final expectedAugment in expected) {
+      final actual = augmentDefinitionFor(expectedAugment.id);
+      expect(actual, isNotNull, reason: expectedAugment.id);
+      expect(actual!.name, expectedAugment.name, reason: expectedAugment.id);
+      expect(
+        actual.category,
+        expectedAugment.category,
+        reason: expectedAugment.id,
+      );
+      expect(
+        actual.maxLevel,
+        expectedAugment.maxLevel,
+        reason: expectedAugment.id,
+      );
+      expect(
+        actual.startsUnlocked,
+        expectedAugment.startsUnlocked,
+        reason: expectedAugment.id,
+      );
+      expect(
+        actual.effects.map(
+          (effect) => (
+            stat: effect.stat,
+            valuePerLevel: effect.valuePerLevel,
+            application: effect.application,
+            condition: effect.condition,
+            isPenalty: effect.isPenalty,
+          ),
+        ),
+        orderedEquals(expectedAugment.effects),
+        reason: '${expectedAugment.id} effects',
+      );
+    }
+  });
+
+  test('first stage augment ids preserve the original ordered eight', () {
     expect(
-      [
-        ironArmorTraining,
-        scholarInsight,
-        bloodOath,
-        ghostStep,
-      ].map((id) => augmentDefinitionFor(id)!.startsUnlocked),
-      everyElement(isTrue),
+      firstStageAugmentIds,
+      orderedEquals([
+        martialTraining,
+        quickStep,
+        rapidReload,
+        innerBreath,
+        hawkEye,
+        herbalTonic,
+        jangseungBlessing,
+        powderMastery,
+      ]),
     );
   });
 
