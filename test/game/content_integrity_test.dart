@@ -8,6 +8,7 @@ import 'package:pixel_survivor/game/content/augment_definitions.dart';
 import 'package:pixel_survivor/game/content/boss_definitions.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
 import 'package:pixel_survivor/game/content/content_integrity.dart';
+import 'package:pixel_survivor/game/content/content_roster_contract.dart';
 import 'package:pixel_survivor/game/content/enemy_definitions.dart';
 import 'package:pixel_survivor/game/content/ids.dart';
 import 'package:pixel_survivor/game/content/stage_definitions.dart';
@@ -162,6 +163,23 @@ void main() {
       report.issues,
       contains('Unexpected character id: substitute_character'),
     );
+  });
+
+  test('planned ids are an independent literal authority', () {
+    expect(ContentRosterContract.characterIds, {
+      'rookie_constable',
+      'exorcist_dosa',
+      'mountain_hunter',
+    });
+    expect(ContentRosterContract.stageBossIds, {
+      'moonlit_abandoned_office': {'fallen_general', 'masked_executioner'},
+      'plague_market': {'plague_magistrate'},
+    });
+
+    final source = File(
+      'lib/game/content/content_roster_contract.dart',
+    ).readAsStringSync();
+    expect(source, isNot(contains('_definitions.dart')));
   });
 
   test(

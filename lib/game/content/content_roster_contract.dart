@@ -1,60 +1,61 @@
-import 'augment_definitions.dart';
-import 'boss_definitions.dart';
-import 'character_definitions.dart';
-import 'enemy_definitions.dart';
-import 'stage_definitions.dart';
-import 'weapon_definitions.dart';
-
 abstract final class ContentRosterContract {
-  static const characterIds = {rookieConstable, exorcistDosa, mountainHunter};
+  static const characterIds = {
+    'rookie_constable',
+    'exorcist_dosa',
+    'mountain_hunter',
+  };
 
   static const weaponIds = {
-    hwandoSlash,
-    gakgungShot,
-    talismanThrow,
-    thunderCrashBomb,
-    jangseungWard,
-    singijeonVolley,
-    frostFlask,
-    windThunderFan,
+    'hwando_slash',
+    'gakgung_shot',
+    'talisman_throw',
+    'thunder_crash_bomb',
+    'jangseung_ward',
+    'singijeon_volley',
+    'frost_flask',
+    'wind_thunder_fan',
   };
 
   static const augmentIds = {
-    martialTraining,
-    quickStep,
-    innerBreath,
-    jangseungBlessing,
-    hawkEye,
-    herbalTonic,
-    rapidReload,
-    goblinFire,
-    powderMastery,
-    lastStand,
-    ritualShortcut,
-    heavyStrike,
-    ironArmorTraining,
-    scholarInsight,
-    bloodOath,
-    ghostStep,
+    'martial_training',
+    'quick_step',
+    'inner_breath',
+    'jangseung_blessing',
+    'hawk_eye',
+    'herbal_tonic',
+    'rapid_reload',
+    'goblin_fire',
+    'powder_mastery',
+    'last_stand',
+    'ritual_shortcut',
+    'heavy_strike',
+    'iron_armor_training',
+    'scholar_insight',
+    'blood_oath',
+    'ghost_step',
   };
 
   static const enemyIds = {
-    plagueRatSwarm,
-    bandit,
-    dokkaebi,
-    vengefulSpirit,
-    plagueCrow,
-    spearBandit,
-    rottenHerbalist,
-    graveEmber,
-    blackHatAssassin,
-    brokenJangseungSpirit,
-    sorrowfulMaidenGhost,
-    fallenGeneral,
+    'plague_rat_swarm',
+    'bandit',
+    'dokkaebi',
+    'vengeful_spirit',
+    'plague_crow',
+    'spear_bandit',
+    'rotten_herbalist',
+    'grave_ember',
+    'black_hat_assassin',
+    'broken_jangseung_spirit',
+    'sorrowful_maiden_ghost',
+    'fallen_general',
   };
 
-  static const stageIds = {moonlitAbandonedOffice, plagueMarket};
-  static const bossIds = {fallenGeneral, plagueMagistrate, maskedExecutioner};
+  static const stageIds = {'moonlit_abandoned_office', 'plague_market'};
+  static const bossIds = {
+    'fallen_general',
+    'plague_magistrate',
+    'masked_executioner',
+  };
 
   static const unlockGoalIds = {
     'survive_3_minutes',
@@ -75,7 +76,7 @@ abstract final class ContentRosterContract {
   };
 
   static const stageBossIds = <String, Set<String>>{
-    moonlitAbandonedOffice: {fallenGeneral, maskedExecutioner},
-    plagueMarket: {plagueMagistrate},
+    'moonlit_abandoned_office': {'fallen_general', 'masked_executioner'},
+    'plague_market': {'plague_magistrate'},
   };
 }
