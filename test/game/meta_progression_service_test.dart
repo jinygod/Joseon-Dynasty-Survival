@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/models/meta_progress.dart';
+import 'package:pixel_survivor/game/content/character_definitions.dart';
 import 'package:pixel_survivor/game/content/ids.dart';
 import 'package:pixel_survivor/game/content/stage_definitions.dart';
 import 'package:pixel_survivor/game/models/run_outcome.dart';
@@ -115,6 +116,34 @@ void main() {
     expect(second.unlocks.stageIds, isEmpty);
     expect((await store.load()).unlockedStageIds, contains(plagueMarket));
   });
+
+  test(
+    'settlement records victories for the selected character only',
+    () async {
+      final store = _MemorySaveStore(SaveState.defaults());
+      final service = MetaProgressionService(saveStore: store);
+
+      await service.settleRun(
+        _runResult(outcome: RunOutcome.victory),
+        characterId: rookieConstable,
+      );
+      await service.settleRun(
+        _runResult(outcome: RunOutcome.defeat),
+        characterId: rookieConstable,
+      );
+      await service.settleRun(
+        _runResult(outcome: RunOutcome.victory),
+        characterId: exorcistDosa,
+      );
+
+      final saved = await store.load();
+      expect(saved.characterVictoryCounts, {
+        rookieConstable: 1,
+        exorcistDosa: 1,
+      });
+      expect(saved.bestSurvivalSeconds, 100);
+    },
+  );
 }
 
 RunResult _runResult({RunOutcome outcome = RunOutcome.defeat}) => RunResult(

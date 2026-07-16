@@ -2,6 +2,8 @@ import '../balance/meta_reward_balance.dart';
 import '../content/unlock_definitions.dart';
 import '../models/meta_progress.dart';
 import '../models/run_result.dart';
+import '../models/run_outcome.dart';
+import '../content/character_definitions.dart';
 import 'meta_reward_policy.dart';
 import 'progression_system.dart';
 import 'save_system.dart';
@@ -99,16 +101,25 @@ class MetaProgressionService {
     });
   }
 
-  Future<RunSettlement> settleRun(RunResult result) {
+  Future<RunSettlement> settleRun(RunResult result, {String? characterId}) {
     return _serialize(() async {
       final before = await saveStore.load();
       final coinEarned = policy.coinForRun(result);
       final progressed = progression.applyRunResult(before, result);
+      final victoryCounts = Map<String, int>.of(
+        progressed.characterVictoryCounts,
+      );
+      if (result.outcome == RunOutcome.victory &&
+          characterId != null &&
+          characterDefinitions.any((item) => item.id == characterId)) {
+        victoryCounts[characterId] = (victoryCounts[characterId] ?? 0) + 1;
+      }
       final after = progressed.copyWith(
         wallet: Wallet(
           coin: progressed.wallet.coin + coinEarned,
           spiritJade: progressed.wallet.spiritJade,
         ),
+        characterVictoryCounts: victoryCounts,
       );
       await saveStore.save(after);
       return RunSettlement(

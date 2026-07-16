@@ -100,6 +100,36 @@ void main() {
     expect(restored.claimedRewardIds, original.claimedRewardIds);
   });
 
+  test('schema three meta history fields round trip without a bump', () {
+    final original = SaveState.defaults().copyWith(
+      characterVictoryCounts: {rookieConstable: 3, exorcistDosa: 1},
+      seenCompendiumEntryIds: {
+        'character:$rookieConstable',
+        'weapon:$hwandoSlash',
+      },
+    );
+
+    final restored = SaveState.fromJson(original.toJson());
+
+    expect(restored.schemaVersion, 3);
+    expect(restored.characterVictoryCounts, {
+      rookieConstable: 3,
+      exorcistDosa: 1,
+    });
+    expect(restored.seenCompendiumEntryIds, {
+      'character:$rookieConstable',
+      'weapon:$hwandoSlash',
+    });
+  });
+
+  test('older schema three saves initialize optional meta history', () {
+    final restored = SaveState.fromJson({'schemaVersion': 3, 'totalKills': 42});
+
+    expect(restored.totalKills, 42);
+    expect(restored.characterVictoryCounts, isEmpty);
+    expect(restored.seenCompendiumEntryIds, isEmpty);
+  });
+
   group('unsupported save schemas', () {
     test('future schema returns defaults', () {
       final restored = SaveState.fromJson({
