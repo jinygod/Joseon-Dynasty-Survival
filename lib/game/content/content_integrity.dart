@@ -59,6 +59,53 @@ class ContentIntegrityReport {
   bool get isValid => issues.isEmpty;
 }
 
+enum CombatBuildRole { frontlineControl, rangedFocus, areaAttrition }
+
+class MinimumViableBuild {
+  const MinimumViableBuild({
+    required this.id,
+    required this.role,
+    required this.characterId,
+    required this.stageId,
+    required this.weaponLevels,
+    required this.augmentLevels,
+  });
+
+  final String id;
+  final CombatBuildRole role;
+  final CharacterId characterId;
+  final String stageId;
+  final Map<WeaponId, int> weaponLevels;
+  final Map<AugmentId, int> augmentLevels;
+}
+
+const minimumViableBuilds = <MinimumViableBuild>[
+  MinimumViableBuild(
+    id: 'frontline_control',
+    role: CombatBuildRole.frontlineControl,
+    characterId: rookieConstable,
+    stageId: moonlitAbandonedOffice,
+    weaponLevels: {hwandoSlash: 5, jangseungWard: 5},
+    augmentLevels: {innerBreath: 3, ironArmorTraining: 3},
+  ),
+  MinimumViableBuild(
+    id: 'ranged_focus',
+    role: CombatBuildRole.rangedFocus,
+    characterId: mountainHunter,
+    stageId: plagueMarket,
+    weaponLevels: {gakgungShot: 5, singijeonVolley: 5},
+    augmentLevels: {hawkEye: 5, rapidReload: 5},
+  ),
+  MinimumViableBuild(
+    id: 'area_attrition',
+    role: CombatBuildRole.areaAttrition,
+    characterId: exorcistDosa,
+    stageId: plagueMarket,
+    weaponLevels: {talismanThrow: 5, frostFlask: 5},
+    augmentLevels: {powderMastery: 5, scholarInsight: 3},
+  ),
+];
+
 ContentIntegrityReport validateContentIntegrity({
   List<CharacterDefinition> characters = characterDefinitions,
   List<WeaponDefinition> weapons = weaponDefinitions,
