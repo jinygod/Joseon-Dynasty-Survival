@@ -77,6 +77,63 @@ void main() {
     ]);
   });
 
+  test('applying zero music volume stops active music only', () async {
+    var settings = AudioSettings.defaults;
+    final backend = RecordingAudioBackend();
+    final service = GameAudioService(
+      backend: backend,
+      readSettings: () => settings,
+    );
+
+    await service.play(AudioCue.battleMusic);
+    await service.play(AudioCue.playerHit);
+    settings = settings.copyWith(musicVolume: 0);
+    await service.applySettings();
+
+    expect(backend.handles[0].stopCount, 1);
+    expect(backend.handles[1].stopCount, 0);
+  });
+
+  test('applying zero effects volume stops active SFX and UI only', () async {
+    var settings = AudioSettings.defaults;
+    final backend = RecordingAudioBackend();
+    final service = GameAudioService(
+      backend: backend,
+      readSettings: () => settings,
+    );
+
+    await service.play(AudioCue.battleMusic);
+    await service.play(AudioCue.playerHit);
+    await service.play(AudioCue.uiConfirm);
+    settings = settings.copyWith(sfxVolume: 0);
+    await service.applySettings();
+
+    expect(backend.handles[0].stopCount, 0);
+    expect(backend.handles[1].stopCount, 1);
+    expect(backend.handles[2].stopCount, 1);
+  });
+
+  test('queued playback rechecks settings before backend admission', () async {
+    var settings = AudioSettings.defaults;
+    final barrier = Completer<void>();
+    final backend = RecordingAudioBackend(playBarrier: barrier.future);
+    final service = GameAudioService(
+      backend: backend,
+      readSettings: () => settings,
+    );
+
+    final first = service.play(AudioCue.uiConfirm);
+    await Future<void>.delayed(Duration.zero);
+    final queued = service.play(AudioCue.uiBack);
+    settings = settings.copyWith(sfxVolume: 0);
+    barrier.complete();
+    await Future.wait([first, queued]);
+
+    expect(backend.requests.map((request) => request.cue), [
+      AudioCue.uiConfirm,
+    ]);
+  });
+
   test('muted SFX does not advance its pitch cycle', () async {
     var settings = AudioSettings(
       musicVolume: 0.7,

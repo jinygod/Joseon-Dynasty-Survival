@@ -52,8 +52,7 @@ class GameAudioService {
     final channel = AudioCueCatalog.channelFor(cue);
     final volume = _readSettings().volumeFor(channel);
     if (volume <= 0) return Future<void>.value();
-    final request = _policy.requestFor(cue, volume: volume);
-    return _enqueue(() => _playRequest(request));
+    return _enqueue(() => _admitCue(cue));
   }
 
   static AudioSettings _readDefaultSettings() => AudioSettings.defaults;
@@ -65,6 +64,26 @@ class GameAudioService {
         (voice) => voice.request.channel == AudioChannel.music,
       );
       await _guard(operation: 'stopMusic', action: _backend.stopMusic);
+    });
+  }
+
+  Future<void> applySettings() {
+    if (_disposed) return Future<void>.value();
+    return _enqueue(() async {
+      final settings = _readSettings();
+      final targets = _activeVoices
+          .where(
+            (voice) => settings.volumeFor(voice.request.channel) <= 0,
+          )
+          .toList(growable: false);
+      for (final voice in targets) {
+        _activeVoices.remove(voice);
+        await _guard(
+          operation: 'stopVoice',
+          cue: voice.request.cue,
+          action: voice.handle.stop,
+        );
+      }
     });
   }
 
@@ -84,6 +103,14 @@ class GameAudioService {
     await _admissionQueue;
     _activeVoices.clear();
     await _guard(operation: 'dispose', action: _backend.dispose);
+  }
+
+  Future<void> _admitCue(AudioCue cue) async {
+    final channel = AudioCueCatalog.channelFor(cue);
+    final volume = _readSettings().volumeFor(channel);
+    if (volume <= 0) return;
+    final request = _policy.requestFor(cue, volume: volume);
+    await _playRequest(request);
   }
 
   Future<void> _playRequest(AudioPlaybackRequest request) async {
