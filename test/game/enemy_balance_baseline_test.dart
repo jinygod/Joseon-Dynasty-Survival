@@ -15,7 +15,18 @@ void main() {
     test('regular enemy roles stay inside combat safety targets', () {
       final report = const EnemyBalanceAnalyzer().analyze();
 
-      expect(report.rows, hasLength(4));
+      expect(report.rows, hasLength(8));
+      expect(report.rows.map((row) => row.enemyId).toSet(), {
+        plagueRatSwarm,
+        bandit,
+        dokkaebi,
+        vengefulSpirit,
+        plagueCrow,
+        spearBandit,
+        rottenHerbalist,
+        graveEmber,
+      });
+      expect(report.eliteRows, hasLength(3));
       expect(report.meetsSafetyTargets, isTrue);
       expect(
         report.rows.every((row) => row.starterTimeToKillSeconds <= 3),

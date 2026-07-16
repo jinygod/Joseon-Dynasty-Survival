@@ -39,11 +39,11 @@ void main() {
 
   group('WaveDirector', () {
     test('elite rolls select only explicit elite definitions', () {
-      final definition = WaveDefinition(
+      const definition = WaveDefinition(
         startSecond: 0,
         endSecond: 60,
-        enemyWeights: const {bandit: 1},
-        eliteWeights: const {blackHatAssassin: 1},
+        enemyWeights: {bandit: 1},
+        eliteWeights: {blackHatAssassin: 1},
         startSpawnsPerSecond: 8,
         endSpawnsPerSecond: 8,
         groupSize: 8,
@@ -69,11 +69,11 @@ void main() {
     });
 
     test('empty elite pool falls back to unscaled normal requests', () {
-      final definition = WaveDefinition(
+      const definition = WaveDefinition(
         startSecond: 0,
         endSecond: 60,
-        enemyWeights: const {bandit: 1},
-        eliteWeights: const {},
+        enemyWeights: {bandit: 1},
+        eliteWeights: {},
         startSpawnsPerSecond: 1,
         endSpawnsPerSecond: 1,
         groupSize: 1,

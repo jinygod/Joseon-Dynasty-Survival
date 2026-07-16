@@ -15,7 +15,15 @@ class EnemyBalanceAnalyzer {
     );
     final starterWeapon = weaponLevelFor(hwandoSlash, 1);
     final rows = <EnemyBalanceRow>[
-      for (final enemy in enemyDefinitions.where((enemy) => !enemy.isBoss))
+      for (final enemy in enemyDefinitions.where(
+        (enemy) => enemy.rank == EnemyRank.normal,
+      ))
+        _rowFor(enemy, starter, starterWeapon),
+    ];
+    final eliteRows = <EnemyBalanceRow>[
+      for (final enemy in enemyDefinitions.where(
+        (enemy) => enemy.rank == EnemyRank.elite,
+      ))
         _rowFor(enemy, starter, starterWeapon),
     ];
     final preBossWaves = waveDefinitions
@@ -26,6 +34,7 @@ class EnemyBalanceAnalyzer {
     );
     return EnemyBalanceReport(
       rows: rows,
+      eliteRows: eliteRows,
       preBossActiveCaps: [
         for (final wave in preBossWaves)
           wavePressureForSecond(wave.endSecond - 0.001).maxActiveEnemies,
@@ -62,14 +71,17 @@ class EnemyBalanceAnalyzer {
 class EnemyBalanceReport {
   EnemyBalanceReport({
     required List<EnemyBalanceRow> rows,
+    required List<EnemyBalanceRow> eliteRows,
     required List<int> preBossActiveCaps,
     required List<double> preBossSpawnRates,
     required this.bossActiveCap,
   }) : rows = List.unmodifiable(rows),
+       eliteRows = List.unmodifiable(eliteRows),
        preBossActiveCaps = List.unmodifiable(preBossActiveCaps),
        preBossSpawnRates = List.unmodifiable(preBossSpawnRates);
 
   final List<EnemyBalanceRow> rows;
+  final List<EnemyBalanceRow> eliteRows;
   final List<int> preBossActiveCaps;
   final List<double> preBossSpawnRates;
   final int bossActiveCap;
