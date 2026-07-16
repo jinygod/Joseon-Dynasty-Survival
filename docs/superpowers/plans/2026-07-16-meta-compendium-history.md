@@ -188,4 +188,3 @@ Run `git diff --check`, `git status --short`, and confirm prohibited files are a
 - [ ] **Step 4: Commit final documentation**
 
 Commit all verified documentation and report commit hashes and command evidence.
-
