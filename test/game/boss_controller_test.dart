@@ -4,6 +4,57 @@ import 'package:pixel_survivor/game/content/enemy_definitions.dart';
 import 'package:pixel_survivor/game/systems/boss_controller.dart';
 
 void main() {
+  test('legacy controller still emits legacy fallen general actions', () {
+    final controller = BossController();
+    final types = <BossActionType>[];
+
+    for (var index = 0; index < 200; index += 1) {
+      types.addAll(
+        controller
+            .tick(dt: 0.05, healthFraction: 0.35)
+            .map((action) => action.type),
+      );
+    }
+
+    expect(types, contains(BossActionType.chargeWarning));
+    expect(types, contains(BossActionType.charge));
+    expect(types, contains(BossActionType.coneWarning));
+    expect(types, contains(BossActionType.coneDamage));
+    expect(types, contains(BossActionType.summon));
+  });
+
+  test('large delta has capped work and cannot warn and execute together', () {
+    final controller = BossController(
+      definition: maskedExecutionerBossDefinition,
+    );
+
+    final actions = controller.tick(dt: double.maxFinite, healthFraction: 1);
+
+    expect(controller.lastAcceptedDt, BossController.maxAcceptedDt);
+    expect(controller.lastSubstepCount, lessThanOrEqualTo(10));
+    expect(actions, hasLength(1));
+    expect(actions.single.type, BossActionType.warning);
+    expect(controller.phase, BossPhase.warning);
+  });
+
+  test('generic controller exposes attack and enraged idle phases', () {
+    final controller = BossController(
+      definition: maskedExecutionerBossDefinition,
+    );
+
+    final warning = controller.tick(dt: 30, healthFraction: 1);
+    expect(warning.single.type, BossActionType.warning);
+    expect(controller.phase, BossPhase.warning);
+
+    final execution = controller.tick(dt: 0.65, healthFraction: 1);
+    expect(execution.single.type, BossActionType.execute);
+    expect(controller.phase, BossPhase.attack);
+
+    controller.tick(dt: 0.4, healthFraction: 1);
+    expect(controller.isEnraged, isTrue);
+    expect(controller.phase, BossPhase.enraged);
+  });
+
   for (final bossId in [fallenGeneral, plagueMagistrate, maskedExecutioner]) {
     test('$bossId warns before executing all three patterns', () {
       final definition = bossDefinitionForId(bossId)!;
@@ -18,12 +69,12 @@ void main() {
         final warningIndex = actions.indexWhere(
           (action) =>
               action.type == BossActionType.warning &&
-              action.pattern.id == pattern.id,
+              action.pattern!.id == pattern.id,
         );
         final executeIndex = actions.indexWhere(
           (action) =>
               action.type == BossActionType.execute &&
-              action.pattern.id == pattern.id,
+              action.pattern!.id == pattern.id,
         );
         expect(warningIndex, greaterThanOrEqualTo(0), reason: pattern.id);
         expect(executeIndex, greaterThan(warningIndex), reason: pattern.id);
@@ -47,7 +98,7 @@ void main() {
 
     expect(
       healthyActions.where(
-        (action) => action.pattern.kind == BossPatternKind.summon,
+        (action) => action.pattern!.kind == BossPatternKind.summon,
       ),
       isEmpty,
     );
@@ -55,7 +106,7 @@ void main() {
       woundedActions.where(
         (action) =>
             action.type == BossActionType.execute &&
-            action.pattern.kind == BossPatternKind.summon,
+            action.pattern!.kind == BossPatternKind.summon,
       ),
       hasLength(1),
     );

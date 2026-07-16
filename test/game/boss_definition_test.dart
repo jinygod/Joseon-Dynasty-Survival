@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/content/boss_definitions.dart';
 import 'package:pixel_survivor/game/content/enemy_definitions.dart';
+import 'package:pixel_survivor/game/content/ids.dart';
 import 'package:pixel_survivor/game/content/stage_definitions.dart';
 
 void main() {
@@ -69,5 +70,54 @@ void main() {
       (executioner.enrage.afterSeconds, executioner.enrage.movementMultiplier),
       (20, 1.35),
     );
+  });
+
+  test('validation rejects non-positive and non-finite boss tuning', () {
+    const invalid = BossDefinition(
+      enemy: EnemyDefinition(
+        id: 'invalid_boss',
+        name: 'Invalid',
+        maxHealth: 0,
+        moveSpeed: double.nan,
+        damage: -1,
+        experience: -1,
+        faction: EnemyFaction.anomaly,
+        rank: EnemyRank.boss,
+        behaviorProfileId: 'tank',
+      ),
+      patterns: [
+        BossPatternDefinition(
+          id: 'invalid_charge',
+          name: 'Invalid charge',
+          kind: BossPatternKind.charge,
+          warningSeconds: 0.6,
+          recoverySeconds: -1,
+          chargeSeconds: 0,
+          chargeSpeedMultiplier: double.infinity,
+        ),
+        BossPatternDefinition(
+          id: 'invalid_cone',
+          name: 'Invalid cone',
+          kind: BossPatternKind.cone,
+          warningSeconds: 0.6,
+          damageMultiplier: 0,
+          radius: -1,
+        ),
+        BossPatternDefinition(
+          id: 'invalid_summon',
+          name: 'Invalid summon',
+          kind: BossPatternKind.summon,
+          warningSeconds: 0.6,
+          summonEnemyIds: ['missing_enemy'],
+        ),
+      ],
+      enrage: BossEnrageDefinition(
+        afterSeconds: double.infinity,
+        movementMultiplier: double.nan,
+        patternTimeMultiplier: 0,
+      ),
+    );
+
+    expect(validateBossDefinitions([invalid]), isNotEmpty);
   });
 }

@@ -8,7 +8,7 @@ import 'package:pixel_survivor/game/content/enemy_definitions.dart';
 void main() {
   test('boss patterns and lethal damage select attack and death visuals', () {
     final definition = bossDefinitionForId(fallenGeneral)!;
-    final boss = BossComponent(
+    final boss = BossComponent.fromBossDefinition(
       definition: definition,
       targetPositionProvider: (_) => Vector2(100, 0),
     );

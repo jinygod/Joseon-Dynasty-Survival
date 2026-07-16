@@ -237,13 +237,27 @@ BossDefinition bossDefinitionForStage(String stageId, {required double roll}) {
   return fallenGeneralBossDefinition;
 }
 
-List<String> validateBossContent() {
+List<String> validateBossContent() => validateBossDefinitions(bossDefinitions);
+
+List<String> validateBossDefinitions(Iterable<BossDefinition> definitions) {
   final errors = <String>[];
   final bossIds = <EnemyId>{};
-  for (final boss in bossDefinitions) {
+  for (final boss in definitions) {
     if (!bossIds.add(boss.id)) errors.add('Duplicate boss id: ${boss.id}');
     if (boss.enemy.rank != EnemyRank.boss) {
       errors.add('Boss rank required: ${boss.id}');
+    }
+    if (!boss.enemy.maxHealth.isFinite || boss.enemy.maxHealth <= 0) {
+      errors.add('Invalid boss health: ${boss.id}');
+    }
+    if (!boss.enemy.moveSpeed.isFinite || boss.enemy.moveSpeed < 0) {
+      errors.add('Invalid boss speed: ${boss.id}');
+    }
+    if (!boss.enemy.damage.isFinite || boss.enemy.damage < 0) {
+      errors.add('Invalid boss damage: ${boss.id}');
+    }
+    if (boss.enemy.experience < 0) {
+      errors.add('Invalid boss experience: ${boss.id}');
     }
     if (boss.patterns.length < 3) {
       errors.add('At least three patterns required: ${boss.id}');
@@ -258,9 +272,48 @@ List<String> validateBossContent() {
       if (!pattern.warningSeconds.isFinite || pattern.warningSeconds < 0.6) {
         errors.add('Unreadable boss warning: ${boss.id}/${pattern.id}');
       }
+      if (!pattern.recoverySeconds.isFinite || pattern.recoverySeconds < 0) {
+        errors.add('Invalid boss recovery: ${boss.id}/${pattern.id}');
+      }
+      if (!pattern.damageMultiplier.isFinite || pattern.damageMultiplier <= 0) {
+        errors.add('Invalid boss damage multiplier: ${boss.id}/${pattern.id}');
+      }
+      if (!pattern.knockback.isFinite || pattern.knockback < 0) {
+        errors.add('Invalid boss knockback: ${boss.id}/${pattern.id}');
+      }
+      if (pattern.healthThreshold case final threshold?) {
+        if (!threshold.isFinite || threshold <= 0 || threshold > 1) {
+          errors.add('Invalid boss health threshold: ${boss.id}/${pattern.id}');
+        }
+      }
+      if (pattern.kind == BossPatternKind.charge &&
+          (!pattern.chargeSeconds.isFinite ||
+              pattern.chargeSeconds <= 0 ||
+              !pattern.chargeSpeedMultiplier.isFinite ||
+              pattern.chargeSpeedMultiplier <= 0)) {
+        errors.add('Invalid boss charge: ${boss.id}/${pattern.id}');
+      }
+      if ((pattern.kind == BossPatternKind.cone ||
+              pattern.kind == BossPatternKind.radial) &&
+          (!pattern.radius.isFinite ||
+              pattern.radius <= 0 ||
+              !pattern.angleRadians.isFinite ||
+              pattern.angleRadians <= 0 ||
+              pattern.angleRadians > math.pi * 2)) {
+        errors.add('Invalid boss area: ${boss.id}/${pattern.id}');
+      }
       if (pattern.kind == BossPatternKind.summon &&
           pattern.summonEnemyIds.isEmpty) {
         errors.add('Empty boss summon: ${boss.id}/${pattern.id}');
+      }
+      if (pattern.kind == BossPatternKind.summon) {
+        for (final enemyId in pattern.summonEnemyIds) {
+          if (enemyDefinitionFor(enemyId) == null) {
+            errors.add(
+              'Unknown boss summon enemy: ${boss.id}/${pattern.id}/$enemyId',
+            );
+          }
+        }
       }
     }
     if (patternKinds.length < 3) {
@@ -268,7 +321,9 @@ List<String> validateBossContent() {
     }
     if (!boss.enrage.afterSeconds.isFinite ||
         boss.enrage.afterSeconds <= 0 ||
+        !boss.enrage.movementMultiplier.isFinite ||
         boss.enrage.movementMultiplier <= 1 ||
+        !boss.enrage.patternTimeMultiplier.isFinite ||
         boss.enrage.patternTimeMultiplier <= 1) {
       errors.add('Invalid boss enrage: ${boss.id}');
     }

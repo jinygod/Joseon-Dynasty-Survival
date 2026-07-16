@@ -425,13 +425,13 @@ class PixelSurvivorGame extends FlameGame
     if (_bossSpawnCount > 0) return;
 
     final definition = bossDefinitionForStage(stageId, roll: _bossRoll());
-    final boss = BossComponent(
+    final boss = BossComponent.fromBossDefinition(
       definition: definition,
       position: Vector2(size.x / 2, -36),
       targetPositionProvider: _nearestActivePlayerPosition,
       nearbyEnemiesProvider: () => children.whereType<EnemyComponent>(),
       onAreaAttack: (attack) => add(attack),
-      onSummonRequested: _summonBossMinions,
+      onSummonEnemiesRequested: _summonBossMinions,
     );
     _boss = boss;
     _bossSpawnCount += 1;

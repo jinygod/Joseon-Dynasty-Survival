@@ -14,22 +14,69 @@ typedef BossSummonEmitter = void Function(List<String> enemyIds);
 
 class BossComponent extends EnemyComponent {
   BossComponent({
+    required EnemyDefinition definition,
+    required TargetPositionProvider targetPositionProvider,
+    NearbyEnemiesProvider? nearbyEnemiesProvider,
+    Vector2? position,
+    BossAreaAttackEmitter? onAreaAttack,
+    void Function()? onSummonRequested,
+    BossController? controller,
+  }) : this._(
+         definition: _definitionForLegacyEnemy(definition),
+         enemyDefinition: definition,
+         targetPositionProvider: targetPositionProvider,
+         nearbyEnemiesProvider: nearbyEnemiesProvider,
+         position: position,
+         onAreaAttack: onAreaAttack,
+         onSummonRequested: onSummonRequested,
+         controller: controller,
+         legacyController: true,
+       );
+
+  BossComponent.fromBossDefinition({
     required BossDefinition definition,
+    required TargetPositionProvider targetPositionProvider,
+    NearbyEnemiesProvider? nearbyEnemiesProvider,
+    Vector2? position,
+    BossAreaAttackEmitter? onAreaAttack,
+    BossSummonEmitter? onSummonEnemiesRequested,
+    void Function()? onSummonRequested,
+    BossController? controller,
+  }) : this._(
+         definition: definition,
+         enemyDefinition: definition.enemy,
+         targetPositionProvider: targetPositionProvider,
+         nearbyEnemiesProvider: nearbyEnemiesProvider,
+         position: position,
+         onAreaAttack: onAreaAttack,
+         onSummonRequested: onSummonRequested,
+         onSummonEnemiesRequested: onSummonEnemiesRequested,
+         controller: controller,
+       );
+
+  BossComponent._({
+    required this.definition,
+    required EnemyDefinition enemyDefinition,
     required TargetPositionProvider targetPositionProvider,
     super.nearbyEnemiesProvider,
     super.position,
     this.onAreaAttack,
     this.onSummonRequested,
+    this.onSummonEnemiesRequested,
     BossController? controller,
-  }) : definition = definition,
-       displayName = definition.name,
-       controller = controller ?? BossController(definition: definition),
+    bool legacyController = false,
+  }) : displayName = definition.name,
+       controller = _validatedController(
+         definition,
+         controller,
+         legacyController: legacyController,
+       ),
        super(
-         enemyId: definition.enemy.id,
-         maxHealth: definition.enemy.maxHealth,
-         moveSpeed: definition.enemy.moveSpeed,
-         damage: definition.enemy.damage,
-         experienceValue: definition.enemy.experience,
+         enemyId: enemyDefinition.id,
+         maxHealth: enemyDefinition.maxHealth,
+         moveSpeed: enemyDefinition.moveSpeed,
+         damage: enemyDefinition.damage,
+         experienceValue: enemyDefinition.experience,
          behaviorType: EnemyBehaviorType.tank,
          rank: EnemyRank.boss,
          targetPositionProvider: targetPositionProvider,
@@ -40,7 +87,8 @@ class BossComponent extends EnemyComponent {
   final String displayName;
   final BossController controller;
   final BossAreaAttackEmitter? onAreaAttack;
-  final BossSummonEmitter? onSummonRequested;
+  final void Function()? onSummonRequested;
+  final BossSummonEmitter? onSummonEnemiesRequested;
 
   double _chargeRemaining = 0;
   double _warningRemaining = 0;
@@ -66,7 +114,10 @@ class BossComponent extends EnemyComponent {
 
   @override
   void update(double dt) {
-    super.update(dt);
+    final safeComponentDt = dt.isFinite && dt > 0
+        ? math.min(dt, BossController.maxComponentDt)
+        : 0.0;
+    super.update(safeComponentDt);
 
     if (_chargeRemaining > 0 && !isDead) {
       position.add(
@@ -74,11 +125,11 @@ class BossComponent extends EnemyComponent {
             moveSpeed *
             (_warningPattern?.chargeSpeedMultiplier ?? 0) *
             controller.movementMultiplier *
-            dt,
+            safeComponentDt,
       );
-      _chargeRemaining = math.max(0.0, _chargeRemaining - dt);
+      _chargeRemaining = math.max(0.0, _chargeRemaining - safeComponentDt);
     }
-    _warningRemaining = math.max(0.0, _warningRemaining - dt);
+    _warningRemaining = math.max(0.0, _warningRemaining - safeComponentDt);
 
     final actions = controller.tick(dt: dt, healthFraction: healthFraction);
     for (final action in actions) {
@@ -87,35 +138,43 @@ class BossComponent extends EnemyComponent {
   }
 
   void _execute(BossAction action) {
+    final pattern = action.pattern ?? controller.currentPattern;
+    if (pattern == null) return;
     switch (action.type) {
+      case BossActionType.chargeWarning:
+      case BossActionType.coneWarning:
       case BossActionType.warning:
-        _warningPattern = action.pattern;
-        _warningRemaining = action.pattern.warningSeconds;
+        _warningPattern = pattern;
+        _warningRemaining = pattern.warningSeconds;
         _chargeDirection.setFrom(_directionToTarget());
         playAttack();
-        if (action.pattern.kind == BossPatternKind.cone ||
-            action.pattern.kind == BossPatternKind.radial) {
+        if (pattern.kind == BossPatternKind.cone ||
+            pattern.kind == BossPatternKind.radial) {
           onAreaAttack?.call(
             AreaAttackComponent(
-              damage: damage * action.pattern.damageMultiplier,
-              radius: action.pattern.radius,
-              delaySeconds: action.pattern.warningSeconds,
-              knockback: action.pattern.knockback,
+              damage: damage * pattern.damageMultiplier,
+              radius: pattern.radius,
+              delaySeconds: pattern.warningSeconds,
+              knockback: pattern.knockback,
               position: position.clone(),
               direction: _chargeDirection,
-              angleRadians: action.pattern.angleRadians,
+              angleRadians: pattern.angleRadians,
               isBossAttack: true,
             ),
           );
         }
+      case BossActionType.charge:
+      case BossActionType.coneDamage:
+      case BossActionType.summon:
       case BossActionType.execute:
         _warningRemaining = 0;
         playAttack();
-        switch (action.pattern.kind) {
+        switch (pattern.kind) {
           case BossPatternKind.charge:
-            _chargeRemaining = action.pattern.chargeSeconds;
+            _chargeRemaining = pattern.chargeSeconds;
           case BossPatternKind.summon:
-            onSummonRequested?.call(action.pattern.summonEnemyIds);
+            onSummonRequested?.call();
+            onSummonEnemiesRequested?.call(pattern.summonEnemyIds);
           case BossPatternKind.cone:
           case BossPatternKind.radial:
             break;
@@ -156,5 +215,30 @@ class BossComponent extends EnemyComponent {
     final direction = target - position;
     if (direction.length2 == 0) return Vector2(1, 0);
     return direction..normalize();
+  }
+
+  static BossDefinition _definitionForLegacyEnemy(EnemyDefinition enemy) {
+    return bossDefinitionForId(enemy.id) ??
+        BossDefinition(
+          enemy: enemy,
+          patterns: fallenGeneralBossDefinition.patterns,
+          enrage: fallenGeneralBossDefinition.enrage,
+        );
+  }
+
+  static BossController _validatedController(
+    BossDefinition definition,
+    BossController? controller, {
+    required bool legacyController,
+  }) {
+    if (controller != null && controller.definition.id != definition.id) {
+      throw ArgumentError.value(
+        controller.definition.id,
+        'controller',
+        'must match boss definition ${definition.id}',
+      );
+    }
+    return controller ??
+        BossController(definition: definition, legacyActions: legacyController);
   }
 }
