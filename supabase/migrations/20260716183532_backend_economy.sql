@@ -185,6 +185,7 @@ begin
     raise exception using errcode = '22023', message = 'invalid_wallet_entry';
   end if;
 
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_idempotency_key, 0));
   insert into public.wallets (user_id) values (p_user_id) on conflict (user_id) do nothing;
   select * into v_wallet from public.wallets where user_id = p_user_id for update;
   select * into v_ledger from public.wallet_ledger where idempotency_key = p_idempotency_key;
@@ -253,6 +254,7 @@ begin
     raise exception using errcode = 'P0001', message = 'unknown_product';
   end if;
 
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_purchase_token, 0));
   select * into v_purchase from private.google_play_purchases where purchase_token = p_purchase_token for update;
   if found then
     if v_purchase.user_id is distinct from p_user_id or v_purchase.product_id <> p_product_id then
@@ -302,6 +304,7 @@ begin
       (select w.royal_jade from public.wallets w where w.user_id = p_user_id), true;
     return;
   end if;
+  perform 1 from public.wallets w where w.user_id = p_user_id for update;
   if not exists (select 1 from public.wallets w where w.user_id = p_user_id and w.royal_jade >= v_item.royal_jade_price and w.royal_jade_debt = 0) then
     raise exception using errcode = 'P0001', message = 'insufficient_funds';
   end if;
