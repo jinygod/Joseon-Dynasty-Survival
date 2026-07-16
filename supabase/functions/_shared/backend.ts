@@ -72,6 +72,27 @@ export async function createBackend(databaseUrl: string) {
         });
       },
     },
+    progress: {
+      async sync(input: {
+        userId: string;
+        schemaVersion: number;
+        progress: Record<string, unknown>;
+        expectedRevision: number | null;
+      }) {
+        const rows = await sql`select * from private.sync_progress(
+          ${input.userId}::uuid,
+          ${input.schemaVersion},
+          ${sql.json(input.progress as never)}::jsonb,
+          ${input.expectedRevision ?? 0}
+        )`;
+        if (!rows[0]) return null;
+        return {
+          revision: Number(rows[0].revision),
+          progress: rows[0].progress as Record<string, unknown>,
+          applied: rows[0].applied === true,
+        };
+      },
+    },
     accounts: {
       async pseudonymizeAndDelete(userId: string) {
         await sql`select private.pseudonymize_and_delete_account(${userId}::uuid)`;
