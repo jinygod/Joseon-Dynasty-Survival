@@ -7,10 +7,16 @@ import 'game_hud_source.dart';
 import 'virtual_joystick.dart';
 
 class GameHud extends StatefulWidget {
-  const GameHud({required this.source, this.onPause, super.key});
+  const GameHud({
+    required this.source,
+    this.onPause,
+    this.uiScale = 1,
+    super.key,
+  });
 
   final GameHudSource source;
   final VoidCallback? onPause;
+  final double uiScale;
 
   @override
   State<GameHud> createState() => _GameHudState();
@@ -40,65 +46,70 @@ class _GameHudState extends State<GameHud> {
     final rewardSource = widget.source is RewardCollectionHudSource
         ? widget.source as RewardCollectionHudSource
         : null;
-    return Material(
-      color: Colors.transparent,
-      child: SafeArea(
-        child: Stack(
-          children: [
-            if (rewardSource?.rewardCollectionSecondsRemaining
-                case final seconds?)
-              Positioned(
-                top: 150,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: _RewardCollectionNotice(
-                    seconds: seconds,
-                    retrying: rewardSource!.isSpiritJadeSaveRetrying,
+    return Transform.scale(
+      key: const Key('hud-ui-scale'),
+      scale: widget.uiScale,
+      alignment: Alignment.center,
+      child: Material(
+        color: Colors.transparent,
+        child: SafeArea(
+          child: Stack(
+            children: [
+              if (rewardSource?.rewardCollectionSecondsRemaining
+                  case final seconds?)
+                Positioned(
+                  top: 150,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: _RewardCollectionNotice(
+                      seconds: seconds,
+                      retrying: rewardSource!.isSpiritJadeSaveRetrying,
+                    ),
                   ),
                 ),
-              ),
-            if (widget.source.bossHealthFraction case final health?)
+              if (widget.source.bossHealthFraction case final health?)
+                Positioned(
+                  top: 8,
+                  left: 160,
+                  right: 160,
+                  child: BossHealthBar(
+                    name: widget.source.bossName ?? AppStrings.genericBoss,
+                    healthFraction: health,
+                  ),
+                ),
               Positioned(
-                top: 8,
-                left: 160,
-                right: 160,
-                child: BossHealthBar(
-                  name: widget.source.bossName ?? AppStrings.genericBoss,
-                  healthFraction: health,
+                top: widget.source.bossHealthFraction == null ? 12 : 62,
+                left: 16,
+                right: 16,
+                child: _StatusBar(source: widget.source),
+              ),
+              Positioned(
+                top: widget.source.bossHealthFraction == null ? 68 : 118,
+                right: 16,
+                width: 220,
+                child: _WeaponList(labels: widget.source.weaponLevelLabels),
+              ),
+              Positioned(
+                left: 18,
+                bottom: 18,
+                child: VirtualJoystick(
+                  onInputChanged: widget.source.updateMovementInput,
                 ),
               ),
-            Positioned(
-              top: widget.source.bossHealthFraction == null ? 12 : 62,
-              left: 16,
-              right: 16,
-              child: _StatusBar(source: widget.source),
-            ),
-            Positioned(
-              top: widget.source.bossHealthFraction == null ? 68 : 118,
-              right: 16,
-              width: 220,
-              child: _WeaponList(labels: widget.source.weaponLevelLabels),
-            ),
-            Positioned(
-              left: 18,
-              bottom: 18,
-              child: VirtualJoystick(
-                onInputChanged: widget.source.updateMovementInput,
-              ),
-            ),
-            if (widget.onPause case final onPause?)
-              Positioned(
-                top: 8,
-                left: 8,
-                child: IconButton.filledTonal(
-                  key: const Key('hud-pause'),
-                  tooltip: '일시정지',
-                  onPressed: onPause,
-                  icon: const Icon(Icons.pause),
+              if (widget.onPause case final onPause?)
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: IconButton.filledTonal(
+                    key: const Key('hud-pause'),
+                    tooltip: '일시정지',
+                    onPressed: onPause,
+                    icon: const Icon(Icons.pause),
+                  ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
