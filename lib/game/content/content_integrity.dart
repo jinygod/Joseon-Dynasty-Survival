@@ -5,6 +5,7 @@ import 'asset_catalog.dart';
 import 'augment_definitions.dart';
 import 'boss_definitions.dart';
 import 'character_definitions.dart';
+import 'content_roster_contract.dart';
 import 'enemy_definitions.dart';
 import 'ids.dart';
 import 'stage_definitions.dart';
@@ -12,6 +13,7 @@ import 'unlock_definitions.dart';
 import 'wave_definitions.dart';
 import 'weapon_definitions.dart';
 import 'weapon_level_definitions.dart';
+import '../systems/save_system.dart';
 
 class ContentRosterCounts {
   const ContentRosterCounts({
@@ -181,13 +183,55 @@ ContentIntegrityReport validateContentIntegrity({
   _validateUniqueIds(issues, 'enemy', enemies.map((item) => item.id));
   _validateUniqueIds(issues, 'stage', stages.map((item) => item.id));
   _validateUniqueIds(issues, 'boss', bosses.map((item) => item.id));
+  _validatePlannedIds(
+    issues,
+    'character',
+    characters.map((item) => item.id),
+    ContentRosterContract.characterIds,
+  );
+  _validatePlannedIds(
+    issues,
+    'weapon',
+    weapons.map((item) => item.id),
+    ContentRosterContract.weaponIds,
+  );
+  _validatePlannedIds(
+    issues,
+    'augment',
+    augments.map((item) => item.id),
+    ContentRosterContract.augmentIds,
+  );
+  _validatePlannedIds(
+    issues,
+    'enemy',
+    enemies.map((item) => item.id),
+    ContentRosterContract.enemyIds,
+  );
+  _validatePlannedIds(
+    issues,
+    'stage',
+    stages.map((item) => item.id),
+    ContentRosterContract.stageIds,
+  );
+  _validatePlannedIds(
+    issues,
+    'boss',
+    bosses.map((item) => item.id),
+    ContentRosterContract.bossIds,
+  );
+  _validatePlannedIds(
+    issues,
+    'unlock goal',
+    goals.map((item) => item.id),
+    ContentRosterContract.unlockGoalIds,
+  );
   _validateStages(issues, stages, stageWaves, bosses);
   _validateUnlocks(issues, goals, characters, weapons, augments, stages);
 
   issues
-    ..addAll(validateEnemyContent())
-    ..addAll(validateWaveContent())
-    ..addAll(validateBossContent());
+    ..addAll(validateEnemyContent(enemies))
+    ..addAll(validateWaveContent(stageWaves: stageWaves, enemies: enemies))
+    ..addAll(validateBossDefinitions(bosses, enemies: enemies));
 
   _validateAssets(
     issues,
@@ -246,6 +290,21 @@ void _validateUniqueIds(
   final seen = <String>{};
   for (final id in ids) {
     if (!seen.add(id)) issues.add('Duplicate $label id: $id');
+  }
+}
+
+void _validatePlannedIds(
+  List<String> issues,
+  String label,
+  Iterable<String> actualIds,
+  Set<String> plannedIds,
+) {
+  final actual = actualIds.toSet();
+  for (final id in plannedIds.where((id) => !actual.contains(id))) {
+    issues.add('Missing planned $label id: $id');
+  }
+  for (final id in actual.where((id) => !plannedIds.contains(id))) {
+    issues.add('Unexpected $label id: $id');
   }
 }
 
@@ -343,11 +402,23 @@ void _validateStages(
     final waves = stageWaves[stage.id];
     if (waves == null || waves.isEmpty) {
       issues.add('Missing stage waves: ${stage.id}');
+    } else {
+      final coverageEnd = waves.last.endSecond;
+      if (coverageEnd < stage.bossArrivalSeconds) {
+        issues.add('Wave coverage ends before boss arrival: ${stage.id}');
+      }
+      if (coverageEnd < stage.targetSeconds) {
+        issues.add('Wave coverage ends before target: ${stage.id}');
+      }
     }
-    for (final roll in const [0.0, 1.0]) {
-      final boss = bossDefinitionForStage(stage.id, roll: roll);
-      if (!bossIds.contains(boss.id)) {
-        issues.add('Unknown stage boss: ${stage.id}/${boss.id}');
+    final plannedBossIds = ContentRosterContract.stageBossIds[stage.id];
+    if (plannedBossIds == null || plannedBossIds.isEmpty) {
+      issues.add('Missing stage boss contract: ${stage.id}');
+    } else {
+      for (final bossId in plannedBossIds) {
+        if (!bossIds.contains(bossId)) {
+          issues.add('Unknown stage boss: ${stage.id}/$bossId');
+        }
       }
     }
   }
@@ -367,22 +438,38 @@ void _validateUnlocks(
   List<StageDefinition> stages,
 ) {
   _validateUniqueIds(issues, 'unlock goal', goals.map((item) => item.id));
+  final defaults = SaveState.defaults();
   final expected = <String>{
-    ...characters.skip(1).map((item) => 'character:${item.id}'),
+    ...characters
+        .where((item) => !defaults.unlockedCharacterIds.contains(item.id))
+        .map((item) => 'character:${item.id}'),
     ...weapons
-        .where((item) => !item.startsUnlocked)
+        .where((item) => !defaults.unlockedWeaponIds.contains(item.id))
         .map((item) => 'weapon:${item.id}'),
     ...augments
-        .where((item) => !item.startsUnlocked)
+        .where((item) => !defaults.unlockedAugmentIds.contains(item.id))
         .map((item) => 'augment:${item.id}'),
-    ...stages.skip(1).map((item) => 'stage:${item.id}'),
+    ...stages
+        .where((item) => !defaults.unlockedStageIds.contains(item.id))
+        .map((item) => 'stage:${item.id}'),
   };
   final rewards = <String>[];
   for (final goal in goals) {
     if (goal.threshold <= 0 || goal.description.trim().isEmpty) {
       issues.add('Invalid unlock goal: ${goal.id}');
     }
-    rewards.add('${goal.rewardType.name}:${goal.rewardId}');
+    final rawRewards = <String>[
+      if (goal.unlocksCharacterId case final id?) 'character:$id',
+      if (goal.unlocksWeaponId case final id?) 'weapon:$id',
+      if (goal.unlocksAugmentId case final id?) 'augment:$id',
+      if (goal.unlocksStageId case final id?) 'stage:$id',
+    ];
+    if (rawRewards.length != 1) {
+      issues.add(
+        'Unlock goal reward count must be one: ${goal.id}/${rawRewards.length}',
+      );
+    }
+    rewards.addAll(rawRewards);
   }
   final rewardSet = rewards.toSet();
   for (final reward in expected.where((item) => !rewardSet.contains(item))) {
@@ -419,6 +506,10 @@ void _validateAssets(
     if (bundledPaths.isNotEmpty && !bundledPaths.contains(normalized)) {
       issues.add('Unbundled $label asset: $id/$path');
     }
+  }
+  final expected = expectedIds.toSet();
+  for (final id in assets.keys.where((id) => !expected.contains(id))) {
+    issues.add('Orphan $label asset: $id');
   }
 }
 

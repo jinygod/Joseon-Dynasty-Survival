@@ -186,6 +186,17 @@ class UnlockGoalDefinition {
          'Unlock goals require exactly one reward.',
        );
 
+  const UnlockGoalDefinition.raw({
+    required this.id,
+    required this.description,
+    required this.metric,
+    required this.threshold,
+    this.unlocksCharacterId,
+    this.unlocksWeaponId,
+    this.unlocksAugmentId,
+    this.unlocksStageId,
+  });
+
   final UnlockGoalId id;
   final String description;
   final UnlockMetric metric;

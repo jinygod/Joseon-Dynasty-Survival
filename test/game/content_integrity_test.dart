@@ -4,9 +4,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/audio/audio_asset_catalog.dart';
 import 'package:pixel_survivor/game/audio/audio_cue.dart';
 import 'package:pixel_survivor/game/content/asset_catalog.dart';
+import 'package:pixel_survivor/game/content/augment_definitions.dart';
+import 'package:pixel_survivor/game/content/boss_definitions.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
 import 'package:pixel_survivor/game/content/content_integrity.dart';
+import 'package:pixel_survivor/game/content/enemy_definitions.dart';
 import 'package:pixel_survivor/game/content/ids.dart';
+import 'package:pixel_survivor/game/content/stage_definitions.dart';
+import 'package:pixel_survivor/game/content/unlock_definitions.dart';
+import 'package:pixel_survivor/game/content/wave_definitions.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
 
 void main() {
@@ -16,7 +22,7 @@ void main() {
     final second = validateContentIntegrity(bundledImagePaths: images);
 
     expect(first.issues, second.issues);
-    expect(first.isValid, isTrue);
+    expect(first.isValid, isTrue, reason: first.issues.join('\n'));
     expect(
       AssetCatalog.characters.keys,
       containsAll(characterDefinitions.map((item) => item.id)),
@@ -59,6 +65,147 @@ void main() {
       report.issues,
       contains('Unknown starting weapon: $rookieConstable/missing_weapon'),
     );
+  });
+
+  test('injected enemy wave and boss catalogs are validated in isolation', () {
+    const badEnemy = EnemyDefinition(
+      id: plagueRatSwarm,
+      name: 'Bad rat',
+      maxHealth: -1,
+      moveSpeed: 1,
+      damage: 1,
+      experience: 1,
+      faction: EnemyFaction.plague,
+      rank: EnemyRank.normal,
+      behaviorProfileId: 'swarm',
+    );
+    const badWave = WaveDefinition(
+      startSecond: 0,
+      endSecond: 120,
+      enemyWeights: {'missing_enemy': 1},
+      eliteWeights: {},
+      startSpawnsPerSecond: 1,
+      endSpawnsPerSecond: 1,
+      groupSize: 1,
+      startEliteChance: 0,
+      endEliteChance: 0,
+      startMaxActiveEnemies: 1,
+      endMaxActiveEnemies: 1,
+    );
+    final badBoss = BossDefinition(
+      enemy: const EnemyDefinition(
+        id: plagueMagistrate,
+        name: 'Bad boss',
+        maxHealth: -1,
+        moveSpeed: 1,
+        damage: 1,
+        experience: 1,
+        faction: EnemyFaction.plague,
+        rank: EnemyRank.boss,
+        behaviorProfileId: 'tank',
+      ),
+      patterns: plagueMagistrateBossDefinition.patterns,
+      enrage: plagueMagistrateBossDefinition.enrage,
+    );
+
+    final report = validateContentIntegrity(
+      enemies: [badEnemy],
+      stages: const [
+        StageDefinition(
+          id: plagueMarket,
+          name: 'Injected',
+          description: 'Injected',
+          targetSeconds: 300,
+          bossArrivalSeconds: 270,
+          visualTheme: StageVisualTheme.plague,
+          backgroundColorValue: 0,
+          riskLabel: 'Injected',
+        ),
+      ],
+      bosses: [badBoss],
+      stageWaves: {
+        plagueMarket: [badWave],
+      },
+    );
+
+    expect(report.issues, contains('Invalid health: $plagueRatSwarm'));
+    expect(report.issues, contains('Unknown wave enemy: missing_enemy'));
+    expect(report.issues, contains('Invalid boss health: $plagueMagistrate'));
+    expect(
+      report.issues,
+      contains('Wave coverage ends before boss arrival: $plagueMarket'),
+    );
+    expect(
+      report.issues,
+      contains('Wave coverage ends before target: $plagueMarket'),
+    );
+  });
+
+  test('exact roster contract rejects count-preserving id substitutions', () {
+    const substituted = CharacterDefinition(
+      id: 'substitute_character',
+      name: 'Substitute',
+      maxHealth: 100,
+      moveSpeed: 100,
+      damageMultiplier: 1,
+      startingWeaponId: hwandoSlash,
+    );
+    final report = validateContentIntegrity(
+      characters: [substituted, ...characterDefinitions.skip(1)],
+    );
+
+    expect(
+      report.issues,
+      contains('Missing planned character id: $rookieConstable'),
+    );
+    expect(
+      report.issues,
+      contains('Unexpected character id: substitute_character'),
+    );
+  });
+
+  test(
+    'unlock validation accumulates raw reward cardinality without throwing',
+    () {
+      const noReward = UnlockGoalDefinition.raw(
+        id: 'no_reward',
+        description: 'No reward',
+        metric: UnlockMetric.totalKills,
+        threshold: 1,
+      );
+      const twoRewards = UnlockGoalDefinition.raw(
+        id: 'two_rewards',
+        description: 'Two rewards',
+        metric: UnlockMetric.totalKills,
+        threshold: 1,
+        unlocksWeaponId: talismanThrow,
+        unlocksAugmentId: rapidReload,
+      );
+
+      final report = validateContentIntegrity(
+        goals: [...unlockGoals, noReward, twoRewards],
+      );
+
+      expect(
+        report.issues,
+        contains('Unlock goal reward count must be one: no_reward/0'),
+      );
+      expect(
+        report.issues,
+        contains('Unlock goal reward count must be one: two_rewards/2'),
+      );
+    },
+  );
+
+  test('asset validation reports keys outside the injected roster', () {
+    final report = validateContentIntegrity(
+      characterAssets: {
+        ...AssetCatalog.characters,
+        'orphan_character': AssetCatalog.characters[rookieConstable]!,
+      },
+    );
+
+    expect(report.issues, contains('Orphan character asset: orphan_character'));
   });
 
   test('audio paths agree with their declared channels', () {

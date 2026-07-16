@@ -237,10 +237,15 @@ BossDefinition bossDefinitionForStage(String stageId, {required double roll}) {
   return fallenGeneralBossDefinition;
 }
 
-List<String> validateBossContent() => validateBossDefinitions(bossDefinitions);
+List<String> validateBossContent() =>
+    validateBossDefinitions(bossDefinitions, enemies: enemyDefinitions);
 
-List<String> validateBossDefinitions(Iterable<BossDefinition> definitions) {
+List<String> validateBossDefinitions(
+  Iterable<BossDefinition> definitions, {
+  Iterable<EnemyDefinition> enemies = enemyDefinitions,
+}) {
   final errors = <String>[];
+  final enemyIds = enemies.map((enemy) => enemy.id).toSet();
   final bossIds = <EnemyId>{};
   for (final boss in definitions) {
     if (!bossIds.add(boss.id)) errors.add('Duplicate boss id: ${boss.id}');
@@ -308,7 +313,7 @@ List<String> validateBossDefinitions(Iterable<BossDefinition> definitions) {
       }
       if (pattern.kind == BossPatternKind.summon) {
         for (final enemyId in pattern.summonEnemyIds) {
-          if (enemyDefinitionFor(enemyId) == null) {
+          if (!enemyIds.contains(enemyId)) {
             errors.add(
               'Unknown boss summon enemy: ${boss.id}/${pattern.id}/$enemyId',
             );

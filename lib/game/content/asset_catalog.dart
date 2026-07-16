@@ -76,8 +76,6 @@ class AssetCatalog {
   };
 
   static const stages = <String, String>{
-    'moonlit_abandoned_government_office_tile':
-        'assets/images/effects/combat_effects_atlas_64.png',
     'moonlit_abandoned_office':
         'assets/images/effects/combat_effects_atlas_64.png',
     'plague_market': 'assets/images/effects/combat_effects_atlas_64.png',

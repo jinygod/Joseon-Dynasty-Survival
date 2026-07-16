@@ -1,6 +1,8 @@
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pixel_survivor/game/content/augment_definitions.dart';
+import 'package:pixel_survivor/game/content/character_definitions.dart';
 import 'package:pixel_survivor/game/content/content_integrity.dart';
 import 'package:pixel_survivor/game/content/ids.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
@@ -43,9 +45,22 @@ void main() {
       );
 
       final result = _constructBuild(build, progression, seed: 100 + index);
-      expect(result.weaponLevels, build.weaponLevels, reason: build.id);
-      expect(result.augmentLevels, build.augmentLevels, reason: build.id);
-      expect(result.appliedChoiceCount, greaterThan(0), reason: build.id);
+      expect(
+        _containsTargetLevels(result.weaponLevels, build.weaponLevels),
+        isTrue,
+        reason: build.id,
+      );
+      expect(
+        _containsTargetLevels(result.augmentLevels, build.augmentLevels),
+        isTrue,
+        reason: build.id,
+      );
+      final character = characterDefinitions.singleWhere(
+        (item) => item.id == build.characterId,
+      );
+      expect(result.startingWeaponId, character.startingWeaponId);
+      expect(build.weaponLevels, contains(character.startingWeaponId));
+      expect(result.offeredRoundCount, result.appliedChoiceCount);
     }
   });
 
@@ -72,6 +87,26 @@ void main() {
       signatures[CombatBuildRole.areaAttrition]!.chainCount,
       greaterThan(0),
     );
+    expect(
+      signatures[CombatBuildRole.frontlineControl]!.survivability,
+      greaterThan(signatures[CombatBuildRole.rangedFocus]!.survivability),
+    );
+    expect(
+      signatures[CombatBuildRole.rangedFocus]!.attackSpeed,
+      greaterThan(0),
+    );
+    expect(
+      signatures[CombatBuildRole.rangedFocus]!.criticalChance,
+      greaterThan(0),
+    );
+    expect(
+      signatures[CombatBuildRole.areaAttrition]!.weaponSize,
+      greaterThan(0),
+    );
+    expect(
+      signatures[CombatBuildRole.areaAttrition]!.experienceGain,
+      greaterThan(0),
+    );
   });
 }
 
@@ -85,6 +120,13 @@ _ConstructedBuild _constructBuild(
   final weaponLevels = <WeaponId, int>{};
   final augmentLevels = <AugmentId, int>{};
   var appliedChoices = 0;
+  var offeredRounds = 0;
+  final character = characterDefinitions.singleWhere(
+    (item) => item.id == build.characterId,
+  );
+  final startingWeaponId = character.startingWeaponId;
+  weapons.upgrade(startingWeaponId, progression.unlockedWeaponIds);
+  weaponLevels[startingWeaponId] = weapons.levelOf(startingWeaponId);
 
   for (var round = 0; round < 500; round += 1) {
     if (_containsTargetLevels(weaponLevels, build.weaponLevels) &&
@@ -93,6 +135,8 @@ _ConstructedBuild _constructBuild(
         weaponLevels: weaponLevels,
         augmentLevels: augmentLevels,
         appliedChoiceCount: appliedChoices,
+        offeredRoundCount: offeredRounds,
+        startingWeaponId: startingWeaponId,
       );
     }
     final choices = levelUps.choices(
@@ -101,13 +145,16 @@ _ConstructedBuild _constructBuild(
       currentWeaponLevels: weaponLevels,
       currentAugmentLevels: augmentLevels,
     );
-    final selected = choices.where((choice) {
-      final target = choice.type == LevelUpChoiceType.weapon
-          ? build.weaponLevels[choice.id]
-          : build.augmentLevels[choice.id];
-      return target != null && choice.nextLevel <= target;
-    }).firstOrNull;
-    if (selected == null) continue;
+    expect(choices, hasLength(3), reason: '${build.id} round $round');
+    offeredRounds += 1;
+    final selected =
+        choices.where((choice) {
+          final target = choice.type == LevelUpChoiceType.weapon
+              ? build.weaponLevels[choice.id]
+              : build.augmentLevels[choice.id];
+          return target != null && choice.nextLevel <= target;
+        }).firstOrNull ??
+        choices.first;
 
     if (selected.type == LevelUpChoiceType.weapon) {
       weapons.upgrade(selected.id, progression.unlockedWeaponIds);
@@ -123,7 +170,7 @@ _ConstructedBuild _constructBuild(
 }
 
 bool _containsTargetLevels(Map<String, int> actual, Map<String, int> target) =>
-    target.entries.every((entry) => actual[entry.key] == entry.value);
+    target.entries.every((entry) => (actual[entry.key] ?? 0) >= entry.value);
 
 _CombatSignature _signature(MinimumViableBuild build) {
   var reach = 0.0;
@@ -131,6 +178,11 @@ _CombatSignature _signature(MinimumViableBuild build) {
   var projectileCount = 0;
   var chainCount = 0;
   var persistentSeconds = 0.0;
+  var survivability = 0.0;
+  var attackSpeed = 0.0;
+  var criticalChance = 0.0;
+  var weaponSize = 0.0;
+  var experienceGain = 0.0;
   final elements = <ElementType>{};
   for (final entry in build.weaponLevels.entries) {
     final level = weaponLevelFor(entry.key, entry.value);
@@ -144,12 +196,40 @@ _CombatSignature _signature(MinimumViableBuild build) {
     persistentSeconds += level.durationSeconds;
     elements.add(definition.element);
   }
+  for (final entry in build.augmentLevels.entries) {
+    final definition = augmentDefinitionFor(entry.key)!;
+    for (final effect in definition.effects) {
+      final total = effect.valuePerLevel * entry.value;
+      switch (effect.stat) {
+        case AugmentStat.maxHealth:
+        case AugmentStat.healing:
+          survivability += total;
+        case AugmentStat.incomingContactDamage:
+          survivability -= total;
+        case AugmentStat.attackSpeed:
+          attackSpeed += total;
+        case AugmentStat.criticalChance:
+          criticalChance += total;
+        case AugmentStat.weaponSize:
+          weaponSize += total;
+        case AugmentStat.experienceGain:
+          experienceGain += total;
+        default:
+          break;
+      }
+    }
+  }
   return _CombatSignature(
     reach: reach,
     control: control,
     projectileCount: projectileCount,
     chainCount: chainCount,
     persistentSeconds: persistentSeconds,
+    survivability: survivability,
+    attackSpeed: attackSpeed,
+    criticalChance: criticalChance,
+    weaponSize: weaponSize,
+    experienceGain: experienceGain,
     elements: Set.unmodifiable(elements),
   );
 }
@@ -159,11 +239,15 @@ class _ConstructedBuild {
     required this.weaponLevels,
     required this.augmentLevels,
     required this.appliedChoiceCount,
+    required this.offeredRoundCount,
+    required this.startingWeaponId,
   });
 
   final Map<WeaponId, int> weaponLevels;
   final Map<AugmentId, int> augmentLevels;
   final int appliedChoiceCount;
+  final int offeredRoundCount;
+  final WeaponId startingWeaponId;
 }
 
 class _CombatSignature {
@@ -173,6 +257,11 @@ class _CombatSignature {
     required this.projectileCount,
     required this.chainCount,
     required this.persistentSeconds,
+    required this.survivability,
+    required this.attackSpeed,
+    required this.criticalChance,
+    required this.weaponSize,
+    required this.experienceGain,
     required this.elements,
   });
 
@@ -181,6 +270,11 @@ class _CombatSignature {
   final int projectileCount;
   final int chainCount;
   final double persistentSeconds;
+  final double survivability;
+  final double attackSpeed;
+  final double criticalChance;
+  final double weaponSize;
+  final double experienceGain;
   final Set<ElementType> elements;
 
   @override
@@ -191,6 +285,11 @@ class _CombatSignature {
       projectileCount == other.projectileCount &&
       chainCount == other.chainCount &&
       persistentSeconds == other.persistentSeconds &&
+      survivability == other.survivability &&
+      attackSpeed == other.attackSpeed &&
+      criticalChance == other.criticalChance &&
+      weaponSize == other.weaponSize &&
+      experienceGain == other.experienceGain &&
       _sameSet(elements, other.elements);
 
   @override
@@ -200,6 +299,11 @@ class _CombatSignature {
     projectileCount,
     chainCount,
     persistentSeconds,
+    survivability,
+    attackSpeed,
+    criticalChance,
+    weaponSize,
+    experienceGain,
     Object.hashAllUnordered(elements),
   );
 }
