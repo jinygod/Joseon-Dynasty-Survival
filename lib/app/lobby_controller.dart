@@ -3,11 +3,13 @@ import 'package:flutter/foundation.dart';
 import '../game/content/character_definitions.dart';
 import '../game/content/stage_definitions.dart';
 import '../game/systems/save_system.dart';
+import '../backend/progress/progress_sync_controller.dart';
 
 class LobbyController extends ChangeNotifier {
-  LobbyController({required this.store});
+  LobbyController({required this.store, this.progressSyncController});
 
   final SaveStore store;
+  ProgressSyncController? progressSyncController;
   Future<void> _saveQueue = Future<void>.value();
 
   SaveState state = SaveState.defaults();
@@ -28,6 +30,12 @@ class LobbyController extends ChangeNotifier {
       loading = false;
       notifyListeners();
     }
+  }
+
+  Future<void> syncNow() async {
+    final sync = progressSyncController;
+    if (sync != null) await sync.syncNow();
+    await load();
   }
 
   Future<void> selectCharacter(String characterId) {

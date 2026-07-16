@@ -2,7 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../backend/account/account_controller.dart';
+import '../backend/progress/progress_sync_controller.dart';
 import '../game/systems/save_system.dart';
+import 'account_section.dart';
 import 'game_settings.dart';
 import 'game_settings_controller.dart';
 import 'credits_ledger.dart';
@@ -14,6 +17,8 @@ class SettingsScreen extends StatelessWidget {
     this.progressStore,
     this.resetProgress,
     this.creditsLedgerLoader = CreditsLedger.loadBundled,
+    this.accountController,
+    this.progressSyncController,
     super.key,
   });
 
@@ -21,6 +26,8 @@ class SettingsScreen extends StatelessWidget {
   final SaveStore? progressStore;
   final Future<bool> Function()? resetProgress;
   final CreditsLedgerLoader creditsLedgerLoader;
+  final AccountController? accountController;
+  final ProgressSyncController? progressSyncController;
 
   @override
   Widget build(BuildContext context) {
@@ -37,6 +44,15 @@ class SettingsScreen extends StatelessWidget {
                 return ListView(
                   padding: const EdgeInsets.all(24),
                   children: [
+                    if (accountController case final account?) ...[
+                      const _SectionTitle('계정 및 클라우드'),
+                      AccountSection(
+                        controller: account,
+                        syncLabel: progressSyncController?.status.label,
+                        onSyncNow: progressSyncController?.syncNow,
+                        syncListenable: progressSyncController,
+                      ),
+                    ],
                     const _SectionTitle('소리'),
                     Text('음악 ${(settings.musicVolume * 100).round()}%'),
                     Slider(

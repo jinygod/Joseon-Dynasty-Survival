@@ -44,6 +44,7 @@ class GameScreen extends StatefulWidget {
     this.audioSettingsController,
     this.audioService,
     this.metaProgressionService,
+    this.syncProgress,
     super.key,
   });
 
@@ -59,6 +60,7 @@ class GameScreen extends StatefulWidget {
   final AudioSettingsController? audioSettingsController;
   final GameAudioService? audioService;
   final MetaProgressionService? metaProgressionService;
+  final Future<void> Function()? syncProgress;
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -186,6 +188,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           audioService: widget.audioService,
           audioSettingsController: widget.audioSettingsController,
           metaProgressionService: _metaProgressionService,
+          syncProgress: widget.syncProgress,
         ),
       ),
     );
@@ -252,6 +255,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             characterId: widget.playerSlot.characterId,
           );
       _completedSettlement = settlement;
+      final syncProgress = widget.syncProgress;
+      if (syncProgress != null) unawaited(syncProgress());
       final unlocks = ProgressionUnlocks.diff(
         settlement.before,
         settlement.after,
@@ -301,6 +306,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                     audioService: audioService,
                     audioSettingsController: audioSettingsController,
                     metaProgressionService: metaProgressionService,
+                    syncProgress: syncProgress,
                   ),
                 ),
               );
