@@ -2,11 +2,32 @@ typedef CharacterId = String;
 typedef WeaponId = String;
 typedef AugmentId = String;
 typedef EnemyId = String;
+typedef EnemyBehaviorProfileId = String;
 typedef UnlockGoalId = String;
 
 enum ElementType { physical, magic, fire, ice, lightning }
 
 enum EnemyBehaviorType { chase, swarm, dash, tank }
+
+enum EnemyFaction { plague, bandit, spirit, anomaly }
+
+enum EnemyRank { normal, elite, boss }
+
+enum EnemyBehaviorKind {
+  chase,
+  swarm,
+  dash,
+  tank,
+  dive,
+  thrust,
+  deathZone,
+  hasteAura,
+  doubleDash,
+  shockwave,
+  scream,
+}
+
+enum EnemyBehaviorPhase { tracking, warning, active, recovery, cooldown }
 
 enum CharacterPassive { none, patrolGrit, exorcismScript, hawkEye }
 
@@ -122,8 +143,10 @@ class EnemyDefinition {
     required this.moveSpeed,
     required this.damage,
     required this.experience,
+    required this.faction,
+    required this.rank,
+    required this.behaviorProfileId,
     this.behaviorType = EnemyBehaviorType.chase,
-    this.isBoss = false,
   });
 
   final EnemyId id;
@@ -132,8 +155,12 @@ class EnemyDefinition {
   final double moveSpeed;
   final double damage;
   final int experience;
+  final EnemyFaction faction;
+  final EnemyRank rank;
+  final EnemyBehaviorProfileId behaviorProfileId;
   final EnemyBehaviorType behaviorType;
-  final bool isBoss;
+  bool get isBoss => rank == EnemyRank.boss;
+  bool get isElite => rank == EnemyRank.elite;
 }
 
 class UnlockGoalDefinition {
