@@ -161,11 +161,13 @@ EnemyDefinition? enemyDefinitionFor(EnemyId id) {
   return null;
 }
 
-List<String> validateEnemyContent() {
+List<String> validateEnemyContent([
+  Iterable<EnemyDefinition> definitions = enemyDefinitions,
+]) {
   final errors = <String>[];
   final ids = <EnemyId>{};
   final names = <String>{};
-  for (final enemy in enemyDefinitions) {
+  for (final enemy in definitions) {
     if (!ids.add(enemy.id)) errors.add('Duplicate enemy id: ${enemy.id}');
     if (!names.add(enemy.name)) {
       errors.add('Duplicate enemy name: ${enemy.name}');

@@ -297,9 +297,13 @@ WavePressure wavePressureForSecond(
   );
 }
 
-List<String> validateWaveContent() {
+List<String> validateWaveContent({
+  Map<String, List<WaveDefinition>> stageWaves = stageWaveDefinitions,
+  Iterable<EnemyDefinition> enemies = enemyDefinitions,
+}) {
   final errors = <String>[];
-  for (final stageEntry in stageWaveDefinitions.entries) {
+  final enemiesById = {for (final enemy in enemies) enemy.id: enemy};
+  for (final stageEntry in stageWaves.entries) {
     final definitions = stageEntry.value;
     if (definitions.isEmpty || definitions.first.startSecond != 0) {
       errors.add('Invalid wave start: ${stageEntry.key}');
@@ -312,7 +316,7 @@ List<String> validateWaveContent() {
       }
       void validatePool(Map<EnemyId, int> pool, EnemyRank expectedRank) {
         for (final entry in pool.entries) {
-          final definition = enemyDefinitionFor(entry.key);
+          final definition = enemiesById[entry.key];
           if (definition == null) {
             errors.add('Unknown wave enemy: ${entry.key}');
           } else if (definition.rank != expectedRank) {

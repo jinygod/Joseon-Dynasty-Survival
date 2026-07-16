@@ -1,0 +1,254 @@
+import 'dart:io';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:pixel_survivor/game/audio/audio_asset_catalog.dart';
+import 'package:pixel_survivor/game/audio/audio_cue.dart';
+import 'package:pixel_survivor/game/content/asset_catalog.dart';
+import 'package:pixel_survivor/game/content/augment_definitions.dart';
+import 'package:pixel_survivor/game/content/boss_definitions.dart';
+import 'package:pixel_survivor/game/content/character_definitions.dart';
+import 'package:pixel_survivor/game/content/content_integrity.dart';
+import 'package:pixel_survivor/game/content/content_roster_contract.dart';
+import 'package:pixel_survivor/game/content/enemy_definitions.dart';
+import 'package:pixel_survivor/game/content/ids.dart';
+import 'package:pixel_survivor/game/content/stage_definitions.dart';
+import 'package:pixel_survivor/game/content/unlock_definitions.dart';
+import 'package:pixel_survivor/game/content/wave_definitions.dart';
+import 'package:pixel_survivor/game/content/weapon_definitions.dart';
+
+void main() {
+  test('aggregate report is deterministic and covers bundled contracts', () {
+    final images = bundledImagePathsFromDisk();
+    final first = validateContentIntegrity(bundledImagePaths: images);
+    final second = validateContentIntegrity(bundledImagePaths: images);
+
+    expect(first.issues, second.issues);
+    expect(first.isValid, isTrue, reason: first.issues.join('\n'));
+    expect(
+      AssetCatalog.characters.keys,
+      containsAll(characterDefinitions.map((item) => item.id)),
+    );
+    expect(
+      AssetCatalog.weapons.keys,
+      containsAll(weaponDefinitions.map((item) => item.id)),
+    );
+    expect(AudioAssetCatalog.assets.keys.toSet(), AudioCue.values.toSet());
+  });
+
+  test('malformed injected catalog reports duplicates and bad references', () {
+    const duplicateCharacter = CharacterDefinition(
+      id: rookieConstable,
+      name: 'Duplicate',
+      maxHealth: 1,
+      moveSpeed: 1,
+      damageMultiplier: 1,
+      startingWeaponId: 'missing_weapon',
+    );
+
+    final report = validateContentIntegrity(
+      characters: const [duplicateCharacter, duplicateCharacter],
+      expectedCounts: const ContentRosterCounts(
+        characters: 2,
+        weapons: 8,
+        weaponLevels: 40,
+        augments: 16,
+        normalEnemies: 8,
+        eliteEnemies: 3,
+        stages: 2,
+        bosses: 3,
+        unlockGoals: 15,
+      ),
+      bundledImagePaths: bundledImagePathsFromDisk(),
+    );
+
+    expect(report.issues, contains('Duplicate character id: $rookieConstable'));
+    expect(
+      report.issues,
+      contains('Unknown starting weapon: $rookieConstable/missing_weapon'),
+    );
+  });
+
+  test('injected enemy wave and boss catalogs are validated in isolation', () {
+    const badEnemy = EnemyDefinition(
+      id: plagueRatSwarm,
+      name: 'Bad rat',
+      maxHealth: -1,
+      moveSpeed: 1,
+      damage: 1,
+      experience: 1,
+      faction: EnemyFaction.plague,
+      rank: EnemyRank.normal,
+      behaviorProfileId: 'swarm',
+    );
+    const badWave = WaveDefinition(
+      startSecond: 0,
+      endSecond: 120,
+      enemyWeights: {'missing_enemy': 1},
+      eliteWeights: {},
+      startSpawnsPerSecond: 1,
+      endSpawnsPerSecond: 1,
+      groupSize: 1,
+      startEliteChance: 0,
+      endEliteChance: 0,
+      startMaxActiveEnemies: 1,
+      endMaxActiveEnemies: 1,
+    );
+    final badBoss = BossDefinition(
+      enemy: const EnemyDefinition(
+        id: plagueMagistrate,
+        name: 'Bad boss',
+        maxHealth: -1,
+        moveSpeed: 1,
+        damage: 1,
+        experience: 1,
+        faction: EnemyFaction.plague,
+        rank: EnemyRank.boss,
+        behaviorProfileId: 'tank',
+      ),
+      patterns: plagueMagistrateBossDefinition.patterns,
+      enrage: plagueMagistrateBossDefinition.enrage,
+    );
+
+    final report = validateContentIntegrity(
+      enemies: [badEnemy],
+      stages: const [
+        StageDefinition(
+          id: plagueMarket,
+          name: 'Injected',
+          description: 'Injected',
+          targetSeconds: 300,
+          bossArrivalSeconds: 270,
+          visualTheme: StageVisualTheme.plague,
+          backgroundColorValue: 0,
+          riskLabel: 'Injected',
+        ),
+      ],
+      bosses: [badBoss],
+      stageWaves: {
+        plagueMarket: [badWave],
+      },
+    );
+
+    expect(report.issues, contains('Invalid health: $plagueRatSwarm'));
+    expect(report.issues, contains('Unknown wave enemy: missing_enemy'));
+    expect(report.issues, contains('Invalid boss health: $plagueMagistrate'));
+    expect(
+      report.issues,
+      contains('Wave coverage ends before boss arrival: $plagueMarket'),
+    );
+    expect(
+      report.issues,
+      contains('Wave coverage ends before target: $plagueMarket'),
+    );
+  });
+
+  test('exact roster contract rejects count-preserving id substitutions', () {
+    const substituted = CharacterDefinition(
+      id: 'substitute_character',
+      name: 'Substitute',
+      maxHealth: 100,
+      moveSpeed: 100,
+      damageMultiplier: 1,
+      startingWeaponId: hwandoSlash,
+    );
+    final report = validateContentIntegrity(
+      characters: [substituted, ...characterDefinitions.skip(1)],
+    );
+
+    expect(
+      report.issues,
+      contains('Missing planned character id: $rookieConstable'),
+    );
+    expect(
+      report.issues,
+      contains('Unexpected character id: substitute_character'),
+    );
+  });
+
+  test('planned ids are an independent literal authority', () {
+    expect(ContentRosterContract.characterIds, {
+      'rookie_constable',
+      'exorcist_dosa',
+      'mountain_hunter',
+    });
+    expect(ContentRosterContract.stageBossIds, {
+      'moonlit_abandoned_office': {'fallen_general', 'masked_executioner'},
+      'plague_market': {'plague_magistrate'},
+    });
+
+    final source = File(
+      'lib/game/content/content_roster_contract.dart',
+    ).readAsStringSync();
+    expect(source, isNot(contains('_definitions.dart')));
+  });
+
+  test(
+    'unlock validation accumulates raw reward cardinality without throwing',
+    () {
+      const noReward = UnlockGoalDefinition.raw(
+        id: 'no_reward',
+        description: 'No reward',
+        metric: UnlockMetric.totalKills,
+        threshold: 1,
+      );
+      const twoRewards = UnlockGoalDefinition.raw(
+        id: 'two_rewards',
+        description: 'Two rewards',
+        metric: UnlockMetric.totalKills,
+        threshold: 1,
+        unlocksWeaponId: talismanThrow,
+        unlocksAugmentId: rapidReload,
+      );
+
+      final report = validateContentIntegrity(
+        goals: [...unlockGoals, noReward, twoRewards],
+      );
+
+      expect(
+        report.issues,
+        contains('Unlock goal reward count must be one: no_reward/0'),
+      );
+      expect(
+        report.issues,
+        contains('Unlock goal reward count must be one: two_rewards/2'),
+      );
+    },
+  );
+
+  test('asset validation reports keys outside the injected roster', () {
+    final report = validateContentIntegrity(
+      characterAssets: {
+        ...AssetCatalog.characters,
+        'orphan_character': AssetCatalog.characters[rookieConstable]!,
+      },
+    );
+
+    expect(report.issues, contains('Orphan character asset: orphan_character'));
+  });
+
+  test('audio paths agree with their declared channels', () {
+    final report = validateContentIntegrity(
+      bundledImagePaths: bundledImagePathsFromDisk(),
+    );
+    expect(
+      report.issues.where((issue) => issue.startsWith('Invalid audio')),
+      isEmpty,
+    );
+
+    for (final entry in AudioAssetCatalog.assets.entries) {
+      final prefix = switch (AudioCueCatalog.channelFor(entry.key)) {
+        AudioChannel.music => 'audio/music/',
+        AudioChannel.sfx => 'audio/sfx/',
+        AudioChannel.ui => 'audio/ui/',
+      };
+      expect(entry.value.path, startsWith(prefix), reason: entry.key.name);
+      expect(File('assets/${entry.value.path}').existsSync(), isTrue);
+    }
+  });
+}
+
+Set<String> bundledImagePathsFromDisk() => Directory('assets/images')
+    .listSync(recursive: true)
+    .whereType<File>()
+    .map((file) => file.path.replaceAll('\\', '/'))
+    .toSet();
