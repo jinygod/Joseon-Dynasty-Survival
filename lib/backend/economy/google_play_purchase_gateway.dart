@@ -47,7 +47,10 @@ class InAppPurchaseBillingClient implements GooglePlayBillingClient {
 class GooglePlayPurchaseGateway implements PurchaseGateway {
   GooglePlayPurchaseGateway({GooglePlayBillingClient? billingClient})
     : _client = billingClient ?? InAppPurchaseBillingClient() {
-    _subscription = _client.purchaseStream.listen(_onPurchases);
+    _subscription = _client.purchaseStream.listen(
+      _onPurchases,
+      onError: _onStreamError,
+    );
   }
 
   final GooglePlayBillingClient _client;
@@ -55,6 +58,7 @@ class GooglePlayPurchaseGateway implements PurchaseGateway {
   final _productDetails = <String, iap.ProductDetails>{};
   final _purchaseDetails = <String, iap.PurchaseDetails>{};
   late final StreamSubscription<List<iap.PurchaseDetails>> _subscription;
+  bool _disposed = false;
 
   @override
   Stream<PurchaseUpdate> get updates => _updates.stream;
@@ -118,7 +122,9 @@ class GooglePlayPurchaseGateway implements PurchaseGateway {
   }
 
   void _onPurchases(List<iap.PurchaseDetails> values) {
+    if (_disposed) return;
     for (final details in values) {
+      if (!PremiumProduct.ids.contains(details.productID)) continue;
       final token = details.verificationData.serverVerificationData.trim();
       switch (details.status) {
         case iap.PurchaseStatus.pending:
@@ -154,6 +160,10 @@ class GooglePlayPurchaseGateway implements PurchaseGateway {
     }
   }
 
+  void _onStreamError(Object error, StackTrace stackTrace) {
+    if (!_disposed) _updates.addError(error, stackTrace);
+  }
+
   static PremiumProduct _toProduct(iap.ProductDetails details) =>
       PremiumProduct(
         id: details.id,
@@ -166,6 +176,8 @@ class GooglePlayPurchaseGateway implements PurchaseGateway {
       a.length == b.length && a.containsAll(b);
 
   Future<void> dispose() async {
+    if (_disposed) return;
+    _disposed = true;
     await _subscription.cancel();
     await _updates.close();
   }

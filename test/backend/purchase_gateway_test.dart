@@ -75,14 +75,45 @@ void main() {
     await subscription.cancel();
     await gateway.dispose();
   });
+
+  test(
+    'stream errors and unknown callbacks do not stop later valid updates',
+    () async {
+      final client = FakeBillingClient();
+      final gateway = GooglePlayPurchaseGateway(billingClient: client);
+      final updates = <PurchaseUpdate>[];
+      final errors = <Object>[];
+      final subscription = gateway.updates.listen(
+        updates.add,
+        onError: errors.add,
+      );
+
+      client.emitError(StateError('billing disconnected'));
+      client.emit([
+        purchaseDetails(
+          status: iap.PurchaseStatus.purchased,
+          token: 'unknown-token',
+          productId: 'unknown-product',
+        ),
+        purchaseDetails(status: iap.PurchaseStatus.pending),
+      ]);
+      await flush();
+
+      expect(errors.single, isA<StateError>());
+      expect(updates.single.status, PurchaseStatus.pending);
+      await subscription.cancel();
+      await gateway.dispose();
+    },
+  );
 }
 
 iap.PurchaseDetails purchaseDetails({
   required iap.PurchaseStatus status,
   String token = '',
+  String productId = PremiumProduct.smallId,
 }) => iap.PurchaseDetails(
   purchaseID: 'purchase-id',
-  productID: PremiumProduct.smallId,
+  productID: productId,
   verificationData: iap.PurchaseVerificationData(
     localVerificationData: 'local',
     serverVerificationData: token,
@@ -109,6 +140,7 @@ class FakeBillingClient implements GooglePlayBillingClient {
   }
 
   void emit(List<iap.PurchaseDetails> values) => _purchases.add(values);
+  void emitError(Object error) => _purchases.addError(error);
 
   @override
   Stream<List<iap.PurchaseDetails>> get purchaseStream => _purchases.stream;

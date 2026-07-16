@@ -68,6 +68,14 @@ void main() {
     );
 
     expect(find.text('금옥 —'), findsOneWidget);
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.byKey(const Key('premium-buy-royal_jade_small')),
+          )
+          .onPressed,
+      isNull,
+    );
     gateway.emit(PurchaseUpdate.pending(productId: PremiumProduct.smallId));
     await tester.pump();
     expect(find.text('결제 승인 대기 중'), findsOneWidget);
@@ -81,6 +89,52 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 10));
     expect(find.text('구매 확인 다시 시도'), findsOneWidget);
+    controller.dispose();
+  });
+
+  testWidgets('loading and unavailable states show clear feedback', (
+    tester,
+  ) async {
+    final gateway = ShopGateway()..available = false;
+    final controller = shopController(gateway: gateway);
+    await tester.pumpWidget(
+      MaterialApp(home: PremiumShopScreen(controller: controller)),
+    );
+    expect(find.text('상점 불러오는 중'), findsOneWidget);
+
+    await controller.start();
+    await tester.pump();
+    expect(find.text('스토어를 사용할 수 없습니다'), findsOneWidget);
+    expect(
+      await controller.purchase(
+        const PremiumProduct(
+          id: PremiumProduct.smallId,
+          title: '소형',
+          description: '100 금옥',
+          price: '₩1,100',
+        ),
+      ),
+      PurchaseStartResult.unavailable,
+    );
+    expect(controller.state.message, isNotEmpty);
+    controller.dispose();
+  });
+
+  testWidgets('purchase button is disabled while billing launch is in flight', (
+    tester,
+  ) async {
+    final gateway = ShopGateway()..purchaseCompleter = Completer<void>();
+    final controller = shopController(gateway: gateway);
+    await controller.start();
+    await tester.pumpWidget(
+      MaterialApp(home: PremiumShopScreen(controller: controller)),
+    );
+    final button = find.byKey(const Key('premium-buy-royal_jade_small'));
+    await tester.tap(button);
+    await tester.pump();
+    expect(tester.widget<FilledButton>(button).onPressed, isNull);
+    gateway.purchaseCompleter!.complete();
+    await tester.pump();
     controller.dispose();
   });
 
@@ -122,6 +176,8 @@ PurchaseController shopController({
 class ShopGateway implements PurchaseGateway {
   final _updates = StreamController<PurchaseUpdate>.broadcast();
   final purchases = <PremiumProduct>[];
+  bool available = true;
+  Completer<void>? purchaseCompleter;
 
   void emit(PurchaseUpdate value) => _updates.add(value);
 
@@ -130,7 +186,7 @@ class ShopGateway implements PurchaseGateway {
   @override
   Future<void> complete(PurchaseUpdate purchase) async {}
   @override
-  Future<bool> isAvailable() async => true;
+  Future<bool> isAvailable() async => available;
   @override
   Future<List<PremiumProduct>> loadProducts(Set<String> productIds) async =>
       const [
@@ -154,7 +210,11 @@ class ShopGateway implements PurchaseGateway {
         ),
       ];
   @override
-  Future<void> purchase(PremiumProduct product) async => purchases.add(product);
+  Future<void> purchase(PremiumProduct product) async {
+    purchases.add(product);
+    if (purchaseCompleter case final completer?) await completer.future;
+  }
+
   @override
   Future<void> recoverUnfinishedPurchases() async {}
 }
@@ -168,11 +228,14 @@ class ShopRepository implements EconomyRepository {
   }
 
   @override
-  Future<void> verifyPurchase({
+  Future<PurchaseVerificationResult> verifyPurchase({
     required String productId,
     required String purchaseToken,
     required String packageName,
-  }) => Completer<void>().future;
+  }) async {
+    await Completer<void>().future;
+    return const PurchaseVerificationResult(accepted: true, duplicate: false);
+  }
 }
 
 class ShopRetryStore implements PurchaseRetryStore {

@@ -35,12 +35,13 @@ void main() {
     required FakeEconomyRepository repository,
     required FakeRetryStore retryStore,
     AccountSession session = const AccountSession.signedOut(),
+    AccountSession Function()? sessionProvider,
     Duration verificationTimeout = const Duration(seconds: 2),
   }) => PurchaseController(
     gateway: gateway,
     repository: repository,
     retryStore: retryStore,
-    sessionProvider: () => session,
+    sessionProvider: sessionProvider ?? () => session,
     packageName: 'com.pixel.survivor.pixel_survivor',
     verificationTimeout: verificationTimeout,
   );
@@ -214,6 +215,7 @@ void main() {
 
         expect(retryStore.entries, {
           const PendingPurchase(
+            ownerUserId: 'u1',
             productId: PremiumProduct.smallId,
             purchaseToken: 'retry-token',
           ),
@@ -233,6 +235,7 @@ void main() {
       final retryStore = FakeRetryStore()
         ..entries.add(
           const PendingPurchase(
+            ownerUserId: 'u1',
             productId: PremiumProduct.mediumId,
             purchaseToken: 'stored-token',
           ),
@@ -281,6 +284,276 @@ void main() {
       controller.dispose();
     },
   );
+
+  test(
+    'durable purchases are never submitted under a different user',
+    () async {
+      final repository = FakeEconomyRepository();
+      final retryStore = FakeRetryStore()
+        ..entries.add(
+          const PendingPurchase(
+            ownerUserId: 'owner-a',
+            productId: PremiumProduct.smallId,
+            purchaseToken: 'owner-a-token',
+          ),
+        );
+      final controller = buildController(
+        gateway: FakePurchaseGateway(products: products),
+        repository: repository,
+        retryStore: retryStore,
+        session: AccountSession.google(
+          userId: 'owner-b',
+          email: 'b@example.com',
+        ),
+      );
+      await controller.start();
+      expect(repository.verifiedTokens, isEmpty);
+      expect(retryStore.entries.single.ownerUserId, 'owner-a');
+      controller.dispose();
+    },
+  );
+
+  test(
+    'account switch during verification leaves Play and retry durable',
+    () async {
+      var session = AccountSession.google(
+        userId: 'owner-a',
+        email: 'a@example.com',
+      );
+      final verification = Completer<void>();
+      final repository = FakeEconomyRepository(
+        verificationCompleter: verification,
+      );
+      final gateway = FakePurchaseGateway(products: products);
+      final retryStore = FakeRetryStore();
+      final controller = buildController(
+        gateway: gateway,
+        repository: repository,
+        retryStore: retryStore,
+        sessionProvider: () => session,
+      );
+      await controller.start();
+      gateway.emit(
+        PurchaseUpdate.purchased(
+          productId: PremiumProduct.smallId,
+          purchaseToken: 'switch-token',
+        ),
+      );
+      await flushEvents();
+      session = AccountSession.google(
+        userId: 'owner-b',
+        email: 'b@example.com',
+      );
+      verification.complete();
+      await flushEvents();
+      expect(gateway.completed, isEmpty);
+      expect(retryStore.entries.single.ownerUserId, 'owner-a');
+      controller.dispose();
+    },
+  );
+
+  test('restored callback cannot reassign an existing token owner', () async {
+    final repository = FakeEconomyRepository();
+    final gateway = FakePurchaseGateway(products: products);
+    final retryStore = FakeRetryStore()
+      ..entries.add(
+        const PendingPurchase(
+          ownerUserId: 'owner-a',
+          productId: PremiumProduct.smallId,
+          purchaseToken: 'shared-token',
+        ),
+      );
+    final controller = buildController(
+      gateway: gateway,
+      repository: repository,
+      retryStore: retryStore,
+      session: AccountSession.google(userId: 'owner-b', email: 'b@example.com'),
+    );
+    await controller.start();
+    gateway.emit(
+      PurchaseUpdate.purchased(
+        productId: PremiumProduct.smallId,
+        purchaseToken: 'shared-token',
+      ),
+    );
+    await flushEvents();
+    expect(repository.verifiedTokens, isEmpty);
+    expect(retryStore.entries.single.ownerUserId, 'owner-a');
+    controller.dispose();
+  });
+
+  test('persistence failure prevents server verification', () async {
+    final repository = FakeEconomyRepository();
+    final gateway = FakePurchaseGateway(products: products);
+    final controller = buildController(
+      gateway: gateway,
+      repository: repository,
+      retryStore: FakeRetryStore(putError: StateError('disk full')),
+      session: AccountSession.google(userId: 'u1', email: 'a@example.com'),
+    );
+    await controller.start();
+    gateway.emit(
+      PurchaseUpdate.purchased(
+        productId: PremiumProduct.smallId,
+        purchaseToken: 'not-durable',
+      ),
+    );
+    await flushEvents();
+    expect(repository.verifiedTokens, isEmpty);
+    controller.dispose();
+  });
+
+  test(
+    'wallet refresh failure leaves Play unfinished until resume succeeds',
+    () async {
+      final repository = FakeEconomyRepository();
+      final gateway = FakePurchaseGateway(products: products);
+      final retryStore = FakeRetryStore();
+      final controller = buildController(
+        gateway: gateway,
+        repository: repository,
+        retryStore: retryStore,
+        session: AccountSession.google(userId: 'u1', email: 'a@example.com'),
+      );
+      await controller.start();
+      repository.walletError = StateError('wallet offline');
+      gateway.emit(
+        PurchaseUpdate.purchased(
+          productId: PremiumProduct.smallId,
+          purchaseToken: 'wallet-token',
+        ),
+      );
+      await flushEvents();
+      expect(gateway.completed, isEmpty);
+      expect(retryStore.entries, isNotEmpty);
+      repository.walletError = null;
+      await controller.onResume();
+      expect(gateway.completed.single.purchaseToken, 'wallet-token');
+      expect(retryStore.entries, isEmpty);
+      controller.dispose();
+    },
+  );
+
+  test('stream errors and malformed products are recoverable', () async {
+    final gateway = FakePurchaseGateway(products: products);
+    final repository = FakeEconomyRepository();
+    final controller = buildController(
+      gateway: gateway,
+      repository: repository,
+      retryStore: FakeRetryStore(),
+      session: AccountSession.google(userId: 'u1', email: 'a@example.com'),
+    );
+    await controller.start();
+    gateway.emitError(StateError('billing stream down'));
+    gateway.emit(
+      PurchaseUpdate.purchased(productId: 'unknown', purchaseToken: 'bad'),
+    );
+    gateway.emit(PurchaseUpdate.pending(productId: PremiumProduct.smallId));
+    await flushEvents();
+    expect(controller.state.message, contains('billing stream down'));
+    expect(repository.verifiedTokens, isEmpty);
+    expect(controller.state.pendingProductCounts[PremiumProduct.smallId], 1);
+    controller.dispose();
+  });
+
+  test('dispose during verification prevents completion', () async {
+    final verification = Completer<void>();
+    final gateway = FakePurchaseGateway(products: products);
+    final controller = buildController(
+      gateway: gateway,
+      repository: FakeEconomyRepository(verificationCompleter: verification),
+      retryStore: FakeRetryStore(),
+      session: AccountSession.google(userId: 'u1', email: 'a@example.com'),
+    );
+    await controller.start();
+    gateway.emit(
+      PurchaseUpdate.purchased(
+        productId: PremiumProduct.smallId,
+        purchaseToken: 'dispose-token',
+      ),
+    );
+    await flushEvents();
+    controller.dispose();
+    verification.complete();
+    await flushEvents();
+    expect(gateway.completed, isEmpty);
+  });
+
+  test(
+    'failed recovery retries initialization without resubscribing',
+    () async {
+      final gateway = FakePurchaseGateway(
+        products: products,
+        recoveryErrors: [StateError('restore failed')],
+      );
+      final controller = buildController(
+        gateway: gateway,
+        repository: FakeEconomyRepository(),
+        retryStore: FakeRetryStore(),
+      );
+      await controller.onStartup();
+      expect(controller.state.storeStatus, PurchaseStoreStatus.error);
+      await controller.onStartup();
+      expect(controller.state.storeStatus, PurchaseStoreStatus.ready);
+      expect(gateway.updateListenerCount, 1);
+      controller.dispose();
+    },
+  );
+
+  test('lifecycle API performs startup and resume recovery', () async {
+    final gateway = FakePurchaseGateway(products: products);
+    final controller = buildController(
+      gateway: gateway,
+      repository: FakeEconomyRepository(),
+      retryStore: FakeRetryStore(),
+    );
+    await controller.onStartup();
+    await controller.onResume();
+    expect(gateway.recoveryCount, 2);
+    controller.dispose();
+  });
+
+  test(
+    'resume refreshes session and wallet after guest links Google',
+    () async {
+      var session = AccountSession.anonymous(userId: 'guest');
+      final gateway = FakePurchaseGateway(products: products);
+      final controller = buildController(
+        gateway: gateway,
+        repository: FakeEconomyRepository(),
+        retryStore: FakeRetryStore(),
+        sessionProvider: () => session,
+      );
+      await controller.onStartup();
+      expect(controller.state.accountLinkRequired, isTrue);
+      session = AccountSession.google(userId: 'u1', email: 'a@example.com');
+
+      await controller.onResume();
+
+      expect(controller.state.accountLinkRequired, isFalse);
+      expect(controller.state.walletStale, isFalse);
+      controller.dispose();
+    },
+  );
+
+  test('multiple pending transactions for one product are counted', () async {
+    final gateway = FakePurchaseGateway(products: products);
+    final controller = buildController(
+      gateway: gateway,
+      repository: FakeEconomyRepository(),
+      retryStore: FakeRetryStore(),
+    );
+    await controller.start();
+    gateway
+      ..emit(PurchaseUpdate.pending(productId: PremiumProduct.smallId))
+      ..emit(PurchaseUpdate.pending(productId: PremiumProduct.smallId));
+    await flushEvents();
+    expect(controller.state.pendingProductCounts[PremiumProduct.smallId], 2);
+    gateway.emit(PurchaseUpdate.canceled(productId: PremiumProduct.smallId));
+    await flushEvents();
+    expect(controller.state.pendingProductCounts[PremiumProduct.smallId], 1);
+    controller.dispose();
+  });
 }
 
 Future<void> flushEvents() async {
@@ -295,12 +568,14 @@ class FakePurchaseGateway implements PurchaseGateway {
     this.products = const [],
     this.loadError,
     this.events,
+    this.recoveryErrors = const [],
   });
 
   final bool available;
   final List<PremiumProduct> products;
   final Object? loadError;
   final List<String>? events;
+  final List<Object> recoveryErrors;
   final _updates = StreamController<PurchaseUpdate>.broadcast();
   int updateListenerCount = 0;
   int loadProductsCount = 0;
@@ -310,6 +585,7 @@ class FakePurchaseGateway implements PurchaseGateway {
   final completed = <PurchaseUpdate>[];
 
   void emit(PurchaseUpdate update) => _updates.add(update);
+  void emitError(Object error) => _updates.addError(error);
 
   @override
   Stream<PurchaseUpdate> get updates => Stream.multi((listener) {
@@ -343,7 +619,10 @@ class FakePurchaseGateway implements PurchaseGateway {
   Future<void> purchase(PremiumProduct product) async => purchases.add(product);
 
   @override
-  Future<void> recoverUnfinishedPurchases() async => recoveryCount += 1;
+  Future<void> recoverUnfinishedPurchases() async {
+    final attempt = recoveryCount++;
+    if (attempt < recoveryErrors.length) throw recoveryErrors[attempt];
+  }
 }
 
 class FakeEconomyRepository implements EconomyRepository {
@@ -358,15 +637,17 @@ class FakeEconomyRepository implements EconomyRepository {
   final PurchaseRejectedException? rejection;
   final verifiedTokens = <String>[];
   var wallet = PremiumWallet(balance: 100, debt: 0, version: 1);
+  Object? walletError;
 
   @override
   Future<PremiumWallet> fetchWallet() async {
     events?.add('repository.wallet');
+    if (walletError case final error?) throw error;
     return wallet;
   }
 
   @override
-  Future<void> verifyPurchase({
+  Future<PurchaseVerificationResult> verifyPurchase({
     required String productId,
     required String purchaseToken,
     required String packageName,
@@ -375,12 +656,14 @@ class FakeEconomyRepository implements EconomyRepository {
     verifiedTokens.add(purchaseToken);
     if (rejection case final error?) throw error;
     if (verificationCompleter case final completer?) await completer.future;
+    return const PurchaseVerificationResult(accepted: true, duplicate: false);
   }
 }
 
 class FakeRetryStore implements PurchaseRetryStore {
-  FakeRetryStore({this.events});
+  FakeRetryStore({this.events, this.putError});
   final List<String>? events;
+  final Object? putError;
   final entries = <PendingPurchase>{};
 
   @override
@@ -388,6 +671,7 @@ class FakeRetryStore implements PurchaseRetryStore {
 
   @override
   Future<void> put(PendingPurchase purchase) async {
+    if (putError case final error?) throw error;
     events?.add('retry.put:${purchase.purchaseToken}');
     entries.add(purchase);
   }

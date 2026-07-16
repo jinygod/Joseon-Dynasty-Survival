@@ -21,8 +21,10 @@ class PurchaseState {
     this.products = const [],
     this.wallet,
     this.walletStale = true,
-    this.pendingProductIds = const {},
+    this.pendingProductCounts = const {},
+    this.inFlightProductIds = const {},
     this.retryPending = false,
+    this.accountLinkRequired = false,
     this.message,
   });
 
@@ -30,26 +32,37 @@ class PurchaseState {
   final List<PremiumProduct> products;
   final PremiumWallet? wallet;
   final bool walletStale;
-  final Set<String> pendingProductIds;
+  final Map<String, int> pendingProductCounts;
+  final Set<String> inFlightProductIds;
   final bool retryPending;
+  final bool accountLinkRequired;
   final String? message;
+
+  Set<String> get pendingProductIds => pendingProductCounts.entries
+      .where((entry) => entry.value > 0)
+      .map((entry) => entry.key)
+      .toSet();
 
   PurchaseState copyWith({
     PurchaseStoreStatus? storeStatus,
     List<PremiumProduct>? products,
     PremiumWallet? wallet,
     bool? walletStale,
-    Set<String>? pendingProductIds,
+    Map<String, int>? pendingProductCounts,
+    Set<String>? inFlightProductIds,
     bool? retryPending,
+    bool? accountLinkRequired,
     String? message,
   }) => PurchaseState(
     storeStatus: storeStatus ?? this.storeStatus,
     products: products ?? this.products,
     wallet: wallet ?? this.wallet,
     walletStale: walletStale ?? this.walletStale,
-    pendingProductIds: pendingProductIds ?? this.pendingProductIds,
+    pendingProductCounts: pendingProductCounts ?? this.pendingProductCounts,
+    inFlightProductIds: inFlightProductIds ?? this.inFlightProductIds,
     retryPending: retryPending ?? this.retryPending,
-    message: message,
+    accountLinkRequired: accountLinkRequired ?? this.accountLinkRequired,
+    message: message ?? this.message,
   );
 }
 
@@ -76,35 +89,56 @@ class PurchaseController extends ChangeNotifier {
   StreamSubscription<PurchaseUpdate>? _subscription;
   final _processingTokens = <String>{};
   final _completedTokens = <String>{};
-  bool _started = false;
+  final _launchOwners = <String, String>{};
+  bool _initialized = false;
+  bool _disposed = false;
   PurchaseState _state = const PurchaseState();
 
   PurchaseState get state => _state;
 
+  Future<void> onStartup() => start();
+  Future<void> onResume() => resume();
+
   Future<void> start() async {
-    if (_started) return;
-    _started = true;
-    _subscription = _gateway.updates.listen(_handleUpdate);
-    await _gateway.recoverUnfinishedPurchases();
-    if (_sessionProvider().isPermanent) {
-      await _refreshWallet();
-      await _retryDurablePurchases();
-    }
+    if (_disposed || _initialized) return;
+    _subscription ??= _gateway.updates.listen(
+      _handleUpdate,
+      onError: _handleStreamError,
+    );
+    _setState(_state.copyWith(storeStatus: PurchaseStoreStatus.loading));
     try {
+      await _gateway.recoverUnfinishedPurchases();
+      if (_disposed) return;
+      final session = _sessionProvider();
+      _setState(_state.copyWith(accountLinkRequired: !session.isPermanent));
+      if (session.isPermanent) {
+        await _refreshWallet(session.userId!, strict: false);
+        if (_disposed) return;
+        await _retryDurablePurchases();
+      }
+      if (_disposed) return;
       if (!await _gateway.isAvailable()) {
         _setState(
-          _state.copyWith(storeStatus: PurchaseStoreStatus.unavailable),
+          _state.copyWith(
+            storeStatus: PurchaseStoreStatus.unavailable,
+            message: '스토어를 사용할 수 없습니다',
+          ),
         );
+        _initialized = true;
         return;
       }
+      if (_disposed) return;
       final products = await _gateway.loadProducts(PremiumProduct.ids);
+      if (_disposed) return;
       _setState(
         _state.copyWith(
           storeStatus: PurchaseStoreStatus.ready,
           products: List.unmodifiable(products),
         ),
       );
+      _initialized = true;
     } catch (error) {
+      _initialized = false;
       _setState(
         _state.copyWith(
           storeStatus: PurchaseStoreStatus.error,
@@ -115,82 +149,141 @@ class PurchaseController extends ChangeNotifier {
   }
 
   Future<void> resume() async {
-    await _gateway.recoverUnfinishedPurchases();
-    if (_sessionProvider().isPermanent) {
-      await _retryDurablePurchases();
+    if (_disposed) return;
+    try {
+      await _gateway.recoverUnfinishedPurchases();
+      if (_disposed) return;
+      final session = _sessionProvider();
+      _setState(_state.copyWith(accountLinkRequired: !session.isPermanent));
+      if (session.isPermanent) {
+        await _refreshWallet(session.userId!, strict: false);
+        if (_disposed) return;
+        await _retryDurablePurchases();
+      }
+    } catch (error) {
+      _setState(_state.copyWith(message: error.toString()));
     }
   }
 
   Future<PurchaseStartResult> purchase(PremiumProduct product) async {
-    if (!_sessionProvider().isPermanent) {
-      return PurchaseStartResult.accountRequired;
-    }
-    if (_state.storeStatus != PurchaseStoreStatus.ready) {
+    if (_disposed) return PurchaseStartResult.error;
+    final session = _sessionProvider();
+    if (!session.isPermanent) return PurchaseStartResult.accountRequired;
+    if (_state.storeStatus != PurchaseStoreStatus.ready ||
+        _state.walletStale ||
+        _state.pendingProductIds.contains(product.id) ||
+        _state.inFlightProductIds.contains(product.id)) {
+      _setState(_state.copyWith(message: '현재 구매를 시작할 수 없습니다'));
       return PurchaseStartResult.unavailable;
     }
+    final userId = session.userId!;
+    _launchOwners[product.id] = userId;
+    _setInFlight(product.id, true);
     try {
       await _gateway.purchase(product);
-      return PurchaseStartResult.started;
+      return _disposed
+          ? PurchaseStartResult.error
+          : PurchaseStartResult.started;
     } catch (error) {
+      _launchOwners.remove(product.id);
       _setState(_state.copyWith(message: error.toString()));
       return PurchaseStartResult.error;
+    } finally {
+      _setInFlight(product.id, false);
     }
   }
 
   void _handleUpdate(PurchaseUpdate update) {
+    if (_disposed || !PremiumProduct.ids.contains(update.productId)) return;
     switch (update.status) {
       case PurchaseStatus.pending:
-        _setPending(update.productId, true);
+        _changePending(update.productId, 1);
       case PurchaseStatus.canceled:
-        _setPending(update.productId, false);
       case PurchaseStatus.error:
-        _setPending(update.productId, false);
-        _setState(_state.copyWith(message: update.errorMessage));
+        _changePending(update.productId, -1);
+        _launchOwners.remove(update.productId);
+        if (update.status == PurchaseStatus.error) {
+          _setState(_state.copyWith(message: update.errorMessage));
+        }
       case PurchaseStatus.purchased:
-        _setPending(update.productId, false);
-        unawaited(_processPurchased(update));
+        _changePending(update.productId, -1);
+        final owner =
+            _launchOwners.remove(update.productId) ?? _currentPermanentUserId();
+        if (owner != null) {
+          unawaited(_processPurchased(update, ownerUserId: owner));
+        }
     }
+  }
+
+  void _handleStreamError(Object error, StackTrace stackTrace) {
+    _setState(_state.copyWith(message: error.toString()));
   }
 
   Future<void> _retryDurablePurchases() async {
     final entries = await _retryStore.load();
+    if (_disposed) return;
     _setState(_state.copyWith(retryPending: entries.isNotEmpty));
     for (final entry in entries) {
+      if (!_isCurrentOwner(entry.ownerUserId)) continue;
       await _processPurchased(
         PurchaseUpdate.purchased(
           productId: entry.productId,
           purchaseToken: entry.purchaseToken,
         ),
+        ownerUserId: entry.ownerUserId,
         alreadyDurable: true,
       );
+      if (_disposed) return;
     }
   }
 
   Future<void> _processPurchased(
     PurchaseUpdate update, {
+    required String ownerUserId,
     bool alreadyDurable = false,
   }) async {
     final token = update.purchaseToken!;
-    if (_completedTokens.contains(token) || !_processingTokens.add(token)) {
+    if (_disposed ||
+        _completedTokens.contains(token) ||
+        !_processingTokens.add(token)) {
       return;
     }
     try {
       if (!alreadyDurable) {
         await _retryStore.put(
-          PendingPurchase(productId: update.productId, purchaseToken: token),
+          PendingPurchase(
+            ownerUserId: ownerUserId,
+            productId: update.productId,
+            purchaseToken: token,
+          ),
         );
+        final durableEntries = await _retryStore.load();
+        if (_disposed ||
+            !durableEntries.any(
+              (entry) =>
+                  entry.purchaseToken == token &&
+                  entry.ownerUserId == ownerUserId &&
+                  entry.productId == update.productId,
+            )) {
+          return;
+        }
       }
+      if (!_isCurrentOwner(ownerUserId)) return;
       _setState(_state.copyWith(retryPending: true));
-      await _repository
+      final result = await _repository
           .verifyPurchase(
             productId: update.productId,
             purchaseToken: token,
             packageName: _packageName,
           )
           .timeout(verificationTimeout);
-      await _refreshWallet();
+      if (!result.accepted || !_isCurrentOwner(ownerUserId)) return;
+      await _refreshWallet(ownerUserId, strict: true);
+      if (!_isCurrentOwner(ownerUserId)) return;
       await _gateway.complete(update);
+      if (_disposed) return;
       await _retryStore.remove(token);
+      if (_disposed) return;
       _completedTokens.add(token);
       final remaining = await _retryStore.load();
       _setState(_state.copyWith(retryPending: remaining.isNotEmpty));
@@ -201,28 +294,56 @@ class PurchaseController extends ChangeNotifier {
     }
   }
 
-  Future<void> _refreshWallet() async {
+  Future<void> _refreshWallet(
+    String ownerUserId, {
+    required bool strict,
+  }) async {
+    if (!_isCurrentOwner(ownerUserId)) return;
     try {
       final wallet = await _repository.fetchWallet();
+      if (!_isCurrentOwner(ownerUserId)) return;
       _setState(_state.copyWith(wallet: wallet, walletStale: false));
-    } catch (_) {
-      _setState(_state.copyWith(walletStale: true));
+    } catch (error) {
+      _setState(_state.copyWith(walletStale: true, message: error.toString()));
+      if (strict) rethrow;
     }
   }
 
-  void _setPending(String productId, bool pending) {
-    final values = {..._state.pendingProductIds};
-    pending ? values.add(productId) : values.remove(productId);
-    _setState(_state.copyWith(pendingProductIds: Set.unmodifiable(values)));
+  String? _currentPermanentUserId() {
+    final session = _sessionProvider();
+    return session.isPermanent ? session.userId : null;
+  }
+
+  bool _isCurrentOwner(String ownerUserId) =>
+      !_disposed && _currentPermanentUserId() == ownerUserId;
+
+  void _changePending(String productId, int delta) {
+    final counts = {..._state.pendingProductCounts};
+    final next = (counts[productId] ?? 0) + delta;
+    if (next <= 0) {
+      counts.remove(productId);
+    } else {
+      counts[productId] = next;
+    }
+    _setState(_state.copyWith(pendingProductCounts: Map.unmodifiable(counts)));
+  }
+
+  void _setInFlight(String productId, bool inFlight) {
+    final values = {..._state.inFlightProductIds};
+    inFlight ? values.add(productId) : values.remove(productId);
+    _setState(_state.copyWith(inFlightProductIds: Set.unmodifiable(values)));
   }
 
   void _setState(PurchaseState value) {
+    if (_disposed) return;
     _state = value;
     notifyListeners();
   }
 
   @override
   void dispose() {
+    if (_disposed) return;
+    _disposed = true;
     unawaited(_subscription?.cancel());
     super.dispose();
   }
