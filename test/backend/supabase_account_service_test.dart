@@ -4,8 +4,41 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/backend/account/account_service.dart';
 import 'package:pixel_survivor/backend/account/account_session.dart';
 import 'package:pixel_survivor/backend/account/supabase_account_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 void main() {
+  test('delete API sends exact confirmation contract before signout', () async {
+    String? functionName;
+    Object? requestBody;
+    var signOutCalls = 0;
+    final api = SupabaseAccountApi(
+      invoke: (name, {body}) async {
+        functionName = name;
+        requestBody = body;
+        return const FunctionResponse(status: 204);
+      },
+      signOut: () async => signOutCalls++,
+    );
+
+    await api.deleteAccount();
+
+    expect(functionName, 'delete-account');
+    expect(requestBody, {'confirm': 'DELETE'});
+    expect(signOutCalls, 1);
+  });
+
+  test('delete API rejects failure status without signing out', () async {
+    var signOutCalls = 0;
+    final api = SupabaseAccountApi(
+      invoke: (_, {body}) async => const FunctionResponse(status: 400),
+      signOut: () async => signOutCalls++,
+    );
+
+    await expectLater(api.deleteAccount(), throwsStateError);
+
+    expect(signOutCalls, 0);
+  });
+
   test('permanence requires an actual Google identity provider', () {
     final gateway = _FakeGateway()
       ..user = const AccountAuthUser(

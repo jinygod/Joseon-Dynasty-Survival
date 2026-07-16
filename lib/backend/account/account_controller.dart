@@ -14,6 +14,7 @@ class AccountController extends ChangeNotifier {
     required this.service,
     this.clearLocalState,
     this.clearPaidCache,
+    this.onAuthStateObserved,
     this.onPermanentAccount,
   }) : availability = config.enabled
            ? AccountAvailability.ready
@@ -23,6 +24,7 @@ class AccountController extends ChangeNotifier {
   final AccountService service;
   final Future<void> Function()? clearLocalState;
   final Future<void> Function()? clearPaidCache;
+  final void Function(AccountSession session)? onAuthStateObserved;
   Future<void> Function()? onPermanentAccount;
 
   AccountSession session = const AccountSession.signedOut();
@@ -53,7 +55,7 @@ class AccountController extends ChangeNotifier {
       return;
     }
     _subscription ??= service.changes.listen((next) {
-      if (!_disposed) unawaited(_handleAuthChange(next));
+      if (!_disposed) _observeAuthChange(next);
     });
     busy = true;
     errorMessage = null;
@@ -242,6 +244,18 @@ class AccountController extends ChangeNotifier {
         _notify();
       }
     }
+  }
+
+  void _observeAuthChange(AccountSession next) {
+    if (next != session) {
+      try {
+        onAuthStateObserved?.call(next);
+      } on Object {
+        errorMessage = '계정 변경 작업을 취소하지 못했습니다.';
+        _notify();
+      }
+    }
+    unawaited(_handleAuthChange(next));
   }
 
   bool _requiresCleanup(AccountSession current, AccountSession next) {

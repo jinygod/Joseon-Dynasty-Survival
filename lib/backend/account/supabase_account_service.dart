@@ -38,6 +38,27 @@ abstract interface class GoogleIdentityProvider {
   Future<void> signOut();
 }
 
+typedef AccountFunctionInvoker =
+    Future<FunctionResponse> Function(String functionName, {Object? body});
+
+class SupabaseAccountApi {
+  const SupabaseAccountApi({required this.invoke, required this.signOut});
+
+  final AccountFunctionInvoker invoke;
+  final Future<void> Function() signOut;
+
+  Future<void> deleteAccount() async {
+    final response = await invoke(
+      'delete-account',
+      body: const {'confirm': 'DELETE'},
+    );
+    if (response.status < 200 || response.status >= 300) {
+      throw StateError('Account deletion failed (${response.status})');
+    }
+    await signOut();
+  }
+}
+
 class SupabaseAccountService implements AccountService {
   SupabaseAccountService({
     AccountAuthGateway? authGateway,
@@ -137,9 +158,16 @@ class SupabaseAccountService implements AccountService {
 }
 
 class _SupabaseAccountAuthGateway implements AccountAuthGateway {
-  _SupabaseAccountAuthGateway(this._client);
+  _SupabaseAccountAuthGateway(SupabaseClient client)
+    : _client = client,
+      _accountApi = SupabaseAccountApi(
+        invoke: (functionName, {body}) =>
+            client.functions.invoke(functionName, body: body),
+        signOut: () => client.auth.signOut(scope: SignOutScope.local),
+      );
 
   final SupabaseClient _client;
+  final SupabaseAccountApi _accountApi;
 
   @override
   Stream<AccountAuthUser?> get changes =>
@@ -182,13 +210,7 @@ class _SupabaseAccountAuthGateway implements AccountAuthGateway {
   Future<void> signOut() => _client.auth.signOut(scope: SignOutScope.local);
 
   @override
-  Future<void> deleteAccount() async {
-    final response = await _client.functions.invoke('delete-account');
-    if (response.status < 200 || response.status >= 300) {
-      throw StateError('Account deletion failed (${response.status})');
-    }
-    await _client.auth.signOut(scope: SignOutScope.local);
-  }
+  Future<void> deleteAccount() => _accountApi.deleteAccount();
 
   static bool _identityAlreadyExists(AuthException error) {
     final code = error.code?.toLowerCase() ?? '';

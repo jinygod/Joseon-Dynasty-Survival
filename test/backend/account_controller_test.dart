@@ -5,6 +5,8 @@ import 'package:pixel_survivor/backend/account/account_controller.dart';
 import 'package:pixel_survivor/backend/account/account_service.dart';
 import 'package:pixel_survivor/backend/account/account_session.dart';
 import 'package:pixel_survivor/backend/backend_config.dart';
+import 'package:pixel_survivor/backend/progress/cloud_progress_repository.dart';
+import 'package:pixel_survivor/backend/progress/progress_sync_controller.dart';
 import 'package:pixel_survivor/game/systems/save_system.dart';
 
 void main() {
@@ -310,19 +312,27 @@ void main() {
     expect(zoneErrors, isEmpty);
   });
 
-  test('reentrant auth event is serialized after the active transition', () async {
+  test('reentrant auth event cancels stale B sync before C transition', () async {
     final accountA = AccountSession.google(userId: 'a', email: 'a@test');
     final accountB = AccountSession.google(userId: 'b', email: 'b@test');
     final accountC = AccountSession.google(userId: 'c', email: 'c@test');
     final service = _FakeAccountService(current: accountA);
     final synced = <String>[];
+    var syncGeneration = 0;
     late AccountController controller;
     controller = AccountController(
       config: enabled,
       service: service,
+      onAuthStateObserved: (_) => syncGeneration++,
       onPermanentAccount: () async {
-        synced.add(controller.session.userId!);
-        if (controller.session == accountB) service.emit(accountC);
+        final generation = syncGeneration;
+        if (controller.session == accountB) {
+          service.emit(accountC);
+          await Future<void>.delayed(Duration.zero);
+        }
+        if (generation == syncGeneration) {
+          synced.add(controller.session.userId!);
+        }
       },
     );
     await controller.initialize();
@@ -332,7 +342,42 @@ void main() {
     await flushAccountEvents();
 
     expect(controller.session, accountC);
-    expect(synced, ['b', 'c']);
+    expect(synced, ['c']);
+  });
+
+  test('auth C observed during B fetch prevents every B cloud write', () async {
+    final accountA = AccountSession.google(userId: 'a', email: 'a@test');
+    final accountB = AccountSession.google(userId: 'b', email: 'b@test');
+    final accountC = AccountSession.google(userId: 'c', email: 'c@test');
+    final service = _FakeAccountService(current: accountA);
+    final store = _AccountMemoryStore(SaveState.defaults());
+    late AccountController controller;
+    late ProgressSyncController progress;
+    final repository = _IdentityTrackingRepository(
+      readAccount: () => controller.syncSession,
+    );
+    controller = AccountController(
+      config: enabled,
+      service: service,
+      onAuthStateObserved: (_) => unawaited(progress.invalidateSession()),
+    );
+    await controller.initialize();
+    progress = ProgressSyncController(
+      readAccount: () => controller.syncSession,
+      store: store,
+      repository: repository,
+    );
+    controller.onPermanentAccount = progress.syncNow;
+
+    service.emit(accountB);
+    await repository.bFetchStarted.future;
+    service.emit(accountC);
+    repository.releaseBFetch.complete(null);
+    await _waitForAccount(() => repository.createdBy.contains('c'));
+
+    expect(repository.createdBy, ['c']);
+    expect(repository.updatedBy, isEmpty);
+    expect(controller.session, accountC);
   });
 
   test('sign out and deletion clear paid cache', () async {
@@ -579,5 +624,60 @@ class _FakeAccountService implements AccountService {
 Future<void> flushAccountEvents() async {
   for (var i = 0; i < 8; i++) {
     await Future<void>.delayed(Duration.zero);
+  }
+}
+
+Future<void> _waitForAccount(bool Function() condition) async {
+  for (var i = 0; i < 100 && !condition(); i++) {
+    await Future<void>.delayed(Duration.zero);
+  }
+  expect(condition(), isTrue);
+}
+
+class _AccountMemoryStore implements SaveStore {
+  _AccountMemoryStore(this.state);
+
+  SaveState state;
+
+  @override
+  Future<SaveState> load() async => state;
+
+  @override
+  Future<void> save(SaveState state) async => this.state = state;
+}
+
+class _IdentityTrackingRepository implements CloudProgressRepository {
+  _IdentityTrackingRepository({required this.readAccount});
+
+  final AccountSession Function() readAccount;
+  final bFetchStarted = Completer<void>();
+  final releaseBFetch = Completer<CloudProgressSnapshot?>();
+  final createdBy = <String>[];
+  final updatedBy = <String>[];
+
+  @override
+  Future<CloudProgressSnapshot?> fetch() async {
+    if (readAccount().userId == 'b') {
+      bFetchStarted.complete();
+      return releaseBFetch.future;
+    }
+    return null;
+  }
+
+  @override
+  Future<CloudProgressSnapshot> create(SaveState save) async {
+    createdBy.add(readAccount().userId!);
+    return CloudProgressSnapshot(revision: 1, save: save);
+  }
+
+  @override
+  Future<CloudSyncResult> update({
+    required SaveState save,
+    required int expectedRevision,
+  }) async {
+    updatedBy.add(readAccount().userId!);
+    return CloudSyncResult.updated(
+      CloudProgressSnapshot(revision: expectedRevision + 1, save: save),
+    );
   }
 }

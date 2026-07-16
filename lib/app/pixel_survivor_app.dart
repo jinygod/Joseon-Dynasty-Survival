@@ -70,6 +70,10 @@ class _PixelSurvivorAppState extends State<PixelSurvivorApp> {
           await _lobbyController.clearAccountLocalState();
         },
         clearPaidCache: widget.clearPaidCache,
+        onAuthStateObserved: (_) {
+          final sync = _progressSyncController;
+          if (sync != null) unawaited(sync.invalidateSession());
+        },
       );
       _progressSyncController = ProgressSyncController(
         readAccount: () => _accountController!.syncSession,
