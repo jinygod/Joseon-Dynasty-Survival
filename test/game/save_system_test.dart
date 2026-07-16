@@ -161,6 +161,22 @@ void main() {
     expect(save.unlockedAugmentIds, containsAll(startingAugmentIds));
   });
 
+  test(
+    'fromJson adds newly starting augments without unlocking locked ones',
+    () {
+      final restored = SaveState.fromJson({
+        'schemaVersion': SaveState.currentSchemaVersion,
+        'unlockedAugmentIds': [martialTraining],
+      });
+
+      expect(
+        restored.unlockedAugmentIds,
+        containsAll([ironArmorTraining, scholarInsight, bloodOath, ghostStep]),
+      );
+      expect(restored.unlockedAugmentIds, isNot(contains(lastStand)));
+    },
+  );
+
   test('toJson and fromJson preserve core save fields', () {
     final original = SaveState.defaults().copyWith(
       unlockedCharacterIds: {rookieConstable, exorcistDosa},

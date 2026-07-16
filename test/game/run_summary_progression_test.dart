@@ -143,7 +143,7 @@ void main() {
     const unlocks = ProgressionUnlocks(
       characterIds: [exorcistDosa],
       weaponIds: [talismanThrow],
-      augmentIds: [lastStand],
+      augmentIds: [lastStand, bloodOath],
     );
     var started = false;
     var openedMenu = false;
@@ -166,6 +166,7 @@ void main() {
     expect(find.text('퇴마 도사'), findsOneWidget);
     expect(find.text('부적 투척'), findsOneWidget);
     expect(find.text('최후의 저항'), findsOneWidget);
+    expect(find.text('피의 맹세'), findsOneWidget);
 
     await tester.tap(find.widgetWithText(FilledButton, '다시 시작'));
     await tester.tap(find.widgetWithText(OutlinedButton, '메인 메뉴'));
