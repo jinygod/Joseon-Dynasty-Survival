@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../game/systems/save_system.dart';
 import 'game_settings.dart';
 import 'game_settings_controller.dart';
+import 'credits_licenses_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({
@@ -106,6 +107,17 @@ class SettingsScreen extends StatelessWidget {
                     const Divider(),
                     const _SectionTitle('진행 데이터'),
                     const Text('화폐, 해금, 훈련, 기록을 처음 상태로 되돌립니다.'),
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      key: const Key('credits-licenses'),
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const CreditsLicensesScreen(),
+                        ),
+                      ),
+                      icon: const Icon(Icons.info_outline),
+                      label: const Text('크레딧 및 라이선스'),
+                    ),
                     const SizedBox(height: 12),
                     OutlinedButton.icon(
                       key: const Key('reset-progress'),

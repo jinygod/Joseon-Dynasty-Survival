@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../game/models/compendium_entry.dart';
 import '../game/systems/compendium_service.dart';
 import '../game/systems/save_system.dart';
+import 'accessible_status_badge.dart';
 
 typedef CompendiumViewedCallback = Future<void> Function(Set<String> keys);
 
@@ -101,6 +102,28 @@ class _CompendiumCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                AccessibleStatusBadge(
+                  icon: entry.isUnlocked ? Icons.lock_open : Icons.lock_outline,
+                  label: entry.isUnlocked ? '해금됨' : '잠김',
+                  semanticsLabel: entry.isUnlocked ? '해금된 항목' : '잠긴 항목',
+                  foregroundColor: entry.isUnlocked
+                      ? colorScheme.primary
+                      : colorScheme.onSurface,
+                ),
+                if (entry.isNew)
+                  AccessibleStatusBadge(
+                    icon: Icons.new_releases_outlined,
+                    label: '새 항목',
+                    foregroundColor: colorScheme.onTertiaryContainer,
+                    backgroundColor: colorScheme.tertiaryContainer,
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
             Row(
               children: [
                 Icon(
