@@ -93,11 +93,15 @@ void main() {
     );
 
     expect(
-      tester.widget<OutlinedButton>(find.byKey(const Key('sync-now'))).onPressed,
+      tester
+          .widget<OutlinedButton>(find.byKey(const Key('sync-now')))
+          .onPressed,
       isNull,
     );
     expect(
-      tester.widget<TextButton>(find.byKey(const Key('account-sign-out'))).onPressed,
+      tester
+          .widget<TextButton>(find.byKey(const Key('account-sign-out')))
+          .onPressed,
       isNull,
     );
     expect(find.byKey(const Key('retry-account-cleanup')), findsOneWidget);

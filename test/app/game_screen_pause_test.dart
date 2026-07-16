@@ -41,7 +41,9 @@ void main() {
     final backend = RecordingAudioBackend();
     final audio = GameAudioService(backend: backend);
     await tester.pumpWidget(
-      MaterialApp(home: GameScreen(game: _game(), audioService: audio)),
+      MaterialApp(
+        home: GameScreen(game: _game(), audioService: audio),
+      ),
     );
     await tester.pump();
 

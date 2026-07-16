@@ -15,7 +15,12 @@ void main() {
     expect(policy, contains('Open P1: BLOCK'));
     expect(policy, contains('Missing required evidence: BLOCK'));
     expect(policy, contains('Failed required evidence: BLOCK'));
-    for (final field in ['owner', 'target date', 'workaround', 'release owner']) {
+    for (final field in [
+      'owner',
+      'target date',
+      'workaround',
+      'release owner',
+    ]) {
       expect(policy.toLowerCase(), contains(field));
     }
     for (final p2Field in [

@@ -24,21 +24,15 @@ abstract final class AudioAssetCatalog {
     AudioCue.victoryMusic: AudioAssetDefinition(
       path: 'audio/music/victory.ogg',
     ),
-    AudioCue.defeatMusic: AudioAssetDefinition(
-      path: 'audio/music/defeat.ogg',
-    ),
+    AudioCue.defeatMusic: AudioAssetDefinition(path: 'audio/music/defeat.ogg'),
     AudioCue.hwandoAttack: AudioAssetDefinition(path: 'audio/sfx/hwando.ogg'),
     AudioCue.bowAttack: AudioAssetDefinition(path: 'audio/sfx/bow.ogg'),
     AudioCue.talismanAttack: AudioAssetDefinition(
       path: 'audio/sfx/talisman.ogg',
     ),
     AudioCue.bombAttack: AudioAssetDefinition(path: 'audio/sfx/bomb.ogg'),
-    AudioCue.playerHit: AudioAssetDefinition(
-      path: 'audio/sfx/player_hit.ogg',
-    ),
-    AudioCue.criticalHit: AudioAssetDefinition(
-      path: 'audio/sfx/critical.ogg',
-    ),
+    AudioCue.playerHit: AudioAssetDefinition(path: 'audio/sfx/player_hit.ogg'),
+    AudioCue.criticalHit: AudioAssetDefinition(path: 'audio/sfx/critical.ogg'),
     AudioCue.enemyDeath: AudioAssetDefinition(
       path: 'audio/sfx/enemy_death.ogg',
     ),

@@ -33,9 +33,8 @@ abstract interface class AudioPlayerPort {
   Future<void> dispose();
 }
 
-typedef AudioPlayerStarter = Future<AudioPlayerPort> Function(
-  PlayerStartRequest request,
-);
+typedef AudioPlayerStarter =
+    Future<AudioPlayerPort> Function(PlayerStartRequest request);
 
 class FlameAudioBackend implements AudioBackend {
   FlameAudioBackend({AudioPlayerStarter? startPlayer})
@@ -70,19 +69,15 @@ class FlameAudioBackend implements AudioBackend {
   }
 
   @override
-  Future<void> stopMusic() => _closeWhere(
-    (voice) => voice.channel == AudioChannel.music,
-  );
+  Future<void> stopMusic() =>
+      _closeWhere((voice) => voice.channel == AudioChannel.music);
 
   @override
-  Future<void> pauseAll() => Future.wait(
-    _voices.map((voice) => voice.pause()),
-  );
+  Future<void> pauseAll() => Future.wait(_voices.map((voice) => voice.pause()));
 
   @override
-  Future<void> resumeAll() => Future.wait(
-    _voices.map((voice) => voice.resume()),
-  );
+  Future<void> resumeAll() =>
+      Future.wait(_voices.map((voice) => voice.resume()));
 
   @override
   Future<void> dispose() async {

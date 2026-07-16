@@ -6,25 +6,28 @@ import 'package:pixel_survivor/game/audio/audio_playback_policy.dart';
 import 'package:pixel_survivor/game/audio/flame_audio_backend.dart';
 
 void main() {
-  test('forwards catalog path loop volume and pitch to the player starter', () async {
-    final starter = RecordingPlayerStarter();
-    final backend = FlameAudioBackend(startPlayer: starter.call);
+  test(
+    'forwards catalog path loop volume and pitch to the player starter',
+    () async {
+      final starter = RecordingPlayerStarter();
+      final backend = FlameAudioBackend(startPlayer: starter.call);
 
-    await backend.play(
-      const AudioPlaybackRequest(
-        cue: AudioCue.battleMusic,
-        channel: AudioChannel.music,
-        priority: AudioPriority.normal,
-        pitch: 1.02,
-        volume: 0.45,
-      ),
-    );
+      await backend.play(
+        const AudioPlaybackRequest(
+          cue: AudioCue.battleMusic,
+          channel: AudioChannel.music,
+          priority: AudioPriority.normal,
+          pitch: 1.02,
+          volume: 0.45,
+        ),
+      );
 
-    expect(starter.calls.single.path, 'music/battle.ogg');
-    expect(starter.calls.single.loop, isTrue);
-    expect(starter.calls.single.volume, 0.45);
-    expect(starter.calls.single.pitch, 1.02);
-  });
+      expect(starter.calls.single.path, 'music/battle.ogg');
+      expect(starter.calls.single.loop, isTrue);
+      expect(starter.calls.single.volume, 0.45);
+      expect(starter.calls.single.pitch, 1.02);
+    },
+  );
 
   test('stopMusic stops and disposes only active music', () async {
     final starter = RecordingPlayerStarter();
@@ -52,18 +55,21 @@ void main() {
     expect(starter.players.map((player) => player.resumeCount), [1, 1]);
   });
 
-  test('natural completion disposes the player and completes the handle', () async {
-    final starter = RecordingPlayerStarter();
-    final backend = FlameAudioBackend(startPlayer: starter.call);
-    final handle = await backend.play(
-      _request(AudioCue.uiConfirm, AudioChannel.ui),
-    );
+  test(
+    'natural completion disposes the player and completes the handle',
+    () async {
+      final starter = RecordingPlayerStarter();
+      final backend = FlameAudioBackend(startPlayer: starter.call);
+      final handle = await backend.play(
+        _request(AudioCue.uiConfirm, AudioChannel.ui),
+      );
 
-    starter.players.single.complete();
-    await handle.completed;
+      starter.players.single.complete();
+      await handle.completed;
 
-    expect(starter.players.single.disposeCount, 1);
-  });
+      expect(starter.players.single.disposeCount, 1);
+    },
+  );
 
   test('dispose is idempotent and closes every active player', () async {
     final starter = RecordingPlayerStarter();

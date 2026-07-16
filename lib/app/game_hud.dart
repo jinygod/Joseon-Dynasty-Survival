@@ -263,9 +263,7 @@ class BossHealthBar extends StatelessWidget {
             fontSize: 14 * uiScale,
             fontWeight: FontWeight.w800,
             letterSpacing: 0,
-            shadows: const [
-              Shadow(color: Color(0xff101820), blurRadius: 3),
-            ],
+            shadows: const [Shadow(color: Color(0xff101820), blurRadius: 3)],
           ),
         ),
         SizedBox(height: 4 * uiScale),

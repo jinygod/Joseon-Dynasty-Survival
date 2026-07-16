@@ -160,10 +160,7 @@ void main() {
     controller.dispose();
 
     await loading.timeout(const Duration(milliseconds: 100));
-    expect(
-      await reset.timeout(const Duration(milliseconds: 100)),
-      isFalse,
-    );
+    expect(await reset.timeout(const Duration(milliseconds: 100)), isFalse);
     expect(controller.state.totalKills, SaveState.defaults().totalKills);
     expect(
       controller.state.selectedCharacterId,
