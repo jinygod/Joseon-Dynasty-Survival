@@ -1,3 +1,7 @@
+import 'package:flutter/services.dart';
+
+typedef CreditsLedgerLoader = Future<CreditsLedger> Function();
+
 class CreditEntry {
   const CreditEntry({
     required this.runtimePath,
@@ -20,28 +24,15 @@ class CreditsLedger {
   final List<CreditEntry> assets;
   final List<CreditEntry> audio;
 
-  static const bundled = CreditsLedger(
-    assets: [
-      CreditEntry(
-        runtimePath: 'assets/images/**',
-        creator:
-            'OpenAI \uC774\uBBF8\uC9C0 \uC0DD\uC131 \uB3C4\uAD6C / '
-            'Codex \uD3B8\uC9D1',
-        sourceUrl: 'https://openai.com/policies/terms-of-use/',
-        license: 'OpenAI Terms of Use',
-        status: 'approved',
-      ),
-    ],
-    audio: [
-      CreditEntry(
-        runtimePath: 'assets/audio/**',
-        creator: 'Kenney',
-        sourceUrl: 'https://kenney.nl/',
-        license: 'CC0-1.0',
-        status: 'temporary',
-      ),
-    ],
-  );
+  static Future<CreditsLedger> loadBundled() => fromAssetBundle(rootBundle);
+
+  static Future<CreditsLedger> fromAssetBundle(AssetBundle bundle) async {
+    final csv = await Future.wait([
+      bundle.loadString('docs/assets/asset-rights-ledger.csv'),
+      bundle.loadString('docs/assets/audio-rights-ledger.csv'),
+    ]);
+    return CreditsLedger.fromCsv(assetCsv: csv[0], audioCsv: csv[1]);
+  }
 
   factory CreditsLedger.fromCsv({
     required String assetCsv,

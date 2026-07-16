@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../game/systems/save_system.dart';
 import 'game_settings.dart';
 import 'game_settings_controller.dart';
+import 'credits_ledger.dart';
 import 'credits_licenses_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -12,12 +13,14 @@ class SettingsScreen extends StatelessWidget {
     required this.controller,
     this.progressStore,
     this.resetProgress,
+    this.creditsLedgerLoader = CreditsLedger.loadBundled,
     super.key,
   });
 
   final GameSettingsController controller;
   final SaveStore? progressStore;
   final Future<bool> Function()? resetProgress;
+  final CreditsLedgerLoader creditsLedgerLoader;
 
   @override
   Widget build(BuildContext context) {
@@ -112,7 +115,9 @@ class SettingsScreen extends StatelessWidget {
                       key: const Key('credits-licenses'),
                       onPressed: () => Navigator.of(context).push(
                         MaterialPageRoute<void>(
-                          builder: (_) => const CreditsLicensesScreen(),
+                          builder: (_) => CreditsLicensesScreen(
+                            loader: creditsLedgerLoader,
+                          ),
                         ),
                       ),
                       icon: const Icon(Icons.info_outline),

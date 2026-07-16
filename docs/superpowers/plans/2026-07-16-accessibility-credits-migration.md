@@ -47,3 +47,12 @@
 - [ ] Format changed Dart files and run `git diff --check`.
 - [ ] Run full `dart analyze`, `flutter test --concurrency=1`, and `flutter build web --release`.
 - [ ] Commit the verified implementation on `codex/accessibility-credits`.
+
+### Task 5: Review fixes
+
+- [ ] RED: require a visible selected-character badge and selected semantics on the active card.
+- [ ] GREEN: add explicit card semantics and the shared icon/text/outline badge.
+- [ ] RED: require injected async bundle loading, settings navigation, all CSV entry fields/statuses, and 2.0 text-scale safety.
+- [ ] GREEN: register the two CSV assets, load them through `AssetBundle`, and render flexible cards with approved/temporary status badges.
+- [ ] Replace the synthetic migration loop with distinct historical v0/v1/v2/v3 fixtures and assert absent-field defaults plus present-field preservation.
+- [ ] Re-run focused tests and all final gates before committing.

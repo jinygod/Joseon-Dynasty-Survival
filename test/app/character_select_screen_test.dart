@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/app/character_select_screen.dart';
@@ -27,6 +29,22 @@ void main() {
       find.byKey(const Key('character-selected-exorcist_dosa')),
       findsOneWidget,
     );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('character-exorcist_dosa')),
+        matching: find.text('\uC120\uD0DD\uB428'),
+      ),
+      findsOneWidget,
+    );
+    final selectedSemantics = tester.getSemantics(
+      find.byKey(const Key('character-semantics-exorcist_dosa')),
+    );
+    expect(selectedSemantics.flagsCollection.isSelected, Tristate.isTrue);
+
+    final unselectedSemantics = tester.getSemantics(
+      find.byKey(const Key('character-semantics-rookie_constable')),
+    );
+    expect(unselectedSemantics.flagsCollection.isSelected, Tristate.isFalse);
     await tester.tap(find.byKey(const Key('character-confirm')));
     expect(selected, exorcistDosa);
   });

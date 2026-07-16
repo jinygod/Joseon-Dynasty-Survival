@@ -12,45 +12,132 @@ import 'package:pixel_survivor/game/systems/save_system.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  for (final schema in <int?>[null, 1, 2, 3]) {
-    test(
-      'schema ${schema ?? 'versionless'} preserves available player data',
-      () {
-        final payload = <String, dynamic>{
-          if (schema != null) 'schemaVersion': schema,
-          'unlockedCharacterIds': [rookieConstable, exorcistDosa],
-          'unlockedWeaponIds': [hwandoSlash, talismanThrow],
-          'unlockedAugmentIds': [martialTraining, rapidReload],
-          'unlockedStageIds': [moonlitAbandonedOffice, plagueMarket],
-          'completedGoalIds': ['survive_3_minutes'],
-          'wallet': {'coin': 77, 'spiritJade': 4},
-          'selectedCharacterId': exorcistDosa,
-          'selectedStageId': plagueMarket,
-          'totalKills': 321,
-          'bestSurvivalSeconds': 240,
-          'characterVictoryCounts': {exorcistDosa: 2},
-          'seenCompendiumEntryIds': ['character:$rookieConstable'],
-        };
+  test(
+    'versionless fixture preserves original fields and migrates defaults',
+    () {
+      final restored = SaveState.fromJson({
+        'unlockedCharacterIds': [rookieConstable, exorcistDosa],
+        'unlockedWeaponIds': [hwandoSlash, talismanThrow],
+        'unlockedAugmentIds': [martialTraining, rapidReload],
+        'completedGoalIds': ['survive_3_minutes'],
+        'totalKills': 101,
+        'bestSurvivalSeconds': 180,
+        'levelReachedInRun': 11,
+        'bossDefeats': 1,
+        'unlockedWeaponCount': 2,
+        'lowHealthWinCount': 1,
+      });
 
-        final restored = SaveState.fromJson(payload);
+      _expectOriginalFields(restored, kills: 101, survival: 180);
+      _expectPostV1Defaults(restored);
+    },
+  );
 
-        expect(restored.unlockedCharacterIds, contains(exorcistDosa));
-        expect(restored.unlockedWeaponIds, contains(talismanThrow));
-        expect(restored.unlockedAugmentIds, contains(rapidReload));
-        expect(restored.unlockedStageIds, contains(plagueMarket));
-        expect(restored.wallet, const Wallet(coin: 77, spiritJade: 4));
-        expect(restored.selectedCharacterId, exorcistDosa);
-        expect(restored.selectedStageId, plagueMarket);
-        expect(restored.totalKills, 321);
-        expect(restored.bestSurvivalSeconds, 240);
-        expect(restored.characterVictoryCounts[exorcistDosa], 2);
-        expect(
-          restored.seenCompendiumEntryIds,
-          contains('character:$rookieConstable'),
-        );
+  test('v1 fixture preserves original fields and migrates later defaults', () {
+    final restored = SaveState.fromJson({
+      'schemaVersion': 1,
+      'unlockedCharacterIds': [rookieConstable, exorcistDosa],
+      'unlockedWeaponIds': [hwandoSlash, talismanThrow],
+      'unlockedAugmentIds': [martialTraining, rapidReload],
+      'completedGoalIds': ['survive_3_minutes'],
+      'totalKills': 202,
+      'bestSurvivalSeconds': 210,
+      'levelReachedInRun': 13,
+      'bossDefeats': 2,
+      'unlockedWeaponCount': 2,
+      'lowHealthWinCount': 1,
+    });
+
+    _expectOriginalFields(restored, kills: 202, survival: 210);
+    _expectPostV1Defaults(restored);
+  });
+
+  test('v2 fixture preserves meta progress and selected legacy stage', () {
+    final restored = SaveState.fromJson({
+      'schemaVersion': 2,
+      'unlockedCharacterIds': [rookieConstable, exorcistDosa],
+      'unlockedWeaponIds': [hwandoSlash, talismanThrow],
+      'unlockedAugmentIds': [martialTraining, rapidReload],
+      'completedGoalIds': ['survive_3_minutes'],
+      'claimedRewardIds': ['survive_3_minutes'],
+      'wallet': {'coin': 77, 'spiritJade': 4},
+      'trainingProgress': {
+        'commonRanks': {'common.max_health': 2},
+        'characterRanks': <String, Object?>{},
+        'activeCoreTraitIds': <String, Object?>{},
       },
+      'shopProgress': {
+        'purchasedItemIds': ['manual.exorcist_dosa'],
+      },
+      'selectedCharacterId': exorcistDosa,
+      'selectedStageId': plagueMarket,
+      'totalKills': 303,
+      'bestSurvivalSeconds': 240,
+      'levelReachedInRun': 15,
+      'bossDefeats': 3,
+      'unlockedWeaponCount': 2,
+      'lowHealthWinCount': 2,
+    });
+
+    _expectOriginalFields(restored, kills: 303, survival: 240);
+    expect(restored.claimedRewardIds, contains('survive_3_minutes'));
+    expect(restored.wallet, const Wallet(coin: 77, spiritJade: 4));
+    expect(restored.trainingProgress.commonRanks['common.max_health'], 2);
+    expect(
+      restored.shopProgress.purchasedItemIds,
+      contains('manual.exorcist_dosa'),
     );
-  }
+    expect(restored.selectedCharacterId, exorcistDosa);
+    expect(restored.selectedStageId, plagueMarket);
+    expect(restored.unlockedStageIds, contains(plagueMarket));
+    expect(restored.totalEliteKills, 0);
+    expect(restored.victoryCount, 0);
+    expect(restored.characterVictoryCounts, isEmpty);
+    expect(restored.seenCompendiumEntryIds, isEmpty);
+  });
+
+  test('v3 fixture preserves every current-era progress field', () {
+    final restored = SaveState.fromJson({
+      'schemaVersion': 3,
+      'unlockedCharacterIds': [rookieConstable, exorcistDosa],
+      'unlockedWeaponIds': [hwandoSlash, talismanThrow],
+      'unlockedAugmentIds': [martialTraining, rapidReload],
+      'unlockedStageIds': [moonlitAbandonedOffice, plagueMarket],
+      'completedGoalIds': ['survive_3_minutes'],
+      'claimedRewardIds': ['survive_3_minutes'],
+      'wallet': {'coin': 88, 'spiritJade': 5},
+      'trainingProgress': <String, Object?>{},
+      'shopProgress': <String, Object?>{},
+      'selectedCharacterId': exorcistDosa,
+      'selectedStageId': plagueMarket,
+      'totalKills': 404,
+      'bestSurvivalSeconds': 270,
+      'levelReachedInRun': 17,
+      'bossDefeats': 4,
+      'unlockedWeaponCount': 2,
+      'lowHealthWinCount': 3,
+      'totalEliteKills': 12,
+      'victoryCount': 6,
+      'characterVictoryCounts': {exorcistDosa: 2},
+      'seenCompendiumEntryIds': [
+        'character:$rookieConstable',
+        'weapon:$hwandoSlash',
+      ],
+    });
+
+    _expectOriginalFields(restored, kills: 404, survival: 270);
+    expect(restored.wallet, const Wallet(coin: 88, spiritJade: 5));
+    expect(restored.selectedCharacterId, exorcistDosa);
+    expect(restored.selectedStageId, plagueMarket);
+    expect(restored.unlockedStageIds, contains(plagueMarket));
+    expect(restored.totalEliteKills, 12);
+    expect(restored.victoryCount, 6);
+    expect(restored.characterVictoryCounts[exorcistDosa], 2);
+    expect(
+      restored.seenCompendiumEntryIds,
+      containsAll(['character:$rookieConstable', 'weapon:$hwandoSlash']),
+    );
+  });
 
   test(
     'legacy and unified settings survive alongside migrated saves',
@@ -86,4 +173,32 @@ void main() {
       expect(settings.damageNumbersEnabled, isFalse);
     },
   );
+}
+
+void _expectOriginalFields(
+  SaveState restored, {
+  required int kills,
+  required int survival,
+}) {
+  expect(restored.schemaVersion, SaveState.currentSchemaVersion);
+  expect(restored.unlockedCharacterIds, contains(exorcistDosa));
+  expect(restored.unlockedWeaponIds, contains(talismanThrow));
+  expect(restored.unlockedAugmentIds, contains(rapidReload));
+  expect(restored.completedGoalIds, contains('survive_3_minutes'));
+  expect(restored.totalKills, kills);
+  expect(restored.bestSurvivalSeconds, survival);
+}
+
+void _expectPostV1Defaults(SaveState restored) {
+  expect(restored.claimedRewardIds, isEmpty);
+  expect(restored.wallet, Wallet.empty);
+  expect(restored.trainingProgress, TrainingProgress.empty);
+  expect(restored.shopProgress, ShopProgress.empty);
+  expect(restored.selectedCharacterId, rookieConstable);
+  expect(restored.selectedStageId, moonlitAbandonedOffice);
+  expect(restored.unlockedStageIds, {moonlitAbandonedOffice});
+  expect(restored.totalEliteKills, 0);
+  expect(restored.victoryCount, 0);
+  expect(restored.characterVictoryCounts, isEmpty);
+  expect(restored.seenCompendiumEntryIds, isEmpty);
 }

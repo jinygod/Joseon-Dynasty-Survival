@@ -1,57 +1,88 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/app/credits_ledger.dart';
 import 'package:pixel_survivor/app/credits_licenses_screen.dart';
 
 void main() {
-  test('ledger parser reads bundled art and audio attribution', () {
-    final ledger = CreditsLedger.fromCsv(
-      assetCsv: File('docs/assets/asset-rights-ledger.csv').readAsStringSync(),
-      audioCsv: File('docs/assets/audio-rights-ledger.csv').readAsStringSync(),
-    );
-
-    expect(ledger.assets, isNotEmpty);
-    expect(ledger.audio, isNotEmpty);
-    expect(ledger.assets.first.runtimePath, startsWith('assets/images/'));
-    expect(ledger.assets.first.license, 'OpenAI Terms of Use');
-    expect(ledger.audio.first.creator, 'Kenney');
-    expect(ledger.audio.first.license, 'CC0-1.0');
-  });
-
-  testWidgets('credits screen shows art and audio sources and licenses', (
+  testWidgets('asset bundle loader parses the packaged art and audio ledgers', (
     tester,
   ) async {
-    final ledger = CreditsLedger.fromCsv(
-      assetCsv: File('docs/assets/asset-rights-ledger.csv').readAsStringSync(),
-      audioCsv: File('docs/assets/audio-rights-ledger.csv').readAsStringSync(),
+    final ledger = await CreditsLedger.fromAssetBundle(rootBundle);
+
+    expect(ledger.assets.length, greaterThan(1));
+    expect(ledger.audio.length, greaterThan(1));
+    expect(
+      ledger.assets.first.runtimePath,
+      'assets/images/player/rookie_constable_player_32.png',
     );
-    await tester.pumpWidget(
-      MaterialApp(home: CreditsLicensesScreen(ledger: ledger)),
+    expect(ledger.assets.first.status, 'approved');
+    expect(ledger.audio.first.status, 'temporary');
+  });
+
+  testWidgets('async credits show every field and status at text scale two', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    var loadCount = 0;
+    const ledger = CreditsLedger(
+      assets: [
+        CreditEntry(
+          runtimePath: 'assets/images/player/reviewer.png',
+          creator: 'OpenAI',
+          sourceUrl: 'https://openai.com/policies/terms-of-use/',
+          license: 'OpenAI Terms of Use',
+          status: 'approved',
+        ),
+      ],
+      audio: [
+        CreditEntry(
+          runtimePath: 'assets/audio/music/reviewer.ogg',
+          creator: 'Kenney',
+          sourceUrl: 'https://kenney.nl/assets/music-jingles',
+          license: 'CC0-1.0',
+          status: 'temporary',
+        ),
+      ],
     );
 
+    await tester.pumpWidget(
+      MaterialApp(
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: const TextScaler.linear(2)),
+          child: child!,
+        ),
+        home: CreditsLicensesScreen(
+          loader: () async {
+            loadCount += 1;
+            return ledger;
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(loadCount, 1);
+    expect(find.text('assets/images/player/reviewer.png'), findsOneWidget);
     expect(
-      find.text('\uD06C\uB808\uB527 \uBC0F \uB77C\uC774\uC120\uC2A4'),
+      find.text('https://openai.com/policies/terms-of-use/'),
       findsOneWidget,
     );
-    expect(
-      find.text('\uBC88\uB4E4 \uC774\uBBF8\uC9C0 \uC790\uC0B0'),
-      findsOneWidget,
-    );
+    expect(find.text('\uC2B9\uC778\uB428'), findsOneWidget);
+    expect(find.byIcon(Icons.verified_outlined), findsOneWidget);
     await tester.scrollUntilVisible(
-      find.text('\uBC88\uB4E4 \uC74C\uC6D0'),
-      300,
+      find.text('assets/audio/music/reviewer.ogg'),
+      250,
       scrollable: find.byType(Scrollable).last,
     );
-    expect(find.text('\uBC88\uB4E4 \uC74C\uC6D0'), findsOneWidget);
-    expect(find.textContaining('OpenAI Terms of Use'), findsWidgets);
-    await tester.scrollUntilVisible(
-      find.textContaining('Kenney').first,
-      300,
-      scrollable: find.byType(Scrollable).last,
-    );
-    expect(find.textContaining('CC0-1.0'), findsWidgets);
+    expect(find.text('https://kenney.nl/assets/music-jingles'), findsOneWidget);
+    expect(find.text('\uC784\uC2DC'), findsOneWidget);
+    expect(find.byIcon(Icons.schedule_outlined), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

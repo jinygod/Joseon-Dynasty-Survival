@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pixel_survivor/app/credits_ledger.dart';
 import 'package:pixel_survivor/app/game_settings.dart';
 import 'package:pixel_survivor/app/game_settings_controller.dart';
 import 'package:pixel_survivor/app/game_settings_repository.dart';
@@ -62,6 +63,41 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(saveStore.saveCount, 0);
+  });
+
+  testWidgets('credits button opens the asynchronously loaded bundled route', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _testApp(
+        SettingsScreen(
+          controller: GameSettingsController(store: _MemorySettingsStore()),
+          creditsLedgerLoader: () async => const CreditsLedger(
+            assets: [
+              CreditEntry(
+                runtimePath: 'assets/images/path-from-settings.png',
+                creator: 'Reviewer',
+                sourceUrl: 'https://example.test/source',
+                license: 'Test License',
+                status: 'approved',
+              ),
+            ],
+            audio: [],
+          ),
+        ),
+      ),
+    );
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('credits-licenses')),
+      240,
+      scrollable: find.byType(Scrollable),
+    );
+    await tester.tap(find.byKey(const Key('credits-licenses')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('assets/images/path-from-settings.png'), findsOneWidget);
+    expect(find.text('https://example.test/source'), findsOneWidget);
   });
 
   testWidgets('second reset confirmation can be cancelled', (tester) async {

@@ -21,3 +21,10 @@ Fixture-driven tests load versionless, schema 1, 2, and 3 payloads through `Save
 ## Verification
 
 TDD records RED for missing badge/credits APIs, large-text overflow, and incomplete migration assertions. Final gates are focused tests, full analyze/test, release web build, formatting, and `git diff --check`.
+
+## Review Follow-up
+
+- The selected character card exposes `Semantics(selected: true)` and a visible check-icon, text, and outlined pill. Selection is never communicated by color alone.
+- Credits load asynchronously from the bundled asset and audio CSV ledgers. Settings injects the loader into the destination route; every entry shows runtime path, source URL, license, and an icon/text/shape status badge for `approved` or `temporary`.
+- Credits remain scrollable without overflow at a 2.0 system text scale.
+- Save fixtures reflect actual historical shapes: versionless/v1 contain original unlock and combat-record fields, v2 adds wallet/training/shop and selections, and v3 adds stage, elite/victory, character-victory, and compendium fields. Tests assert preservation of existing fields and current defaults for fields absent in each era.

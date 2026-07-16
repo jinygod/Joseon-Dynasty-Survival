@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../game/content/character_definitions.dart';
 import '../game/content/ids.dart';
 import '../game/content/weapon_definitions.dart';
+import 'accessible_status_badge.dart';
 
 class CharacterSelectScreen extends StatefulWidget {
   const CharacterSelectScreen({
@@ -109,87 +110,104 @@ class _CharacterCard extends StatelessWidget {
     final weapon = weaponDefinitions.firstWhere(
       (candidate) => candidate.id == definition.startingWeaponId,
     );
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      color: selected ? const Color(0xffffefc2) : null,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: BorderSide(
-          color: selected ? const Color(0xff8f2d38) : Colors.transparent,
-          width: 3,
+    return Semantics(
+      key: Key('character-semantics-${definition.id}'),
+      selected: selected,
+      enabled: unlocked,
+      button: true,
+      label: _localizedName(definition.id),
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        color: selected ? const Color(0xffffefc2) : null,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(
+            color: selected ? const Color(0xff8f2d38) : Colors.transparent,
+            width: 3,
+          ),
         ),
-      ),
-      child: InkWell(
-        key: Key('character-${definition.id}'),
-        onTap: onTap,
-        child: Stack(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    _iconForCharacter(definition.id),
-                    size: 44,
-                    color: unlocked
-                        ? const Color(0xff8f2d38)
-                        : Colors.grey.shade500,
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    _localizedName(definition.id),
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
+        child: InkWell(
+          key: Key('character-${definition.id}'),
+          onTap: onTap,
+          child: Stack(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (selected) ...[
+                      const AccessibleStatusBadge(
+                        icon: Icons.check_circle_outline,
+                        label: '\uC120\uD0DD\uB428',
+                        semanticsLabel: '\uC120\uD0DD\uB41C \uCE90\uB9AD\uD130',
+                        foregroundColor: Color(0xff8f2d38),
+                        backgroundColor: Color(0xffffefc2),
+                      ),
+                      const SizedBox(height: 6),
+                    ],
+                    Icon(
+                      _iconForCharacter(definition.id),
+                      size: 44,
+                      color: unlocked
+                          ? const Color(0xff8f2d38)
+                          : Colors.grey.shade500,
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text('체력 ${definition.maxHealth.toInt()}'),
-                  Text('이동 속도 ${definition.moveSpeed.toInt()}'),
-                  Text('공격력 ${(definition.damageMultiplier * 100).round()}%'),
-                  Text('시작 무기 ${weapon.name}'),
-                  const SizedBox(height: 4),
-                  Text(
-                    definition.passiveName,
-                    style: const TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                  Text(
-                    definition.passiveDescription,
-                    textAlign: TextAlign.center,
-                  ),
-                  if (selected)
-                    SizedBox(key: Key('character-selected-${definition.id}')),
-                ],
+                    const SizedBox(height: 6),
+                    Text(
+                      _localizedName(definition.id),
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text('체력 ${definition.maxHealth.toInt()}'),
+                    Text('이동 속도 ${definition.moveSpeed.toInt()}'),
+                    Text('공격력 ${(definition.damageMultiplier * 100).round()}%'),
+                    Text('시작 무기 ${weapon.name}'),
+                    const SizedBox(height: 4),
+                    Text(
+                      definition.passiveName,
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    Text(
+                      definition.passiveDescription,
+                      textAlign: TextAlign.center,
+                    ),
+                    if (selected)
+                      SizedBox(key: Key('character-selected-${definition.id}')),
+                  ],
+                ),
               ),
-            ),
-            if (!unlocked)
-              Positioned.fill(
-                child: ColoredBox(
-                  color: Colors.black.withValues(alpha: 0.48),
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.lock,
-                          key: Key('character-lock-${definition.id}'),
-                          size: 40,
-                          color: Colors.white,
-                        ),
-                        const Text(
-                          '해금 필요',
-                          style: TextStyle(
+              if (!unlocked)
+                Positioned.fill(
+                  child: ColoredBox(
+                    color: Colors.black.withValues(alpha: 0.48),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.lock,
+                            key: Key('character-lock-${definition.id}'),
+                            size: 40,
                             color: Colors.white,
-                            fontWeight: FontWeight.w800,
                           ),
-                        ),
-                      ],
+                          const Text(
+                            '해금 필요',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
