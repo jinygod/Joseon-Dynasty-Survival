@@ -9,6 +9,12 @@ abstract interface class CloudProgressApi {
   Future<Map<String, dynamic>> syncProgress(Map<String, dynamic> body);
 }
 
+class CloudProgressConflict implements Exception {
+  const CloudProgressConflict(this.snapshot);
+
+  final CloudProgressSnapshot snapshot;
+}
+
 class SupabaseCloudProgressRepository implements CloudProgressRepository {
   SupabaseCloudProgressRepository({
     CloudProgressApi? api,
@@ -22,19 +28,22 @@ class SupabaseCloudProgressRepository implements CloudProgressRepository {
   @override
   Future<CloudProgressSnapshot?> fetch() async {
     final row = await _api.fetchProgress();
-    return row == null ? null : _snapshot(row);
+    return row == null
+        ? null
+        : _snapshot(row, expectedKeys: const {'revision', 'progress'});
   }
 
   @override
   Future<CloudProgressSnapshot> create(SaveState save) async {
     _validator.validate(save);
-    return _snapshot(
-      await _api.syncProgress({
-        'schemaVersion': save.schemaVersion,
-        'progress': save.toJson(),
-        'expectedRevision': null,
-      }),
-    );
+    final response = await _api.syncProgress({
+      'schemaVersion': save.schemaVersion,
+      'progress': save.toJson(),
+      'expectedRevision': null,
+    });
+    final parsed = _syncResponse(response);
+    if (parsed.conflict) throw CloudProgressConflict(parsed.snapshot);
+    return parsed.snapshot;
   }
 
   @override
@@ -48,13 +57,41 @@ class SupabaseCloudProgressRepository implements CloudProgressRepository {
       'progress': save.toJson(),
       'expectedRevision': expectedRevision,
     });
-    final snapshot = _snapshot(response);
-    return response['conflict'] == true
-        ? CloudSyncResult.conflict(snapshot)
-        : CloudSyncResult.updated(snapshot);
+    final parsed = _syncResponse(response);
+    return parsed.conflict
+        ? CloudSyncResult.conflict(parsed.snapshot)
+        : CloudSyncResult.updated(parsed.snapshot);
   }
 
-  CloudProgressSnapshot _snapshot(Map<String, dynamic> json) {
+  ({CloudProgressSnapshot snapshot, bool conflict}) _syncResponse(
+    Map<String, dynamic> json,
+  ) {
+    if (json.keys.toSet().difference(const {
+          'revision',
+          'progress',
+          'conflict',
+        }).isNotEmpty ||
+        json.length != 3 ||
+        json['conflict'] is! bool) {
+      throw const FormatException('Invalid cloud sync response shape');
+    }
+    return (
+      snapshot: _snapshot(
+        json,
+        expectedKeys: const {'revision', 'progress', 'conflict'},
+      ),
+      conflict: json['conflict'] as bool,
+    );
+  }
+
+  CloudProgressSnapshot _snapshot(
+    Map<String, dynamic> json, {
+    required Set<String> expectedKeys,
+  }) {
+    final keys = json.keys.toSet();
+    if (keys.length != expectedKeys.length || !keys.containsAll(expectedKeys)) {
+      throw const FormatException('Invalid cloud progress response shape');
+    }
     final revision = json['revision'];
     final rawProgress = json['progress'];
     if (revision is! int || rawProgress is! Map) {

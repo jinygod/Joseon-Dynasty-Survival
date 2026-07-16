@@ -22,11 +22,13 @@ class PixelSurvivorApp extends StatefulWidget {
   const PixelSurvivorApp({
     this.backendConfig = const BackendConfig.disabled(),
     this.accountService,
+    this.clearPaidCache,
     super.key,
   });
 
   final BackendConfig backendConfig;
   final AccountService? accountService;
+  final Future<void> Function()? clearPaidCache;
 
   @override
   State<PixelSurvivorApp> createState() => _PixelSurvivorAppState();
@@ -63,6 +65,11 @@ class _PixelSurvivorAppState extends State<PixelSurvivorApp> {
       _accountController = AccountController(
         config: widget.backendConfig,
         service: widget.accountService ?? SupabaseAccountService(),
+        clearLocalState: () async {
+          _progressSyncController?.invalidateSession();
+          await _lobbyController.clearAccountLocalState();
+        },
+        clearPaidCache: widget.clearPaidCache,
       );
       _progressSyncController = ProgressSyncController(
         readAccount: () => _accountController!.session,

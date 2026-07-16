@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../../game/systems/save_system.dart';
 import '../account/account_session.dart';
 import 'cloud_progress_repository.dart';
 import 'save_state_validator.dart';
+import 'supabase_cloud_progress_repository.dart';
 
 enum SyncStatus { idle, syncing, synced, offline, conflict }
 
@@ -25,7 +28,7 @@ class ProgressSyncController extends ChangeNotifier {
     SaveStateValidator? validator,
     Future<void> Function(Duration)? delay,
   }) : validator = validator ?? SaveStateValidator(),
-       _delay = delay ?? Future<void>.delayed;
+       _injectedDelay = delay;
 
   static const retryDelays = [
     Duration(seconds: 1),
@@ -39,84 +42,203 @@ class ProgressSyncController extends ChangeNotifier {
   final SaveStore store;
   final CloudProgressRepository repository;
   final SaveStateValidator validator;
-  final Future<void> Function(Duration) _delay;
+  final Future<void> Function(Duration)? _injectedDelay;
+  final Completer<void> _disposedSignal = Completer<void>();
 
   SyncStatus status = SyncStatus.idle;
   int? revision;
   String? lastError;
   String? _accountId;
+  AccountSession? _observedSession;
+  int _sessionGeneration = 0;
   bool _disposed = false;
-  bool _running = false;
+  bool _syncRequested = false;
+  Future<void>? _drainFuture;
+  Timer? _retryTimer;
+  Completer<bool>? _retryCompleter;
 
-  Future<void> syncNow() async {
-    final account = readAccount();
-    if (!account.isPermanent) {
-      status = SyncStatus.idle;
-      revision = null;
-      _accountId = null;
-      _notify();
-      return;
-    }
-    if (_running) return;
-    _running = true;
-    if (_accountId != account.userId) {
-      _accountId = account.userId;
-      revision = null;
-    }
-    status = SyncStatus.syncing;
+  Future<void> syncNow() {
+    if (_disposed) return Future<void>.value();
+    _syncRequested = true;
+    final running = _drainFuture;
+    if (running != null) return running;
+    final drain = _drainWithCleanup();
+    _drainFuture = drain;
+    return drain;
+  }
+
+  void invalidateSession() {
+    if (_disposed) return;
+    _observedSession = null;
+    _sessionGeneration++;
+    _accountId = null;
+    revision = null;
+    _syncRequested = false;
+    status = SyncStatus.idle;
     lastError = null;
     _notify();
+  }
 
+  Future<void> _drainWithCleanup() async {
     try {
-      for (var attempt = 0; ; attempt++) {
+      await _drain();
+    } finally {
+      _drainFuture = null;
+    }
+    if (_syncRequested && !_disposed) await syncNow();
+  }
+
+  Future<void> _drain() async {
+    while (_syncRequested && !_disposed) {
+      _syncRequested = false;
+      final account = readAccount();
+      final token = _observe(account);
+      if (!account.isPermanent) {
+        status = SyncStatus.idle;
+        revision = null;
+        _accountId = null;
+        _notify();
+        continue;
+      }
+      if (_accountId != account.userId) {
+        _accountId = account.userId;
+        revision = null;
+      }
+      status = SyncStatus.syncing;
+      lastError = null;
+      _notify();
+
+      for (var attempt = 0; !_disposed; attempt++) {
         try {
-          final conflict = await _syncOnce();
+          final conflict = await _syncOnce(token);
+          _ensureActive(token);
           status = conflict ? SyncStatus.conflict : SyncStatus.synced;
           lastError = null;
           _notify();
+          break;
+        } on _StaleSession {
+          break;
+        } on _SyncCancelled {
           return;
         } on Object catch (error) {
+          if (_disposed) return;
+          try {
+            _ensureActive(token);
+          } on _StaleSession {
+            break;
+          }
           status = SyncStatus.offline;
           lastError = error.toString();
           _notify();
-          if (attempt >= retryDelays.length || _disposed) return;
-          await _delay(retryDelays[attempt]);
-          if (_disposed) return;
+          if (attempt >= retryDelays.length) break;
+          final completed = await _waitForRetry(retryDelays[attempt]);
+          if (!completed || _disposed) return;
+          try {
+            _ensureActive(token);
+          } on _StaleSession {
+            break;
+          }
         }
       }
-    } finally {
-      _running = false;
     }
   }
 
-  Future<bool> _syncOnce() async {
-    final local = await store.load();
+  Future<bool> _syncOnce(_SessionToken token) async {
+    final local = await _bound(token, store.load);
     validator.validate(local);
+    _ensureActive(token);
     if (revision == null) {
-      final cloud = await repository.fetch();
+      final cloud = await _bound(token, repository.fetch);
       if (cloud == null) {
-        final created = await repository.create(local);
-        validator.validate(created.save);
-        revision = created.revision;
+        try {
+          final created = await _bound(token, () => repository.create(local));
+          validator.validate(created.save);
+          _ensureActive(token);
+          revision = created.revision;
+        } on CloudProgressConflict catch (conflict) {
+          _ensureActive(token);
+          validator.validate(conflict.snapshot.save);
+          await _bound(token, () => store.save(conflict.snapshot.save));
+          _ensureActive(token);
+          revision = conflict.snapshot.revision;
+          return true;
+        }
       } else {
         validator.validate(cloud.save);
-        await store.save(cloud.save);
+        _ensureActive(token);
+        await _bound(token, () => store.save(cloud.save));
+        _ensureActive(token);
         revision = cloud.revision;
       }
       return false;
     }
 
-    final result = await repository.update(
-      save: local,
-      expectedRevision: revision!,
+    final expectedRevision = revision!;
+    final result = await _bound(
+      token,
+      () => repository.update(save: local, expectedRevision: expectedRevision),
     );
     validator.validate(result.snapshot.save);
-    revision = result.snapshot.revision;
+    _ensureActive(token);
     if (result.hasConflict) {
-      await store.save(result.snapshot.save);
+      await _bound(token, () => store.save(result.snapshot.save));
+      _ensureActive(token);
+      revision = result.snapshot.revision;
       return true;
     }
+    revision = result.snapshot.revision;
     return false;
+  }
+
+  Future<T> _bound<T>(
+    _SessionToken token,
+    Future<T> Function() operation,
+  ) async {
+    _ensureActive(token);
+    final result = await operation();
+    _ensureActive(token);
+    return result;
+  }
+
+  _SessionToken _observe(AccountSession session) {
+    if (_observedSession != session) {
+      _observedSession = session;
+      _sessionGeneration++;
+    }
+    return _SessionToken(session, _sessionGeneration);
+  }
+
+  void _ensureActive(_SessionToken token) {
+    if (_disposed) throw const _SyncCancelled();
+    final current = readAccount();
+    if (current != _observedSession ||
+        current != token.session ||
+        token.generation != _sessionGeneration) {
+      _observe(current);
+      throw const _StaleSession();
+    }
+  }
+
+  Future<bool> _waitForRetry(Duration duration) async {
+    if (_disposed) return false;
+    final injected = _injectedDelay;
+    if (injected != null) {
+      return Future.any<bool>([
+        injected(duration).then((_) => true),
+        _disposedSignal.future.then((_) => false),
+      ]);
+    }
+    final completer = Completer<bool>();
+    _retryCompleter = completer;
+    _retryTimer = Timer(duration, () {
+      if (!completer.isCompleted) completer.complete(true);
+    });
+    final completed = await completer.future;
+    if (identical(_retryCompleter, completer)) {
+      _retryCompleter = null;
+      _retryTimer = null;
+    }
+    return completed;
   }
 
   void _notify() {
@@ -125,7 +247,27 @@ class ProgressSyncController extends ChangeNotifier {
 
   @override
   void dispose() {
+    if (_disposed) return;
     _disposed = true;
+    _syncRequested = false;
+    _retryTimer?.cancel();
+    final retry = _retryCompleter;
+    if (retry != null && !retry.isCompleted) retry.complete(false);
+    if (!_disposedSignal.isCompleted) _disposedSignal.complete();
     super.dispose();
   }
+}
+
+class _SessionToken {
+  const _SessionToken(this.session, this.generation);
+  final AccountSession session;
+  final int generation;
+}
+
+class _StaleSession implements Exception {
+  const _StaleSession();
+}
+
+class _SyncCancelled implements Exception {
+  const _SyncCancelled();
 }

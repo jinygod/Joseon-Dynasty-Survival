@@ -12,6 +12,7 @@ class AccountController extends ChangeNotifier {
   AccountController({
     required this.config,
     required this.service,
+    this.clearLocalState,
     this.clearPaidCache,
     this.onPermanentAccount,
   }) : availability = config.enabled
@@ -20,6 +21,7 @@ class AccountController extends ChangeNotifier {
 
   final BackendConfig config;
   final AccountService service;
+  final Future<void> Function()? clearLocalState;
   final Future<void> Function()? clearPaidCache;
   Future<void> Function()? onPermanentAccount;
 
@@ -29,11 +31,14 @@ class AccountController extends ChangeNotifier {
   String? errorMessage;
   StreamSubscription<AccountSession>? _subscription;
   bool _disposed = false;
+  int _operationGeneration = 0;
 
   bool get isGuest => !session.isPermanent;
   bool get purchaseReady => session.isPermanent;
 
   Future<void> initialize() async {
+    if (_disposed) return;
+    final operation = ++_operationGeneration;
     if (!config.enabled) {
       session = const AccountSession.signedOut();
       availability = AccountAvailability.disabled;
@@ -41,6 +46,7 @@ class AccountController extends ChangeNotifier {
       return;
     }
     _subscription ??= service.changes.listen((next) {
+      if (_disposed) return;
       session = next;
       availability = AccountAvailability.ready;
       _notify();
@@ -49,71 +55,106 @@ class AccountController extends ChangeNotifier {
     errorMessage = null;
     _notify();
     try {
-      session = await service.ensureGuest();
+      final next = await service.ensureGuest();
+      if (!_isActive(operation)) return;
+      session = next;
       availability = AccountAvailability.ready;
       if (session.isPermanent && onPermanentAccount != null) {
-        unawaited(onPermanentAccount!());
+        await onPermanentAccount!();
+        if (!_isActive(operation)) return;
       }
     } on Object {
+      if (!_isActive(operation)) return;
       session = const AccountSession.signedOut();
       availability = AccountAvailability.offline;
     } finally {
-      busy = false;
-      _notify();
+      if (_isActive(operation)) {
+        busy = false;
+        _notify();
+      }
     }
   }
 
   Future<void> connectGoogle() async {
-    if (!config.enabled || busy) return;
+    if (_disposed || !config.enabled || busy) return;
+    final operation = ++_operationGeneration;
     busy = true;
     errorMessage = null;
     _notify();
     try {
       final next = await service.connectGoogle();
+      if (!_isActive(operation)) return;
       session = next;
       availability = AccountAvailability.ready;
-      if (next.isPermanent) await onPermanentAccount?.call();
+      if (next.isPermanent) {
+        await onPermanentAccount?.call();
+        if (!_isActive(operation)) return;
+      }
     } on Object {
+      if (!_isActive(operation)) return;
       errorMessage = 'Google 계정 연결에 실패했습니다. 오프라인 플레이는 계속할 수 있습니다.';
     } finally {
-      busy = false;
-      _notify();
+      if (_isActive(operation)) {
+        busy = false;
+        _notify();
+      }
     }
   }
 
-  Future<void> signOut() async {
-    if (busy) return;
+  Future<void> signOut() =>
+      _endAccount(service.signOut, failureMessage: '로그아웃하지 못했습니다.');
+
+  Future<void> deleteAccount() => _endAccount(
+    service.deleteAccount,
+    failureMessage: '계정을 삭제하지 못했습니다. 다시 로그인한 뒤 시도해 주세요.',
+  );
+
+  Future<void> _endAccount(
+    Future<void> Function() endRemote, {
+    required String failureMessage,
+  }) async {
+    if (_disposed || busy) return;
+    final operation = ++_operationGeneration;
     busy = true;
     errorMessage = null;
     _notify();
     try {
-      await service.signOut();
-      await clearPaidCache?.call();
-      session = const AccountSession.signedOut();
+      await endRemote();
     } on Object {
-      errorMessage = '로그아웃하지 못했습니다.';
+      if (!_isActive(operation)) return;
+      errorMessage = failureMessage;
     } finally {
-      busy = false;
-      _notify();
+      final wasActive = _isActive(operation);
+      if (wasActive) {
+        session = const AccountSession.signedOut();
+      }
+      await _clearAccountLocalState();
+      if (_isActive(operation)) {
+        busy = false;
+        _notify();
+      }
     }
   }
 
-  Future<void> deleteAccount() async {
-    if (busy) return;
-    busy = true;
-    errorMessage = null;
-    _notify();
+  Future<void> _clearAccountLocalState() async {
+    Object? cleanupError;
     try {
-      await service.deleteAccount();
+      await clearLocalState?.call();
+    } on Object catch (error) {
+      cleanupError = error;
+    }
+    try {
       await clearPaidCache?.call();
-      session = const AccountSession.signedOut();
-    } on Object {
-      errorMessage = '계정을 삭제하지 못했습니다. 다시 로그인한 뒤 시도해 주세요.';
-    } finally {
-      busy = false;
-      _notify();
+    } on Object catch (error) {
+      cleanupError ??= error;
+    }
+    if (!_disposed && cleanupError != null && errorMessage == null) {
+      errorMessage = '기기 계정 데이터를 지우지 못했습니다.';
     }
   }
+
+  bool _isActive(int operation) =>
+      !_disposed && operation == _operationGeneration;
 
   void _notify() {
     if (!_disposed) notifyListeners();
@@ -122,6 +163,7 @@ class AccountController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    _operationGeneration++;
     unawaited(_subscription?.cancel());
     super.dispose();
   }

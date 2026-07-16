@@ -74,6 +74,12 @@ class LobbyController extends ChangeNotifier {
     return operation;
   }
 
+  Future<void> clearAccountLocalState() async {
+    if (!await resetProgress()) {
+      throw StateError('Failed to clear account-local save state');
+    }
+  }
+
   String? takeRecoveryNotice() {
     final notice = _recoveryNotice;
     _recoveryNotice = null;

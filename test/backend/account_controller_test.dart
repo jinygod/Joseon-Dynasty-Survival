@@ -5,6 +5,7 @@ import 'package:pixel_survivor/backend/account/account_controller.dart';
 import 'package:pixel_survivor/backend/account/account_service.dart';
 import 'package:pixel_survivor/backend/account/account_session.dart';
 import 'package:pixel_survivor/backend/backend_config.dart';
+import 'package:pixel_survivor/game/systems/save_system.dart';
 
 void main() {
   const enabled = BackendConfig(
@@ -160,6 +161,72 @@ void main() {
     expect(clears, 2);
     expect(service.deleteCalls, 1);
   });
+
+  test(
+    'sign out clears local and paid state even when service fails',
+    () async {
+      final service = _FakeAccountService(
+        current: AccountSession.google(userId: 'g', email: 'g@example.com'),
+      )..signOutError = Exception('native signout failed');
+      final calls = <String>[];
+      final controller = AccountController(
+        config: enabled,
+        service: service,
+        clearLocalState: () async {
+          calls.add('local');
+          throw Exception('local clear failed');
+        },
+        clearPaidCache: () async => calls.add('paid'),
+      );
+      await controller.initialize();
+
+      await controller.signOut();
+
+      expect(calls, ['local', 'paid']);
+      expect(controller.session, const AccountSession.signedOut());
+    },
+  );
+
+  test('sign out removes account save before a new guest can play', () async {
+    var local = SaveState.defaults().copyWith(totalKills: 500);
+    final service = _FakeAccountService(
+      current: AccountSession.google(userId: 'a', email: 'a@example.com'),
+    );
+    final controller = AccountController(
+      config: enabled,
+      service: service,
+      clearLocalState: () async => local = SaveState.defaults(),
+    );
+    await controller.initialize();
+
+    await controller.signOut();
+
+    expect(local.totalKills, 0);
+  });
+
+  test(
+    'disposed initialization cannot mutate state or invoke callbacks',
+    () async {
+      final pending = Completer<AccountSession>();
+      final service = _FakeAccountService()..ensureGuestCompleter = pending;
+      var callbacks = 0;
+      final controller = AccountController(
+        config: enabled,
+        service: service,
+        onPermanentAccount: () async => callbacks++,
+      );
+
+      final initializing = controller.initialize();
+      controller.dispose();
+      pending.complete(
+        AccountSession.google(userId: 'g', email: 'g@example.com'),
+      );
+      await initializing;
+
+      expect(controller.session, const AccountSession.signedOut());
+      expect(callbacks, 0);
+    },
+  );
 }
 
 class _FakeAccountService implements AccountService {
@@ -174,6 +241,8 @@ class _FakeAccountService implements AccountService {
   AccountSession? connectResult;
   Object? ensureGuestError;
   Object? connectError;
+  Object? signOutError;
+  Completer<AccountSession>? ensureGuestCompleter;
   int ensureGuestCalls = 0;
   int deleteCalls = 0;
 
@@ -189,6 +258,7 @@ class _FakeAccountService implements AccountService {
   Future<AccountSession> ensureGuest() async {
     ensureGuestCalls++;
     if (ensureGuestError case final error?) throw error;
+    if (ensureGuestCompleter case final pending?) return pending.future;
     if (!_current.isAuthenticated) {
       _current = AccountSession.anonymous(userId: 'guest-created');
     }
@@ -205,6 +275,7 @@ class _FakeAccountService implements AccountService {
   @override
   Future<void> signOut() async {
     _current = const AccountSession.signedOut();
+    if (signOutError case final error?) throw error;
   }
 
   @override

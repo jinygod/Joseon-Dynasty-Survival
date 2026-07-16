@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/backend/account/account_session.dart';
 import 'package:pixel_survivor/backend/progress/cloud_progress_repository.dart';
 import 'package:pixel_survivor/backend/progress/progress_sync_controller.dart';
+import 'package:pixel_survivor/backend/progress/supabase_cloud_progress_repository.dart';
 import 'package:pixel_survivor/game/systems/save_system.dart';
 
 void main() {
@@ -110,6 +113,127 @@ void main() {
     expect(controller.status, SyncStatus.synced);
   });
 
+  test('exhausted retries use exactly 1 2 4 8 and 16 seconds', () async {
+    final repository = _FakeCloudRepository()..failuresRemaining = 20;
+    final delays = <Duration>[];
+    final controller = _controller(
+      local: _save(kills: 3),
+      repository: repository,
+      delay: (duration) async => delays.add(duration),
+    );
+
+    await controller.syncNow();
+
+    expect(delays, ProgressSyncController.retryDelays);
+    expect(repository.fetchCalls, 6);
+    expect(controller.status, SyncStatus.offline);
+  });
+
+  test('account switch during load cannot upload stale account data', () async {
+    var account = AccountSession.google(userId: 'one', email: 'one@test');
+    final delayedLoad = Completer<SaveState>();
+    final store = _MemorySaveStore(_save(kills: 1))..nextLoad = delayedLoad;
+    final repository = _FakeCloudRepository();
+    final controller = ProgressSyncController(
+      readAccount: () => account,
+      store: store,
+      repository: repository,
+    );
+
+    final first = controller.syncNow();
+    await _waitFor(() => store.loadCalls == 1);
+    account = AccountSession.google(userId: 'two', email: 'two@test');
+    store.state = _save(kills: 2);
+    final queued = controller.syncNow();
+    delayedLoad.complete(_save(kills: 1));
+    await Future.wait([first, queued]);
+
+    expect(repository.fetchCalls, 1);
+    expect(repository.created?.totalKills, 2);
+  });
+
+  test('sync requested during an in-flight sync is queued', () async {
+    final repository = _FakeCloudRepository()
+      ..fetchCompleter = Completer<CloudProgressSnapshot?>();
+    final controller = _controller(
+      local: _save(kills: 4),
+      repository: repository,
+    );
+
+    final first = controller.syncNow();
+    await _waitFor(() => repository.fetchCalls == 1);
+    final queued = controller.syncNow();
+    repository.fetchCompleter!.complete(null);
+    await Future.wait([first, queued]);
+
+    expect(repository.fetchCalls, 1);
+    expect(repository.updateCalls, 1);
+    expect(controller.revision, 2);
+  });
+
+  test('create-time conflict adopts the returned server snapshot', () async {
+    final server = CloudProgressSnapshot(revision: 5, save: _save(kills: 55));
+    final store = _MemorySaveStore(_save(kills: 2));
+    final repository = _FakeCloudRepository()..createConflict = server;
+    final controller = _controller(
+      local: store.state,
+      store: store,
+      repository: repository,
+    );
+
+    await controller.syncNow();
+
+    expect(store.state.totalKills, 55);
+    expect(controller.revision, 5);
+    expect(controller.status, SyncStatus.conflict);
+  });
+
+  test('dispose cancels a retry wait and prevents another attempt', () async {
+    final retryWait = Completer<void>();
+    final repository = _FakeCloudRepository()..failuresRemaining = 20;
+    var delayCalls = 0;
+    final controller = _controller(
+      local: _save(kills: 1),
+      repository: repository,
+      delay: (_) {
+        delayCalls++;
+        return retryWait.future;
+      },
+    );
+
+    final sync = controller.syncNow();
+    await _waitFor(() => delayCalls == 1);
+    controller.dispose();
+    await sync;
+
+    expect(repository.fetchCalls, 1);
+  });
+
+  test(
+    'dispose guards an in-flight fetch completion and local write',
+    () async {
+      final store = _MemorySaveStore(_save(kills: 1));
+      final repository = _FakeCloudRepository()
+        ..fetchCompleter = Completer<CloudProgressSnapshot?>();
+      final controller = _controller(
+        local: store.state,
+        store: store,
+        repository: repository,
+      );
+
+      final sync = controller.syncNow();
+      await _waitFor(() => repository.fetchCalls == 1);
+      controller.dispose();
+      repository.fetchCompleter!.complete(
+        CloudProgressSnapshot(revision: 9, save: _save(kills: 99)),
+      );
+      await sync;
+
+      expect(store.saveCalls, 0);
+      expect(controller.revision, isNull);
+    },
+  );
+
   test(
     'account switch forgets revision and loads new cloud snapshot',
     () async {
@@ -138,6 +262,74 @@ void main() {
       expect(controller.revision, 8);
     },
   );
+
+  test(
+    'new account uploads only progress earned after account-local reset',
+    () async {
+      var account = AccountSession.google(userId: 'a', email: 'a@test');
+      final store = _MemorySaveStore(_save(kills: 500));
+      final repository = _FakeCloudRepository(
+        cloud: CloudProgressSnapshot(revision: 3, save: _save(kills: 500)),
+      );
+      final controller = ProgressSyncController(
+        readAccount: () => account,
+        store: store,
+        repository: repository,
+      );
+      await controller.syncNow();
+
+      account = const AccountSession.signedOut();
+      store.state = SaveState.defaults();
+      store.state = _save(kills: 7);
+      account = AccountSession.google(userId: 'b', email: 'b@test');
+      repository.cloud = null;
+      repository.created = null;
+
+      await controller.syncNow();
+
+      expect(repository.created?.totalKills, 7);
+    },
+  );
+
+  test(
+    'session invalidation prevents same account reset from overwriting cloud',
+    () async {
+      final account = AccountSession.google(userId: 'a', email: 'a@test');
+      final cloud = CloudProgressSnapshot(revision: 4, save: _save(kills: 400));
+      final store = _MemorySaveStore(_save(kills: 400));
+      final repository = _FakeCloudRepository(cloud: cloud);
+      final controller = ProgressSyncController(
+        readAccount: () => account,
+        store: store,
+        repository: repository,
+      );
+      await controller.syncNow();
+      store.state = SaveState.defaults();
+
+      controller.invalidateSession();
+      await controller.syncNow();
+
+      expect(repository.updateCalls, 0);
+      expect(repository.fetchCalls, 2);
+      expect(store.state.totalKills, 400);
+    },
+  );
+
+  test('sync invoked after dispose starts no work', () async {
+    final store = _MemorySaveStore(_save(kills: 1));
+    final repository = _FakeCloudRepository();
+    final controller = _controller(
+      local: store.state,
+      store: store,
+      repository: repository,
+    );
+
+    controller.dispose();
+    await controller.syncNow();
+
+    expect(store.loadCalls, 0);
+    expect(repository.fetchCalls, 0);
+  });
 }
 
 ProgressSyncController _controller({
@@ -155,18 +347,33 @@ ProgressSyncController _controller({
 SaveState _save({required int kills}) =>
     SaveState.defaults().copyWith(totalKills: kills);
 
+Future<void> _waitFor(bool Function() condition) async {
+  for (var i = 0; i < 50 && !condition(); i++) {
+    await Future<void>.delayed(Duration.zero);
+  }
+  expect(condition(), isTrue);
+}
+
 class _MemorySaveStore implements SaveStore {
   _MemorySaveStore(this.state);
   SaveState state;
   int loadCalls = 0;
+  int saveCalls = 0;
+  Completer<SaveState>? nextLoad;
   @override
   Future<SaveState> load() async {
     loadCalls++;
+    final pending = nextLoad;
+    nextLoad = null;
+    if (pending != null) return pending.future;
     return state;
   }
 
   @override
-  Future<void> save(SaveState state) async => this.state = state;
+  Future<void> save(SaveState state) async {
+    saveCalls++;
+    this.state = state;
+  }
 }
 
 class _FakeCloudRepository implements CloudProgressRepository {
@@ -179,6 +386,8 @@ class _FakeCloudRepository implements CloudProgressRepository {
   int fetchCalls = 0;
   int updateCalls = 0;
   int failuresRemaining = 0;
+  Completer<CloudProgressSnapshot?>? fetchCompleter;
+  CloudProgressSnapshot? createConflict;
 
   void _maybeFail() {
     if (failuresRemaining > 0) {
@@ -191,6 +400,7 @@ class _FakeCloudRepository implements CloudProgressRepository {
   Future<CloudProgressSnapshot?> fetch() async {
     fetchCalls++;
     _maybeFail();
+    if (fetchCompleter case final pending?) return pending.future;
     return cloud;
   }
 
@@ -198,6 +408,9 @@ class _FakeCloudRepository implements CloudProgressRepository {
   Future<CloudProgressSnapshot> create(SaveState save) async {
     _maybeFail();
     created = save;
+    if (createConflict case final snapshot?) {
+      throw CloudProgressConflict(snapshot);
+    }
     return cloud = CloudProgressSnapshot(revision: 1, save: save);
   }
 

@@ -7,6 +7,12 @@ import '../../game/content/weapon_definitions.dart';
 import '../../game/systems/save_system.dart';
 
 class SaveStateValidator {
+  static const maxCounter = 1000000000;
+  static const maxRank = 100;
+  static const maxDynamicIdLength = 128;
+  static const maxClaimedRewardIds = 10000;
+  static final _dynamicIdPattern = RegExp(r'^[A-Za-z0-9._:-]+$');
+
   static const _allowedTopLevelKeys = {
     'schemaVersion',
     'unlockedCharacterIds',
@@ -83,6 +89,7 @@ class SaveStateValidator {
     _validateWallet(json['wallet']);
     _validateTraining(json['trainingProgress']);
     _validateShop(json['shopProgress']);
+    _validateClaimedRewards(json['claimedRewardIds']);
     _validateCharacterCounts(json['characterVictoryCounts']);
     _validateCompendium(json['seenCompendiumEntryIds']);
     for (final key in const [
@@ -96,36 +103,36 @@ class SaveStateValidator {
       'victoryCount',
     ]) {
       final value = json[key];
-      if (value is! int || value < 0) {
-        throw FormatException('$key must be a non-negative integer');
-      }
+      _boundedInt(value, key, maxCounter);
     }
   }
 
   void _validateWallet(Object? value) {
-    if (value is! Map ||
-        value.keys.any((key) => key != 'coin' && key != 'spiritJade')) {
+    if (value is! Map || !_hasExactKeys(value, const {'coin', 'spiritJade'})) {
       throw const FormatException(
         'Save wallet contains paid or unknown fields',
       );
     }
     for (final key in const ['coin', 'spiritJade']) {
-      final amount = value[key];
-      if (amount is! int || amount < 0) {
-        throw const FormatException(
-          'Earnable wallet values must be non-negative',
-        );
-      }
+      _boundedInt(value[key], key, maxCounter);
     }
   }
 
   void _validateTraining(Object? value) {
-    if (value is! Map) throw const FormatException('Invalid training progress');
+    if (value is! Map ||
+        !_hasExactKeys(value, const {
+          'commonRanks',
+          'characterRanks',
+          'activeCoreTraitIds',
+        })) {
+      throw const FormatException('Invalid training progress');
+    }
     final common = value['commonRanks'];
     if (common is! Map ||
         common.keys.any((key) => !commonTrainingNodeIds.contains(key))) {
       throw const FormatException('Unknown common training node');
     }
+    _validateRanks(common);
     final characters = value['characterRanks'];
     if (characters is! Map ||
         characters.keys.any(
@@ -138,6 +145,7 @@ class SaveStateValidator {
           ranks.keys.any((key) => !characterTrainingNodeIds.contains(key))) {
         throw const FormatException('Unknown character training node');
       }
+      _validateRanks(ranks);
     }
     final traits = value['activeCoreTraitIds'];
     if (traits is! Map) throw const FormatException('Invalid active traits');
@@ -151,7 +159,9 @@ class SaveStateValidator {
   }
 
   void _validateShop(Object? value) {
-    if (value is! Map) throw const FormatException('Invalid shop progress');
+    if (value is! Map || !_hasExactKeys(value, const {'purchasedItemIds'})) {
+      throw const FormatException('Invalid shop progress');
+    }
     _knownIds(value['purchasedItemIds'], oneTimeShopItemIds, 'shop item');
   }
 
@@ -161,10 +171,46 @@ class SaveStateValidator {
     for (final entry in value.entries) {
       if (!known.contains(entry.key) ||
           entry.value is! int ||
-          (entry.value as int) < 0) {
+          (entry.value as int) < 0 ||
+          (entry.value as int) > maxCounter) {
         throw const FormatException('Invalid character victory count');
       }
     }
+  }
+
+  void _validateClaimedRewards(Object? value) {
+    if (value is! Iterable) {
+      throw const FormatException('Invalid claimed reward IDs');
+    }
+    final ids = value.toList();
+    if (ids.length > maxClaimedRewardIds || ids.toSet().length != ids.length) {
+      throw const FormatException('Invalid claimed reward ID count');
+    }
+    for (final id in ids) {
+      if (id is! String ||
+          id.isEmpty ||
+          id.length > maxDynamicIdLength ||
+          !_dynamicIdPattern.hasMatch(id)) {
+        throw const FormatException('Invalid claimed reward ID');
+      }
+    }
+  }
+
+  void _validateRanks(Map ranks) {
+    for (final value in ranks.values) {
+      _boundedInt(value, 'training rank', maxRank);
+    }
+  }
+
+  void _boundedInt(Object? value, String label, int maximum) {
+    if (value is! int || value < 0 || value > maximum) {
+      throw FormatException('$label must be between 0 and $maximum');
+    }
+  }
+
+  bool _hasExactKeys(Map value, Set<String> expected) {
+    final keys = value.keys.toSet();
+    return keys.length == expected.length && keys.containsAll(expected);
   }
 
   void _validateCompendium(Object? value) {
