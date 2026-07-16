@@ -23,7 +23,11 @@ function Get-ArtifactRecord {
     [datetime]$CompletedAt
   )
   $item = Get-Item -LiteralPath $Path
-  $relative = [IO.Path]::GetRelativePath($repoRoot, $item.FullName)
+  $rootPrefix = $repoRoot.TrimEnd('\') + '\'
+  if (-not $item.FullName.StartsWith($rootPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+    throw "Evidence artifact is outside the repository: $($item.FullName)"
+  }
+  $relative = $item.FullName.Substring($rootPrefix.Length)
   $hash = (& git -C $repoRoot hash-object -- $relative).Trim()
   return [ordered]@{
     command = $Command
