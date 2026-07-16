@@ -92,16 +92,27 @@ class SaveState {
 
   static SaveState _fromSupportedJson(Map<String, dynamic> json) {
     final defaults = SaveState.defaults();
+    final sourceSchemaVersion = json['schemaVersion'] as int? ?? 0;
     final unlockedCharacterIds = _knownStringSet(
       json['unlockedCharacterIds'],
       characterDefinitions.map((definition) => definition.id),
       fallback: defaults.unlockedCharacterIds,
     );
-    final unlockedStageIds = _knownStringSet(
-      json['unlockedStageIds'],
-      stageDefinitions.map((definition) => definition.id),
-      fallback: defaults.unlockedStageIds,
-    );
+    final unlockedStageIds = <String>{
+      ..._knownStringSet(
+        json['unlockedStageIds'],
+        stageDefinitions.map((definition) => definition.id),
+        fallback: defaults.unlockedStageIds,
+      ),
+    };
+    final legacySelectedStageId = json['selectedStageId'];
+    if (sourceSchemaVersion < 3 &&
+        legacySelectedStageId is String &&
+        stageDefinitions.any(
+          (definition) => definition.id == legacySelectedStageId,
+        )) {
+      unlockedStageIds.add(legacySelectedStageId);
+    }
     final selectedCharacterId = _validSelectedCharacter(
       json['selectedCharacterId'],
       unlockedCharacterIds,

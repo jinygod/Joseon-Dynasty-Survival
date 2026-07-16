@@ -65,6 +65,8 @@ flutter:
     - assets/audio/music/
     - assets/audio/sfx/
     - assets/audio/ui/
+    - docs/assets/asset-rights-ledger.csv
+    - docs/assets/audio-rights-ledger.csv
 
   # To add assets to your application, add an assets section, like this:
   # assets:
