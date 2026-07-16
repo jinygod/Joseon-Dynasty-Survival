@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/components/enemy_component.dart';
 import 'package:pixel_survivor/game/components/player_component.dart';
 import 'package:pixel_survivor/game/content/enemy_definitions.dart';
+import 'package:pixel_survivor/game/game_performance_budget.dart';
 import 'package:pixel_survivor/game/systems/combat_feedback_tuning.dart';
 import 'package:pixel_survivor/game/systems/combat_system.dart';
 
@@ -46,7 +47,7 @@ void main() {
 
   test('mobile feedback limits stay inside readability targets', () {
     expect(CombatFeedbackTuning.playerInvulnerabilitySeconds, 0.35);
-    expect(CombatFeedbackTuning.maxDamageNumbers, 24);
+    expect(GamePerformanceBudget.standard.maxDamageNumbers, 24);
     expect(CombatFeedbackTuning.screenShakeDurationSeconds, 0.12);
     expect(CombatFeedbackTuning.maxScreenShakeMagnitude, 4);
   });

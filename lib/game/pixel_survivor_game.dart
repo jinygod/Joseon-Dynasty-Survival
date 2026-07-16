@@ -34,6 +34,7 @@ import 'content/stage_definitions.dart';
 import 'content/wave_definitions.dart';
 import 'content/weapon_definitions.dart';
 import 'content/weapon_level_definitions.dart';
+import 'game_performance_budget.dart';
 import 'models/player_slot.dart';
 import 'models/damage_event.dart';
 import 'models/run_choice_record.dart';
@@ -71,6 +72,8 @@ class PixelSurvivorGame extends FlameGame
     double Function()? rewardRoll,
     double Function()? bossRoll,
     Random? random,
+    this.performanceBudget = GamePerformanceBudget.standard,
+    this.onPerformanceDiagnostic,
   }) : weaponSystem = WeaponSystem(random: random),
        waveDirector = WaveDirector(
          random: random ?? Random(),
@@ -99,6 +102,8 @@ class PixelSurvivorGame extends FlameGame
   final String pickupIdPrefix;
   final double Function() _rewardRoll;
   final double Function() _bossRoll;
+  final GamePerformanceBudget performanceBudget;
+  final GamePerformanceDiagnosticReporter? onPerformanceDiagnostic;
   final MetaRewardPolicy _metaRewardPolicy = const MetaRewardPolicy();
   final AugmentEffectResolver _augmentEffectResolver =
       const AugmentEffectResolver();
@@ -133,6 +138,7 @@ class PixelSurvivorGame extends FlameGame
   BossComponent? _boss;
   int _damageNumberCount = 0;
   int _combatEffectCount = 0;
+  final Map<GamePopulationKind, int> _rejectedPopulations = {};
   double _screenShakeRemaining = 0;
   double _screenShakeMagnitude = 0;
   double _screenShakePhase = 0;
@@ -174,6 +180,16 @@ class PixelSurvivorGame extends FlameGame
   @override
   double? get bossHealthFraction => _boss?.healthFraction;
   Vector2 get screenShakeOffset => _screenShakeOffset.clone();
+  GamePerformanceSnapshot get performanceSnapshot => GamePerformanceSnapshot(
+    budget: performanceBudget,
+    counts: {
+      GamePopulationKind.enemy: _enemyComponentCount,
+      GamePopulationKind.projectile: _projectileComponentCount,
+      GamePopulationKind.damageNumber: _damageNumberCount,
+      GamePopulationKind.combatEffect: _combatEffectCount,
+    },
+    rejected: _rejectedPopulations,
+  );
 
   void applyAccessibilitySettings({
     required bool screenShakeEnabled,
@@ -421,12 +437,21 @@ class PixelSurvivorGame extends FlameGame
       dt: dt,
       activeEnemyCount: enemyCount,
     );
-    _currentEnemyCap = wave.maxActiveEnemies;
+    _currentEnemyCap = min(wave.maxActiveEnemies, performanceBudget.maxEnemies);
     final initialEnemyCount = enemyCount;
-    for (var index = 0; index < wave.spawnRequests.length; index += 1) {
+    final availableSlots = min(
+      max(0, _currentEnemyCap - initialEnemyCount),
+      max(0, performanceBudget.maxEnemies - _enemyComponentCount),
+    );
+    final admittedCount = min(wave.spawnRequests.length, availableSlots);
+    for (var index = 0; index < admittedCount; index += 1) {
       final request = wave.spawnRequests[index];
       _addEnemy(request.enemyId, initialEnemyCount + index);
     }
+    _rejectPopulation(
+      GamePopulationKind.enemy,
+      wave.spawnRequests.length - admittedCount,
+    );
     if (wave.spawnBoss) {
       _bossRequestCount += 1;
       _emitAudio(AudioCue.bossWarning);
@@ -437,6 +462,10 @@ class PixelSurvivorGame extends FlameGame
 
   void _spawnBoss() {
     if (_bossSpawnCount > 0) return;
+    if (_enemyComponentCount >= performanceBudget.maxEnemies) {
+      _rejectPopulation(GamePopulationKind.enemy, 1);
+      return;
+    }
 
     final definition = bossDefinitionForStage(stageId, roll: _bossRoll());
     final boss = BossComponent.fromBossDefinition(
@@ -453,11 +482,18 @@ class PixelSurvivorGame extends FlameGame
   }
 
   void _summonBossMinions(List<EnemyId> enemyIds) {
-    final availableSlots = max(0, _currentEnemyCap - enemyCount);
+    final availableSlots = max(
+      0,
+      min(
+        _currentEnemyCap - enemyCount,
+        performanceBudget.maxEnemies - _enemyComponentCount,
+      ),
+    );
     final summonCount = min(enemyIds.length, availableSlots);
     for (var index = 0; index < summonCount; index += 1) {
       _addEnemy(enemyIds[index], enemyCount + index);
     }
+    _rejectPopulation(GamePopulationKind.enemy, enemyIds.length - summonCount);
   }
 
   void _addEnemy(EnemyId enemyId, int spawnIndex) {
@@ -497,8 +533,17 @@ class PixelSurvivorGame extends FlameGame
       _emitAudio(_attackCueFor(weaponId));
     }
     _applyDamageEvents(result.damageEvents);
+    var projectileSlots = max(
+      0,
+      performanceBudget.maxProjectiles - _projectileComponentCount,
+    );
     for (final projectile in result.projectiles) {
-      add(projectile);
+      if (projectileSlots > 0) {
+        add(projectile);
+        projectileSlots -= 1;
+      } else {
+        _rejectPopulation(GamePopulationKind.projectile, 1);
+      }
     }
     for (final arc in result.meleeArcs) {
       add(arc);
@@ -799,7 +844,10 @@ class PixelSurvivorGame extends FlameGame
 
   void _spawnDamageNumber(DamageEvent event) {
     if (!damageNumbersEnabled) return;
-    if (_damageNumberCount >= CombatFeedbackTuning.maxDamageNumbers) return;
+    if (_damageNumberCount >= performanceBudget.maxDamageNumbers) {
+      _rejectPopulation(GamePopulationKind.damageNumber, 1);
+      return;
+    }
     _damageNumberCount += 1;
     add(
       DamageNumberComponent(
@@ -818,7 +866,10 @@ class PixelSurvivorGame extends FlameGame
     Vector2 position, {
     double size = 36,
   }) {
-    if (_combatEffectCount >= CombatFeedbackTuning.maxCombatEffects) return;
+    if (_combatEffectCount >= performanceBudget.maxCombatEffects) {
+      _rejectPopulation(GamePopulationKind.combatEffect, 1);
+      return;
+    }
     _combatEffectCount += 1;
     add(
       CombatEffectComponent(
@@ -1263,6 +1314,34 @@ class PixelSurvivorGame extends FlameGame
       player.takeDamage(player.currentHealth);
     }
   }
+
+  void _rejectPopulation(GamePopulationKind kind, int count) {
+    if (count <= 0) return;
+    final total = (_rejectedPopulations[kind] ?? 0) + count;
+    _rejectedPopulations[kind] = total;
+    try {
+      onPerformanceDiagnostic?.call(
+        GamePerformanceDiagnostic(
+          kind: kind,
+          rejectedCount: count,
+          rejectedTotal: total,
+          limit: performanceBudget.limitFor(kind),
+        ),
+      );
+    } catch (_) {
+      // Diagnostics cannot turn a deliberate population drop into a crash.
+    }
+  }
+
+  int get _enemyComponentCount => children
+      .whereType<EnemyComponent>()
+      .where((enemy) => !enemy.isRemoving)
+      .length;
+
+  int get _projectileComponentCount => children
+      .whereType<ProjectileComponent>()
+      .where((projectile) => !projectile.isRemoving)
+      .length;
 
   AudioCue _attackCueFor(WeaponId weaponId) => switch (weaponId) {
     hwandoSlash => AudioCue.hwandoAttack,
