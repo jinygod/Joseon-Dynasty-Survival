@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(41);
+select plan(48);
 
 select has_schema('private');
 select ok(to_regclass('public.profiles') is not null, 'profiles exists');
@@ -99,6 +99,32 @@ select is((select count(*) from public.wallet_ledger where idempotency_key = 'go
   'duplicate voided purchase event records one ledger entry');
 select is((select royal_jade from public.wallets where user_id = '00000000-0000-0000-0000-000000000001'), 15::bigint,
   'duplicate voided purchase event debits once');
+
+reset role;
+insert into public.player_progress (user_id, schema_version, progress)
+values ('00000000-0000-0000-0000-000000000002', 1, '{}');
+set local role service_role;
+select * from private.apply_wallet_entry(
+  '00000000-0000-0000-0000-000000000002', 100, 'test', 'delete', 'seed', 'delete-seed', '{}');
+select * from private.record_google_play_purchase(
+  '00000000-0000-0000-0000-000000000002', 'royal_jade_small', 'delete-token', 'delete-order', 'PURCHASED', '{}');
+select * from private.spend_for_entitlement(
+  '00000000-0000-0000-0000-000000000002', 'test_cosmetic');
+select lives_ok(
+  $$ select private.pseudonymize_and_delete_account('00000000-0000-0000-0000-000000000002') $$,
+  'account gameplay deletion removes entitlement before its ledger row');
+select is((select user_id from private.google_play_purchases where purchase_token = 'delete-token'), null::uuid,
+  'account deletion pseudonymizes retained purchase audit');
+select is((select count(*) from public.player_entitlements where user_id = '00000000-0000-0000-0000-000000000002'), 0::bigint,
+  'account deletion removes entitlements');
+select is((select count(*) from public.wallet_ledger where user_id = '00000000-0000-0000-0000-000000000002'), 0::bigint,
+  'account deletion removes ledger after entitlement');
+select is((select count(*) from public.player_progress where user_id = '00000000-0000-0000-0000-000000000002'), 0::bigint,
+  'account deletion removes progress');
+select is((select count(*) from public.wallets where user_id = '00000000-0000-0000-0000-000000000002'), 0::bigint,
+  'account deletion removes wallet');
+select is((select count(*) from public.profiles where user_id = '00000000-0000-0000-0000-000000000002'), 0::bigint,
+  'account deletion removes profile');
 
 select throws_ok($$ update public.wallet_ledger set reason = 'tamper' $$, '42501');
 select throws_ok($$ delete from public.wallet_ledger $$, '42501');

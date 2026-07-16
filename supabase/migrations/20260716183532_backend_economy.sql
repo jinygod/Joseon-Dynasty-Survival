@@ -385,6 +385,24 @@ begin
 end;
 $$;
 
+create or replace function private.pseudonymize_and_delete_account(p_user_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  update private.google_play_purchases
+  set user_id = null, updated_at = now()
+  where user_id = p_user_id;
+  delete from public.player_entitlements where user_id = p_user_id;
+  delete from public.wallet_ledger where user_id = p_user_id;
+  delete from public.player_progress where user_id = p_user_id;
+  delete from public.wallets where user_id = p_user_id;
+  delete from public.profiles where user_id = p_user_id;
+end;
+$$;
+
 revoke execute on all functions in schema private from public, anon, authenticated;
 grant usage on schema private to service_role;
 grant select on public.profiles, public.player_progress, public.wallets,
@@ -394,4 +412,5 @@ grant select on private.product_catalog, private.google_play_purchases,
 grant execute on function private.apply_wallet_entry(uuid,bigint,text,text,text,text,jsonb),
   private.record_google_play_purchase(uuid,text,text,text,text,jsonb),
   private.spend_for_entitlement(uuid,text),
-  private.sync_progress(uuid,integer,jsonb,bigint) to service_role;
+  private.sync_progress(uuid,integer,jsonb,bigint),
+  private.pseudonymize_and_delete_account(uuid) to service_role;

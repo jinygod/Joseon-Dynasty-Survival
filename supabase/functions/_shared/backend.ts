@@ -74,11 +74,7 @@ export async function createBackend(databaseUrl: string) {
     },
     accounts: {
       async pseudonymizeAndDelete(userId: string) {
-        await sql.begin(async (tx) => {
-          await tx`update private.google_play_purchases set user_id = null, updated_at = now() where user_id = ${userId}::uuid`;
-          await tx`delete from public.profiles where user_id = ${userId}::uuid`;
-          await tx`delete from public.wallet_ledger where user_id = ${userId}::uuid`;
-        });
+        await sql`select private.pseudonymize_and_delete_account(${userId}::uuid)`;
       },
     },
   };

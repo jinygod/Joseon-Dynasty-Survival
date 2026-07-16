@@ -53,7 +53,11 @@ function verifyDeps(overrides: Record<string, unknown> = {}) {
       ) => ({
         purchaseState: "PURCHASED",
         productIds: [productId],
-        lineItems: [{ productId, quantity: 1 }],
+        lineItems: [{
+          productId,
+          quantity: 1,
+          consumptionState: "CONSUMPTION_STATE_YET_TO_BE_CONSUMED",
+        }],
         obfuscatedExternalAccountId: "user-1",
         orderId: "order-1",
         raw: {},
@@ -87,6 +91,46 @@ function verifyDeps(overrides: Record<string, unknown> = {}) {
   return deps;
 }
 
+function notificationDeps(overrides: Record<string, unknown> = {}) {
+  const base = {
+    expectedPackage: "com.example.game",
+    pubsub: { authenticate: async () => true },
+    catalog: {
+      findProduct: async (id: string) =>
+        id === "royal_jade_small" ? { grantAmount: 100, active: true } : null,
+    },
+    google: {
+      getProductPurchase: async () => ({
+        purchaseState: "PURCHASED",
+        lineItems: [{
+          productId: "royal_jade_small",
+          quantity: 1,
+          consumptionState: "CONSUMPTION_STATE_YET_TO_BE_CONSUMED",
+        }],
+        obfuscatedExternalAccountId: "user-1",
+        raw: {},
+      }),
+      consume: async () => {},
+    },
+    economy: {
+      refund: async () => ({ balance: 0, debt: 0 }),
+      grantPurchase: async () => ({
+        balance: 100,
+        debt: 0,
+        duplicate: false,
+      }),
+    },
+  };
+  return {
+    ...base,
+    ...overrides,
+    pubsub: { ...base.pubsub, ...overrides.pubsub as object },
+    catalog: { ...base.catalog, ...overrides.catalog as object },
+    google: { ...base.google, ...overrides.google as object },
+    economy: { ...base.economy, ...overrides.economy as object },
+  };
+}
+
 Deno.test("ProductPurchaseV2 parser keeps account and line item quantity", () => {
   equal(
     parseGooglePurchase({
@@ -94,13 +138,20 @@ Deno.test("ProductPurchaseV2 parser keeps account and line item quantity", () =>
       obfuscatedExternalAccountId: "user-1",
       productLineItem: [{
         productId: "royal_jade_small",
-        productOfferDetails: { quantity: 1 },
+        productOfferDetails: {
+          quantity: 1,
+          consumptionState: "CONSUMPTION_STATE_YET_TO_BE_CONSUMED",
+        },
       }],
       orderId: "order-1",
     }),
     {
       purchaseState: "PURCHASED",
-      lineItems: [{ productId: "royal_jade_small", quantity: 1 }],
+      lineItems: [{
+        productId: "royal_jade_small",
+        quantity: 1,
+        consumptionState: "CONSUMPTION_STATE_YET_TO_BE_CONSUMED",
+      }],
       obfuscatedExternalAccountId: "user-1",
       orderId: "order-1",
       raw: {
@@ -108,7 +159,10 @@ Deno.test("ProductPurchaseV2 parser keeps account and line item quantity", () =>
         obfuscatedExternalAccountId: "user-1",
         productLineItem: [{
           productId: "royal_jade_small",
-          productOfferDetails: { quantity: 1 },
+          productOfferDetails: {
+            quantity: 1,
+            consumptionState: "CONSUMPTION_STATE_YET_TO_BE_CONSUMED",
+          },
         }],
         orderId: "order-1",
       },
@@ -226,7 +280,11 @@ Deno.test("purchase without obfuscated account id is rejected", async () => {
       getProductPurchase: async () => ({
         purchaseState: "PURCHASED",
         productIds: ["royal_jade_small"],
-        lineItems: [{ productId: "royal_jade_small", quantity: 1 }],
+        lineItems: [{
+          productId: "royal_jade_small",
+          quantity: 1,
+          consumptionState: "CONSUMPTION_STATE_YET_TO_BE_CONSUMED",
+        }],
         raw: {},
       }),
       consume: async () => {},
@@ -251,7 +309,11 @@ Deno.test("purchase for another obfuscated account is rejected", async () => {
       getProductPurchase: async () => ({
         purchaseState: "PURCHASED",
         productIds: ["royal_jade_small"],
-        lineItems: [{ productId: "royal_jade_small", quantity: 1 }],
+        lineItems: [{
+          productId: "royal_jade_small",
+          quantity: 1,
+          consumptionState: "CONSUMPTION_STATE_YET_TO_BE_CONSUMED",
+        }],
         obfuscatedExternalAccountId: "user-2",
         raw: {},
       }),
@@ -277,7 +339,11 @@ Deno.test("multi-quantity purchase is rejected", async () => {
       getProductPurchase: async () => ({
         purchaseState: "PURCHASED",
         productIds: ["royal_jade_small"],
-        lineItems: [{ productId: "royal_jade_small", quantity: 2 }],
+        lineItems: [{
+          productId: "royal_jade_small",
+          quantity: 2,
+          consumptionState: "CONSUMPTION_STATE_YET_TO_BE_CONSUMED",
+        }],
         obfuscatedExternalAccountId: "user-1",
         raw: {},
       }),
@@ -304,8 +370,16 @@ Deno.test("multiple Google line items are rejected", async () => {
         purchaseState: "PURCHASED",
         productIds: ["royal_jade_small", "royal_jade_medium"],
         lineItems: [
-          { productId: "royal_jade_small", quantity: 1 },
-          { productId: "royal_jade_medium", quantity: 1 },
+          {
+            productId: "royal_jade_small",
+            quantity: 1,
+            consumptionState: "CONSUMPTION_STATE_YET_TO_BE_CONSUMED",
+          },
+          {
+            productId: "royal_jade_medium",
+            quantity: 1,
+            consumptionState: "CONSUMPTION_STATE_YET_TO_BE_CONSUMED",
+          },
         ],
         obfuscatedExternalAccountId: "user-1",
         raw: {},
@@ -392,14 +466,77 @@ Deno.test("consume failure remains retryable without duplicate grant", async () 
   equal(deps.ledgerEntries.length, 1);
 });
 
+Deno.test("already consumed purchase is accepted without consuming again", async () => {
+  let consumeCalls = 0;
+  const deps = verifyDeps({
+    google: {
+      getProductPurchase: async () => ({
+        purchaseState: "PURCHASED",
+        lineItems: [{
+          productId: "royal_jade_small",
+          quantity: 1,
+          consumptionState: "CONSUMPTION_STATE_CONSUMED",
+        }],
+        obfuscatedExternalAccountId: "user-1",
+        raw: {},
+      }),
+      consume: async () => {
+        consumeCalls++;
+      },
+    },
+  });
+  const response = await verifyPurchase(
+    request({
+      productId: "royal_jade_small",
+      purchaseToken: "consumed-token",
+      packageName: "com.example.game",
+    }),
+    deps,
+  );
+  equal(response.status, 200);
+  equal(await body(response), { accepted: true, duplicate: false });
+  equal(consumeCalls, 0);
+});
+
+Deno.test("response loss retry grants once and does not consume twice", async () => {
+  let lookupCalls = 0;
+  let consumeCalls = 0;
+  const deps = verifyDeps({
+    google: {
+      getProductPurchase: async () => ({
+        purchaseState: "PURCHASED",
+        lineItems: [{
+          productId: "royal_jade_small",
+          quantity: 1,
+          consumptionState: lookupCalls++ === 0
+            ? "CONSUMPTION_STATE_YET_TO_BE_CONSUMED"
+            : "CONSUMPTION_STATE_CONSUMED",
+        }],
+        obfuscatedExternalAccountId: "user-1",
+        raw: {},
+      }),
+      consume: async () => {
+        consumeCalls++;
+      },
+    },
+  });
+  const payload = {
+    productId: "royal_jade_small",
+    purchaseToken: "response-loss-token",
+    packageName: "com.example.game",
+  };
+  const first = await verifyPurchase(request(payload), deps);
+  const retry = await verifyPurchase(request(payload), deps);
+  equal(await body(first), { accepted: true, duplicate: false });
+  equal(await body(retry), { accepted: true, duplicate: true });
+  equal(deps.ledgerEntries.length, 1);
+  equal(consumeCalls, 1);
+});
+
 Deno.test("PubSub authentication failure is rejected", async () => {
   const response = await notification(
     request({ message: { data: "e30=" } }, "bad"),
-    {
-      expectedPackage: "com.example.game",
-      pubsub: { authenticate: async () => false },
-      economy: { refund: async () => ({ balance: 0, debt: 0 }) },
-    },
+    notificationDeps({ pubsub: { authenticate: async () => false } }),
   );
   equal(response.status, 401);
 });
@@ -415,29 +552,28 @@ Deno.test("one-time pending cancellation is ignored without refund", async () =>
   }));
   const response = await notification(
     request({ message: { messageId: "event-pending", data: event } }, "pubsub"),
-    {
-      expectedPackage: "com.example.game",
-      pubsub: { authenticate: async () => true },
+    notificationDeps({
       economy: {
         refund: async () => {
           calls++;
           return { balance: 0, debt: 0 };
         },
       },
-    },
+    }),
   );
   equal(response.status, 200);
   equal(await body(response), { ignored: true, reason: "pending_cancelled" });
   equal(calls, 0);
 });
 
-Deno.test("one-time purchased notification requests reconciliation without refund", async () => {
-  let calls = 0;
+Deno.test("one-time purchased notification verifies, grants, and consumes", async () => {
+  const calls: string[] = [];
   const event = btoa(JSON.stringify({
     packageName: "com.example.game",
     oneTimeProductNotification: {
       purchaseToken: "token-purchased",
       notificationType: 1,
+      sku: "royal_jade_small",
     },
   }));
   const response = await notification(
@@ -445,20 +581,36 @@ Deno.test("one-time purchased notification requests reconciliation without refun
       { message: { messageId: "event-purchased", data: event } },
       "pubsub",
     ),
-    {
-      expectedPackage: "com.example.game",
-      pubsub: { authenticate: async () => true },
-      economy: {
-        refund: async () => {
-          calls++;
-          return {};
+    notificationDeps({
+      google: {
+        getProductPurchase: async () => {
+          calls.push("google.get");
+          return {
+            purchaseState: "PURCHASED",
+            lineItems: [{
+              productId: "royal_jade_small",
+              quantity: 1,
+              consumptionState: "CONSUMPTION_STATE_YET_TO_BE_CONSUMED",
+            }],
+            obfuscatedExternalAccountId: "user-1",
+            raw: {},
+          };
+        },
+        consume: async () => {
+          calls.push("google.consume");
         },
       },
-    },
+      economy: {
+        grantPurchase: async () => {
+          calls.push("economy.grant");
+          return { balance: 100, debt: 0, duplicate: false };
+        },
+      },
+    }),
   );
   equal(response.status, 200);
-  equal(await body(response), { ignored: true, reason: "reconcile_required" });
-  equal(calls, 0);
+  equal(await body(response), { accepted: true, duplicate: false });
+  equal(calls, ["google.get", "economy.grant", "google.consume"]);
 });
 
 Deno.test("notification package mismatch is rejected", async () => {
@@ -472,11 +624,7 @@ Deno.test("notification package mismatch is rejected", async () => {
   }));
   const response = await notification(
     request({ message: { messageId: "event-package", data: event } }, "pubsub"),
-    {
-      expectedPackage: "com.example.game",
-      pubsub: { authenticate: async () => true },
-      economy: { refund: async () => ({ balance: 0, debt: 0 }) },
-    },
+    notificationDeps(),
   );
   equal(response.status, 400);
   equal((await body(response)).code, "package_mismatch");
@@ -496,16 +644,14 @@ Deno.test("voided one-time purchase creates debt when funds were spent", async (
   );
   const response = await notification(
     request({ message: { messageId: "event-1", data: event } }, "pubsub"),
-    {
-      expectedPackage: "com.example.game",
-      pubsub: { authenticate: async () => true },
+    notificationDeps({
       economy: {
         refund: async (value: unknown) => {
           input = value;
           return { balance: 0, debt: 75 };
         },
       },
-    },
+    }),
   );
   equal(response.status, 200);
   equal((await body(response)).debt, 75);
@@ -516,7 +662,8 @@ Deno.test("voided one-time purchase creates debt when funds were spent", async (
   });
 });
 
-Deno.test("unknown voided token is acknowledged without retry storm", async () => {
+Deno.test("unknown voided token is retried until the purchase is known", async () => {
+  let refundCalls = 0;
   const event = btoa(JSON.stringify({
     packageName: "com.example.game",
     voidedPurchaseNotification: {
@@ -525,18 +672,26 @@ Deno.test("unknown voided token is acknowledged without retry storm", async () =
       refundType: 1,
     },
   }));
-  const response = await notification(
-    request({ message: { messageId: "event-unknown", data: event } }, "pubsub"),
-    {
-      expectedPackage: "com.example.game",
-      pubsub: { authenticate: async () => true },
-      economy: {
-        refund: async () => ({ ignored: true, reason: "unknown_token" }),
-      },
+  const deps = notificationDeps({
+    economy: {
+      refund: async () =>
+        refundCalls++ === 0
+          ? { ignored: true, reason: "unknown_token" }
+          : { balance: 0, debt: 100 },
     },
+  });
+  const first = await notification(
+    request({ message: { messageId: "event-unknown", data: event } }, "pubsub"),
+    deps,
   );
-  equal(response.status, 200);
-  equal(await body(response), { ignored: true, reason: "unknown_token" });
+  const retry = await notification(
+    request({ message: { messageId: "event-unknown", data: event } }, "pubsub"),
+    deps,
+  );
+  equal(first.status, 503);
+  equal(await body(first), { code: "purchase_not_found_retry" });
+  equal(retry.status, 200);
+  equal(await body(retry), { balance: 0, debt: 100 });
 });
 
 Deno.test("spend endpoint returns trusted atomic result", async () => {

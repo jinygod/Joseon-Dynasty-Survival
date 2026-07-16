@@ -86,14 +86,18 @@ export async function handler(
       grantAmount: product.grantAmount,
       rawVerification: purchase.raw,
     });
-    try {
-      await deps.google.consume(
-        body.packageName,
-        body.productId,
-        body.purchaseToken,
-      );
-    } catch {
-      throw new HttpError(503, "consume_retry_required");
+    if (
+      purchase.lineItems[0].consumptionState !== "CONSUMPTION_STATE_CONSUMED"
+    ) {
+      try {
+        await deps.google.consume(
+          body.packageName,
+          body.productId,
+          body.purchaseToken,
+        );
+      } catch {
+        throw new HttpError(503, "consume_retry_required");
+      }
     }
     return json(200, { accepted: true, duplicate: result.duplicate });
   });

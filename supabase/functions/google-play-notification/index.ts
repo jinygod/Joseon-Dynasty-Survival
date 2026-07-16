@@ -1,8 +1,18 @@
 import { boundedJson, HttpError, json, respond } from "../_shared/http.ts";
+import {
+  createGooglePlayClient,
+  type GooglePlayClient,
+} from "../_shared/google_play_client.ts";
 
 interface NotificationDeps {
   expectedPackage: string;
   pubsub: { authenticate(request: Request): Promise<boolean> };
+  catalog: {
+    findProduct(
+      id: string,
+    ): Promise<{ grantAmount: number; active: boolean } | null>;
+  };
+  google: GooglePlayClient;
   economy: {
     refund(
       input: {
@@ -11,6 +21,9 @@ interface NotificationDeps {
         refundType: number;
       },
     ): Promise<Record<string, unknown>>;
+    grantPurchase(
+      input: Record<string, unknown>,
+    ): Promise<{ balance: number; debt: number; duplicate: boolean }>;
   };
 }
 
@@ -36,6 +49,7 @@ export async function handler(
       oneTimeProductNotification?: {
         purchaseToken?: string;
         notificationType?: number;
+        sku?: string;
       };
       voidedPurchaseNotification?: {
         purchaseToken?: string;
@@ -62,21 +76,61 @@ export async function handler(
       if (voided.productType !== 2) {
         return json(200, { ignored: true, reason: "non_one_time_product" });
       }
-      return json(
-        200,
-        await deps.economy.refund({
-          purchaseToken: voided.purchaseToken,
-          eventId: envelope.message.messageId,
-          refundType: voided.refundType,
-        }),
-      );
+      const result = await deps.economy.refund({
+        purchaseToken: voided.purchaseToken,
+        eventId: envelope.message.messageId,
+        refundType: voided.refundType,
+      });
+      if (result.reason === "unknown_token") {
+        throw new HttpError(503, "purchase_not_found_retry");
+      }
+      return json(200, result);
     }
     const notice = event.oneTimeProductNotification;
     if (!notice?.purchaseToken || typeof notice.notificationType !== "number") {
       throw new HttpError(400, "invalid_body");
     }
     if (notice.notificationType === 1) {
-      return json(200, { ignored: true, reason: "reconcile_required" });
+      if (!notice.sku) throw new HttpError(400, "invalid_body");
+      const product = await deps.catalog.findProduct(notice.sku);
+      if (!product?.active) {
+        throw new HttpError(503, "reconciliation_retry_required");
+      }
+      const purchase = await deps.google.getProductPurchase(
+        deps.expectedPackage,
+        notice.sku,
+        notice.purchaseToken,
+      );
+      const lineItem = purchase.lineItems[0];
+      if (
+        purchase.purchaseState !== "PURCHASED" ||
+        !purchase.obfuscatedExternalAccountId ||
+        purchase.lineItems.length !== 1 ||
+        lineItem.productId !== notice.sku ||
+        lineItem.quantity !== 1
+      ) {
+        throw new HttpError(503, "reconciliation_retry_required");
+      }
+      const result = await deps.economy.grantPurchase({
+        userId: purchase.obfuscatedExternalAccountId,
+        productId: notice.sku,
+        purchaseToken: notice.purchaseToken,
+        orderId: purchase.orderId ?? null,
+        grantAmount: product.grantAmount,
+        rawVerification: purchase.raw,
+      });
+      if (lineItem.consumptionState !== "CONSUMPTION_STATE_CONSUMED") {
+        try {
+          await deps.google.consume(
+            deps.expectedPackage,
+            notice.sku,
+            notice.purchaseToken,
+          );
+        } catch {
+          throw new HttpError(503, "consume_retry_required");
+        }
+      }
+      return json(200, { accepted: true, duplicate: result.duplicate });
     }
     if (notice.notificationType === 2) {
       return json(200, { ignored: true, reason: "pending_cancelled" });
@@ -88,11 +142,16 @@ export async function handler(
 if (import.meta.main) {
   const { createBackend } = await import("../_shared/backend.ts");
   const backend = await createBackend(Deno.env.get("SUPABASE_DB_URL")!);
+  const google = createGooglePlayClient(
+    Deno.env.get("GOOGLE_PLAY_SERVICE_ACCOUNT_JSON")!,
+  );
   const audience = Deno.env.get("PUBSUB_AUDIENCE")!;
   const email = Deno.env.get("PUBSUB_SERVICE_ACCOUNT_EMAIL")!;
   Deno.serve((request) =>
     handler(request, {
       expectedPackage: Deno.env.get("ANDROID_PACKAGE_NAME")!,
+      catalog: backend.catalog,
+      google,
       pubsub: {
         async authenticate(req) {
           const token = req.headers.get("authorization")?.replace(

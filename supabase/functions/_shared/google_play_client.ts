@@ -1,6 +1,10 @@
 export interface GooglePurchase {
   purchaseState: string;
-  lineItems: Array<{ productId: string; quantity: number }>;
+  lineItems: Array<{
+    productId: string;
+    quantity: number;
+    consumptionState: string;
+  }>;
   obfuscatedExternalAccountId?: string;
   orderId?: string;
   raw: unknown;
@@ -23,7 +27,7 @@ interface ProductPurchaseV2Json {
   purchaseStateContext?: { purchaseState?: string };
   productLineItem?: Array<{
     productId?: string;
-    productOfferDetails?: { quantity?: number };
+    productOfferDetails?: { quantity?: number; consumptionState?: string };
   }>;
   obfuscatedExternalAccountId?: string;
   orderId?: string;
@@ -36,10 +40,12 @@ export function parseGooglePurchase(
     purchaseState: raw.purchaseStateContext?.purchaseState ?? "UNKNOWN",
     lineItems: (raw.productLineItem ?? []).map((item: {
       productId?: string;
-      productOfferDetails?: { quantity?: number };
+      productOfferDetails?: { quantity?: number; consumptionState?: string };
     }) => ({
       productId: item.productId ?? "",
       quantity: item.productOfferDetails?.quantity ?? 1,
+      consumptionState: item.productOfferDetails?.consumptionState ??
+        "CONSUMPTION_STATE_UNSPECIFIED",
     })),
     obfuscatedExternalAccountId: raw.obfuscatedExternalAccountId,
     orderId: raw.orderId,
