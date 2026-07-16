@@ -30,4 +30,3 @@ QA-012 is a pure Dart report generator. It accepts branch, commit, version, anal
 - Policy tests find all four severity levels and explicit block/unblock rules.
 - Report-generator tests prove READY, BLOCKED, and invalid-evidence behavior.
 - Fresh format, analyze, full test, and web build gates pass through ASCII paths on Windows.
-
