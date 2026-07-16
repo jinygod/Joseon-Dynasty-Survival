@@ -1,28 +1,28 @@
 # Release Candidate Report — READY
 
-- Generated: 2026-07-16T14:27:45.016416Z
+- Generated: 2026-07-16T15:35:11.878612Z
 - Branch: `codex/qa-release-candidate`
-- Commit: `db22082`
+- Commit: `390b764ce80c8596beaa18f51ee3db06fd322f26`
 - Version: `0.1.0+1`
 
 ## Required evidence
 
-| Gate | Evidence |
-| --- | --- |
-| analyze | PASS: dart analyze (no issues) |
-| tests | PASS: flutter test (444/444) |
-| webBuild | PASS: flutter build web (build/web; Wasm dry run passed) |
-| performance | PASS: 18000 frames; peaks enemy 92, projectile 128, damageNumber 24, combatEffect 32; proxy 283 |
-| goldens | PASS: 6/6 at 1280x720 DPR 1 |
+| Gate | Status | Command | Artifact |
+| --- | --- | --- | --- |
+| analyze | PASS | A:\bin\dart.bat analyze | build/qa/release-gates/analyze.log |
+| tests | PASS | A:\bin\flutter.bat test -r compact | build/qa/release-gates/tests.log |
+| webBuild | PASS | A:\bin\flutter.bat build web | build/qa/release-gates/web-build.log |
+| fiveMinuteProfile | PASS | A:\bin\flutter.bat test test/game/five_minute_performance_development_log_test.dart -r compact | build/qa/release-gates/five-minute-profile.log |
+| goldens | PASS | A:\bin\flutter.bat test test/app/release_surface_golden_test.dart -r compact | build/qa/release-gates/goldens.log |
 
 ## Open defects
 
-| Severity | Count |
-| --- | ---: |
-| P0 | 0 |
-| P1 | 0 |
-| P2 | 0 |
-| P3 | 0 |
+| Severity | Count | Required record |
+| --- | ---: | --- |
+| P0 | 0 | Must be zero |
+| P1 | 0 | Must be zero |
+| P2 | 0 | Owner, approval, future expiry |
+| P3 | 0 | Owner, milestone |
 
 ## Blocking reasons
 
