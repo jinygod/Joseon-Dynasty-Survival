@@ -22,71 +22,44 @@ class _StageSelectScreenState extends State<StageSelectScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedStageId =
-        stageDefinitions.any((stage) => stage.id == widget.initialStageId)
-        ? widget.initialStageId
-        : stageDefinitions.first.id;
+    _selectedStageId = stageDefinitionFor(widget.initialStageId).id;
   }
 
   @override
   Widget build(BuildContext context) {
-    final selected = stageDefinitions.firstWhere(
-      (stage) => stage.id == _selectedStageId,
-    );
+    final selected = stageDefinitionFor(_selectedStageId);
     return Scaffold(
       appBar: AppBar(title: const Text('스테이지 선택')),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(32, 18, 32, 24),
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 18),
           child: Row(
             children: [
               Expanded(
                 flex: 3,
-                child: Card(
-                  clipBehavior: Clip.antiAlias,
-                  color: const Color(0xff1d3344),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    side: const BorderSide(color: Color(0xffe7c66b), width: 3),
-                  ),
-                  child: InkWell(
-                    key: Key('stage-${selected.id}'),
-                    onTap: () => setState(() => _selectedStageId = selected.id),
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.nightlight_round,
-                            size: 64,
-                            color: Color(0xffffe6a7),
+                child: Row(
+                  children: [
+                    for (
+                      var index = 0;
+                      index < stageDefinitions.length;
+                      index++
+                    ) ...[
+                      if (index > 0) const SizedBox(width: 12),
+                      Expanded(
+                        child: _StageCard(
+                          stage: stageDefinitions[index],
+                          selected:
+                              stageDefinitions[index].id == _selectedStageId,
+                          onTap: () => setState(
+                            () => _selectedStageId = stageDefinitions[index].id,
                           ),
-                          const SizedBox(height: 12),
-                          Text(
-                            selected.name,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 28,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            selected.description,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Color(0xffd6e2ea),
-                              fontSize: 15,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
-                  ),
+                    ],
+                  ],
                 ),
               ),
-              const SizedBox(width: 24),
+              const SizedBox(width: 20),
               Expanded(
                 flex: 2,
                 child: Column(
@@ -94,20 +67,20 @@ class _StageSelectScreenState extends State<StageSelectScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _InfoRow(
+                      icon: Icons.speed,
+                      text: '난이도 ${selected.riskLabel}',
+                    ),
+                    const SizedBox(height: 12),
+                    _InfoRow(
                       icon: Icons.timer_outlined,
                       text: '생존 목표 ${_clock(selected.targetSeconds)}',
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 12),
                     _InfoRow(
                       icon: Icons.warning_amber_rounded,
                       text: '보스 출현 ${_clock(selected.bossArrivalSeconds)}',
                     ),
-                    const SizedBox(height: 14),
-                    const _InfoRow(
-                      icon: Icons.flag_outlined,
-                      text: '보스 처치 시 승리',
-                    ),
-                    const SizedBox(height: 26),
+                    const SizedBox(height: 22),
                     FilledButton.icon(
                       key: const Key('stage-confirm'),
                       onPressed: () => widget.onSelected(_selectedStageId),
@@ -116,6 +89,68 @@ class _StageSelectScreenState extends State<StageSelectScreen> {
                     ),
                   ],
                 ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StageCard extends StatelessWidget {
+  const _StageCard({
+    required this.stage,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final StageDefinition stage;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = switch (stage.visualTheme) {
+      StageVisualTheme.moonlit => Icons.nightlight_round,
+      StageVisualTheme.plague => Icons.coronavirus_outlined,
+    };
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      color: Color(stage.backgroundColorValue),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: selected ? const Color(0xffffd66b) : const Color(0xff819081),
+          width: selected ? 3 : 1,
+        ),
+      ),
+      child: InkWell(
+        key: Key('stage-${stage.id}'),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 46, color: const Color(0xffffe6a7)),
+              const SizedBox(height: 10),
+              Text(
+                stage.name,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 21,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                stage.description,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Color(0xffd6e2d8), fontSize: 12),
               ),
             ],
           ),
