@@ -233,8 +233,9 @@ ContentIntegrityReport validateContentIntegrity({
 }
 
 void _expectCount(List<String> issues, String label, int actual, int expected) {
-  if (actual != expected)
+  if (actual != expected) {
     issues.add('Expected $expected $label, found $actual');
+  }
 }
 
 void _validateUniqueIds(
@@ -340,12 +341,14 @@ void _validateStages(
       issues.add('Invalid stage timing: ${stage.id}');
     }
     final waves = stageWaves[stage.id];
-    if (waves == null || waves.isEmpty)
+    if (waves == null || waves.isEmpty) {
       issues.add('Missing stage waves: ${stage.id}');
+    }
     for (final roll in const [0.0, 1.0]) {
       final boss = bossDefinitionForStage(stage.id, roll: roll);
-      if (!bossIds.contains(boss.id))
+      if (!bossIds.contains(boss.id)) {
         issues.add('Unknown stage boss: ${stage.id}/${boss.id}');
+      }
     }
   }
   for (final id in stageWaves.keys.where(
