@@ -22,14 +22,14 @@ void main() {
       position: Vector2(500, 270),
     );
 
-      game.debugApplyDamageEvent(
-        DamageEvent(
-          target: enemy,
-          damage: 5,
-          knockback: 0,
-          direction: Vector2.zero(),
-        ),
-      );
+    game.debugApplyDamageEvent(
+      DamageEvent(
+        target: enemy,
+        damage: 5,
+        knockback: 0,
+        direction: Vector2.zero(),
+      ),
+    );
     game.debugStartScreenShake(4);
     game.update(0.02);
     await Future<void>.delayed(Duration.zero);
@@ -37,4 +37,28 @@ void main() {
     expect(game.children.whereType<DamageNumberComponent>(), isEmpty);
     expect(game.screenShakeOffset, Vector2.zero());
   });
+
+  test(
+    'disabling active shake immediately restores the camera position',
+    () async {
+      final game = PixelSurvivorGame(
+        playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
+        onRunEnded: null,
+      );
+      game.onGameResize(Vector2(960, 540));
+      await game.onLoad();
+      final restingPosition = game.camera.viewfinder.position.clone();
+      game.debugStartScreenShake(4);
+      game.update(0.02);
+      expect(game.screenShakeOffset.length, greaterThan(0));
+
+      game.applyAccessibilitySettings(
+        screenShakeEnabled: false,
+        damageNumbersEnabled: true,
+      );
+
+      expect(game.screenShakeOffset, Vector2.zero());
+      expect(game.camera.viewfinder.position, restingPosition);
+    },
+  );
 }

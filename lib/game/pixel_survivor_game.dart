@@ -176,7 +176,7 @@ class PixelSurvivorGame extends FlameGame
   }) {
     this.screenShakeEnabled = screenShakeEnabled;
     this.damageNumbersEnabled = damageNumbersEnabled;
-    if (!screenShakeEnabled) _screenShakeRemaining = 0;
+    if (!screenShakeEnabled) _clearScreenShake();
   }
 
   double get weaponDamageMultiplier =>
@@ -857,6 +857,13 @@ class PixelSurvivorGame extends FlameGame
       _screenShakeOffset.scale(CombatFeedbackTuning.maxScreenShakeMagnitude);
     }
     camera.viewfinder.position.add(_screenShakeOffset);
+  }
+
+  void _clearScreenShake() {
+    camera.viewfinder.position.sub(_screenShakeOffset);
+    _screenShakeOffset.setZero();
+    _screenShakeRemaining = 0;
+    _screenShakeMagnitude = 0;
   }
 
   void _dropExperienceForDeadEnemies() {

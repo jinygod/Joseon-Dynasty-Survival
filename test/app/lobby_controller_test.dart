@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/app/lobby_controller.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
 import 'package:pixel_survivor/game/content/stage_definitions.dart';
+import 'package:pixel_survivor/game/models/meta_progress.dart';
 import 'package:pixel_survivor/game/systems/save_system.dart';
 
 void main() {
@@ -29,6 +32,37 @@ void main() {
     expect(controller.takeRecoveryNotice(), isNotNull);
     expect(controller.takeRecoveryNotice(), isNull);
   });
+
+  test(
+    'reset waits for pending saves and becomes the authoritative state',
+    () async {
+      final store = _BlockingSaveStore(
+        SaveState.defaults().copyWith(
+          unlockedCharacterIds: {rookieConstable, exorcistDosa},
+          wallet: const Wallet(coin: 500, spiritJade: 3),
+        ),
+      );
+      final controller = LobbyController(store: store);
+      await controller.load();
+
+      final selection = controller.selectCharacter(exorcistDosa);
+      await store.firstSaveStarted.future;
+      final reset = controller.resetProgress();
+      store.releaseFirstSave.complete();
+      await Future.wait([selection, reset]);
+
+      expect(controller.state.wallet, Wallet.empty);
+    expect(
+      controller.state.unlockedCharacterIds,
+      SaveState.defaults().unlockedCharacterIds,
+    );
+      expect(store.value.wallet, Wallet.empty);
+    expect(
+      store.value.unlockedCharacterIds,
+      SaveState.defaults().unlockedCharacterIds,
+    );
+    },
+  );
 }
 
 class _MemorySaveStore implements SaveStore {
@@ -59,4 +93,26 @@ class _ThrowingSaveStore implements SaveStore {
 
   @override
   Future<void> save(SaveState state) async {}
+}
+
+class _BlockingSaveStore implements SaveStore {
+  _BlockingSaveStore(this.value);
+
+  SaveState value;
+  final firstSaveStarted = Completer<void>();
+  final releaseFirstSave = Completer<void>();
+  var saveCount = 0;
+
+  @override
+  Future<SaveState> load() async => value;
+
+  @override
+  Future<void> save(SaveState state) async {
+    saveCount += 1;
+    if (saveCount == 1) {
+      firstSaveStarted.complete();
+      await releaseFirstSave.future;
+    }
+    value = state;
+  }
 }

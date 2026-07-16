@@ -10,11 +10,13 @@ class SettingsScreen extends StatelessWidget {
   const SettingsScreen({
     required this.controller,
     this.progressStore,
+    this.resetProgress,
     super.key,
   });
 
   final GameSettingsController controller;
   final SaveStore? progressStore;
+  final Future<bool> Function()? resetProgress;
 
   @override
   Widget build(BuildContext context) {
@@ -163,11 +165,18 @@ class SettingsScreen extends StatelessWidget {
     );
     if (finalConfirmation != true || !context.mounted) return;
     try {
-      await (progressStore ?? SaveSystem()).save(SaveState.defaults());
-      if (context.mounted) {
+      final reset = resetProgress;
+      final succeeded = reset != null
+          ? await reset()
+          : await _resetStore(progressStore ?? SaveSystem());
+      if (context.mounted && succeeded) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('진행 데이터가 초기화되었습니다.')));
+      } else if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('진행 데이터를 초기화하지 못했습니다.')));
       }
     } on Object {
       if (context.mounted) {
@@ -176,6 +185,11 @@ class SettingsScreen extends StatelessWidget {
         ).showSnackBar(const SnackBar(content: Text('진행 데이터를 초기화하지 못했습니다.')));
       }
     }
+  }
+
+  Future<bool> _resetStore(SaveStore store) async {
+    await store.save(SaveState.defaults());
+    return true;
   }
 }
 

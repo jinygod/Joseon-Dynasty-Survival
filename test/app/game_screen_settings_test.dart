@@ -34,10 +34,11 @@ void main() {
 
     expect(game.screenShakeEnabled, isFalse);
     expect(game.damageNumbersEnabled, isFalse);
-    final transform = tester.widget<Transform>(
-      find.byKey(const Key('hud-ui-scale')),
+    expect(find.byKey(const Key('hud-ui-scale')), findsNothing);
+    expect(
+      tester.getSize(find.byKey(const Key('virtual-joystick'))),
+      const Size.square(138),
     );
-    expect(transform.transform.getMaxScaleOnAxis(), closeTo(1.15, 0.001));
   });
 }
 

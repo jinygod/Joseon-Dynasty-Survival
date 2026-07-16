@@ -48,7 +48,21 @@ W:\bin\flutter.bat test --concurrency=1 -r compact
 
 `dart format --output=none --set-exit-if-changed lib test`는 기존 파일을 포함한 6개 파일의 Windows 줄바꿈 정규화를 변경으로 보고 exit 1을 반환했다. 명령 직후 `git diff --quiet -- lib test`는 exit 0이어서 실제 내용 diff는 없었다. 이는 저장소 `tool/release_check.ps1`가 명시적으로 허용하는 경우다.
 
-## 잔여 위험
+## 리뷰 수정 재검증
 
-- 이 환경의 Flutter 3.44.4 셰이더 테스트 자산 문제 때문에 전체 suite의 완전한 exit 0 증거는 없다.
-- 진행 초기화는 영속 `SaveState`를 즉시 기본값으로 바꾸지만, 이미 화면에 떠 있는 로비 컨트롤러의 캐시는 다음 `load()` 또는 앱 재실행까지 이전 값을 표시할 수 있다. 설정 데이터 자체는 별도 키에 남는다.
+리뷰 후 초기화 경로를 `LobbyController` 저장 큐로 통합해 열린 로비 state와 영속 저장을 하나의 순서로 갱신했다. 보류 중 선택 저장 뒤 초기화가 최종 상태가 되는 컨트롤러 테스트와 `로비 → 설정 → 초기화 → 복귀 → 후속 선택` 위젯 회귀 테스트를 추가했다.
+
+HUD 루트 `Transform.scale`은 제거했다. SafeArea 안의 좌상단 pause와 좌하단 joystick 좌표는 고정하고, 텍스트·패딩·폭·아이콘·조이스틱 입력 크기에만 배율을 적용했다. 1.15배에서 안전영역 좌표, 138px 입력 영역, 실제 방향 입력을 검증한다.
+
+설정 load 중 변경은 필드 단위로 영속 snapshot과 병합한 뒤 한 번 저장한다. 화면 흔들림을 끄면 현재 카메라 오프셋을 같은 호출에서 제거한다.
+
+최종 ASCII 경로 검증 결과:
+
+| 명령 | 결과 |
+| --- | --- |
+| 리뷰 focused suite | PASS, 24/24 |
+| `flutter clean; flutter pub get; flutter test -r compact` | PASS, 362/362 |
+| `dart analyze` | PASS, `No issues found!` |
+| `flutter build web` | PASS, `build/web` 생성 및 Wasm dry run 성공 |
+
+앞서 기록한 셰이더 자산 실패는 `flutter clean` 후 새 mapped asset bundle을 생성해 해소되었다. 로비 캐시 위험도 큐 통합으로 해소되었다.

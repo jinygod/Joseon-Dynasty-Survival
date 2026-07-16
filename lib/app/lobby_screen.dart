@@ -74,6 +74,17 @@ class _LobbyScreenState extends State<LobbyScreen> {
     );
   }
 
+  Future<void> _openSettings() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => SettingsScreen(
+          controller: widget.audioSettingsController,
+          resetProgress: widget.controller.resetProgress,
+        ),
+      ),
+    );
+  }
+
   Future<void> _saveStage(BuildContext pickerContext, String stageId) async {
     await widget.controller.selectStage(stageId);
     if (pickerContext.mounted) Navigator.of(pickerContext).pop();
@@ -155,13 +166,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
                   _LobbyHeader(
                     coin: state.wallet.coin,
                     spiritJade: state.wallet.spiritJade,
-                    onSettings: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => SettingsScreen(
-                          controller: widget.audioSettingsController,
-                        ),
-                      ),
-                    ),
+                    onSettings: _openSettings,
                   ),
                   const SizedBox(height: 10),
                   Expanded(

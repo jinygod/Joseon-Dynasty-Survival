@@ -46,70 +46,79 @@ class _GameHudState extends State<GameHud> {
     final rewardSource = widget.source is RewardCollectionHudSource
         ? widget.source as RewardCollectionHudSource
         : null;
-    return Transform.scale(
-      key: const Key('hud-ui-scale'),
-      scale: widget.uiScale,
-      alignment: Alignment.center,
-      child: Material(
-        color: Colors.transparent,
-        child: SafeArea(
-          child: Stack(
-            children: [
-              if (rewardSource?.rewardCollectionSecondsRemaining
-                  case final seconds?)
-                Positioned(
-                  top: 150,
-                  left: 0,
-                  right: 0,
-                  child: Center(
-                    child: _RewardCollectionNotice(
-                      seconds: seconds,
-                      retrying: rewardSource!.isSpiritJadeSaveRetrying,
-                    ),
+    final scale = widget.uiScale;
+    return Material(
+      color: Colors.transparent,
+      child: SafeArea(
+        child: Stack(
+          children: [
+            if (rewardSource?.rewardCollectionSecondsRemaining
+                case final seconds?)
+              Positioned(
+                top: 150,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: _RewardCollectionNotice(
+                    seconds: seconds,
+                    retrying: rewardSource!.isSpiritJadeSaveRetrying,
+                    uiScale: scale,
                   ),
                 ),
-              if (widget.source.bossHealthFraction case final health?)
-                Positioned(
-                  top: 8,
-                  left: 160,
-                  right: 160,
-                  child: BossHealthBar(
-                    name: widget.source.bossName ?? AppStrings.genericBoss,
-                    healthFraction: health,
+              ),
+            if (widget.source.bossHealthFraction case final health?)
+              Positioned(
+                top: 8,
+                left: 160,
+                right: 160,
+                child: BossHealthBar(
+                  name: widget.source.bossName ?? AppStrings.genericBoss,
+                  healthFraction: health,
+                  uiScale: scale,
+                ),
+              ),
+            Positioned(
+              top: widget.source.bossHealthFraction == null ? 12 : 62,
+              left: 16,
+              right: 16,
+              child: _StatusBar(source: widget.source, uiScale: scale),
+            ),
+            Positioned(
+              top: widget.source.bossHealthFraction == null ? 68 : 118,
+              right: 16,
+              width: 220 * scale,
+              child: _WeaponList(
+                labels: widget.source.weaponLevelLabels,
+                uiScale: scale,
+              ),
+            ),
+            Positioned(
+              left: 18,
+              bottom: 18,
+              child: VirtualJoystick(
+                onInputChanged: widget.source.updateMovementInput,
+                size: 120 * scale,
+                deadZone: 10 * scale,
+              ),
+            ),
+            if (widget.onPause case final onPause?)
+              Positioned(
+                top: 8,
+                left: 8,
+                child: IconButton.filledTonal(
+                  key: const Key('hud-pause'),
+                  tooltip: '일시정지',
+                  onPressed: onPause,
+                  iconSize: 24 * scale,
+                  padding: EdgeInsets.all(8 * scale),
+                  constraints: BoxConstraints(
+                    minWidth: 48 * scale,
+                    minHeight: 48 * scale,
                   ),
-                ),
-              Positioned(
-                top: widget.source.bossHealthFraction == null ? 12 : 62,
-                left: 16,
-                right: 16,
-                child: _StatusBar(source: widget.source),
-              ),
-              Positioned(
-                top: widget.source.bossHealthFraction == null ? 68 : 118,
-                right: 16,
-                width: 220,
-                child: _WeaponList(labels: widget.source.weaponLevelLabels),
-              ),
-              Positioned(
-                left: 18,
-                bottom: 18,
-                child: VirtualJoystick(
-                  onInputChanged: widget.source.updateMovementInput,
+                  icon: const Icon(Icons.pause),
                 ),
               ),
-              if (widget.onPause case final onPause?)
-                Positioned(
-                  top: 8,
-                  left: 8,
-                  child: IconButton.filledTonal(
-                    key: const Key('hud-pause'),
-                    tooltip: '일시정지',
-                    onPressed: onPause,
-                    icon: const Icon(Icons.pause),
-                  ),
-                ),
-            ],
-          ),
+          ],
         ),
       ),
     );
@@ -120,10 +129,12 @@ class _RewardCollectionNotice extends StatelessWidget {
   const _RewardCollectionNotice({
     required this.seconds,
     required this.retrying,
+    required this.uiScale,
   });
 
   final double seconds;
   final bool retrying;
+  final double uiScale;
 
   @override
   Widget build(BuildContext context) {
@@ -133,16 +144,19 @@ class _RewardCollectionNotice extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: const Color(0xff2f1b25).withValues(alpha: 0.9),
-        border: Border.all(color: const Color(0xffffd166), width: 2),
-        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xffffd166), width: 2 * uiScale),
+        borderRadius: BorderRadius.circular(10 * uiScale),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+        padding: EdgeInsets.symmetric(
+          horizontal: 18 * uiScale,
+          vertical: 10 * uiScale,
+        ),
         child: Text(
           label,
-          style: const TextStyle(
-            color: Color(0xfffff1b8),
-            fontSize: 18,
+          style: TextStyle(
+            color: const Color(0xfffff1b8),
+            fontSize: 18 * uiScale,
             fontWeight: FontWeight.w900,
           ),
         ),
@@ -152,9 +166,10 @@ class _RewardCollectionNotice extends StatelessWidget {
 }
 
 class _StatusBar extends StatelessWidget {
-  const _StatusBar({required this.source});
+  const _StatusBar({required this.source, required this.uiScale});
 
   final GameHudSource source;
+  final double uiScale;
 
   @override
   Widget build(BuildContext context) {
@@ -167,35 +182,53 @@ class _StatusBar extends StatelessWidget {
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: const Color(0xff101820).withValues(alpha: 0.78),
-          border: Border.all(color: const Color(0xfff4ead2), width: 1.5),
-          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: const Color(0xfff4ead2),
+            width: 1.5 * uiScale,
+          ),
+          borderRadius: BorderRadius.circular(8 * uiScale),
         ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          padding: EdgeInsets.symmetric(
+            horizontal: 14 * uiScale,
+            vertical: 10 * uiScale,
+          ),
           child: Wrap(
             alignment: WrapAlignment.end,
-            spacing: 16,
-            runSpacing: 6,
+            spacing: 16 * uiScale,
+            runSpacing: 6 * uiScale,
             children: [
-              _HudValue(label: AppStrings.hudTime, value: '$minutes:$seconds'),
+              _HudValue(
+                label: AppStrings.hudTime,
+                value: '$minutes:$seconds',
+                uiScale: uiScale,
+              ),
               _HudValue(
                 label: AppStrings.hudHealth,
                 value: source.playerHealthLabel,
+                uiScale: uiScale,
               ),
               _HudValue(
                 label: AppStrings.hudLevel,
                 value: '${source.playerLevel}',
+                uiScale: uiScale,
               ),
               _HudValue(
                 label: AppStrings.hudExperience,
                 value:
                     '${source.currentExperience}/${source.experienceToNextLevel}',
+                uiScale: uiScale,
               ),
               _HudValue(
                 label: AppStrings.hudEnemies,
                 value: '${source.enemyCount}',
+                uiScale: uiScale,
               ),
-              _HudValue(label: AppStrings.hudKills, value: '${source.kills}'),
+              _HudValue(
+                label: AppStrings.hudKills,
+                value: '${source.kills}',
+                uiScale: uiScale,
+              ),
             ],
           ),
         ),
@@ -208,11 +241,13 @@ class BossHealthBar extends StatelessWidget {
   const BossHealthBar({
     required this.name,
     required this.healthFraction,
+    this.uiScale = 1,
     super.key,
   });
 
   final String name;
   final double healthFraction;
+  final double uiScale;
 
   @override
   Widget build(BuildContext context) {
@@ -223,18 +258,20 @@ class BossHealthBar extends StatelessWidget {
           name,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            color: Color(0xfff4ead2),
-            fontSize: 14,
+          style: TextStyle(
+            color: const Color(0xfff4ead2),
+            fontSize: 14 * uiScale,
             fontWeight: FontWeight.w800,
             letterSpacing: 0,
-            shadows: [Shadow(color: Color(0xff101820), blurRadius: 3)],
+            shadows: const [
+              Shadow(color: Color(0xff101820), blurRadius: 3),
+            ],
           ),
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: 4 * uiScale),
         LinearProgressIndicator(
           value: healthFraction.clamp(0, 1).toDouble(),
-          minHeight: 10,
+          minHeight: 10 * uiScale,
           backgroundColor: const Color(0xff2f1b25),
           color: const Color(0xffd1495b),
           borderRadius: BorderRadius.circular(4),
@@ -245,9 +282,10 @@ class BossHealthBar extends StatelessWidget {
 }
 
 class _WeaponList extends StatelessWidget {
-  const _WeaponList({required this.labels});
+  const _WeaponList({required this.labels, required this.uiScale});
 
   final List<String> labels;
+  final double uiScale;
 
   @override
   Widget build(BuildContext context) {
@@ -256,23 +294,26 @@ class _WeaponList extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xff101820).withValues(alpha: 0.78),
         border: Border.all(color: const Color(0xff9fb3c8)),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(6 * uiScale),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: EdgeInsets.symmetric(
+          horizontal: 12 * uiScale,
+          vertical: 8 * uiScale,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             for (final label in labels)
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
+                padding: EdgeInsets.symmetric(vertical: 2 * uiScale),
                 child: Text(
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xfff4ead2),
-                    fontSize: 13,
+                  style: TextStyle(
+                    color: const Color(0xfff4ead2),
+                    fontSize: 13 * uiScale,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0,
                   ),
@@ -286,28 +327,33 @@ class _WeaponList extends StatelessWidget {
 }
 
 class _HudValue extends StatelessWidget {
-  const _HudValue({required this.label, required this.value});
+  const _HudValue({
+    required this.label,
+    required this.value,
+    required this.uiScale,
+  });
 
   final String label;
   final String value;
+  final double uiScale;
 
   @override
   Widget build(BuildContext context) {
     return Text.rich(
       TextSpan(
         text: '$label ',
-        style: const TextStyle(
-          color: Color(0xff9fb3c8),
-          fontSize: 12,
+        style: TextStyle(
+          color: const Color(0xff9fb3c8),
+          fontSize: 12 * uiScale,
           fontWeight: FontWeight.w700,
           letterSpacing: 0,
         ),
         children: [
           TextSpan(
             text: value,
-            style: const TextStyle(
-              color: Color(0xfff4ead2),
-              fontSize: 14,
+            style: TextStyle(
+              color: const Color(0xfff4ead2),
+              fontSize: 14 * uiScale,
               fontWeight: FontWeight.w800,
               letterSpacing: 0,
             ),
