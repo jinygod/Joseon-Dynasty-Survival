@@ -100,7 +100,16 @@ class PurchaseController extends ChangeNotifier {
   PurchaseState get state => _state;
 
   Future<void> onStartup() => start();
-  Future<void> onResume() => onAccountChanged(_sessionProvider());
+  Future<void> onResume() async {
+    await onAccountChanged(_sessionProvider());
+    if (_disposed ||
+        (_state.storeStatus != PurchaseStoreStatus.unavailable &&
+            _state.storeStatus != PurchaseStoreStatus.error)) {
+      return;
+    }
+    _initialized = false;
+    await start();
+  }
 
   Future<void> onAccountChanged(AccountSession session) =>
       _applyAccountChanged(session, propagateRecoveryError: false);

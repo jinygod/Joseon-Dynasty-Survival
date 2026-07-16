@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../backend/account/account_controller.dart';
+import '../backend/economy/purchase_controller.dart';
 import '../backend/progress/progress_sync_controller.dart';
 import '../game/audio/audio_cue.dart';
 import '../game/audio/audio_settings_controller.dart';
@@ -18,6 +19,7 @@ import 'account_section.dart';
 import 'compendium_screen.dart';
 import 'game_screen.dart';
 import 'lobby_controller.dart';
+import 'premium_shop_screen.dart';
 import 'records_screen.dart';
 import 'settings_screen.dart';
 import 'stage_select_screen.dart';
@@ -30,6 +32,8 @@ class LobbyScreen extends StatefulWidget {
     this.audioService,
     this.accountController,
     this.progressSyncController,
+    this.purchaseController,
+    this.onPurchaseInitializationRetry,
     super.key,
   });
 
@@ -39,6 +43,8 @@ class LobbyScreen extends StatefulWidget {
   final GameAudioService? audioService;
   final AccountController? accountController;
   final ProgressSyncController? progressSyncController;
+  final PurchaseController? purchaseController;
+  final VoidCallback? onPurchaseInitializationRetry;
 
   @override
   State<LobbyScreen> createState() => _LobbyScreenState();
@@ -63,7 +69,30 @@ class _LobbyScreenState extends State<LobbyScreen> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       unawaited(widget.controller.syncNow());
+      final purchases = widget.purchaseController;
+      if (purchases != null) {
+        unawaited(purchases.onResume());
+      } else {
+        widget.onPurchaseInitializationRetry?.call();
+      }
     }
+  }
+
+  Future<void> _openPremiumShop() async {
+    final purchases = widget.purchaseController;
+    if (purchases == null) {
+      widget.onPurchaseInitializationRetry?.call();
+      return;
+    }
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PremiumShopScreen(
+          controller: purchases,
+          onAccountLinkRequired: widget.accountController?.connectGoogle,
+        ),
+      ),
+    );
+    await purchases.onResume();
   }
 
   Future<void> _openCharacterPicker() async {
@@ -218,6 +247,10 @@ class _LobbyScreenState extends State<LobbyScreen> with WidgetsBindingObserver {
                   _LobbyHeader(
                     coin: state.wallet.coin,
                     spiritJade: state.wallet.spiritJade,
+                    purchaseController: widget.purchaseController,
+                    purchaseInitializationFailed:
+                        widget.onPurchaseInitializationRetry != null,
+                    onPremiumShop: _openPremiumShop,
                     onSettings: _openSettings,
                   ),
                   const SizedBox(height: 10),
@@ -293,11 +326,17 @@ class _LobbyHeader extends StatelessWidget {
   const _LobbyHeader({
     required this.coin,
     required this.spiritJade,
+    required this.purchaseController,
+    required this.purchaseInitializationFailed,
+    required this.onPremiumShop,
     required this.onSettings,
   });
 
   final int coin;
   final int spiritJade;
+  final PurchaseController? purchaseController;
+  final bool purchaseInitializationFailed;
+  final VoidCallback onPremiumShop;
   final VoidCallback onSettings;
 
   @override
@@ -314,6 +353,32 @@ class _LobbyHeader extends StatelessWidget {
         _ResourceBadge(icon: Icons.paid_outlined, label: '엽전 $coin'),
         const SizedBox(width: 8),
         _ResourceBadge(icon: Icons.diamond_outlined, label: '혼옥 $spiritJade'),
+        if (purchaseController case final purchases?) ...[
+          AnimatedBuilder(
+            animation: purchases,
+            builder: (context, _) => ActionChip(
+              key: const Key('lobby-premium-shop'),
+              visualDensity: VisualDensity.compact,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              labelPadding: const EdgeInsets.symmetric(horizontal: 2),
+              label: Text(
+                purchases.state.walletStale
+                    ? '금옥 --'
+                    : '금옥 ${purchases.state.wallet?.balance ?? 0}',
+              ),
+              onPressed: onPremiumShop,
+            ),
+          ),
+        ] else if (purchaseInitializationFailed) ...[
+          ActionChip(
+            key: const Key('lobby-premium-shop-retry'),
+            visualDensity: VisualDensity.compact,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            labelPadding: const EdgeInsets.symmetric(horizontal: 2),
+            label: const Text('금옥 재시도'),
+            onPressed: onPremiumShop,
+          ),
+        ],
         const SizedBox(width: 8),
         IconButton.filledTonal(
           key: const Key('lobby-settings'),
