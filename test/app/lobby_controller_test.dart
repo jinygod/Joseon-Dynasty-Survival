@@ -6,7 +6,11 @@ import 'package:pixel_survivor/game/systems/save_system.dart';
 
 void main() {
   test('loads persisted selections and serializes saves', () async {
-    final store = _MemorySaveStore(SaveState.defaults());
+    final store = _MemorySaveStore(
+      SaveState.defaults().copyWith(
+        unlockedCharacterIds: {rookieConstable, exorcistDosa},
+      ),
+    );
     final controller = LobbyController(store: store);
 
     await controller.load();
@@ -28,6 +32,24 @@ void main() {
     expect(controller.state.selectedCharacterId, rookieConstable);
     expect(controller.takeRecoveryNotice(), isNotNull);
     expect(controller.takeRecoveryNotice(), isNull);
+  });
+
+  test('load normalizes selections that are not unlocked', () async {
+    final store = _MemorySaveStore(
+      SaveState.fromJson({
+        'schemaVersion': SaveState.currentSchemaVersion,
+        'unlockedCharacterIds': [rookieConstable],
+        'unlockedStageIds': [moonlitAbandonedOffice],
+        'selectedCharacterId': exorcistDosa,
+        'selectedStageId': plagueMarket,
+      }),
+    );
+    final controller = LobbyController(store: store);
+
+    await controller.load();
+
+    expect(controller.state.selectedCharacterId, rookieConstable);
+    expect(controller.state.selectedStageId, moonlitAbandonedOffice);
   });
 }
 
