@@ -15,6 +15,8 @@ import 'package:pixel_survivor/game/content/augment_definitions.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
 import 'package:pixel_survivor/game/content/ids.dart';
 import 'package:pixel_survivor/game/content/enemy_definitions.dart';
+import 'package:pixel_survivor/game/content/stage_definitions.dart';
+import 'package:pixel_survivor/game/content/wave_definitions.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
 import 'package:pixel_survivor/game/models/player_slot.dart';
 import 'package:pixel_survivor/game/models/run_choice_record.dart';
@@ -47,6 +49,28 @@ void main() {
   }, gameSize: Vector2(960, 540));
 
   group('PixelSurvivorGame run loop progression', () {
+    test('selected stage configures the game wave director', () {
+      final game = PixelSurvivorGame(
+        playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
+        stageId: plagueMarket,
+        onRunEnded: null,
+        random: Random(7),
+      );
+
+      final opening = game.waveDirector.tick(
+        elapsedSeconds: 0,
+        dt: 8,
+        activeEnemyCount: 0,
+      );
+
+      expect(game.stageId, plagueMarket);
+      expect(opening.spawnRequests, isNotEmpty);
+      expect(
+        opening.spawnRequests.map((request) => request.enemyId),
+        everyElement(isIn(plagueMarketWaves.first.enemyWeights.keys)),
+      );
+    });
+
     test('boss jade grants a three second collection phase', () async {
       RunResult? result;
       var persistenceCalls = 0;

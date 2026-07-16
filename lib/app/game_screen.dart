@@ -106,6 +106,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         widget.game ??
         PixelSurvivorGame(
           playerSlot: widget.playerSlot,
+          stageId: widget.stageId,
           onRunEnded: _handleRunEnded,
           onAudioCue: _playAudio,
           persistSpiritJade: _persistSpiritJade,

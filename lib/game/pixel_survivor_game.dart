@@ -29,6 +29,8 @@ import 'content/character_definitions.dart';
 import 'content/combat_effect_atlas.dart';
 import 'content/enemy_definitions.dart';
 import 'content/ids.dart';
+import 'content/stage_definitions.dart';
+import 'content/wave_definitions.dart';
 import 'content/weapon_definitions.dart';
 import 'content/weapon_level_definitions.dart';
 import 'models/player_slot.dart';
@@ -58,6 +60,7 @@ class PixelSurvivorGame extends FlameGame
   PixelSurvivorGame({
     required this.playerSlot,
     required this.onRunEnded,
+    this.stageId = moonlitAbandonedOffice,
     this.onAudioCue,
     this.persistSpiritJade,
     this.firstBossRewardAvailable = false,
@@ -65,7 +68,10 @@ class PixelSurvivorGame extends FlameGame
     double Function()? rewardRoll,
     Random? random,
   }) : weaponSystem = WeaponSystem(random: random),
-       waveDirector = WaveDirector(random: random ?? Random()),
+       waveDirector = WaveDirector(
+         random: random ?? Random(),
+         definitions: waveDefinitionsForStage(stageId),
+       ),
        levelUpSystem = LevelUpSystem(random: random),
        pickupIdPrefix =
            pickupIdPrefix ?? DateTime.now().microsecondsSinceEpoch.toString(),
@@ -78,6 +84,7 @@ class PixelSurvivorGame extends FlameGame
   }
 
   final PlayerSlot playerSlot;
+  final String stageId;
   final void Function(RunResult result)? onRunEnded;
   final void Function(AudioCue cue)? onAudioCue;
   final SpiritJadePersistence? persistSpiritJade;
