@@ -216,6 +216,125 @@ void main() {
     expect(syncCalls, 1);
   });
 
+  test('rapid B to C auth changes never commit or sync stale B', () async {
+    final accountA = AccountSession.google(userId: 'a', email: 'a@test');
+    final accountB = AccountSession.google(userId: 'b', email: 'b@test');
+    final accountC = AccountSession.google(userId: 'c', email: 'c@test');
+    final service = _FakeAccountService(current: accountA);
+    final cleanupStarted = Completer<void>();
+    final releaseCleanup = Completer<void>();
+    final synced = <String>[];
+    late AccountController controller;
+    controller = AccountController(
+      config: enabled,
+      service: service,
+      clearLocalState: () async {
+        cleanupStarted.complete();
+        await releaseCleanup.future;
+      },
+      onPermanentAccount: () async => synced.add(controller.session.userId!),
+    );
+    await controller.initialize();
+    synced.clear();
+
+    service.emit(accountB);
+    await cleanupStarted.future;
+    service.emit(accountC);
+    releaseCleanup.complete();
+    await flushAccountEvents();
+
+    expect(controller.session, accountC);
+    expect(synced, ['c']);
+  });
+
+  test('stream events cannot unblock failed cleanup before explicit retry', () async {
+    final accountA = AccountSession.google(userId: 'a', email: 'a@test');
+    final accountB = AccountSession.google(userId: 'b', email: 'b@test');
+    final accountC = AccountSession.google(userId: 'c', email: 'c@test');
+    final service = _FakeAccountService(current: accountA);
+    var cleanupCalls = 0;
+    var cleanupFails = true;
+    final synced = <String>[];
+    late AccountController controller;
+    controller = AccountController(
+      config: enabled,
+      service: service,
+      clearLocalState: () async {
+        cleanupCalls++;
+        if (cleanupFails) throw StateError('disk');
+      },
+      onPermanentAccount: () async => synced.add(controller.session.userId!),
+    );
+    await controller.initialize();
+    synced.clear();
+
+    service.emit(accountB);
+    await flushAccountEvents();
+    service.emit(accountC);
+    await flushAccountEvents();
+
+    expect(controller.availability, AccountAvailability.blocked);
+    expect(controller.session, accountA);
+    expect(cleanupCalls, 1);
+    expect(synced, isEmpty);
+
+    cleanupFails = false;
+    await controller.retryBlockedTransition();
+
+    expect(controller.session, accountC);
+    expect(cleanupCalls, 2);
+    expect(synced, ['c']);
+  });
+
+  test('stream transition failures are reported without orphan zone errors', () async {
+    final accountA = AccountSession.google(userId: 'a', email: 'a@test');
+    final accountB = AccountSession.google(userId: 'b', email: 'b@test');
+    final service = _FakeAccountService(current: accountA);
+    final zoneErrors = <Object>[];
+    late AccountController controller;
+
+    await runZonedGuarded(() async {
+      controller = AccountController(
+        config: enabled,
+        service: service,
+        onPermanentAccount: () async => throw StateError('sync failed'),
+      );
+      await controller.initialize();
+      controller.onPermanentAccount = () async => throw StateError('sync failed');
+      service.emit(accountB);
+      await flushAccountEvents();
+    }, (error, _) => zoneErrors.add(error));
+
+    expect(controller.session, accountB);
+    expect(controller.errorMessage, isNotNull);
+    expect(zoneErrors, isEmpty);
+  });
+
+  test('reentrant auth event is serialized after the active transition', () async {
+    final accountA = AccountSession.google(userId: 'a', email: 'a@test');
+    final accountB = AccountSession.google(userId: 'b', email: 'b@test');
+    final accountC = AccountSession.google(userId: 'c', email: 'c@test');
+    final service = _FakeAccountService(current: accountA);
+    final synced = <String>[];
+    late AccountController controller;
+    controller = AccountController(
+      config: enabled,
+      service: service,
+      onPermanentAccount: () async {
+        synced.add(controller.session.userId!);
+        if (controller.session == accountB) service.emit(accountC);
+      },
+    );
+    await controller.initialize();
+    synced.clear();
+
+    service.emit(accountB);
+    await flushAccountEvents();
+
+    expect(controller.session, accountC);
+    expect(synced, ['b', 'c']);
+  });
+
   test('sign out and deletion clear paid cache', () async {
     final service = _FakeAccountService(
       current: AccountSession.google(userId: 'g', email: 'g@example.com'),
@@ -359,6 +478,31 @@ void main() {
       expect(callbacks, 0);
     },
   );
+
+  test('dispose promptly settles a transition waiting on cleanup', () async {
+    final accountA = AccountSession.google(userId: 'a', email: 'a@test');
+    final accountB = AccountSession.google(userId: 'b', email: 'b@test');
+    final service = _FakeAccountService(current: accountA)
+      ..connectResult = accountB;
+    final cleanupStarted = Completer<void>();
+    final neverCleanup = Completer<void>();
+    final controller = AccountController(
+      config: enabled,
+      service: service,
+      clearLocalState: () async {
+        cleanupStarted.complete();
+        await neverCleanup.future;
+      },
+    );
+    await controller.initialize();
+
+    final connecting = controller.connectGoogle();
+    await cleanupStarted.future;
+    controller.dispose();
+
+    await connecting.timeout(const Duration(milliseconds: 100));
+    expect(controller.session, accountA);
+  });
 }
 
 class _FakeAccountService implements AccountService {

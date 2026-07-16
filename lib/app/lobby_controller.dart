@@ -13,6 +13,7 @@ class LobbyController extends ChangeNotifier {
   final SaveStore store;
   ProgressSyncController? progressSyncController;
   Future<void> _operationQueue = Future<void>.value();
+  final Completer<void> _disposeSignal = Completer<void>();
   bool _disposed = false;
   int _generation = 0;
 
@@ -134,7 +135,10 @@ class LobbyController extends ChangeNotifier {
         result.completeError(error, stackTrace);
       }
     });
-    return result.future;
+    return Future.any<T>([
+      result.future,
+      _disposeSignal.future.then((_) => _disposedResult<T>()),
+    ]);
   }
 
   T _disposedResult<T>() {
@@ -198,6 +202,7 @@ class LobbyController extends ChangeNotifier {
     if (_disposed) return;
     _disposed = true;
     _generation++;
+    _disposeSignal.complete();
     progressSyncController = null;
     super.dispose();
   }

@@ -150,6 +150,27 @@ void main() {
     expect(store.saveCount, 1);
   });
 
+  test('dispose promptly settles in-flight and queued lobby calls', () async {
+    final store = _BlockingLoadSaveStore();
+    final controller = LobbyController(store: store);
+
+    final loading = controller.load();
+    await store.loadStarted.future;
+    final reset = controller.resetProgress();
+    controller.dispose();
+
+    await loading.timeout(const Duration(milliseconds: 100));
+    expect(
+      await reset.timeout(const Duration(milliseconds: 100)),
+      isFalse,
+    );
+    expect(controller.state.totalKills, SaveState.defaults().totalKills);
+    expect(
+      controller.state.selectedCharacterId,
+      SaveState.defaults().selectedCharacterId,
+    );
+  });
+
   test('reset remains authoritative over an overlapping sync reload', () async {
     final stale = SaveState.defaults().copyWith(totalKills: 999);
     final store = _BlockingSecondLoadStore(stale);
@@ -222,9 +243,13 @@ class _BlockingSaveStore implements SaveStore {
 
 class _BlockingLoadSaveStore implements SaveStore {
   final loadResult = Completer<SaveState>();
+  final loadStarted = Completer<void>();
 
   @override
-  Future<SaveState> load() => loadResult.future;
+  Future<SaveState> load() {
+    if (!loadStarted.isCompleted) loadStarted.complete();
+    return loadResult.future;
+  }
 
   @override
   Future<void> save(SaveState state) async {}

@@ -31,6 +31,7 @@ class AccountController extends ChangeNotifier {
   String? errorMessage;
   StreamSubscription<AccountSession>? _subscription;
   Future<void> _transitionTail = Future<void>.value();
+  final Completer<void> _disposeSignal = Completer<void>();
   AccountSession? _blockedTarget;
   bool _disposed = false;
   int _operationGeneration = 0;
@@ -52,15 +53,17 @@ class AccountController extends ChangeNotifier {
       return;
     }
     _subscription ??= service.changes.listen((next) {
-      if (!_disposed) unawaited(_queueTransition(next));
+      if (!_disposed) unawaited(_handleAuthChange(next));
     });
     busy = true;
     errorMessage = null;
     _notify();
     try {
-      final next = await service.ensureGuest();
+      final next = await _awaitWhileActive(service.ensureGuest());
       if (!_isActive(operation)) return;
       await _queueTransition(next);
+    } on _AccountControllerDisposed {
+      return;
     } on Object {
       if (!_isActive(operation)) return;
       session = const AccountSession.signedOut();
@@ -74,15 +77,22 @@ class AccountController extends ChangeNotifier {
   }
 
   Future<void> connectGoogle() async {
-    if (_disposed || !config.enabled || busy) return;
+    if (_disposed ||
+        !config.enabled ||
+        busy ||
+        availability == AccountAvailability.blocked) {
+      return;
+    }
     final operation = ++_operationGeneration;
     busy = true;
     errorMessage = null;
     _notify();
     try {
-      final next = await service.connectGoogle();
+      final next = await _awaitWhileActive(service.connectGoogle());
       if (!_isActive(operation)) return;
       await _queueTransition(next);
+    } on _AccountControllerDisposed {
+      return;
     } on Object {
       if (!_isActive(operation)) return;
       final actual = service.current;
@@ -124,7 +134,9 @@ class AccountController extends ChangeNotifier {
     Future<void> Function() endRemote, {
     required String failureMessage,
   }) async {
-    if (_disposed || busy) return;
+    if (_disposed || busy || availability == AccountAvailability.blocked) {
+      return;
+    }
     final operation = ++_operationGeneration;
     busy = true;
     errorMessage = null;
@@ -132,8 +144,10 @@ class AccountController extends ChangeNotifier {
     var remoteCompleted = false;
     Object? endError;
     try {
-      await endRemote();
+      await _awaitWhileActive(endRemote());
       remoteCompleted = true;
+    } on _AccountControllerDisposed {
+      return;
     } on AccountEndException catch (error) {
       remoteCompleted = error.remoteCompleted;
       endError = error;
@@ -170,7 +184,7 @@ class AccountController extends ChangeNotifier {
         result.completeError(error, stackTrace);
       }
     });
-    return result.future;
+    return Future.any<void>([result.future, _disposeSignal.future]);
   }
 
   Future<void> _transitionTo(
@@ -178,7 +192,12 @@ class AccountController extends ChangeNotifier {
     required bool retryCleanup,
   }) async {
     if (_disposed) return;
-    if (!retryCleanup && _blockedTarget == null && session == next) return;
+    next = service.current;
+    if (_blockedTarget != null && !retryCleanup) {
+      _blockedTarget = next;
+      return;
+    }
+    if (!retryCleanup && session == next) return;
     final requiresCleanup = retryCleanup || _requiresCleanup(session, next);
     if (requiresCleanup) {
       availability = AccountAvailability.blocked;
@@ -186,12 +205,13 @@ class AccountController extends ChangeNotifier {
       final cleanupError = await _clearAccountLocalState();
       if (_disposed) return;
       if (cleanupError != null) {
-        _blockedTarget = next;
+        _blockedTarget = service.current;
         errorMessage = '기기 계정 데이터를 지우지 못했습니다. 정리를 다시 시도해 주세요.';
         availability = AccountAvailability.blocked;
         _notify();
         return;
       }
+      next = service.current;
     }
     _blockedTarget = null;
     session = next;
@@ -199,7 +219,28 @@ class AccountController extends ChangeNotifier {
     errorMessage = null;
     _notify();
     if (next.isPermanent) {
-      await onPermanentAccount?.call();
+      try {
+        final sync = onPermanentAccount?.call();
+        if (sync != null) await _awaitWhileActive(sync);
+      } on _AccountControllerDisposed {
+        return;
+      } on Object {
+        if (!_disposed) {
+          errorMessage = '계정 클라우드 동기화에 실패했습니다.';
+          _notify();
+        }
+      }
+    }
+  }
+
+  Future<void> _handleAuthChange(AccountSession next) async {
+    try {
+      await _queueTransition(next);
+    } on Object {
+      if (!_disposed) {
+        errorMessage = '계정 상태를 반영하지 못했습니다.';
+        _notify();
+      }
     }
   }
 
@@ -212,16 +253,31 @@ class AccountController extends ChangeNotifier {
   Future<Object?> _clearAccountLocalState() async {
     Object? cleanupError;
     try {
-      await clearLocalState?.call();
+      final clear = clearLocalState?.call();
+      if (clear != null) await _awaitWhileActive(clear);
+    } on _AccountControllerDisposed {
+      rethrow;
     } on Object catch (error) {
       cleanupError = error;
     }
     try {
-      await clearPaidCache?.call();
+      final clear = clearPaidCache?.call();
+      if (clear != null) await _awaitWhileActive(clear);
+    } on _AccountControllerDisposed {
+      rethrow;
     } on Object catch (error) {
       cleanupError ??= error;
     }
     return cleanupError;
+  }
+
+  Future<T> _awaitWhileActive<T>(Future<T> operation) {
+    return Future.any<T>([
+      operation,
+      _disposeSignal.future.then<T>(
+        (_) => throw const _AccountControllerDisposed(),
+      ),
+    ]);
   }
 
   bool _isActive(int operation) =>
@@ -236,7 +292,12 @@ class AccountController extends ChangeNotifier {
     if (_disposed) return;
     _disposed = true;
     _operationGeneration++;
+    _disposeSignal.complete();
     unawaited(_subscription?.cancel());
     super.dispose();
   }
+}
+
+class _AccountControllerDisposed implements Exception {
+  const _AccountControllerDisposed();
 }
