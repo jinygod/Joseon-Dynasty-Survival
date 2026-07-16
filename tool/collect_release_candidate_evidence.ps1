@@ -83,15 +83,13 @@ $gates.goldens = Invoke-EvidenceGate `
   'goldens' $flutter `
   @('test', 'test/app/release_surface_golden_test.dart', '-r', 'compact')
 
-function Read-Records {
-  param([string]$Path)
-  if ([string]::IsNullOrWhiteSpace($Path)) {
-    Write-Output -NoEnumerate @()
-    return
-  }
-  Write-Output -NoEnumerate @(
-    Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
-  )
+$p2Records = @()
+if (-not [string]::IsNullOrWhiteSpace($P2ExceptionsJson)) {
+  $p2Records = @(Get-Content -LiteralPath $P2ExceptionsJson -Raw | ConvertFrom-Json)
+}
+$p3Records = @()
+if (-not [string]::IsNullOrWhiteSpace($P3RecordsJson)) {
+  $p3Records = @(Get-Content -LiteralPath $P3RecordsJson -Raw | ConvertFrom-Json)
 }
 
 $branch = (& git -C $repoRoot branch --show-current).Trim()
@@ -112,8 +110,8 @@ $manifest = [ordered]@{
     openP1 = $OpenP1
     openP2 = $OpenP2
     openP3 = $OpenP3
-    p2Exceptions = Read-Records $P2ExceptionsJson
-    p3Records = Read-Records $P3RecordsJson
+    p2Exceptions = $p2Records
+    p3Records = $p3Records
   }
 }
 
