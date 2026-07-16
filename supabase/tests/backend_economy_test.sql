@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(34);
+select plan(37);
 
 select has_schema('private');
 select ok(to_regclass('public.profiles') is not null, 'profiles exists');
@@ -20,13 +20,14 @@ insert into auth.users (id, email, is_anonymous)
 values
   ('00000000-0000-0000-0000-000000000001', 'one@example.test', false),
   ('00000000-0000-0000-0000-000000000002', 'two@example.test', false);
-insert into public.profiles (user_id, display_name, is_permanent)
-values
-  ('00000000-0000-0000-0000-000000000001', 'one', true),
-  ('00000000-0000-0000-0000-000000000002', 'two', true);
-insert into public.wallets (user_id) values
-  ('00000000-0000-0000-0000-000000000001'),
-  ('00000000-0000-0000-0000-000000000002');
+select is((select count(*) from public.profiles), 2::bigint, 'auth users receive profiles');
+select is((select count(*) from public.wallets), 2::bigint, 'auth users receive wallets');
+update public.profiles set display_name = case user_id
+  when '00000000-0000-0000-0000-000000000001' then 'one' else 'two' end;
+insert into auth.users (id, email, is_anonymous)
+values ('00000000-0000-0000-0000-000000000003', 'guest@example.test', true);
+update auth.users set is_anonymous = false where id = '00000000-0000-0000-0000-000000000003';
+select is((select is_permanent from public.profiles where user_id = '00000000-0000-0000-0000-000000000003'), true, 'trusted auth linking promotes permanence');
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001', true);

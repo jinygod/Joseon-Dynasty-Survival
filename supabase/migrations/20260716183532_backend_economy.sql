@@ -97,6 +97,27 @@ create table public.player_entitlements (
   primary key (user_id, entitlement_key)
 );
 
+create or replace function private.handle_auth_user_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  insert into public.profiles (user_id, is_permanent)
+  values (new.id, not coalesce(new.is_anonymous, true))
+  on conflict (user_id) do update set
+    is_permanent = public.profiles.is_permanent or excluded.is_permanent,
+    updated_at = now();
+  insert into public.wallets (user_id) values (new.id) on conflict (user_id) do nothing;
+  return new;
+end;
+$$;
+
+create trigger auth_user_profile_wallet
+after insert or update of is_anonymous on auth.users
+for each row execute function private.handle_auth_user_change();
+
 alter table public.profiles enable row level security;
 alter table public.player_progress enable row level security;
 alter table public.wallets enable row level security;
