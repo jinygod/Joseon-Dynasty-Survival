@@ -64,12 +64,13 @@ The Flutter application contains interfaces for authentication, cloud progress, 
 
 On first launch, the app requests a Supabase anonymous session and continues locally if the network is unavailable. A guest session is not considered a permanent account.
 
-Google linking uses Supabase Auth identity linking so the existing Supabase user ID remains stable. This preserves server rows created for the guest instead of copying them to a second account. The UI clearly distinguishes `게스트` and the linked Google account.
+Google connection uses the native Google Sign-In ID token. For a Google identity that has never been used, Supabase Auth identity linking keeps the current guest user ID stable and preserves its rows. If the Google identity already belongs to a permanent account, the app signs into that existing account with the same verified ID token and applies the cloud-wins conflict rule. The UI clearly distinguishes `게스트` and the connected Google account.
 
 Rules:
 
 - gameplay never blocks on authentication bootstrap;
 - purchase and paid spending require a valid non-anonymous session;
+- identity-link conflict means “sign into the existing Google account,” not an unrecoverable error;
 - linking retries safely after cancellation or network failure;
 - signing out removes local session credentials and paid wallet cache, but does not delete local offline progress;
 - signing into another account reloads that account's server progress and wallet;
@@ -158,6 +159,10 @@ No client role can query this table. Purchase tokens and Google responses are av
 
 This table resides in `private` and maps the three fixed product IDs to currency code, grant amount, active status, and version. The Edge Function looks up grants here rather than trusting client-supplied amounts.
 
+### `premium_catalog` and `player_entitlements`
+
+`private.premium_catalog` maps a trusted premium SKU to a 금옥 price, entitlement key, and active flag. `public.player_entitlements` stores `(user_id, entitlement_key, acquired_at, ledger_id)` and permits read-own access only. The initial production premium catalog is intentionally empty: this release establishes safe purchase and spending infrastructure without inventing paid gameplay advantages or shipping cosmetic entries that have no approved assets. Local tests seed a non-production entitlement to prove atomic spending.
+
 ## Cloud Progress Synchronization
 
 SharedPreferences remains the immediate gameplay store and offline cache. Server sync never runs in the Flame frame loop.
@@ -194,8 +199,8 @@ Edge Functions:
 - `sync-progress`: validated optimistic-concurrency cloud save.
 - `verify-google-play-purchase`: purchase verification, idempotent grant, and consume retry.
 - `google-play-notification`: authenticated Pub/Sub push handling for refunds and state changes.
-- `spend-royal-jade`: atomic balance check, ledger debit, and entitlement grant.
-- `delete-account`: revoke sessions, remove gameplay/profile/wallet/ledger data, detach and pseudonymize retained purchase-token audit records, then delete the auth user.
+- `spend-royal-jade`: look up an active trusted premium SKU, atomically check balance, append a ledger debit, and grant its entitlement once.
+- `delete-account`: revoke sessions, remove gameplay/profile/wallet/ledger/entitlement data, detach and pseudonymize retained purchase-token audit records, then delete the auth user.
 
 Privileged secrets, including the Google service-account credentials and Supabase secret/service role, exist only in Edge Function secrets. The Android app contains only the Supabase project URL and publishable key.
 
