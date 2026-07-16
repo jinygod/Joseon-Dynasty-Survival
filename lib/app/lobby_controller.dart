@@ -48,6 +48,12 @@ class LobbyController extends ChangeNotifier {
     return _enqueue((current) => current.copyWith(selectedStageId: stageId));
   }
 
+  Future<bool> resetProgress() {
+    final operation = _saveQueue.then((_) => _persistReset());
+    _saveQueue = operation.then<void>((_) {});
+    return operation;
+  }
+
   String? takeRecoveryNotice() {
     final notice = _recoveryNotice;
     _recoveryNotice = null;
@@ -69,6 +75,23 @@ class LobbyController extends ChangeNotifier {
       state = next;
     } on Object {
       _recoveryNotice = '저장하지 못했습니다. 다시 시도해 주세요.';
+    } finally {
+      saving = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> _persistReset() async {
+    saving = true;
+    notifyListeners();
+    final next = SaveState.defaults();
+    try {
+      await store.save(next);
+      state = next;
+      return true;
+    } on Object {
+      _recoveryNotice = '저장하지 못했습니다. 다시 시도해 주세요.';
+      return false;
     } finally {
       saving = false;
       notifyListeners();

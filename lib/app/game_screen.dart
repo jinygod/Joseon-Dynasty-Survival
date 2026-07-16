@@ -112,6 +112,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           persistSpiritJade: _persistSpiritJade,
           pickupIdPrefix: _runStartedAtUtc.microsecondsSinceEpoch.toString(),
         );
+    _audioSettingsController.addListener(_applyAccessibilitySettings);
+    _applyAccessibilitySettings();
     unawaited(_loadFirstBossRewardAvailability());
     _game.pauseWhenBackgrounded = false;
     if (widget.showFirstRunTutorial) {
@@ -123,9 +125,18 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _audioSettingsController.removeListener(_applyAccessibilitySettings);
     _game.updateMovementInput(VectorInput.zero);
     if (_ownsAudioSettingsController) _audioSettingsController.dispose();
     super.dispose();
+  }
+
+  void _applyAccessibilitySettings() {
+    final settings = _audioSettingsController.settings;
+    _game.applyAccessibilitySettings(
+      screenShakeEnabled: settings.screenShakeEnabled,
+      damageNumbersEnabled: settings.damageNumbersEnabled,
+    );
   }
 
   @override
@@ -328,7 +339,14 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           GameWidget<PixelSurvivorGame>(
             game: _game,
             overlayBuilderMap: {
-              'hud': (_, game) => GameHud(source: game, onPause: _pauseGame),
+              'hud': (_, game) => ListenableBuilder(
+                listenable: _audioSettingsController,
+                builder: (_, _) => GameHud(
+                  source: game,
+                  onPause: _pauseGame,
+                  uiScale: _audioSettingsController.settings.uiScale.factor,
+                ),
+              ),
               PixelSurvivorGame.levelUpOverlayId: (_, game) => LevelUpOverlay(
                 choices: game.pendingLevelUpChoices,
                 onChoiceSelected: game.applyLevelUpChoice,

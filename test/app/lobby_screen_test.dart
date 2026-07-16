@@ -78,6 +78,60 @@ void main() {
     expect(screen.playerSlot.characterId, exorcistDosa);
     expect(screen.stageId, plagueMarket);
   });
+
+  testWidgets(
+    'lobby reset returns with defaults and later selection preserves them',
+    (tester) async {
+      final store = _MemorySaveStore(
+        SaveState.defaults().copyWith(
+          unlockedCharacterIds: {rookieConstable, exorcistDosa},
+          wallet: const Wallet(coin: 500, spiritJade: 3),
+        ),
+      );
+      final lobby = LobbyController(store: store);
+      await lobby.load();
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(splashFactory: NoSplash.splashFactory),
+          home: LobbyScreen(
+            controller: lobby,
+            audioSettingsController: _audioController(),
+          ),
+        ),
+      );
+
+      await tester.tap(find.byKey(const Key('lobby-settings')));
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('reset-progress')),
+        240,
+        scrollable: find.byType(Scrollable),
+      );
+      await tester.tap(find.byKey(const Key('reset-progress')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('reset-first-confirm')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('reset-final-confirm')));
+      await tester.pumpAndSettle();
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+
+      expect(lobby.state.wallet, Wallet.empty);
+    expect(
+      lobby.state.unlockedCharacterIds,
+      SaveState.defaults().unlockedCharacterIds,
+    );
+      await tester.tap(find.byKey(const Key('lobby-stage')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('stage-confirm')));
+      await tester.pumpAndSettle();
+      expect(store.value.wallet, Wallet.empty);
+    expect(
+      store.value.unlockedCharacterIds,
+      SaveState.defaults().unlockedCharacterIds,
+    );
+    },
+  );
 }
 
 AudioSettingsController _audioController() =>

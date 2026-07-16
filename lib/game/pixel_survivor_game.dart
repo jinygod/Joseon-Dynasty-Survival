@@ -65,6 +65,8 @@ class PixelSurvivorGame extends FlameGame
     this.onAudioCue,
     this.persistSpiritJade,
     this.firstBossRewardAvailable = false,
+    this.screenShakeEnabled = true,
+    this.damageNumbersEnabled = true,
     String? pickupIdPrefix,
     double Function()? rewardRoll,
     double Function()? bossRoll,
@@ -92,6 +94,8 @@ class PixelSurvivorGame extends FlameGame
   final void Function(AudioCue cue)? onAudioCue;
   final SpiritJadePersistence? persistSpiritJade;
   bool firstBossRewardAvailable;
+  bool screenShakeEnabled;
+  bool damageNumbersEnabled;
   final String pickupIdPrefix;
   final double Function() _rewardRoll;
   final double Function() _bossRoll;
@@ -170,6 +174,16 @@ class PixelSurvivorGame extends FlameGame
   @override
   double? get bossHealthFraction => _boss?.healthFraction;
   Vector2 get screenShakeOffset => _screenShakeOffset.clone();
+
+  void applyAccessibilitySettings({
+    required bool screenShakeEnabled,
+    required bool damageNumbersEnabled,
+  }) {
+    this.screenShakeEnabled = screenShakeEnabled;
+    this.damageNumbersEnabled = damageNumbersEnabled;
+    if (!screenShakeEnabled) _clearScreenShake();
+  }
+
   double get weaponDamageMultiplier =>
       _resolvedAugmentModifiers.weaponDamageMultiplier;
 
@@ -784,6 +798,7 @@ class PixelSurvivorGame extends FlameGame
   }
 
   void _spawnDamageNumber(DamageEvent event) {
+    if (!damageNumbersEnabled) return;
     if (_damageNumberCount >= CombatFeedbackTuning.maxDamageNumbers) return;
     _damageNumberCount += 1;
     add(
@@ -818,6 +833,7 @@ class PixelSurvivorGame extends FlameGame
   }
 
   void _startScreenShake(double magnitude) {
+    if (!screenShakeEnabled) return;
     _screenShakeRemaining = CombatFeedbackTuning.screenShakeDurationSeconds;
     _screenShakeMagnitude = magnitude
         .clamp(0, CombatFeedbackTuning.maxScreenShakeMagnitude)
@@ -827,6 +843,10 @@ class PixelSurvivorGame extends FlameGame
   void _updateScreenShake(double dt) {
     camera.viewfinder.position.sub(_screenShakeOffset);
     _screenShakeOffset.setZero();
+    if (!screenShakeEnabled) {
+      _screenShakeRemaining = 0;
+      return;
+    }
     if (_screenShakeRemaining <= 0) return;
 
     _screenShakeRemaining = max(0.0, _screenShakeRemaining - dt);
@@ -842,6 +862,13 @@ class PixelSurvivorGame extends FlameGame
       _screenShakeOffset.scale(CombatFeedbackTuning.maxScreenShakeMagnitude);
     }
     camera.viewfinder.position.add(_screenShakeOffset);
+  }
+
+  void _clearScreenShake() {
+    camera.viewfinder.position.sub(_screenShakeOffset);
+    _screenShakeOffset.setZero();
+    _screenShakeRemaining = 0;
+    _screenShakeMagnitude = 0;
   }
 
   void _dropExperienceForDeadEnemies() {
@@ -1198,6 +1225,16 @@ class PixelSurvivorGame extends FlameGame
       _emitAudio(AudioCue.bossMusic);
       _spawnBoss();
     }
+  }
+
+  @visibleForTesting
+  void debugApplyDamageEvent(DamageEvent event) {
+    _applyDamageEvents([event]);
+  }
+
+  @visibleForTesting
+  void debugStartScreenShake(double magnitude) {
+    _startScreenShake(magnitude);
   }
 
   @visibleForTesting
