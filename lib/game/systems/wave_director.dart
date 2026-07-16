@@ -23,14 +23,18 @@ class WaveTickResult {
 }
 
 class WaveDirector {
-  factory WaveDirector({required Random random}) => WaveDirector._(random);
+  factory WaveDirector({
+    required Random random,
+    List<WaveDefinition> definitions = waveDefinitions,
+  }) => WaveDirector._(random, definitions);
 
-  WaveDirector._(this._random);
+  WaveDirector._(this._random, this._definitions);
 
   static const frameSpawnCap = 8;
   static const _bossSecond = 270;
 
   final Random _random;
+  final List<WaveDefinition> _definitions;
   double _spawnBudget = 0;
   bool _hasRequestedBoss = false;
 
@@ -39,7 +43,10 @@ class WaveDirector {
     required double dt,
     required int activeEnemyCount,
   }) {
-    final pressure = wavePressureForSecond(elapsedSeconds);
+    final pressure = wavePressureForSecond(
+      elapsedSeconds,
+      definitions: _definitions,
+    );
     _spawnBudget = min(
       frameSpawnCap.toDouble(),
       _spawnBudget + max(0, dt) * pressure.spawnsPerSecond,
@@ -66,6 +73,20 @@ class WaveDirector {
     var consecutiveCount = 0;
 
     for (var index = 0; index < count; index += 1) {
+      final rolledElite =
+          definition.eliteWeights.isNotEmpty &&
+          _random.nextDouble() < pressure.eliteChance;
+      if (rolledElite) {
+        requests.add(
+          SpawnRequest(
+            enemyId: _selectEnemyId(definition.eliteWeights),
+            isElite: true,
+          ),
+        );
+        previousEnemyId = null;
+        consecutiveCount = 0;
+        continue;
+      }
       if (consecutiveCount == 0 || consecutiveCount >= definition.groupSize) {
         previousEnemyId = _selectEnemyId(
           definition.enemyWeights,
@@ -76,12 +97,7 @@ class WaveDirector {
         consecutiveCount = 0;
       }
 
-      requests.add(
-        SpawnRequest(
-          enemyId: previousEnemyId!,
-          isElite: _random.nextDouble() < pressure.eliteChance,
-        ),
-      );
+      requests.add(SpawnRequest(enemyId: previousEnemyId!, isElite: false));
       consecutiveCount += 1;
     }
 

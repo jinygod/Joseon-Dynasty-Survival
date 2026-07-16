@@ -8,6 +8,7 @@ class WaveDefinition {
     required this.startSecond,
     required this.endSecond,
     required this.enemyWeights,
+    required this.eliteWeights,
     required this.startSpawnsPerSecond,
     required this.endSpawnsPerSecond,
     required this.groupSize,
@@ -20,6 +21,7 @@ class WaveDefinition {
   final int startSecond;
   final int endSecond;
   final Map<EnemyId, int> enemyWeights;
+  final Map<EnemyId, int> eliteWeights;
   final double startSpawnsPerSecond;
   final double endSpawnsPerSecond;
   final int groupSize;
@@ -48,6 +50,7 @@ const waveDefinitions = <WaveDefinition>[
     startSecond: 0,
     endSecond: 60,
     enemyWeights: {plagueRatSwarm: 1},
+    eliteWeights: {},
     startSpawnsPerSecond: 1.0,
     endSpawnsPerSecond: 1.4,
     groupSize: 3,
@@ -60,6 +63,7 @@ const waveDefinitions = <WaveDefinition>[
     startSecond: 60,
     endSecond: 120,
     enemyWeights: {plagueRatSwarm: 3, bandit: 2},
+    eliteWeights: {brokenJangseungSpirit: 1},
     startSpawnsPerSecond: 1.4,
     endSpawnsPerSecond: 1.9,
     groupSize: 3,
@@ -72,6 +76,7 @@ const waveDefinitions = <WaveDefinition>[
     startSecond: 120,
     endSecond: 180,
     enemyWeights: {plagueRatSwarm: 3, bandit: 3, vengefulSpirit: 2},
+    eliteWeights: {brokenJangseungSpirit: 1},
     startSpawnsPerSecond: 1.9,
     endSpawnsPerSecond: 2.5,
     groupSize: 4,
@@ -89,6 +94,7 @@ const waveDefinitions = <WaveDefinition>[
       vengefulSpirit: 2,
       dokkaebi: 1,
     },
+    eliteWeights: {brokenJangseungSpirit: 1, sorrowfulMaidenGhost: 1},
     startSpawnsPerSecond: 2.5,
     endSpawnsPerSecond: 3.2,
     groupSize: 5,
@@ -106,6 +112,7 @@ const waveDefinitions = <WaveDefinition>[
       vengefulSpirit: 2,
       dokkaebi: 2,
     },
+    eliteWeights: {brokenJangseungSpirit: 1, sorrowfulMaidenGhost: 1},
     startSpawnsPerSecond: 3.2,
     endSpawnsPerSecond: 4.0,
     groupSize: 6,
@@ -118,6 +125,7 @@ const waveDefinitions = <WaveDefinition>[
     startSecond: 270,
     endSecond: 330,
     enemyWeights: {bandit: 2, vengefulSpirit: 2},
+    eliteWeights: {brokenJangseungSpirit: 1, sorrowfulMaidenGhost: 1},
     startSpawnsPerSecond: 1.5,
     endSpawnsPerSecond: 2.2,
     groupSize: 4,
@@ -128,19 +136,28 @@ const waveDefinitions = <WaveDefinition>[
   ),
 ];
 
-WaveDefinition waveDefinitionForSecond(int second) {
+WaveDefinition waveDefinitionForSecond(
+  int second, {
+  List<WaveDefinition> definitions = waveDefinitions,
+}) {
   final elapsedSecond = second < 0 ? 0 : second;
-  return waveDefinitions.firstWhere(
+  return definitions.firstWhere(
     (definition) =>
         elapsedSecond >= definition.startSecond &&
         elapsedSecond < definition.endSecond,
-    orElse: () => waveDefinitions.last,
+    orElse: () => definitions.last,
   );
 }
 
-WavePressure wavePressureForSecond(double elapsedSeconds) {
+WavePressure wavePressureForSecond(
+  double elapsedSeconds, {
+  List<WaveDefinition> definitions = waveDefinitions,
+}) {
   final safeSecond = elapsedSeconds.isFinite ? max(0.0, elapsedSeconds) : 0.0;
-  final definition = waveDefinitionForSecond(safeSecond.floor());
+  final definition = waveDefinitionForSecond(
+    safeSecond.floor(),
+    definitions: definitions,
+  );
   final duration = definition.endSecond - definition.startSecond;
   final progress = duration <= 0
       ? 1.0
@@ -166,6 +183,27 @@ WavePressure wavePressureForSecond(double elapsedSeconds) {
       progress,
     ).round(),
   );
+}
+
+List<String> validateWaveContent() {
+  final errors = <String>[];
+  for (final wave in waveDefinitions) {
+    void validatePool(Map<EnemyId, int> pool, EnemyRank expectedRank) {
+      for (final entry in pool.entries) {
+        final definition = enemyDefinitionFor(entry.key);
+        if (definition == null) {
+          errors.add('Unknown wave enemy: ${entry.key}');
+        } else if (definition.rank != expectedRank) {
+          errors.add('Wrong wave rank: ${entry.key}');
+        }
+        if (entry.value < 1) errors.add('Invalid wave weight: ${entry.key}');
+      }
+    }
+
+    validatePool(wave.enemyWeights, EnemyRank.normal);
+    validatePool(wave.eliteWeights, EnemyRank.elite);
+  }
+  return errors;
 }
 
 double _lerp(double start, double end, double progress) =>

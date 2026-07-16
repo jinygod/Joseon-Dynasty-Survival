@@ -7,7 +7,7 @@ void main() {
       final report = const ExperienceBalanceSimulator().simulate();
 
       expect(report.durationSeconds, 300);
-      expect(report.expectedSpawnedExperience, closeTo(987.5269, 0.001));
+      expect(report.expectedSpawnedExperience, closeTo(963.9983, 0.001));
       expect(report.profileResults, hasLength(3));
     });
 

@@ -58,7 +58,10 @@ class WaveRegressionSimulator {
 
       final phase = combatRhythmPhaseForSecond(elapsed).id;
       for (final request in result.spawnRequests) {
-        if (!definition.enemyWeights.containsKey(request.enemyId)) {
+        final expectedPool = request.isElite
+            ? definition.eliteWeights
+            : definition.enemyWeights;
+        if (!expectedPool.containsKey(request.enemyId)) {
           invalidPoolRequests += 1;
         }
         phaseSpawnCounts[phase] = phaseSpawnCounts[phase]! + 1;
@@ -68,9 +71,7 @@ class WaveRegressionSimulator {
         enemySpawnCounts[request.enemyId] =
             (enemySpawnCounts[request.enemyId] ?? 0) + 1;
         active.add(
-          _ActiveSpawn(
-            expiresAt: elapsed + _lifetime(request.enemyId, request.isElite),
-          ),
+          _ActiveSpawn(expiresAt: elapsed + _lifetime(request.enemyId)),
         );
       }
       maxActiveEnemies = max(maxActiveEnemies, active.length);
@@ -91,10 +92,9 @@ class WaveRegressionSimulator {
     );
   }
 
-  double _lifetime(EnemyId id, bool isElite) {
+  double _lifetime(EnemyId id) {
     final definition = enemyDefinitions.singleWhere((enemy) => enemy.id == id);
-    final baseSeconds = 18 + (definition.maxHealth / 5);
-    return baseSeconds * (isElite ? 1.5 : 1);
+    return 18 + (definition.maxHealth / 5);
   }
 }
 

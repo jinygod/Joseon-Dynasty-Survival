@@ -38,6 +38,63 @@ void main() {
   });
 
   group('WaveDirector', () {
+    test('elite rolls select only explicit elite definitions', () {
+      final definition = WaveDefinition(
+        startSecond: 0,
+        endSecond: 60,
+        enemyWeights: const {bandit: 1},
+        eliteWeights: const {blackHatAssassin: 1},
+        startSpawnsPerSecond: 8,
+        endSpawnsPerSecond: 8,
+        groupSize: 8,
+        startEliteChance: 1,
+        endEliteChance: 1,
+        startMaxActiveEnemies: 8,
+        endMaxActiveEnemies: 8,
+      );
+      final director = WaveDirector(
+        random: Random(1),
+        definitions: [definition],
+      );
+
+      final requests = director
+          .tick(elapsedSeconds: 1, dt: 1, activeEnemyCount: 0)
+          .spawnRequests;
+
+      expect(
+        requests.map((request) => request.enemyId),
+        everyElement(blackHatAssassin),
+      );
+      expect(requests.map((request) => request.isElite), everyElement(isTrue));
+    });
+
+    test('empty elite pool falls back to unscaled normal requests', () {
+      final definition = WaveDefinition(
+        startSecond: 0,
+        endSecond: 60,
+        enemyWeights: const {bandit: 1},
+        eliteWeights: const {},
+        startSpawnsPerSecond: 1,
+        endSpawnsPerSecond: 1,
+        groupSize: 1,
+        startEliteChance: 1,
+        endEliteChance: 1,
+        startMaxActiveEnemies: 1,
+        endMaxActiveEnemies: 1,
+      );
+      final request = WaveDirector(random: Random(2), definitions: [definition])
+          .tick(elapsedSeconds: 1, dt: 1, activeEnemyCount: 0)
+          .spawnRequests
+          .single;
+
+      expect(request.enemyId, bandit);
+      expect(request.isElite, isFalse);
+    });
+
+    test('wave content references valid ranks and positive weights', () {
+      expect(validateWaveContent(), isEmpty);
+    });
+
     test('uses the current enemy pool and respects active and frame caps', () {
       final director = WaveDirector(random: Random(7));
 
@@ -57,8 +114,16 @@ void main() {
         everyElement(plagueRatSwarm),
       );
       expect(
-        late.spawnRequests.map((request) => request.enemyId),
+        late.spawnRequests
+            .where((request) => !request.isElite)
+            .map((request) => request.enemyId),
         everyElement(isIn(waveDefinitionForSecond(210).enemyWeights.keys)),
+      );
+      expect(
+        late.spawnRequests
+            .where((request) => request.isElite)
+            .map((request) => request.enemyId),
+        everyElement(isIn(waveDefinitionForSecond(210).eliteWeights.keys)),
       );
       expect(late.spawnRequests.length, lessThanOrEqualTo(5));
       expect(late.spawnRequests.length, lessThanOrEqualTo(8));

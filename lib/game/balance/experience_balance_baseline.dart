@@ -94,20 +94,30 @@ class ExperienceBalanceSimulator {
     var total = 0.0;
     for (var second = 0; second < durationSeconds; second += 1) {
       final pressure = wavePressureForSecond(second + 0.5);
-      final weights = pressure.definition.enemyWeights;
-      final totalWeight = weights.values.fold<int>(
-        0,
-        (sum, weight) => sum + weight,
+      final normalExperience = _weightedExperience(
+        pressure.definition.enemyWeights,
       );
-      final weightedExperience = weights.entries.fold<double>(
-        0,
-        (sum, entry) => sum + _experienceForEnemy(entry.key) * entry.value,
-      );
-      final averageExperience = weightedExperience / totalWeight;
-      final eliteMultiplier = 1 + (pressure.eliteChance * 2);
-      total += pressure.spawnsPerSecond * averageExperience * eliteMultiplier;
+      final eliteExperience = pressure.definition.eliteWeights.isEmpty
+          ? normalExperience
+          : _weightedExperience(pressure.definition.eliteWeights);
+      final averageExperience =
+          (1 - pressure.eliteChance) * normalExperience +
+          pressure.eliteChance * eliteExperience;
+      total += pressure.spawnsPerSecond * averageExperience;
     }
     return total;
+  }
+
+  double _weightedExperience(Map<String, int> weights) {
+    final totalWeight = weights.values.fold<int>(
+      0,
+      (sum, value) => sum + value,
+    );
+    return weights.entries.fold<double>(
+          0,
+          (sum, entry) => sum + _experienceForEnemy(entry.key) * entry.value,
+        ) /
+        totalWeight;
   }
 
   int _experienceForEnemy(String enemyId) => enemyDefinitions
