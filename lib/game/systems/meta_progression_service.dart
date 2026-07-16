@@ -1,4 +1,5 @@
 import '../balance/meta_reward_balance.dart';
+import '../content/unlock_definitions.dart';
 import '../models/meta_progress.dart';
 import '../models/run_result.dart';
 import 'meta_reward_policy.dart';
@@ -11,12 +12,14 @@ class RunSettlement {
     required this.after,
     required this.coinEarned,
     required this.spiritJadeEarned,
+    this.unlocks = const ProgressionUnlocks(),
   });
 
   final SaveState before;
   final SaveState after;
   final int coinEarned;
   final int spiritJadeEarned;
+  final ProgressionUnlocks unlocks;
 }
 
 class MetaProgressionService {
@@ -44,6 +47,29 @@ class MetaProgressionService {
     return _serialize(() async {
       final state = await saveStore.load();
       return !state.claimedRewardIds.contains(firstBossRewardId);
+    });
+  }
+
+  Future<List<UnlockGoalProgress>> loadUnlockProgress() {
+    return _serialize(() async {
+      final before = await saveStore.load();
+      final state = progression.evaluate(before);
+      await saveStore.save(state);
+      return List.unmodifiable(
+        unlockGoals.map((goal) {
+          final currentValue = progression.metricValue(goal.metric, state);
+          return UnlockGoalProgress(
+            goalId: goal.id,
+            description: goal.description,
+            currentValue: currentValue,
+            threshold: goal.threshold,
+            fraction: (currentValue / goal.threshold).clamp(0, 1).toDouble(),
+            isCompleted: state.completedGoalIds.contains(goal.id),
+            rewardType: goal.rewardType,
+            rewardId: goal.rewardId,
+          );
+        }),
+      );
     });
   }
 
@@ -90,6 +116,7 @@ class MetaProgressionService {
         after: after,
         coinEarned: coinEarned,
         spiritJadeEarned: result.spiritJadeCollected,
+        unlocks: ProgressionUnlocks.diff(before, after),
       );
     });
   }

@@ -59,7 +59,11 @@ enum UnlockMetric {
   bossDefeats,
   unlockedWeaponCount,
   lowHealthWinCount,
+  totalEliteKills,
+  victoryCount,
 }
+
+enum UnlockRewardType { character, weapon, augment, stage }
 
 class CharacterDefinition {
   const CharacterDefinition({
@@ -172,7 +176,15 @@ class UnlockGoalDefinition {
     this.unlocksCharacterId,
     this.unlocksWeaponId,
     this.unlocksAugmentId,
-  });
+    this.unlocksStageId,
+  }) : assert(
+         (unlocksCharacterId != null ? 1 : 0) +
+                 (unlocksWeaponId != null ? 1 : 0) +
+                 (unlocksAugmentId != null ? 1 : 0) +
+                 (unlocksStageId != null ? 1 : 0) ==
+             1,
+         'Unlock goals require exactly one reward.',
+       );
 
   final UnlockGoalId id;
   final String description;
@@ -181,4 +193,18 @@ class UnlockGoalDefinition {
   final CharacterId? unlocksCharacterId;
   final WeaponId? unlocksWeaponId;
   final AugmentId? unlocksAugmentId;
+  final String? unlocksStageId;
+
+  UnlockRewardType get rewardType {
+    if (unlocksCharacterId != null) return UnlockRewardType.character;
+    if (unlocksWeaponId != null) return UnlockRewardType.weapon;
+    if (unlocksAugmentId != null) return UnlockRewardType.augment;
+    return UnlockRewardType.stage;
+  }
+
+  String get rewardId =>
+      unlocksCharacterId ??
+      unlocksWeaponId ??
+      unlocksAugmentId ??
+      unlocksStageId!;
 }

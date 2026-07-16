@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/models/meta_progress.dart';
+import 'package:pixel_survivor/game/content/ids.dart';
+import 'package:pixel_survivor/game/content/stage_definitions.dart';
 import 'package:pixel_survivor/game/models/run_outcome.dart';
 import 'package:pixel_survivor/game/models/run_result.dart';
 import 'package:pixel_survivor/game/systems/meta_progression_service.dart';
@@ -69,10 +71,54 @@ void main() {
       expect(saved.claimedRewardIds, containsAll(['drop-a', 'drop-b']));
     },
   );
+
+  test(
+    'loadUnlockProgress reports ordered clamped UI-ready progress',
+    () async {
+      final store = _MemorySaveStore(
+        SaveState.defaults().copyWith(totalKills: 450),
+      );
+      final service = MetaProgressionService(saveStore: store);
+
+      final progress = await service.loadUnlockProgress();
+      final kill300 = progress.singleWhere(
+        (item) => item.goalId == 'defeat_300_enemies',
+      );
+      final kill500 = progress.singleWhere(
+        (item) => item.goalId == 'defeat_500_enemies',
+      );
+
+      expect(progress, hasLength(15));
+      expect(kill300.currentValue, 450);
+      expect(kill300.fraction, 1);
+      expect(kill300.isCompleted, isTrue);
+      expect(kill300.rewardType, UnlockRewardType.weapon);
+      expect(kill500.fraction, 0.9);
+      expect(kill500.isCompleted, isFalse);
+      expect(
+        (await store.load()).completedGoalIds,
+        contains('defeat_300_enemies'),
+      );
+    },
+  );
+
+  test('settlement reports a stage reward once and persists it', () async {
+    final store = _MemorySaveStore(SaveState.defaults());
+    final service = MetaProgressionService(saveStore: store);
+    final victory = _runResult(outcome: RunOutcome.victory);
+
+    final first = await service.settleRun(victory);
+    final second = await service.settleRun(victory);
+
+    expect(first.unlocks.stageIds, [plagueMarket]);
+    expect(first.after.unlockedStageIds, contains(plagueMarket));
+    expect(second.unlocks.stageIds, isEmpty);
+    expect((await store.load()).unlockedStageIds, contains(plagueMarket));
+  });
 }
 
-RunResult _runResult() => const RunResult(
-  outcome: RunOutcome.defeat,
+RunResult _runResult({RunOutcome outcome = RunOutcome.defeat}) => RunResult(
+  outcome: outcome,
   survivalSeconds: 100,
   kills: 100,
   level: 5,

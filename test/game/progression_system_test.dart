@@ -2,6 +2,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/content/augment_definitions.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
+import 'package:pixel_survivor/game/content/stage_definitions.dart';
+import 'package:pixel_survivor/game/models/run_outcome.dart';
+import 'package:pixel_survivor/game/models/run_result.dart';
 import 'package:pixel_survivor/game/systems/progression_system.dart';
 import 'package:pixel_survivor/game/systems/save_system.dart';
 
@@ -69,5 +72,58 @@ void main() {
     expect(twice.completedGoalIds, once.completedGoalIds);
     expect(twice.unlockedWeaponIds, contains(thunderCrashBomb));
     expect(twice.unlockedAugmentIds, contains(heavyStrike));
+  });
+
+  test(
+    'a victory and elite kills update counters and unlock their rewards',
+    () {
+      final evaluated = const ProgressionSystem().applyRunResult(
+        SaveState.defaults(),
+        const RunResult(
+          outcome: RunOutcome.victory,
+          survivalSeconds: 300,
+          kills: 200,
+          level: 12,
+          bossDefeated: true,
+          wonWithLowHealth: false,
+          weaponKillCounts: {},
+          weaponLevels: {},
+          eliteKills: 50,
+        ),
+      );
+
+      expect(evaluated.totalEliteKills, 50);
+      expect(evaluated.victoryCount, 1);
+      expect(evaluated.unlockedAugmentIds, contains(ritualShortcut));
+      expect(evaluated.unlockedStageIds, contains(plagueMarket));
+      expect(
+        evaluated.completedGoalIds,
+        containsAll(['defeat_50_elites', 'win_first_run']),
+      );
+    },
+  );
+
+  test('third cumulative boss defeat unlocks mountain hunter once', () {
+    final before = SaveState.defaults().copyWith(bossDefeats: 2);
+    final after = const ProgressionSystem().applyRunResult(
+      before,
+      const RunResult(
+        outcome: RunOutcome.defeat,
+        survivalSeconds: 10,
+        kills: 1,
+        level: 1,
+        bossDefeated: true,
+        wonWithLowHealth: false,
+        weaponKillCounts: {},
+        weaponLevels: {},
+      ),
+    );
+
+    expect(after.unlockedCharacterIds, contains(mountainHunter));
+    expect(after.completedGoalIds, contains('defeat_three_bosses'));
+    expect(
+      const ProgressionSystem().evaluate(after).unlockedCharacterIds,
+      after.unlockedCharacterIds,
+    );
   });
 }

@@ -1,6 +1,30 @@
 import 'package:flutter/foundation.dart';
 
 import '../content/meta_progress_definitions.dart';
+import '../content/ids.dart';
+
+@immutable
+class UnlockGoalProgress {
+  const UnlockGoalProgress({
+    required this.goalId,
+    required this.description,
+    required this.currentValue,
+    required this.threshold,
+    required this.fraction,
+    required this.isCompleted,
+    required this.rewardType,
+    required this.rewardId,
+  });
+
+  final String goalId;
+  final String description;
+  final int currentValue;
+  final int threshold;
+  final double fraction;
+  final bool isCompleted;
+  final UnlockRewardType rewardType;
+  final String rewardId;
+}
 
 @immutable
 class Wallet {

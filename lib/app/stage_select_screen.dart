@@ -6,11 +6,13 @@ class StageSelectScreen extends StatefulWidget {
   const StageSelectScreen({
     required this.initialStageId,
     required this.onSelected,
+    this.unlockedStageIds = const {moonlitAbandonedOffice},
     super.key,
   });
 
   final String initialStageId;
   final ValueChanged<String> onSelected;
+  final Set<String> unlockedStageIds;
 
   @override
   State<StageSelectScreen> createState() => _StageSelectScreenState();
@@ -22,7 +24,14 @@ class _StageSelectScreenState extends State<StageSelectScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedStageId = stageDefinitionFor(widget.initialStageId).id;
+    final initial = stageDefinitionFor(widget.initialStageId).id;
+    _selectedStageId = widget.unlockedStageIds.contains(initial)
+        ? initial
+        : stageDefinitions
+                  .where((stage) => widget.unlockedStageIds.contains(stage.id))
+                  .map((stage) => stage.id)
+                  .firstOrNull ??
+              stageDefinitions.first.id;
   }
 
   @override
@@ -48,11 +57,20 @@ class _StageSelectScreenState extends State<StageSelectScreen> {
                       Expanded(
                         child: _StageCard(
                           stage: stageDefinitions[index],
+                          unlocked: widget.unlockedStageIds.contains(
+                            stageDefinitions[index].id,
+                          ),
                           selected:
                               stageDefinitions[index].id == _selectedStageId,
-                          onTap: () => setState(
-                            () => _selectedStageId = stageDefinitions[index].id,
-                          ),
+                          onTap:
+                              widget.unlockedStageIds.contains(
+                                stageDefinitions[index].id,
+                              )
+                              ? () => setState(
+                                  () => _selectedStageId =
+                                      stageDefinitions[index].id,
+                                )
+                              : null,
                         ),
                       ),
                     ],
@@ -101,13 +119,15 @@ class _StageSelectScreenState extends State<StageSelectScreen> {
 class _StageCard extends StatelessWidget {
   const _StageCard({
     required this.stage,
+    required this.unlocked,
     required this.selected,
     required this.onTap,
   });
 
   final StageDefinition stage;
+  final bool unlocked;
   final bool selected;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -152,6 +172,14 @@ class _StageCard extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: Color(0xffd6e2d8), fontSize: 12),
               ),
+              if (!unlocked) ...[
+                const SizedBox(height: 8),
+                Icon(
+                  Icons.lock_outline,
+                  key: Key('stage-lock-${stage.id}'),
+                  color: Colors.white,
+                ),
+              ],
             ],
           ),
         ),

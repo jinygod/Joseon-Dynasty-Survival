@@ -19,7 +19,8 @@ class LobbyController extends ChangeNotifier {
     loading = true;
     notifyListeners();
     try {
-      state = await store.load();
+      final loaded = await store.load();
+      state = SaveState.fromJson(loaded.toJson());
     } on Object {
       state = SaveState.defaults();
       _recoveryNotice = '저장 데이터를 복구해 기본 상태로 시작합니다.';
@@ -40,7 +41,8 @@ class LobbyController extends ChangeNotifier {
   }
 
   Future<void> selectStage(String stageId) {
-    if (!stageDefinitions.any((stage) => stage.id == stageId)) {
+    if (!state.unlockedStageIds.contains(stageId) ||
+        !stageDefinitions.any((stage) => stage.id == stageId)) {
       return Future<void>.value();
     }
     return _enqueue((current) => current.copyWith(selectedStageId: stageId));
