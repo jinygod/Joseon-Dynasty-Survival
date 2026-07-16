@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../backend/account/account_controller.dart';
+import '../backend/progress/progress_sync_controller.dart';
 import '../game/audio/audio_cue.dart';
 import '../game/audio/audio_settings_controller.dart';
 import '../game/audio/game_audio_service.dart';
@@ -12,6 +14,7 @@ import '../game/models/player_slot.dart';
 import '../game/systems/tutorial_progress_repository.dart';
 import '../l10n/app_strings.dart';
 import 'character_select_screen.dart';
+import 'account_section.dart';
 import 'compendium_screen.dart';
 import 'game_screen.dart';
 import 'lobby_controller.dart';
@@ -25,6 +28,8 @@ class LobbyScreen extends StatefulWidget {
     required this.audioSettingsController,
     this.tutorialProgressRepository,
     this.audioService,
+    this.accountController,
+    this.progressSyncController,
     super.key,
   });
 
@@ -32,13 +37,34 @@ class LobbyScreen extends StatefulWidget {
   final AudioSettingsController audioSettingsController;
   final TutorialProgressRepository? tutorialProgressRepository;
   final GameAudioService? audioService;
+  final AccountController? accountController;
+  final ProgressSyncController? progressSyncController;
 
   @override
   State<LobbyScreen> createState() => _LobbyScreenState();
 }
 
-class _LobbyScreenState extends State<LobbyScreen> {
+class _LobbyScreenState extends State<LobbyScreen> with WidgetsBindingObserver {
   bool _launching = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(widget.controller.syncNow());
+    }
+  }
 
   Future<void> _openCharacterPicker() async {
     await Navigator.of(context).push(
@@ -82,6 +108,8 @@ class _LobbyScreenState extends State<LobbyScreen> {
         builder: (_) => SettingsScreen(
           controller: widget.audioSettingsController,
           resetProgress: widget.controller.resetProgress,
+          accountController: widget.accountController,
+          progressSyncController: widget.progressSyncController,
         ),
       ),
     );
@@ -134,11 +162,12 @@ class _LobbyScreenState extends State<LobbyScreen> {
           tutorialProgressRepository: tutorial,
           audioService: widget.audioService,
           audioSettingsController: widget.audioSettingsController,
+          syncProgress: widget.controller.syncNow,
         ),
       ),
     );
     if (!mounted) return;
-    await widget.controller.load();
+    await widget.controller.syncNow();
     if (mounted) setState(() => _launching = false);
   }
 
@@ -177,6 +206,15 @@ class _LobbyScreenState extends State<LobbyScreen> {
               padding: const EdgeInsets.fromLTRB(18, 10, 18, 14),
               child: Column(
                 children: [
+                  if (widget.accountController case final account?) ...[
+                    AccountSection(
+                      controller: account,
+                      syncLabel: widget.progressSyncController?.status.label,
+                      onSyncNow: widget.controller.syncNow,
+                      syncListenable: widget.progressSyncController,
+                    ),
+                    const SizedBox(height: 8),
+                  ],
                   _LobbyHeader(
                     coin: state.wallet.coin,
                     spiritJade: state.wallet.spiritJade,

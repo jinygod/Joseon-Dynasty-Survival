@@ -110,6 +110,83 @@ void main() {
       );
     },
   );
+
+  test(
+    'dispose prevents an in-flight load from mutating or notifying',
+    () async {
+      final store = _BlockingLoadSaveStore();
+      final controller = LobbyController(store: store);
+      var notifications = 0;
+      controller.addListener(() => notifications++);
+
+      final loading = controller.load();
+      expect(notifications, 1);
+      controller.dispose();
+      store.loadResult.complete(SaveState.defaults().copyWith(totalKills: 999));
+      await loading;
+
+      expect(controller.state.totalKills, 0);
+      expect(notifications, 1);
+    },
+  );
+
+  test('dispose prevents queued saves from starting', () async {
+    final store = _BlockingSaveStore(
+      SaveState.defaults().copyWith(
+        unlockedCharacterIds: {rookieConstable, exorcistDosa},
+        unlockedStageIds: {moonlitAbandonedOffice, plagueMarket},
+      ),
+    );
+    final controller = LobbyController(store: store);
+    await controller.load();
+
+    final first = controller.selectCharacter(exorcistDosa);
+    await store.firstSaveStarted.future;
+    final queued = controller.selectStage(plagueMarket);
+    controller.dispose();
+    store.releaseFirstSave.complete();
+    await Future.wait([first, queued]);
+
+    expect(store.saveCount, 1);
+  });
+
+  test('dispose promptly settles in-flight and queued lobby calls', () async {
+    final store = _BlockingLoadSaveStore();
+    final controller = LobbyController(store: store);
+
+    final loading = controller.load();
+    await store.loadStarted.future;
+    final reset = controller.resetProgress();
+    controller.dispose();
+
+    await loading.timeout(const Duration(milliseconds: 100));
+    expect(
+      await reset.timeout(const Duration(milliseconds: 100)),
+      isFalse,
+    );
+    expect(controller.state.totalKills, SaveState.defaults().totalKills);
+    expect(
+      controller.state.selectedCharacterId,
+      SaveState.defaults().selectedCharacterId,
+    );
+  });
+
+  test('reset remains authoritative over an overlapping sync reload', () async {
+    final stale = SaveState.defaults().copyWith(totalKills: 999);
+    final store = _BlockingSecondLoadStore(stale);
+    final controller = LobbyController(store: store);
+    await controller.load();
+
+    final sync = controller.syncNow();
+    await store.secondLoadStarted.future;
+    final reset = controller.resetProgress();
+    await Future<void>.delayed(Duration.zero);
+    store.releaseSecondLoad.complete(stale);
+    await Future.wait([sync, reset]);
+
+    expect(controller.state.totalKills, 0);
+    expect(store.value.totalKills, 0);
+  });
 }
 
 class _MemorySaveStore implements SaveStore {
@@ -162,4 +239,40 @@ class _BlockingSaveStore implements SaveStore {
     }
     value = state;
   }
+}
+
+class _BlockingLoadSaveStore implements SaveStore {
+  final loadResult = Completer<SaveState>();
+  final loadStarted = Completer<void>();
+
+  @override
+  Future<SaveState> load() {
+    if (!loadStarted.isCompleted) loadStarted.complete();
+    return loadResult.future;
+  }
+
+  @override
+  Future<void> save(SaveState state) async {}
+}
+
+class _BlockingSecondLoadStore implements SaveStore {
+  _BlockingSecondLoadStore(this.value);
+
+  SaveState value;
+  int loadCount = 0;
+  final secondLoadStarted = Completer<void>();
+  final releaseSecondLoad = Completer<SaveState>();
+
+  @override
+  Future<SaveState> load() async {
+    loadCount++;
+    if (loadCount == 2) {
+      secondLoadStarted.complete();
+      return releaseSecondLoad.future;
+    }
+    return value;
+  }
+
+  @override
+  Future<void> save(SaveState state) async => value = state;
 }
