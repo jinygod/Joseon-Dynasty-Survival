@@ -25,6 +25,7 @@ import 'components/spirit_jade_component.dart';
 import 'components/ward_aura_component.dart';
 import 'balance/meta_reward_balance.dart';
 import 'content/augment_definitions.dart';
+import 'content/boss_definitions.dart';
 import 'content/character_definitions.dart';
 import 'content/combat_effect_atlas.dart';
 import 'content/enemy_definitions.dart';
@@ -66,6 +67,7 @@ class PixelSurvivorGame extends FlameGame
     this.firstBossRewardAvailable = false,
     String? pickupIdPrefix,
     double Function()? rewardRoll,
+    double Function()? bossRoll,
     Random? random,
   }) : weaponSystem = WeaponSystem(random: random),
        waveDirector = WaveDirector(
@@ -75,7 +77,8 @@ class PixelSurvivorGame extends FlameGame
        levelUpSystem = LevelUpSystem(random: random),
        pickupIdPrefix =
            pickupIdPrefix ?? DateTime.now().microsecondsSinceEpoch.toString(),
-       _rewardRoll = rewardRoll ?? Random().nextDouble {
+       _rewardRoll = rewardRoll ?? Random().nextDouble,
+       _bossRoll = bossRoll ?? random?.nextDouble ?? Random().nextDouble {
     if (!playerSlot.isActive) {
       throw ArgumentError.value(playerSlot, 'playerSlot', 'must be active');
     }
@@ -91,6 +94,7 @@ class PixelSurvivorGame extends FlameGame
   bool firstBossRewardAvailable;
   final String pickupIdPrefix;
   final double Function() _rewardRoll;
+  final double Function() _bossRoll;
   final MetaRewardPolicy _metaRewardPolicy = const MetaRewardPolicy();
   final AugmentEffectResolver _augmentEffectResolver =
       const AugmentEffectResolver();
@@ -162,6 +166,7 @@ class PixelSurvivorGame extends FlameGame
   int get currentEnemyCap => _currentEnemyCap;
   @override
   String? get bossName => _boss?.displayName;
+  String? get bossId => _boss?.enemyId;
   @override
   double? get bossHealthFraction => _boss?.healthFraction;
   Vector2 get screenShakeOffset => _screenShakeOffset.clone();
@@ -419,7 +424,7 @@ class PixelSurvivorGame extends FlameGame
   void _spawnBoss() {
     if (_bossSpawnCount > 0) return;
 
-    final definition = _enemyDefinitionFor(fallenGeneral);
+    final definition = bossDefinitionForStage(stageId, roll: _bossRoll());
     final boss = BossComponent(
       definition: definition,
       position: Vector2(size.x / 2, -36),
@@ -433,11 +438,11 @@ class PixelSurvivorGame extends FlameGame
     add(boss);
   }
 
-  void _summonBossMinions() {
+  void _summonBossMinions(List<EnemyId> enemyIds) {
     final availableSlots = max(0, _currentEnemyCap - enemyCount);
-    final summonCount = min(3, availableSlots);
+    final summonCount = min(enemyIds.length, availableSlots);
     for (var index = 0; index < summonCount; index += 1) {
-      _addEnemy(vengefulSpirit, enemyCount + index);
+      _addEnemy(enemyIds[index], enemyCount + index);
     }
   }
 
@@ -1259,6 +1264,8 @@ class PixelSurvivorGame extends FlameGame
   }
 
   EnemyDefinition _enemyDefinitionFor(EnemyId enemyId) {
+    final boss = bossDefinitionForId(enemyId);
+    if (boss != null) return boss.enemy;
     return enemyDefinitions.firstWhere(
       (definition) => definition.id == enemyId,
       orElse: () => enemyDefinitions.first,
