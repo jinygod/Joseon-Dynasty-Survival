@@ -34,6 +34,7 @@ import 'content/stage_definitions.dart';
 import 'content/wave_definitions.dart';
 import 'content/weapon_definitions.dart';
 import 'content/weapon_level_definitions.dart';
+import 'content/visual_asset_load_policy.dart';
 import 'game_performance_budget.dart';
 import 'models/player_slot.dart';
 import 'models/damage_event.dart';
@@ -56,8 +57,9 @@ import 'systems/weapon_system.dart';
 
 class PixelSurvivorGame extends FlameGame
     with KeyboardEvents
-    implements GameHudSource, RewardCollectionHudSource {
+    implements GameHudSource, RewardCollectionHudSource, VisualAssetLoadPolicy {
   static const levelUpOverlayId = 'levelUp';
+  static const maxExperienceGemComponents = 128;
 
   PixelSurvivorGame({
     required this.playerSlot,
@@ -74,6 +76,7 @@ class PixelSurvivorGame extends FlameGame
     Random? random,
     this.performanceBudget = GamePerformanceBudget.standard,
     this.onPerformanceDiagnostic,
+    this.loadVisualAssets = true,
   }) : weaponSystem = WeaponSystem(random: random),
        waveDirector = WaveDirector(
          random: random ?? Random(),
@@ -104,6 +107,8 @@ class PixelSurvivorGame extends FlameGame
   final double Function() _bossRoll;
   final GamePerformanceBudget performanceBudget;
   final GamePerformanceDiagnosticReporter? onPerformanceDiagnostic;
+  @override
+  final bool loadVisualAssets;
   final MetaRewardPolicy _metaRewardPolicy = const MetaRewardPolicy();
   final AugmentEffectResolver _augmentEffectResolver =
       const AugmentEffectResolver();
@@ -191,6 +196,12 @@ class PixelSurvivorGame extends FlameGame
     },
     rejected: _rejectedPopulations,
   );
+
+  int get performanceRetainedOwnerCount =>
+      _activePlayers.length +
+      _lastWeaponHitByEnemy.length +
+      _recordedEnemyDefeats.length +
+      _pendingSpiritJadeDrops.length;
 
   void applyAccessibilitySettings({
     required bool screenShakeEnabled,
@@ -959,14 +970,26 @@ class PixelSurvivorGame extends FlameGame
         enemy.position,
         size: enemy is BossComponent ? 72 : 44,
       );
-      add(
-        ExperienceGemComponent(
-          experienceValue: enemy.experienceValue,
-          position: enemy.position.clone(),
-        ),
-      );
+      _addExperienceGem(enemy);
       enemy.removeFromParent();
     }
+  }
+
+  void _addExperienceGem(EnemyComponent enemy) {
+    final gems = children
+        .whereType<ExperienceGemComponent>()
+        .where((gem) => !gem.isRemoving)
+        .toList(growable: false);
+    if (gems.length >= maxExperienceGemComponents) {
+      gems.first.absorbExperience(enemy.experienceValue);
+      return;
+    }
+    add(
+      ExperienceGemComponent(
+        experienceValue: enemy.experienceValue,
+        position: enemy.position.clone(),
+      ),
+    );
   }
 
   void _recordNewEnemyDefeats() {

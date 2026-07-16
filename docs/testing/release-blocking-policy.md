@@ -31,10 +31,10 @@ Examples: one-pixel alignment drift; harmless punctuation inconsistency.
 - Missing required evidence: BLOCK
 - Failed required evidence: BLOCK
 - Open P2 without an approved exception: BLOCK
-- Open P2 with a named owner, target date, verified workaround, risk statement, and written release owner acceptance: conditionally non-blocking
+- Open P2 with a named owner, verified workaround, risk statement, written release owner approval, and unexpired exception: conditionally non-blocking
 - Open P3 with an issue owner and target milestone: non-blocking
 
-Required evidence is the candidate commit and branch, application version/build number, clean static analysis, full automated test result, web build result, QA-003 performance result, QA-006 golden result, and the open P0/P1 count. Evidence is stale after any production, dependency, asset, build-configuration, or golden change and must be regenerated.
+Required evidence is the candidate commit and branch, application version/build number, clean static analysis, full automated test result, web build result, QA-003 actual 18,000-frame production-game result, QA-006 golden result, and defect records for every severity. Evidence is stale after any production, dependency, asset, build-configuration, test, or golden change and must be regenerated.
 
 Severity is based on player impact, affected cohort, recoverability, and data/security risk—not estimated engineering effort. When two levels appear plausible, use the higher level until triage produces evidence for the lower one. The QA owner assigns severity; the release owner resolves disputes and may raise but never waive a P0 or P1 block.
 

@@ -5,97 +5,139 @@ import '../../tool/release_candidate_report.dart';
 void main() {
   final generatedAt = DateTime.utc(2026, 7, 16, 12);
 
-  test('complete passing evidence produces deterministic READY report', () {
-    final evidence = ReleaseCandidateEvidence(
-      branch: 'codex/qa-release-candidate',
-      commit: '1234567890abcdef1234567890abcdef12345678',
-      version: '0.1.0+1',
-      generatedAt: generatedAt,
-      gates: const {
-        'analyze': 'PASS: no issues',
-        'tests': 'PASS: 447/447',
-        'webBuild': 'PASS: build/web',
-        'performance': 'PASS: 18000 frames',
-        'goldens': 'PASS: 6/6',
-      },
-      openP0: 0,
-      openP1: 0,
-      openP2: 0,
-      openP3: 2,
-    );
+  GateEvidence gate({
+    int exitCode = 0,
+    bool verified = true,
+    String? failure,
+  }) => GateEvidence(
+    command: 'fixed gate command',
+    exitCode: exitCode,
+    completedAt: generatedAt.subtract(const Duration(minutes: 1)),
+    artifactPath: 'build/qa/gate.log',
+    artifactHash: 'a1b2c3',
+    artifactModifiedAt: generatedAt.subtract(const Duration(minutes: 1)),
+    verified: verified,
+    verificationFailure: failure,
+  );
 
-    final report = generateReleaseCandidateReport(evidence);
+  ReleaseCandidateEvidence evidence({
+    Map<String, GateEvidence>? gates,
+    int openP2 = 0,
+    int openP3 = 0,
+    List<DefectRecord> p2 = const [],
+    List<DefectRecord> p3 = const [],
+    bool identityVerified = true,
+    String? identityFailure,
+  }) => ReleaseCandidateEvidence(
+    branch: 'codex/qa-release-candidate',
+    commit: '1234567890abcdef1234567890abcdef12345678',
+    version: '0.1.0+1',
+    generatedAt: generatedAt,
+    gates: gates ?? {for (final name in requiredReleaseGates) name: gate()},
+    openP0: 0,
+    openP1: 0,
+    openP2: openP2,
+    openP3: openP3,
+    p2Exceptions: p2,
+    p3Records: p3,
+    repositoryIdentityVerified: identityVerified,
+    repositoryIdentityFailure: identityFailure,
+  );
+
+  test('verified command evidence and complete defect records are READY', () {
+    final report = generateReleaseCandidateReport(
+      evidence(
+        openP2: 1,
+        openP3: 1,
+        p2: [
+          DefectRecord(
+            owner: 'qa-owner',
+            approvedBy: 'release-owner',
+            expiresAt: generatedAt.add(const Duration(days: 7)),
+          ),
+        ],
+        p3: const [DefectRecord(owner: 'ui-owner', milestone: '0.1.1')],
+      ),
+    );
 
     expect(report.decision, ReleaseDecision.ready);
     expect(report.blockingReasons, isEmpty);
-    expect(report.markdown, contains('# Release Candidate Report — READY'));
-    expect(report.markdown, contains('2026-07-16T12:00:00.000Z'));
-    expect(report.markdown, contains('447/447'));
+    expect(report.markdown, contains('Report — READY'));
+    expect(report.markdown, contains('fiveMinuteProfile'));
   });
 
-  test('failed gate and open critical bugs produce BLOCKED reasons', () {
+  test('arbitrary success cannot override nonzero command exit', () {
+    final gates = {for (final name in requiredReleaseGates) name: gate()};
+    gates['tests'] = gate(exitCode: 1);
+
+    final report = generateReleaseCandidateReport(evidence(gates: gates));
+
+    expect(report.decision, ReleaseDecision.blocked);
+    expect(report.blockingReasons, contains('tests command exited 1'));
+  });
+
+  test('changed hash or mtime verification cannot produce false READY', () {
+    final gates = {for (final name in requiredReleaseGates) name: gate()};
+    gates['goldens'] = gate(verified: false, failure: 'artifact hash changed');
+
+    final report = generateReleaseCandidateReport(evidence(gates: gates));
+
+    expect(report.decision, ReleaseDecision.blocked);
+    expect(
+      report.blockingReasons,
+      contains('goldens evidence is invalid: artifact hash changed'),
+    );
+  });
+
+  test('wrong HEAD, branch, object, or version cannot produce false READY', () {
     final report = generateReleaseCandidateReport(
-      ReleaseCandidateEvidence(
-        branch: 'release/test',
-        commit: 'abcdef1',
-        version: '1.2.3+4',
-        generatedAt: generatedAt,
-        gates: const {
-          'analyze': 'PASS: clean',
-          'tests': 'FAIL: one failure',
-          'webBuild': 'PASS: built',
-          'performance': 'PASS: budget',
-          'goldens': 'PASS: 6/6',
-        },
-        openP0: 0,
-        openP1: 2,
-        openP2: 0,
-        openP3: 0,
+      evidence(
+        identityVerified: false,
+        identityFailure: 'HEAD does not match; version does not match',
       ),
     );
 
     expect(report.decision, ReleaseDecision.blocked);
-    expect(report.blockingReasons, contains('tests evidence failed'));
-    expect(report.blockingReasons, contains('2 open P1 defects'));
+    expect(report.blockingReasons.single, contains('HEAD does not match'));
   });
 
-  test('missing or malformed CLI evidence is rejected', () {
+  test('missing actual five-minute profile evidence blocks release', () {
+    final gates = {for (final name in requiredReleaseGates) name: gate()}
+      ..remove('fiveMinuteProfile');
+
+    final report = generateReleaseCandidateReport(evidence(gates: gates));
+
+    expect(report.decision, ReleaseDecision.blocked);
     expect(
-      () => parseReleaseCandidateArguments(const ['--branch', 'main']),
-      throwsFormatException,
+      report.blockingReasons,
+      contains('fiveMinuteProfile evidence is missing'),
+    );
+  });
+
+  test('P2 expiry and P3 ownership policy prevent false READY', () {
+    final report = generateReleaseCandidateReport(
+      evidence(
+        openP2: 1,
+        openP3: 1,
+        p2: [
+          DefectRecord(
+            owner: 'qa',
+            approvedBy: 'release',
+            expiresAt: generatedAt,
+          ),
+        ],
+        p3: const [DefectRecord(owner: '', milestone: '')],
+      ),
+    );
+
+    expect(report.decision, ReleaseDecision.blocked);
+    expect(
+      report.blockingReasons,
+      contains('P2 exception requires owner, approval, and future expiry'),
     );
     expect(
-      () => parseReleaseCandidateArguments(const [
-        '--branch',
-        'main',
-        '--commit',
-        'not-a-sha',
-        '--version',
-        '1.0.0+1',
-        '--generated-at',
-        '2026-07-16T12:00:00Z',
-        '--analyze',
-        'PASS: clean',
-        '--tests',
-        'PASS: all',
-        '--web-build',
-        'PASS: built',
-        '--performance',
-        'PASS: budget',
-        '--goldens',
-        'PASS: six',
-        '--open-p0',
-        '0',
-        '--open-p1',
-        '0',
-        '--open-p2',
-        '0',
-        '--open-p3',
-        '0',
-        '--output',
-        'report.md',
-      ]),
-      throwsFormatException,
+      report.blockingReasons,
+      contains('every open P3 requires owner and milestone'),
     );
   });
 }

@@ -23,41 +23,48 @@ void main() {
       ),
       1,
     );
-    final collector = PerformanceDevelopmentCollector(budget: budget)
-      ..record(
-        PerformanceDevelopmentSample(
-          simulatedSeconds: 1,
-          frameStepMicros: 16667,
-          updateCostMicros: 120,
-          mountedComponentCount: 12,
-          snapshot: GamePerformanceSnapshot(
+    final collector =
+        PerformanceDevelopmentCollector(
             budget: budget,
-            counts: const {
-              GamePopulationKind.enemy: 4,
-              GamePopulationKind.projectile: 2,
-              GamePopulationKind.damageNumber: 1,
-              GamePopulationKind.combatEffect: 3,
-            },
-          ),
-        ),
-      )
-      ..record(
-        PerformanceDevelopmentSample(
-          simulatedSeconds: 2,
-          frameStepMicros: 16667,
-          updateCostMicros: 240,
-          mountedComponentCount: 18,
-          snapshot: GamePerformanceSnapshot(
-            budget: budget,
-            counts: const {
-              GamePopulationKind.enemy: 11,
-              GamePopulationKind.projectile: 8,
-              GamePopulationKind.damageNumber: 2,
-              GamePopulationKind.combatEffect: 1,
-            },
-          ),
-        ),
-      );
+            maxMemoryProxyComponents: 25,
+            maxRetainedOwners: 6,
+          )
+          ..record(
+            PerformanceDevelopmentSample(
+              simulatedSeconds: 1,
+              frameStepMicros: 16667,
+              hostUpdateLifecycleWallMicros: 120,
+              mountedComponentCount: 12,
+              retainedOwnerCount: 2,
+              snapshot: GamePerformanceSnapshot(
+                budget: budget,
+                counts: const {
+                  GamePopulationKind.enemy: 4,
+                  GamePopulationKind.projectile: 2,
+                  GamePopulationKind.damageNumber: 1,
+                  GamePopulationKind.combatEffect: 3,
+                },
+              ),
+            ),
+          )
+          ..record(
+            PerformanceDevelopmentSample(
+              simulatedSeconds: 2,
+              frameStepMicros: 16667,
+              hostUpdateLifecycleWallMicros: 240,
+              mountedComponentCount: 18,
+              retainedOwnerCount: 8,
+              snapshot: GamePerformanceSnapshot(
+                budget: budget,
+                counts: const {
+                  GamePopulationKind.enemy: 11,
+                  GamePopulationKind.projectile: 8,
+                  GamePopulationKind.damageNumber: 2,
+                  GamePopulationKind.combatEffect: 1,
+                },
+              ),
+            ),
+          );
 
     final log = collector.finish(
       scenario: 'fixed-seed-worst-window',
@@ -69,26 +76,35 @@ void main() {
     expect(log.sampleCount, 2);
     expect(log.peakCounts[GamePopulationKind.enemy], 11);
     expect(log.peakFrameStepMicros, 16667);
-    expect(log.peakUpdateCostMicros, 240);
-    expect(log.peakMemoryProxyComponents, 18);
+    expect(log.peakHostUpdateLifecycleWallMicros, 240);
+    expect(log.peakMountedComponentCount, 18);
+    expect(log.peakRetainedOwnerCount, 8);
+    expect(log.peakMemoryProxyComponents, 26);
     expect(log.budgetViolationSamples, 1);
+    expect(log.memoryProxyViolationSamples, 1);
     expect(log.isWithinPopulationBudget, isFalse);
+    expect(log.isWithinMemoryProxyBudget, isFalse);
   });
 
   test('reporter emits stable machine and human readable evidence', () {
-    final collector = PerformanceDevelopmentCollector(budget: budget)
-      ..record(
-        PerformanceDevelopmentSample(
-          simulatedSeconds: 300,
-          frameStepMicros: 16667,
-          updateCostMicros: 90,
-          mountedComponentCount: 42,
-          snapshot: GamePerformanceSnapshot(
-            budget: budget,
-            counts: const {GamePopulationKind.enemy: 9},
+    final collector =
+        PerformanceDevelopmentCollector(
+          budget: budget,
+          maxMemoryProxyComponents: 64,
+          maxRetainedOwners: 16,
+        )..record(
+          PerformanceDevelopmentSample(
+            simulatedSeconds: 300,
+            frameStepMicros: 16667,
+            hostUpdateLifecycleWallMicros: 90,
+            mountedComponentCount: 42,
+            retainedOwnerCount: 3,
+            snapshot: GamePerformanceSnapshot(
+              budget: budget,
+              counts: const {GamePopulationKind.enemy: 9},
+            ),
           ),
-        ),
-      );
+        );
     final log = collector.finish(
       scenario: 'seed-11',
       seed: 11,
@@ -100,11 +116,17 @@ void main() {
     expect(json['scenario'], 'seed-11');
     expect(json['totalFrameCount'], 18000);
     expect(json['peakCounts']['enemy'], 9);
-    expect(json['memoryMetric'], 'mounted-component-count-proxy');
+    expect(
+      json['memoryMetric'],
+      'mounted-components-plus-retained-production-owners',
+    );
+    expect(json['peakMemoryProxyComponents'], 45);
+    expect(json['maxMemoryProxyComponents'], 64);
 
     final markdown = PerformanceDevelopmentReporter.toMarkdown(log);
     expect(markdown, contains('300.000 simulated seconds'));
     expect(markdown, contains('18,000'));
-    expect(markdown, contains('Physical memory is not measured'));
+    expect(markdown, contains('Physical memory and device frame time'));
+    expect(markdown, contains('game.update` plus lifecycle processing'));
   });
 }

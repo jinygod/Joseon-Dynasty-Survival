@@ -18,14 +18,18 @@ class ExperienceGemComponent extends PositionComponent {
          anchor: Anchor.center,
        );
 
-  final int experienceValue;
+  int experienceValue;
   final double pickupRadius;
   double _age = 0;
   Image? _atlasImage;
 
+  void absorbExperience(int amount) {
+    if (amount > 0) experienceValue += amount;
+  }
+
   @override
-  Future<void> onLoad() async {
-    await super.onLoad();
+  void onLoad() {
+    super.onLoad();
     unawaited(_loadAtlas());
   }
 

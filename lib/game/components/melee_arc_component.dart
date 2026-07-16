@@ -51,8 +51,8 @@ class MeleeArcComponent extends PositionComponent {
   }
 
   @override
-  Future<void> onLoad() async {
-    await super.onLoad();
+  void onLoad() {
+    super.onLoad();
     unawaited(_loadEffect());
   }
 

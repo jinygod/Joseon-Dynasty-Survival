@@ -1,24 +1,31 @@
 # Release-candidate Reporting
 
-`tool/release_candidate_report.dart` turns already-completed gate evidence into one auditable READY or BLOCKED Markdown report. It does not run commands or infer success from files; callers must supply the exact candidate branch, source commit, version, and fresh results.
-
-## Required invocation
+Release status is derived from command evidence, not operator-written `PASS` text.
+`tool/collect_release_candidate_evidence.ps1` runs the fixed analyze, full test,
+web build, actual five-minute `PixelSurvivorGame`, and golden commands. For each
+gate it records the command exit code, log path, Git blob hash, file mtime, and
+completion time in `build/qa/release-candidate-evidence.json`.
 
 ```powershell
+./tool/collect_release_candidate_evidence.ps1 `
+  -OpenP0 0 -OpenP1 0 -OpenP2 0 -OpenP3 0
+
 dart run tool/release_candidate_report.dart `
-  --branch codex/qa-release-candidate `
-  --commit 0123456789abcdef0123456789abcdef01234567 `
-  --version 0.1.0+1 `
-  --generated-at 2026-07-16T12:00:00Z `
-  --analyze "PASS: dart analyze (no issues)" `
-  --tests "PASS: flutter test (447/447)" `
-  --web-build "PASS: flutter build web (build/web)" `
-  --performance "PASS: 18000 frames; peaks 92/128/24/32" `
-  --goldens "PASS: 6/6 at 1280x720 DPR 1" `
-  --open-p0 0 --open-p1 0 --open-p2 0 --open-p3 0 `
+  --evidence build/qa/release-candidate-evidence.json `
   --output docs/testing/release-candidate-report.md
 ```
 
-Every gate value must begin with `PASS:` or `FAIL:` and contain a concise result. Commit accepts 7–40 hexadecimal characters; version requires `major.minor.patch+build`; defect counts must be non-negative. Invalid or missing input exits 64 without a report. Valid blocking evidence writes a BLOCKED report and exits 2. READY exits 0.
+The report tool independently checks the current branch and full HEAD, confirms
+the commit object exists, reads the current `pubspec.yaml` version, recomputes
+every log hash and mtime, and rejects evidence older than one hour or dated in
+the future. A nonzero command exit, changed/missing artifact, stale timestamp,
+or repository mismatch blocks the candidate.
 
-The generated report is evidence for the supplied source commit. If it is committed afterward, the report commit differs by design; any later production, dependency, asset, build-configuration, or golden change requires all gates and the report to be regenerated.
+Open P2 defects require one record per defect with `owner`, `approvedBy`, and a
+future `expiresAt`. Open P3 defects require one record per defect with `owner`
+and `milestone`. Pass JSON arrays with `-P2ExceptionsJson` and
+`-P3RecordsJson`; counts and records must agree. P0 and P1 must be zero.
+
+The generated report describes the source commit in the manifest. Commit the
+report afterward. Any production, dependency, asset, build configuration, test,
+or golden change invalidates the evidence and requires collection again.

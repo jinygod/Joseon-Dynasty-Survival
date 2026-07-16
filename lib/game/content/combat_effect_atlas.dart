@@ -4,6 +4,7 @@ import 'package:flame/components.dart';
 import 'package:flutter/services.dart';
 
 import 'safe_asset_loader.dart';
+import 'visual_asset_load_policy.dart';
 
 enum CombatEffectKind { experience, hit, critical, death, warning }
 
@@ -32,6 +33,7 @@ abstract final class CombatEffectAtlas {
   }
 
   static Future<Image?> load(PositionComponent component) async {
+    if (!shouldLoadVisualAssets(component)) return null;
     try {
       ServicesBinding.instance;
     } on AssertionError {

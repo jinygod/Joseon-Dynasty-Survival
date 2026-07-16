@@ -9,6 +9,7 @@ import '../content/enemy_definitions.dart';
 import '../content/enemy_behavior_definitions.dart';
 import '../content/ids.dart';
 import '../content/safe_asset_loader.dart';
+import '../content/visual_asset_load_policy.dart';
 import '../systems/combat_feedback_tuning.dart';
 import '../systems/enemy_behavior_controller.dart';
 import 'player_component.dart';
@@ -297,10 +298,10 @@ class EnemyComponent
   }
 
   @override
-  Future<void> onLoad() async {
-    await super.onLoad();
+  void onLoad() {
+    super.onLoad();
     final spec = EnemySpriteSheet.specs[enemyId];
-    if (spec != null) {
+    if (spec != null && shouldLoadVisualAssets(this)) {
       unawaited(_loadAnimations(spec));
     }
   }

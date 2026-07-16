@@ -6,15 +6,17 @@ class PerformanceDevelopmentSample {
   const PerformanceDevelopmentSample({
     required this.simulatedSeconds,
     required this.frameStepMicros,
-    required this.updateCostMicros,
+    required this.hostUpdateLifecycleWallMicros,
     required this.mountedComponentCount,
+    required this.retainedOwnerCount,
     required this.snapshot,
   });
 
   final double simulatedSeconds;
   final int frameStepMicros;
-  final int updateCostMicros;
+  final int hostUpdateLifecycleWallMicros;
   final int mountedComponentCount;
+  final int retainedOwnerCount;
   final GamePerformanceSnapshot snapshot;
 }
 
@@ -28,9 +30,14 @@ class PerformanceDevelopmentLog {
     required this.budget,
     required Map<GamePopulationKind, int> peakCounts,
     required this.peakFrameStepMicros,
-    required this.peakUpdateCostMicros,
+    required this.peakHostUpdateLifecycleWallMicros,
+    required this.peakMountedComponentCount,
+    required this.peakRetainedOwnerCount,
     required this.peakMemoryProxyComponents,
+    required this.maxMemoryProxyComponents,
+    required this.maxRetainedOwners,
     required this.budgetViolationSamples,
+    required this.memoryProxyViolationSamples,
   }) : peakCounts = UnmodifiableMapView(peakCounts);
 
   final String scenario;
@@ -41,37 +48,63 @@ class PerformanceDevelopmentLog {
   final GamePerformanceBudget budget;
   final Map<GamePopulationKind, int> peakCounts;
   final int peakFrameStepMicros;
-  final int peakUpdateCostMicros;
+  final int peakHostUpdateLifecycleWallMicros;
+  final int peakMountedComponentCount;
+  final int peakRetainedOwnerCount;
   final int peakMemoryProxyComponents;
+  final int maxMemoryProxyComponents;
+  final int maxRetainedOwners;
   final int budgetViolationSamples;
+  final int memoryProxyViolationSamples;
 
   bool get isWithinPopulationBudget => budgetViolationSamples == 0;
+  bool get isWithinMemoryProxyBudget => memoryProxyViolationSamples == 0;
 }
 
 class PerformanceDevelopmentCollector {
-  PerformanceDevelopmentCollector({required this.budget});
+  PerformanceDevelopmentCollector({
+    required this.budget,
+    required this.maxMemoryProxyComponents,
+    required this.maxRetainedOwners,
+  });
 
   final GamePerformanceBudget budget;
+  final int maxMemoryProxyComponents;
+  final int maxRetainedOwners;
   final Map<GamePopulationKind, int> _peakCounts = {
     for (final kind in GamePopulationKind.values) kind: 0,
   };
   var _sampleCount = 0;
   var _peakFrameStepMicros = 0;
-  var _peakUpdateCostMicros = 0;
+  var _peakHostUpdateLifecycleWallMicros = 0;
+  var _peakMountedComponentCount = 0;
+  var _peakRetainedOwnerCount = 0;
   var _peakMemoryProxyComponents = 0;
   var _budgetViolationSamples = 0;
+  var _memoryProxyViolationSamples = 0;
 
   void record(PerformanceDevelopmentSample sample) {
     _sampleCount += 1;
     _peakFrameStepMicros = _max(_peakFrameStepMicros, sample.frameStepMicros);
-    _peakUpdateCostMicros = _max(
-      _peakUpdateCostMicros,
-      sample.updateCostMicros,
+    _peakHostUpdateLifecycleWallMicros = _max(
+      _peakHostUpdateLifecycleWallMicros,
+      sample.hostUpdateLifecycleWallMicros,
     );
-    _peakMemoryProxyComponents = _max(
-      _peakMemoryProxyComponents,
+    _peakMountedComponentCount = _max(
+      _peakMountedComponentCount,
       sample.mountedComponentCount,
     );
+    _peakRetainedOwnerCount = _max(
+      _peakRetainedOwnerCount,
+      sample.retainedOwnerCount,
+    );
+    final memoryProxy =
+        sample.mountedComponentCount + sample.retainedOwnerCount;
+    _peakMemoryProxyComponents = _max(_peakMemoryProxyComponents, memoryProxy);
+    if (memoryProxy > maxMemoryProxyComponents ||
+        sample.retainedOwnerCount > maxRetainedOwners) {
+      _memoryProxyViolationSamples += 1;
+    }
     var violatesBudget = false;
     for (final kind in GamePopulationKind.values) {
       final count = sample.snapshot.counts[kind] ?? 0;
@@ -99,9 +132,14 @@ class PerformanceDevelopmentCollector {
       budget: budget,
       peakCounts: Map.of(_peakCounts),
       peakFrameStepMicros: _peakFrameStepMicros,
-      peakUpdateCostMicros: _peakUpdateCostMicros,
+      peakHostUpdateLifecycleWallMicros: _peakHostUpdateLifecycleWallMicros,
+      peakMountedComponentCount: _peakMountedComponentCount,
+      peakRetainedOwnerCount: _peakRetainedOwnerCount,
       peakMemoryProxyComponents: _peakMemoryProxyComponents,
+      maxMemoryProxyComponents: maxMemoryProxyComponents,
+      maxRetainedOwners: maxRetainedOwners,
       budgetViolationSamples: _budgetViolationSamples,
+      memoryProxyViolationSamples: _memoryProxyViolationSamples,
     );
   }
 }

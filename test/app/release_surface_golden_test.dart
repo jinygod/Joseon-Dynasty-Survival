@@ -1,4 +1,9 @@
+import 'dart:io';
+import 'dart:math';
+
+import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/app/character_select_screen.dart';
 import 'package:pixel_survivor/app/game_hud.dart';
@@ -12,14 +17,19 @@ import 'package:pixel_survivor/app/stage_select_screen.dart';
 import 'package:pixel_survivor/game/audio/audio_settings.dart';
 import 'package:pixel_survivor/game/audio/audio_settings_controller.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
+import 'package:pixel_survivor/game/content/enemy_definitions.dart';
 import 'package:pixel_survivor/game/content/stage_definitions.dart';
+import 'package:pixel_survivor/game/models/player_slot.dart';
 import 'package:pixel_survivor/game/models/run_outcome.dart';
 import 'package:pixel_survivor/game/models/run_result.dart';
 import 'package:pixel_survivor/game/models/vector_input.dart';
+import 'package:pixel_survivor/game/pixel_survivor_game.dart';
 import 'package:pixel_survivor/game/systems/progression_system.dart';
 import 'package:pixel_survivor/game/systems/save_system.dart';
 
 void main() {
+  setUpAll(_loadDeterministicGoldenFont);
+
   testWidgets('lobby 16:9 golden', (tester) async {
     final controller = LobbyController(
       store: _MemorySaveStore(SaveState.defaults()),
@@ -64,9 +74,25 @@ void main() {
   });
 
   testWidgets('game HUD 16:9 golden', (tester) async {
+    final game = PixelSurvivorGame(
+      playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
+      onRunEnded: null,
+      random: Random(41),
+      loadVisualAssets: false,
+    );
+    game
+      ..debugSpawnEnemy(plagueRatSwarm, position: Vector2(360, 270))
+      ..debugSpawnEnemy(bandit, position: Vector2(760, 360))
+      ..debugSpawnEnemy(vengefulSpirit, position: Vector2(920, 230));
     await _expectGolden(
       tester,
-      GameHud(source: _GoldenHudSource(), onPause: () {}),
+      Stack(
+        fit: StackFit.expand,
+        children: [
+          GameWidget(game: game),
+          GameHud(source: game, onPause: () {}),
+        ],
+      ),
       'game_hud_16_9.png',
     );
   });
@@ -116,6 +142,7 @@ Future<void> _expectGolden(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xff3fbf7f)),
         splashFactory: NoSplash.splashFactory,
         useMaterial3: false,
+        fontFamily: _goldenFontFamily,
       ),
       home: RepaintBoundary(key: const Key('golden-root'), child: surface),
     ),
@@ -129,6 +156,32 @@ Future<void> _expectGolden(
   await tester.pumpWidget(const SizedBox.shrink());
 }
 
+const _goldenFontFamily = 'ReleaseGoldenTestFont';
+
+Future<void> _loadDeterministicGoldenFont() async {
+  var directory = File(Platform.resolvedExecutable).parent;
+  File? font;
+  while (directory.parent.path != directory.path) {
+    final candidate = File(
+      '${directory.path}${Platform.pathSeparator}packages'
+      '${Platform.pathSeparator}flutter_tools${Platform.pathSeparator}static'
+      '${Platform.pathSeparator}Ahem.ttf',
+    );
+    if (candidate.existsSync()) {
+      font = candidate;
+      break;
+    }
+    directory = directory.parent;
+  }
+  if (font == null) {
+    throw StateError('Flutter SDK Ahem test font is missing.');
+  }
+  final bytes = await font.readAsBytes();
+  await (FontLoader(
+    _goldenFontFamily,
+  )..addFont(Future.value(ByteData.sublistView(bytes)))).load();
+}
+
 const _result = RunResult(
   outcome: RunOutcome.defeat,
   survivalSeconds: 247,
@@ -140,6 +193,8 @@ const _result = RunResult(
   weaponLevels: {},
 );
 
+// Retained as a compact non-game HUD source for local golden diagnostics.
+// ignore: unused_element
 class _GoldenHudSource implements GameHudSource {
   @override
   String? get bossName => '타락한 장군';
