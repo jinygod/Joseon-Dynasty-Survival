@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/content/augment_definitions.dart';
 import 'package:pixel_survivor/game/content/ids.dart';
+import 'package:pixel_survivor/game/content/stage_definitions.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
 import 'package:pixel_survivor/game/content/weapon_level_definitions.dart';
 
@@ -33,6 +34,22 @@ typedef ExpectedAugment = ({
 });
 
 void main() {
+  test('roster exposes two stages with distinct presentation metadata', () {
+    expect(stageDefinitions, hasLength(2));
+    expect(
+      stageDefinitions.map((stage) => stage.id),
+      orderedEquals([moonlitAbandonedOffice, plagueMarket]),
+    );
+    expect(
+      stageDefinitions.map((stage) => stage.visualTheme).toSet(),
+      hasLength(2),
+    );
+    expect(stageDefinitions.map((stage) => stage.riskLabel).toSet(), {
+      '표준',
+      '위험',
+    });
+  });
+
   test('roster exposes eight weapons with five levels each', () {
     expect(
       weaponDefinitions.map((definition) => definition.id),

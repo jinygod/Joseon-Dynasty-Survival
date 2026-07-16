@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'enemy_definitions.dart';
 import 'ids.dart';
+import 'stage_definitions.dart';
 
 class WaveDefinition {
   const WaveDefinition({
@@ -45,7 +46,7 @@ class WavePressure {
   final int maxActiveEnemies;
 }
 
-const waveDefinitions = <WaveDefinition>[
+const moonlitAbandonedOfficeWaves = <WaveDefinition>[
   WaveDefinition(
     startSecond: 0,
     endSecond: 60,
@@ -136,6 +137,117 @@ const waveDefinitions = <WaveDefinition>[
   ),
 ];
 
+const waveDefinitions = moonlitAbandonedOfficeWaves;
+
+const plagueMarketWaves = <WaveDefinition>[
+  WaveDefinition(
+    startSecond: 0,
+    endSecond: 60,
+    enemyWeights: {plagueRatSwarm: 4, plagueCrow: 1},
+    eliteWeights: {},
+    startSpawnsPerSecond: 1.15,
+    endSpawnsPerSecond: 1.6,
+    groupSize: 4,
+    startEliteChance: 0,
+    endEliteChance: 0.03,
+    startMaxActiveEnemies: 36,
+    endMaxActiveEnemies: 45,
+  ),
+  WaveDefinition(
+    startSecond: 60,
+    endSecond: 120,
+    enemyWeights: {plagueRatSwarm: 4, plagueCrow: 3, bandit: 1},
+    eliteWeights: {blackHatAssassin: 1},
+    startSpawnsPerSecond: 1.6,
+    endSpawnsPerSecond: 2.2,
+    groupSize: 4,
+    startEliteChance: 0.03,
+    endEliteChance: 0.06,
+    startMaxActiveEnemies: 45,
+    endMaxActiveEnemies: 58,
+  ),
+  WaveDefinition(
+    startSecond: 120,
+    endSecond: 180,
+    enemyWeights: {
+      plagueRatSwarm: 3,
+      plagueCrow: 3,
+      rottenHerbalist: 2,
+      graveEmber: 1,
+    },
+    eliteWeights: {blackHatAssassin: 1},
+    startSpawnsPerSecond: 2.2,
+    endSpawnsPerSecond: 2.9,
+    groupSize: 5,
+    startEliteChance: 0.06,
+    endEliteChance: 0.09,
+    startMaxActiveEnemies: 58,
+    endMaxActiveEnemies: 74,
+  ),
+  WaveDefinition(
+    startSecond: 180,
+    endSecond: 240,
+    enemyWeights: {
+      plagueRatSwarm: 2,
+      plagueCrow: 3,
+      rottenHerbalist: 3,
+      graveEmber: 2,
+      dokkaebi: 1,
+    },
+    eliteWeights: {blackHatAssassin: 2, brokenJangseungSpirit: 1},
+    startSpawnsPerSecond: 2.9,
+    endSpawnsPerSecond: 3.7,
+    groupSize: 5,
+    startEliteChance: 0.09,
+    endEliteChance: 0.14,
+    startMaxActiveEnemies: 74,
+    endMaxActiveEnemies: 88,
+  ),
+  WaveDefinition(
+    startSecond: 240,
+    endSecond: 270,
+    enemyWeights: {
+      plagueCrow: 3,
+      rottenHerbalist: 3,
+      graveEmber: 2,
+      dokkaebi: 2,
+    },
+    eliteWeights: {
+      blackHatAssassin: 2,
+      brokenJangseungSpirit: 1,
+      sorrowfulMaidenGhost: 1,
+    },
+    startSpawnsPerSecond: 3.7,
+    endSpawnsPerSecond: 4.4,
+    groupSize: 6,
+    startEliteChance: 0.14,
+    endEliteChance: 0.19,
+    startMaxActiveEnemies: 88,
+    endMaxActiveEnemies: 102,
+  ),
+  WaveDefinition(
+    startSecond: 270,
+    endSecond: 330,
+    enemyWeights: {plagueCrow: 2, rottenHerbalist: 3, graveEmber: 2},
+    eliteWeights: {blackHatAssassin: 1, brokenJangseungSpirit: 1},
+    startSpawnsPerSecond: 1.8,
+    endSpawnsPerSecond: 2.5,
+    groupSize: 4,
+    startEliteChance: 0.07,
+    endEliteChance: 0.11,
+    startMaxActiveEnemies: 54,
+    endMaxActiveEnemies: 72,
+  ),
+];
+
+const stageWaveDefinitions = <String, List<WaveDefinition>>{
+  moonlitAbandonedOffice: moonlitAbandonedOfficeWaves,
+  plagueMarket: plagueMarketWaves,
+};
+
+List<WaveDefinition> waveDefinitionsForStage(String stageId) =>
+    stageWaveDefinitions[stageId] ?? waveDefinitions;
+
 WaveDefinition waveDefinitionForSecond(
   int second, {
   List<WaveDefinition> definitions = waveDefinitions,
@@ -187,21 +299,32 @@ WavePressure wavePressureForSecond(
 
 List<String> validateWaveContent() {
   final errors = <String>[];
-  for (final wave in waveDefinitions) {
-    void validatePool(Map<EnemyId, int> pool, EnemyRank expectedRank) {
-      for (final entry in pool.entries) {
-        final definition = enemyDefinitionFor(entry.key);
-        if (definition == null) {
-          errors.add('Unknown wave enemy: ${entry.key}');
-        } else if (definition.rank != expectedRank) {
-          errors.add('Wrong wave rank: ${entry.key}');
-        }
-        if (entry.value < 1) errors.add('Invalid wave weight: ${entry.key}');
-      }
+  for (final stageEntry in stageWaveDefinitions.entries) {
+    final definitions = stageEntry.value;
+    if (definitions.isEmpty || definitions.first.startSecond != 0) {
+      errors.add('Invalid wave start: ${stageEntry.key}');
     }
+    for (var index = 0; index < definitions.length; index += 1) {
+      final wave = definitions[index];
+      if (wave.endSecond <= wave.startSecond ||
+          (index > 0 && definitions[index - 1].endSecond != wave.startSecond)) {
+        errors.add('Invalid wave range: ${stageEntry.key}:$index');
+      }
+      void validatePool(Map<EnemyId, int> pool, EnemyRank expectedRank) {
+        for (final entry in pool.entries) {
+          final definition = enemyDefinitionFor(entry.key);
+          if (definition == null) {
+            errors.add('Unknown wave enemy: ${entry.key}');
+          } else if (definition.rank != expectedRank) {
+            errors.add('Wrong wave rank: ${entry.key}');
+          }
+          if (entry.value < 1) errors.add('Invalid wave weight: ${entry.key}');
+        }
+      }
 
-    validatePool(wave.enemyWeights, EnemyRank.normal);
-    validatePool(wave.eliteWeights, EnemyRank.elite);
+      validatePool(wave.enemyWeights, EnemyRank.normal);
+      validatePool(wave.eliteWeights, EnemyRank.elite);
+    }
   }
   return errors;
 }

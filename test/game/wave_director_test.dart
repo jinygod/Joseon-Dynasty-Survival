@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/content/enemy_definitions.dart';
+import 'package:pixel_survivor/game/content/stage_definitions.dart';
 import 'package:pixel_survivor/game/content/wave_definitions.dart';
 import 'package:pixel_survivor/game/systems/wave_director.dart';
 
@@ -34,6 +35,34 @@ void main() {
       expect(wavePressureForSecond(269.999).maxActiveEnemies, 92);
       expect(wavePressureForSecond(270).spawnsPerSecond, 1.5);
       expect(wavePressureForSecond(329.999).maxActiveEnemies, 64);
+    });
+
+    test('stage rosters differ and plague market has higher pressure', () {
+      final moonlit = waveDefinitionsForStage(moonlitAbandonedOffice);
+      final plague = waveDefinitionsForStage(plagueMarket);
+
+      expect(moonlit, same(waveDefinitions));
+      expect(plague, isNot(same(moonlit)));
+      expect(plague.first.enemyWeights, contains(plagueCrow));
+      expect(plague[2].enemyWeights, contains(rottenHerbalist));
+      for (final second in [0.0, 120.0, 240.0]) {
+        final moonlitPressure = wavePressureForSecond(
+          second,
+          definitions: moonlit,
+        );
+        final plaguePressure = wavePressureForSecond(
+          second,
+          definitions: plague,
+        );
+        expect(
+          plaguePressure.spawnsPerSecond,
+          greaterThan(moonlitPressure.spawnsPerSecond),
+        );
+        expect(
+          plaguePressure.maxActiveEnemies,
+          greaterThan(moonlitPressure.maxActiveEnemies),
+        );
+      }
     });
   });
 
