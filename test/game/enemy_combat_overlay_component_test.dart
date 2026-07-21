@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flame/components.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/combat/attack_spec.dart';
@@ -7,6 +9,17 @@ import 'package:pixel_survivor/game/components/enemy_component.dart';
 import 'package:pixel_survivor/game/content/enemy_definitions.dart';
 
 void main() {
+  test('attack effects reference the shared attack presentation priority', () {
+    final source = File(
+      'lib/game/components/attack_effect_component.dart',
+    ).readAsStringSync();
+
+    expect(
+      source,
+      contains(RegExp(r'priority:\s*AttackPresentationPriority\.attack')),
+    );
+  });
+
   test(
     'enemy warning overlay stays above attack effects while body stays below',
     () {

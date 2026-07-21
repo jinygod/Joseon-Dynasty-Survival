@@ -747,7 +747,7 @@ class PixelSurvivorGame extends FlameGame
     for (final cue in result.talismanTransfers) {
       if (_combatEffectCount >= performanceBudget.maxCombatEffects) {
         _rejectPopulation(GamePopulationKind.combatEffect, 1);
-        break;
+        continue;
       }
       _combatEffectCount += 1;
       add(

@@ -24,3 +24,10 @@ Date: 2026-07-22
 - `git diff --check`: clean before report generation; rerun before commit.
 
 Per instruction, no manual checklist cells were filled, no long full build/test gates were rerun, and nothing was merged or pushed.
+
+## Minor review follow-up
+
+- Transfer-cue admission now continues across the complete executor result. Every cue that cannot fit the remaining combat-effect slots increments rejection diagnostics, while the live component count remains capped. The regression observed 37 rejections with the early `break` and 39 after both previously skipped cue drops were counted.
+- `AttackEffectComponent` now references `AttackPresentationPriority.attack` instead of duplicating the numeric value `89`. A source contract test prevents the shared policy reference from silently reverting to a matching hardcoded literal.
+
+Follow-up verification: the two focused files passed 61 tests, `flutter analyze --no-pub` reported `No issues found!`, and no long gate or manual checklist was touched.

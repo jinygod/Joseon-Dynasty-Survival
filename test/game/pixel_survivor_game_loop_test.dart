@@ -890,7 +890,7 @@ void main() {
         );
         expect(
           game.performanceSnapshot.rejected[GamePopulationKind.combatEffect],
-          greaterThan(0),
+          39,
         );
       },
     );

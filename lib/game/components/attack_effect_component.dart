@@ -4,10 +4,14 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 
 import '../combat/attack_spec.dart';
+import 'talisman_presentation_component.dart';
 
 class AttackEffectComponent extends PositionComponent {
   AttackEffectComponent({required this.instance, this.onExpired})
-    : super(position: instance.origin, priority: 89);
+    : super(
+        position: instance.origin,
+        priority: AttackPresentationPriority.attack,
+      );
 
   final AttackInstance instance;
   final void Function()? onExpired;
