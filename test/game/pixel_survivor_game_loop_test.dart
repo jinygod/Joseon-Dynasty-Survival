@@ -625,6 +625,51 @@ void main() {
       },
     );
 
+    audioGameTester.testGameWidget(
+      'later seal explosion and master ward activation emit one master cue',
+      setUp: (game, _) async {
+        game.unlockedWeaponIds.add(talismanThrow);
+        for (var level = 0; level < 6; level += 1) {
+          game.weaponSystem.upgrade(talismanThrow, game.unlockedWeaponIds);
+        }
+        final origin = game.activePlayers.single.position;
+        for (var index = 0; index < 12; index += 1) {
+          await game.ensureAdd(
+            EnemyComponent(
+              enemyId: 'coincident_target_$index',
+              maxHealth: 100000,
+              moveSpeed: 0,
+              damage: 0,
+              position: origin + Vector2(20 + index * 5.0, 0),
+            ),
+          );
+        }
+      },
+      verify: (game, _) async {
+        for (var frame = 0; frame < 35; frame += 1) {
+          game.update(.05);
+        }
+        expect(
+          audioCues.where((cue) => cue == AudioCue.talismanMasterAttack),
+          hasLength(2),
+        );
+
+        final ordinaryBefore = audioCues
+            .where((cue) => cue == AudioCue.talismanAttack)
+            .length;
+        game.update(.05);
+
+        expect(
+          audioCues.where((cue) => cue == AudioCue.talismanMasterAttack),
+          hasLength(3),
+        );
+        expect(
+          audioCues.where((cue) => cue == AudioCue.talismanAttack).length,
+          ordinaryBefore + 1,
+        );
+      },
+    );
+
     gameTester.testGameWidget(
       'live talisman wards retain runtime caps',
       setUp: (game, _) async {

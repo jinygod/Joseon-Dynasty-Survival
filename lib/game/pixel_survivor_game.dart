@@ -595,8 +595,7 @@ class PixelSurvivorGame extends FlameGame
         final hasTalismanAttack = result.attackInstances.any(
           (attack) => attack.spec.id.startsWith('talisman_'),
         );
-        if (hasTalismanAttack) continue;
-        _emitAudio(AudioCue.talismanAttack);
+        if (!hasTalismanAttack) _emitAudio(AudioCue.talismanAttack);
         if (result.fiveColorWards.any(
           (ward) => ward.attack.spec.presentation == AttackPresentation.master,
         )) {

@@ -114,6 +114,7 @@ class TalismanExecutor {
           entry.key.position,
           input,
           isCritical: entry.value.isCritical,
+          sequenceIndex: attacks.length,
         ),
       );
       if (input.level >= 5) {
@@ -177,6 +178,7 @@ class TalismanExecutor {
             target.position,
             input,
             isCritical: _rollCritical(input.criticalChance),
+            sequenceIndex: attacks.length,
           ),
         );
       } else {
@@ -236,6 +238,7 @@ class TalismanExecutor {
     Vector2 center,
     TalismanTickInput input, {
     required bool isCritical,
+    required int sequenceIndex,
   }) {
     final stats = weaponLevelFor(talismanThrow, input.level);
     return AttackInstance(
@@ -257,7 +260,7 @@ class TalismanExecutor {
       ),
       origin: center,
       direction: Vector2(1, 0),
-      sequenceIndex: 0,
+      sequenceIndex: sequenceIndex,
       isCritical: isCritical,
     );
   }
