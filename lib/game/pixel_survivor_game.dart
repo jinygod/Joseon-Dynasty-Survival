@@ -61,6 +61,7 @@ import 'systems/run_progression_system.dart';
 import 'systems/run_stats_tracker.dart';
 import 'systems/wave_director.dart';
 import 'systems/weapon_system.dart';
+import 'systems/weapon_synergy_resolver.dart';
 
 class PixelSurvivorGame extends FlameGame
     with KeyboardEvents
@@ -131,6 +132,7 @@ class PixelSurvivorGame extends FlameGame
   final LevelUpSystem levelUpSystem;
   final RunProgressionSystem runProgression = RunProgressionSystem();
   final RunStatsTracker runStats = RunStatsTracker();
+  final WeaponSynergyResolver _weaponSynergyResolver = WeaponSynergyResolver();
   final CombatSystem combatSystem = CombatSystem();
   late final CombatFeedbackController _combatFeedback;
   final List<PlayerComponent> _activePlayers = [];
@@ -164,6 +166,8 @@ class PixelSurvivorGame extends FlameGame
   double _screenShakeMagnitude = 0;
   double _screenShakePhase = 0;
   final Vector2 _screenShakeOffset = Vector2.zero();
+  int _nextOriginatingAttackId = 0;
+  double _combatNoticeSecondsRemaining = 0;
 
   @override
   double get elapsedSeconds => _elapsedSeconds;
@@ -178,6 +182,8 @@ class PixelSurvivorGame extends FlameGame
   );
   @override
   int get kills => runStats.kills;
+  String? get combatNotice => _combatNoticeSecondsRemaining > 0 ? '봉마참' : null;
+  double get combatNoticeSecondsRemaining => _combatNoticeSecondsRemaining;
   RunOutcome get runOutcome => _runOutcome;
   bool get isGameOver => _runOutcome != RunOutcome.inProgress;
   bool get canPauseRun =>
@@ -348,6 +354,10 @@ class PixelSurvivorGame extends FlameGame
     super.update(simulationDt);
     _trySpawnPendingBoss();
     _updateScreenShake(safeDt);
+    _combatNoticeSecondsRemaining = max(
+      0.0,
+      _combatNoticeSecondsRemaining - safeDt,
+    );
     if (_runOutcome != RunOutcome.inProgress || isLevelUpPending) {
       return;
     }
@@ -671,7 +681,11 @@ class PixelSurvivorGame extends FlameGame
         .where((enemy) => !enemy.isDead && !enemy.isRemoving)
         .toList(growable: false);
     final events = <DamageEvent>[];
-    final weaponId = attack.spec.id.startsWith('talisman_')
+    final synergyAttacks = <AttackInstance>[];
+    final originatingAttackId = _nextOriginatingAttackId++;
+    final weaponId = attack.spec.id == sealingSlash
+        ? sealingSlash
+        : attack.spec.id.startsWith('talisman_')
         ? talismanThrow
         : hwandoSlash;
     for (final enemy in enemies) {
@@ -694,9 +708,28 @@ class PixelSurvivorGame extends FlameGame
           isCritical: attack.isCritical,
         ),
       );
+      if (weaponId == hwandoSlash &&
+          weaponSystem.levelOf(hwandoSlash) > 0 &&
+          weaponSystem.levelOf(talismanThrow) > 0) {
+        final resolution = _weaponSynergyResolver.onHwandoHit(
+          target: enemy,
+          nearby: enemies,
+          now: _elapsedSeconds,
+          originatingAttackId: originatingAttackId,
+        );
+        if (resolution.attack case final synergyAttack?) {
+          synergyAttacks.add(synergyAttack);
+        }
+        if (resolution.showFirstActivationNotice) {
+          _combatNoticeSecondsRemaining = 1.2;
+        }
+      }
     }
     _applyDamageEvents(events);
     _emitSharedAttackAudio(attack);
+    for (final synergyAttack in synergyAttacks) {
+      _resolveSharedAttack(synergyAttack);
+    }
 
     if (attack.spec.presentation == AttackPresentation.master) {
       _combatFeedback.request(const CombatFeedbackRequest.master());
@@ -706,6 +739,10 @@ class PixelSurvivorGame extends FlameGame
   }
 
   void _emitSharedAttackAudio(AttackInstance attack) {
+    if (attack.spec.id == sealingSlash) {
+      _emitAudio(AudioCue.sealingSlash);
+      return;
+    }
     if (attack.spec.id.startsWith('talisman_')) {
       if (attack.sequenceIndex == 0) {
         _emitAudio(AudioCue.talismanAttack);
@@ -720,9 +757,6 @@ class PixelSurvivorGame extends FlameGame
       if (attack.spec.presentation == AttackPresentation.master) {
         _emitAudio(AudioCue.hwandoMasterAttack);
       }
-    }
-    if (attack.spec.presentation == AttackPresentation.strong) {
-      _emitAudio(AudioCue.sealingSlash);
     }
   }
 
@@ -1017,8 +1051,8 @@ class PixelSurvivorGame extends FlameGame
       final effectiveDamage = healthBefore - event.target.currentHealth;
       final weaponId = event.weaponId;
       if (weaponId != null && effectiveDamage > 0) {
-        runStats.recordWeaponDamage(
-          weaponId: weaponId,
+        runStats.recordDamageSource(
+          sourceId: weaponId,
           amount: effectiveDamage,
         );
         _lastWeaponHitByEnemy[event.target] = weaponId;

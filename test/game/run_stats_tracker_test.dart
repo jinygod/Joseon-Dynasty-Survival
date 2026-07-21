@@ -3,6 +3,7 @@ import 'package:pixel_survivor/game/content/weapon_definitions.dart';
 import 'package:pixel_survivor/game/models/run_choice_record.dart';
 import 'package:pixel_survivor/game/models/run_outcome.dart';
 import 'package:pixel_survivor/game/systems/run_stats_tracker.dart';
+import 'package:pixel_survivor/game/systems/weapon_synergy_resolver.dart';
 
 void main() {
   group('RunStatsTracker', () {
@@ -63,6 +64,25 @@ void main() {
 
       expect(result.weaponDamageTotals, {hwandoSlash: 12});
       expect(result.weaponKillCounts, {hwandoSlash: 2});
+    });
+
+    test('attributes sealing slash damage and kills to its own source', () {
+      final tracker = RunStatsTracker()
+        ..recordWeaponDamage(weaponId: hwandoSlash, amount: 8)
+        ..recordDamageSource(sourceId: sealingSlash, amount: 12)
+        ..recordEnemyDefeat(isBoss: false, weaponId: sealingSlash);
+
+      final result = tracker.toRunResult(
+        outcome: RunOutcome.victory,
+        survivalSeconds: 30,
+        level: 2,
+        wonWithLowHealth: false,
+        weaponLevels: const {hwandoSlash: 1, talismanThrow: 1},
+      );
+
+      expect(result.weaponDamageTotals, {hwandoSlash: 8, sealingSlash: 12});
+      expect(result.weaponKillCounts, {sealingSlash: 1});
+      expect(result.weaponDamageTotals, isNot(contains(talismanThrow)));
     });
 
     test('preserves choice order time and selected level', () {

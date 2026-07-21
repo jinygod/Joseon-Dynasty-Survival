@@ -41,9 +41,13 @@ class RunStatsTracker {
   }
 
   void recordWeaponDamage({required String weaponId, required double amount}) {
+    recordDamageSource(sourceId: weaponId, amount: amount);
+  }
+
+  void recordDamageSource({required String sourceId, required double amount}) {
     if (amount <= 0) return;
     _weaponDamageTotals.update(
-      weaponId,
+      sourceId,
       (total) => total + amount,
       ifAbsent: () => amount,
     );

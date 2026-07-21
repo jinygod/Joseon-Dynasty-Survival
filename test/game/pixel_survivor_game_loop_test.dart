@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:ui';
 
 import 'package:flame/components.dart';
 import 'package:flame_test/flame_test.dart';
@@ -32,6 +33,7 @@ import 'package:pixel_survivor/game/models/run_result.dart';
 import 'package:pixel_survivor/game/models/vector_input.dart';
 import 'package:pixel_survivor/game/pixel_survivor_game.dart';
 import 'package:pixel_survivor/game/systems/level_up_system.dart';
+import 'package:pixel_survivor/game/systems/weapon_synergy_resolver.dart';
 
 void main() {
   PixelSurvivorGame newGame() {
@@ -134,6 +136,95 @@ void main() {
   }, gameSize: Vector2(960, 540));
 
   group('PixelSurvivorGame run loop progression', () {
+    test('synergy presentation uses a golden slash and five O-bang colors', () {
+      expect(AttackEffectComponent.synergySlashColor, const Color(0xffffd166));
+      expect(AttackEffectComponent.synergyFragmentColors, hasLength(5));
+      expect(AttackEffectComponent.synergyFragmentColors.toSet(), hasLength(5));
+    });
+
+    audioGameTester.testGameWidget(
+      'sealing slash requires both weapons and exposes bounded presentation',
+      setUp: (game, _) async {
+        game.unlockedWeaponIds.add(talismanThrow);
+        game.weaponSystem.upgrade(talismanThrow, game.unlockedWeaponIds);
+        await game.ensureAdd(
+          EnemyComponent(
+            enemyId: bandit,
+            maxHealth: 10000,
+            moveSpeed: 0,
+            damage: 0,
+            position: game.activePlayers.single.position + Vector2(20, 0),
+          ),
+        );
+      },
+      verify: (game, _) async {
+        for (var frame = 0; frame < 34; frame += 1) {
+          game.update(.05);
+        }
+
+        expect(audioCues, contains(AudioCue.sealingSlash));
+        expect(game.combatNotice, '봉마참');
+        expect(game.combatNoticeSecondsRemaining, inInclusiveRange(0, 1.2));
+        expect(
+          game.children.whereType<AttackEffectComponent>().any(
+            (effect) =>
+                effect.instance.spec.id == sealingSlash &&
+                effect.instance.spec.presentation == AttackPresentation.synergy,
+          ),
+          isTrue,
+        );
+
+        final result = game.runStats.toRunResult(
+          outcome: RunOutcome.defeat,
+          survivalSeconds: 1,
+          level: 1,
+          wonWithLowHealth: false,
+          weaponLevels: game.weaponSystem.levels,
+        );
+        expect(result.weaponDamageTotals[sealingSlash], greaterThan(0));
+        expect(
+          result.weaponDamageTotals[hwandoSlash],
+          isNot(result.weaponDamageTotals[sealingSlash]),
+        );
+
+        for (var frame = 0; frame < 25; frame += 1) {
+          game.update(.05);
+        }
+        expect(game.combatNotice, isNull);
+        expect(game.combatNoticeSecondsRemaining, 0);
+      },
+    );
+
+    gameTester.testGameWidget(
+      'hwando alone never activates sealing slash',
+      setUp: (game, _) async {
+        await game.ensureAdd(
+          EnemyComponent(
+            enemyId: bandit,
+            maxHealth: 10000,
+            moveSpeed: 0,
+            damage: 0,
+            position: game.activePlayers.single.position + Vector2(20, 0),
+          ),
+        );
+      },
+      verify: (game, _) async {
+        for (var frame = 0; frame < 34; frame += 1) {
+          game.update(.05);
+        }
+
+        expect(game.combatNotice, isNull);
+        final result = game.runStats.toRunResult(
+          outcome: RunOutcome.defeat,
+          survivalSeconds: 2,
+          level: 1,
+          wonWithLowHealth: false,
+          weaponLevels: game.weaponSystem.levels,
+        );
+        expect(result.weaponDamageTotals, isNot(contains(sealingSlash)));
+      },
+    );
+
     test('playtest construction opens every implemented base weapon', () {
       final game = PixelSurvivorGame(
         playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
