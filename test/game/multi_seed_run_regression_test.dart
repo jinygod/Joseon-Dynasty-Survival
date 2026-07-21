@@ -30,9 +30,11 @@ void main() {
         dokkaebi,
       }) {
         expect(
-          report.enemySpawnCounts[enemyId],
+          report.lateSliceEnemySpawnCounts[enemyId],
           greaterThan(0),
-          reason: 'seed ${report.seed} must spawn slice role $enemyId',
+          reason:
+              'seed ${report.seed} must spawn slice role $enemyId '
+              'between 240 and 270 seconds',
         );
       }
       expect(
@@ -51,6 +53,16 @@ void main() {
       reports.map((report) => report.fingerprint).toSet().length,
       greaterThan(10),
     );
+
+    final fixed = simulator.run(3107);
+    expect(fixed.lateSliceEnemySpawnCounts, {
+      plagueRatSwarm: 33,
+      vengefulSpirit: 20,
+      sakkatSpecter: 21,
+      dokkaebi: 23,
+      brokenJangseungSpirit: 7,
+      sorrowfulMaidenGhost: 6,
+    });
   });
 
   test('the same seed produces an identical regression fingerprint', () {

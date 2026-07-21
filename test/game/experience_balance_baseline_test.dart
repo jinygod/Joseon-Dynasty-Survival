@@ -8,20 +8,25 @@ void main() {
 
       expect(report.durationSeconds, 300);
       expect(report.expectedSpawnedExperience, closeTo(1178.1654, 0.001));
+      expect(
+        defaultExperienceProfiles.map((profile) => profile.acquisitionRate),
+        [0.18, 0.25, 0.30],
+      );
       expect(report.profileResults, hasLength(3));
     });
 
-    test('keeps all acquisition profiles in the 9 to 12 target band', () {
+    test('exposes the modeled supply shift beyond the 9 to 12 target band', () {
       final report = const ExperienceBalanceSimulator().simulate();
 
       expect(report.profileResults.map((result) => result.levelUps), [
-        9,
-        11,
+        10,
         12,
+        14,
       ]);
-      expect(report.averageLevelUps, closeTo(10.67, 0.01));
+      expect(report.averageLevelUps, 12);
       expect(report.minimumTargetLevelUps, 9);
-      expect(report.meetsTargetBand, isTrue);
+      expect(report.maximumTargetLevelUps, 12);
+      expect(report.meetsTargetBand, isFalse);
     });
 
     test('uses the production curve and increasing level costs', () {
