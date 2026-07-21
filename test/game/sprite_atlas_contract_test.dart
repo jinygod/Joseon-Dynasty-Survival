@@ -25,17 +25,17 @@ void main() {
   });
 
   test('atlas geometry exposes exact pixel dimensions', () {
-    final player = ReplaceableArtCatalog.byId('rookie_constable_player');
+    final player = ReplaceableArtCatalog.byId('exorcist_swordswoman_player');
     final combat = ReplaceableArtCatalog.byId('combat_effects_atlas');
 
-    expect((player.pixelWidth, player.pixelHeight), (128, 128));
+    expect((player.pixelWidth, player.pixelHeight), (64, 64));
     expect((combat.pixelWidth, combat.pixelHeight), (256, 320));
-    expect(player.frameIndex(column: 3, row: 3), 15);
+    expect(player.frameIndex(column: 0, row: 0), 0);
     expect(combat.frameIndex(column: 3, row: 4), 19);
   });
 
   test('frame lookup rejects coordinates outside the atlas contract', () {
-    final contract = ReplaceableArtCatalog.byId('rookie_constable_player');
+    final contract = ReplaceableArtCatalog.byId('exorcist_swordswoman_player');
 
     expect(
       () => contract.frameIndex(column: contract.columns, row: 0),

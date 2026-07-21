@@ -14,7 +14,7 @@ void main() {
     expect(ledger.audio.length, greaterThan(1));
     expect(
       ledger.assets.first.runtimePath,
-      'assets/images/player/rookie_constable_player_32.png',
+      'assets/images/player/exorcist_swordswoman_static_64.png',
     );
     expect(ledger.assets.first.status, 'approved');
     expect(ledger.audio.first.status, 'temporary');

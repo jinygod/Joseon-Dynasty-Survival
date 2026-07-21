@@ -67,12 +67,12 @@ class SpriteAtlasContract {
 abstract final class ReplaceableArtCatalog {
   static const atlases = <SpriteAtlasContract>[
     SpriteAtlasContract(
-      id: 'rookie_constable_player',
-      runtimePath: 'assets/images/player/rookie_constable_player_32.png',
-      frameWidth: 32,
-      frameHeight: 32,
-      columns: 4,
-      rows: 4,
+      id: 'exorcist_swordswoman_player',
+      runtimePath: 'assets/images/player/exorcist_swordswoman_static_64.png',
+      frameWidth: 64,
+      frameHeight: 64,
+      columns: 1,
+      rows: 1,
       requiresTransparency: true,
       status: ArtAssetStatus.temporary,
     ),

@@ -25,6 +25,7 @@ import '../l10n/app_strings.dart';
 import 'audio_settings_audio_binding.dart';
 import 'lobby_controller.dart';
 import 'lobby_screen.dart';
+import 'mobile_preview.dart';
 
 class PixelSurvivorApp extends StatefulWidget {
   const PixelSurvivorApp({
@@ -193,6 +194,10 @@ class _PixelSurvivorAppState extends State<PixelSurvivorApp> {
     return MaterialApp(
       title: AppStrings.appTitle,
       debugShowCheckedModeBanner: false,
+      builder: (context, child) => MobilePreviewFrame(
+        enabled: MobilePreviewPolicy.enabled,
+        child: child ?? const SizedBox.shrink(),
+      ),
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xff3fbf7f)),
         splashFactory: NoSplash.splashFactory,

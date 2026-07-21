@@ -53,9 +53,9 @@ void main() {
     }
   });
 
-  test('player animation sheet is a 4x4 RGBA grid of 32px frames', () {
+  test('static player art is a 64px RGBA PNG', () {
     final bytes = File(
-      'assets/images/player/rookie_constable_player_32.png',
+      'assets/images/player/exorcist_swordswoman_static_64.png',
     ).readAsBytesSync();
     int readUint32(int offset) =>
         (bytes[offset] << 24) |
@@ -63,8 +63,8 @@ void main() {
         (bytes[offset + 2] << 8) |
         bytes[offset + 3];
 
-    expect(readUint32(16), 128);
-    expect(readUint32(20), 128);
+    expect(readUint32(16), 64);
+    expect(readUint32(20), 64);
     expect(bytes[25], 6, reason: 'PNG must use RGBA color type');
   });
 

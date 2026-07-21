@@ -64,3 +64,29 @@ On this Windows machine, Flutter tooling is more reliable when run through ASCII
 `subst` paths because the Flutter SDK and workspace may be under Korean paths.
 `flutter run -d chrome` can still hit shader compilation issues unless the SDK is
 exposed through an ASCII path first.
+
+### Chrome mobile preview
+
+Debug Chrome runs use a centered 390x844 portrait preview by default. The game
+is contained without stretching, and the area outside the simulated device is
+a plain background.
+
+```powershell
+# Mobile portrait preview (default for debug web)
+flutter run -d chrome
+
+# Regular web layout using the full browser viewport
+flutter run -d chrome --dart-define=MOBILE_PREVIEW=false
+```
+
+The preview is gated to debug web builds. Android and release builds do not
+receive the preview frame, synthetic safe-area padding, or outer margins.
+
+Current actor rendering uses these visual-only sizes:
+
+| Actor | Previous visual size | Current visual size | Collision size |
+|---|---:|---:|---:|
+| Player | 54 | 108 | 24 |
+| Normal enemy | 27 | 54 | 18 |
+| Elite enemy | 40.5 | 81 | 40 |
+| Boss | 63 | 126 | 42 |

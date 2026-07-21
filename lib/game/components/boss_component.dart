@@ -80,7 +80,6 @@ class BossComponent extends EnemyComponent {
          behaviorType: EnemyBehaviorType.tank,
          rank: EnemyRank.boss,
          targetPositionProvider: targetPositionProvider,
-         size: Vector2.all(42),
        );
 
   final BossDefinition definition;

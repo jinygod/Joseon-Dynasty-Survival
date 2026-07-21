@@ -296,6 +296,33 @@ void main() {
     );
 
     gameTester.testGameWidget(
+      'player keeps moving during an automatic hwando attack',
+      setUp: (game, _) async {
+        final player = game.activePlayers.single;
+        await game.ensureAdd(
+          EnemyComponent(
+            enemyId: 'movement_target',
+            maxHealth: 1000,
+            moveSpeed: 0,
+            damage: 0,
+            position: player.position + Vector2(30, 0),
+          ),
+        );
+        game.updateMovementInput(const VectorInput(1, 0));
+      },
+      verify: (game, _) async {
+        final player = game.activePlayers.single;
+        final before = player.position.x;
+
+        game.update(.05);
+
+        expect(player.position.x, greaterThan(before));
+        expect(player.isMoving, isTrue);
+        expect(player.isAttacking, isTrue);
+      },
+    );
+
+    gameTester.testGameWidget(
       'herbalist death creates one poison zone',
       setUp: (game, _) async {
         final herbalist = game.debugSpawnEnemy(

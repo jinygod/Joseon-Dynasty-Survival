@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flame/components.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/components/player_component.dart';
@@ -135,11 +137,88 @@ void main() {
       expect(player.position.x, 175);
     });
 
-    test('sprite sheet contract maps 6 walk, 2 hit, and 8 death frames', () {
-      expect(PlayerSpriteSheet.walkFrames, [0, 1, 2, 3, 4, 5]);
-      expect(PlayerSpriteSheet.hitFrames, [6, 7]);
-      expect(PlayerSpriteSheet.deathFrames, [8, 9, 10, 11, 12, 13, 14, 15]);
-      expect(PlayerSpriteSheet.frameSize, Vector2.all(32));
+    test('static player art uses one 64px frame for every visual state', () {
+      expect(
+        PlayerSpriteSheet.assetKey,
+        'player/exorcist_swordswoman_static_64.png',
+      );
+      expect(PlayerSpriteSheet.frameSize, Vector2.all(64));
+      expect(PlayerSpriteSheet.displaySize, Vector2.all(108));
+      expect(PlayerSpriteSheet.frameCount, 1);
+
+      final player = PlayerComponent(
+        slotIndex: 0,
+        maxHealth: 100,
+        moveSpeed: 100,
+      );
+      expect(player.size, Vector2.all(24));
+      expect(player.maxHealth, 100);
+      expect(player.currentHealth, 100);
+      expect(player.moveSpeed, 100);
+      expect(player.anchor, Anchor.center);
+      expect(player.paint.filterQuality, FilterQuality.none);
+    });
+
+    test('movement remembers aim while vertical input preserves facing', () {
+      final player = PlayerComponent(
+        slotIndex: 0,
+        maxHealth: 100,
+        moveSpeed: 100,
+      );
+
+      expect(player.preferredAttackDirection, Vector2(1, 0));
+
+      player.applyInput(const VectorInput(-1, 0), 0);
+      expect(player.lastMovementDirection, Vector2(-1, 0));
+      expect(player.isFacingLeft, isTrue);
+
+      player.applyInput(const VectorInput(0, -1), 0);
+      expect(player.lastMovementDirection, Vector2(0, -1));
+      expect(player.isFacingLeft, isTrue);
+    });
+
+    test('movement pose eases out instead of snapping to rest', () {
+      final player = PlayerComponent(
+        slotIndex: 0,
+        maxHealth: 100,
+        moveSpeed: 100,
+      );
+
+      player.applyInput(const VectorInput(1, 0), 0);
+      player.update(0.05);
+      final movingBlend = player.motionBlend;
+
+      player.applyInput(VectorInput.zero, 0);
+      player.update(0.01);
+
+      expect(movingBlend, greaterThan(0));
+      expect(player.motionBlend, greaterThan(0));
+      expect(player.motionBlend, lessThan(movingBlend));
+    });
+
+    test('attack pose keeps movement and world geometry unchanged', () {
+      final player = PlayerComponent(
+        slotIndex: 0,
+        maxHealth: 100,
+        moveSpeed: 100,
+      );
+
+      player.applyInput(const VectorInput(1, 0), 0.1);
+      expect(player.position.x, 10);
+
+      player.playAttack(Vector2(0, -3));
+      final positionBeforePoseUpdate = player.position.clone();
+      final sizeBeforePoseUpdate = player.size.clone();
+      player.update(0.05);
+
+      expect(player.lastAttackDirection, Vector2(0, -1));
+      expect(player.isAttacking, isTrue);
+      expect(player.position, positionBeforePoseUpdate);
+      expect(player.size, sizeBeforePoseUpdate);
+
+      player.applyInput(const VectorInput(1, 0), 0.1);
+      expect(player.position.x, 20);
+      expect(player.isMoving, isTrue);
     });
   });
 }

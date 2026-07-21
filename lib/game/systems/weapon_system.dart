@@ -12,6 +12,7 @@ import '../content/ids.dart';
 import '../content/weapon_definitions.dart';
 import '../content/weapon_level_definitions.dart';
 import '../models/damage_event.dart';
+import 'hwando_aim_resolver.dart';
 
 class WeaponSystem {
   WeaponSystem({Map<WeaponId, int>? initialLevels, Random? random})
@@ -59,12 +60,11 @@ class WeaponSystem {
     double criticalChance = 0,
     double sizeMultiplier = 1,
     Map<ElementType, double> elementDamageMultipliers = const {},
+    Vector2? hwandoFallbackDirection,
   }) {
-    final aliveEnemies = enemies.where((enemy) => !enemy.isDead).toList();
-    if (aliveEnemies.isEmpty) {
-      return const WeaponTickResult.empty();
-    }
-
+    final aliveEnemies = enemies
+        .where((enemy) => !enemy.isDead && !enemy.isRemoving)
+        .toList();
     final damageEvents = <DamageEvent>[];
     final projectiles = <ProjectileComponent>[];
     final meleeArcs = <MeleeArcComponent>[];
@@ -73,10 +73,11 @@ class WeaponSystem {
     final firedWeaponIds = <WeaponId>[];
 
     final hwandoEventCount = damageEvents.length + meleeArcs.length;
-    _fireHwando(
+    final hwandoDirection = _fireHwando(
       dt: dt,
       origin: origin,
       enemies: aliveEnemies,
+      fallbackDirection: hwandoFallbackDirection ?? Vector2(1, 0),
       damageMultiplier:
           damageMultiplier *
           _elementDamageMultiplier(hwandoSlash, elementDamageMultipliers),
@@ -88,6 +89,14 @@ class WeaponSystem {
     );
     if (damageEvents.length + meleeArcs.length > hwandoEventCount) {
       firedWeaponIds.add(hwandoSlash);
+    }
+    if (aliveEnemies.isEmpty) {
+      return WeaponTickResult(
+        damageEvents: damageEvents,
+        meleeArcs: meleeArcs,
+        firedWeaponIds: firedWeaponIds,
+        hwandoDirection: hwandoDirection,
+      );
     }
     final gakgungProjectileCount = projectiles.length;
     _fireGakgung(
@@ -209,13 +218,15 @@ class WeaponSystem {
       areaAttacks: areaAttacks,
       frostFields: frostFields,
       firedWeaponIds: firedWeaponIds,
+      hwandoDirection: hwandoDirection,
     );
   }
 
-  void _fireHwando({
+  Vector2? _fireHwando({
     required double dt,
     required Vector2 origin,
     required List<EnemyComponent> enemies,
+    required Vector2 fallbackDirection,
     required double damageMultiplier,
     required double attackSpeedMultiplier,
     required double criticalChance,
@@ -224,18 +235,22 @@ class WeaponSystem {
     required List<MeleeArcComponent> meleeArcs,
   }) {
     final level = levelOf(hwandoSlash);
-    if (level == 0) return;
+    if (level == 0) return null;
     final stats = weaponLevelFor(hwandoSlash, level);
     if (!_consumeCooldown(
       hwandoSlash,
       dt,
       stats.cooldownSeconds / _positiveMultiplier(attackSpeedMultiplier),
     )) {
-      return;
+      return null;
     }
 
-    final nearest = _nearestEnemy(origin, enemies)!;
-    final baseDirection = _direction(origin, nearest.position);
+    final baseDirection = HwandoAimResolver.resolve(
+      origin: origin,
+      enemies: enemies,
+      maxRange: stats.range * sizeMultiplier,
+      fallbackDirection: fallbackDirection,
+    ).direction;
     for (var index = 0; index < stats.projectileCount; index += 1) {
       final offset = stats.projectileCount == 1
           ? 0.0
@@ -263,6 +278,7 @@ class WeaponSystem {
         );
       }
     }
+    return baseDirection.clone();
   }
 
   void _fireGakgung({
@@ -691,6 +707,7 @@ class WeaponTickResult {
     this.areaAttacks = const [],
     this.frostFields = const [],
     this.firedWeaponIds = const [],
+    this.hwandoDirection,
   });
 
   const WeaponTickResult.empty()
@@ -699,7 +716,8 @@ class WeaponTickResult {
       meleeArcs = const [],
       areaAttacks = const [],
       frostFields = const [],
-      firedWeaponIds = const [];
+      firedWeaponIds = const [],
+      hwandoDirection = null;
 
   final List<DamageEvent> damageEvents;
   final List<ProjectileComponent> projectiles;
@@ -707,4 +725,5 @@ class WeaponTickResult {
   final List<AreaAttackComponent> areaAttacks;
   final List<FrostFieldComponent> frostFields;
   final List<WeaponId> firedWeaponIds;
+  final Vector2? hwandoDirection;
 }

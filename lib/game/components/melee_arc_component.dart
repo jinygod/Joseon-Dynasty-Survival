@@ -32,6 +32,7 @@ class MeleeArcComponent extends PositionComponent {
   final double range;
   final double angleRadians;
   final double lifetime;
+  double get facingAngle => math.atan2(direction.y, direction.x);
 
   double _age = 0;
   Image? _effectImage;
@@ -73,7 +74,6 @@ class MeleeArcComponent extends PositionComponent {
   void render(Canvas canvas) {
     super.render(canvas);
     final center = Offset(size.x / 2, size.y / 2);
-    final facingAngle = math.atan2(direction.y, direction.x);
     final image = _effectImage;
     final atlasRow = WeaponEffectAtlas.rowForWeapon(weaponId);
     if (image != null && atlasRow != null) {

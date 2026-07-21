@@ -120,6 +120,112 @@ void main() {
       expect(result.damageEvents.every((event) => event.knockback > 0), isTrue);
     });
 
+    test('hwando freezes the nearest in-range enemy direction', () {
+      final north = EnemyComponent(
+        enemyId: 'north',
+        maxHealth: 100,
+        moveSpeed: 0,
+        damage: 1,
+        position: Vector2(0, -20),
+      );
+      final east = EnemyComponent(
+        enemyId: 'east',
+        maxHealth: 100,
+        moveSpeed: 0,
+        damage: 1,
+        position: Vector2(30, 0),
+      );
+
+      final result = WeaponSystem(initialLevels: const {hwandoSlash: 1}).tick(
+        dt: 1,
+        origin: Vector2.zero(),
+        enemies: [east, north],
+        hwandoFallbackDirection: Vector2(-1, 0),
+      );
+
+      expect(result.hwandoDirection, Vector2(0, -1));
+      expect(result.meleeArcs.single.direction, result.hwandoDirection);
+    });
+
+    test(
+      'hwando uses fallback when only dead or out-of-range enemies exist',
+      () {
+        final dead = EnemyComponent(
+          enemyId: 'dead',
+          maxHealth: 1,
+          moveSpeed: 0,
+          damage: 1,
+          position: Vector2(2, 0),
+        )..takeDamage(1);
+        final outside = EnemyComponent(
+          enemyId: 'outside',
+          maxHealth: 100,
+          moveSpeed: 0,
+          damage: 1,
+          position: Vector2(70, 0),
+        );
+
+        final result = WeaponSystem(initialLevels: const {hwandoSlash: 1}).tick(
+          dt: 1,
+          origin: Vector2.zero(),
+          enemies: [dead, outside],
+          hwandoFallbackDirection: Vector2(0, -4),
+        );
+
+        expect(result.hwandoDirection, Vector2(0, -1));
+        expect(result.meleeArcs, hasLength(1));
+        expect(result.damageEvents, isEmpty);
+      },
+    );
+
+    test('hwando can slash along fallback when no enemy exists', () {
+      final result = WeaponSystem(initialLevels: const {hwandoSlash: 1}).tick(
+        dt: 1,
+        origin: Vector2.zero(),
+        enemies: const [],
+        hwandoFallbackDirection: Vector2(-1, 0),
+      );
+
+      expect(result.firedWeaponIds, [hwandoSlash]);
+      expect(result.hwandoDirection, Vector2(-1, 0));
+      expect(result.meleeArcs.single.direction, Vector2(-1, 0));
+    });
+
+    test('hwando effect angle and damage cone share one direction', () {
+      final inside = EnemyComponent(
+        enemyId: 'inside',
+        maxHealth: 100,
+        moveSpeed: 0,
+        damage: 1,
+        position: Vector2(20, 20),
+      );
+      final outside = EnemyComponent(
+        enemyId: 'outside',
+        maxHealth: 100,
+        moveSpeed: 0,
+        damage: 1,
+        position: Vector2(-20, -20),
+      );
+
+      final result = WeaponSystem(
+        initialLevels: const {hwandoSlash: 1},
+      ).tick(dt: 1, origin: Vector2.zero(), enemies: [inside, outside]);
+      final arc = result.meleeArcs.single;
+      final expectedTargets = [
+        inside,
+        outside,
+      ].where(arc.containsEnemy).toSet();
+
+      expect(
+        arc.facingAngle,
+        closeTo(atan2(arc.direction.y, arc.direction.x), 1e-9),
+      );
+      expect(
+        result.damageEvents.map((event) => event.target).toSet(),
+        expectedTargets,
+      );
+    });
+
     test('talisman chains to unique nearby targets', () {
       final enemies = List.generate(
         3,

@@ -22,6 +22,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   const sizes = <String, Size>{
+    'mobile portrait': Size(390, 844),
     '16:9': Size(800, 450),
     '18:9': Size(900, 450),
     '19.5:9': Size(975, 450),

@@ -563,7 +563,11 @@ class PixelSurvivorGame extends FlameGame
       criticalChance: criticalChance,
       sizeMultiplier: weaponSizeMultiplier,
       elementDamageMultipliers: elementDamageMultipliers,
+      hwandoFallbackDirection: player.preferredAttackDirection,
     );
+    if (result.hwandoDirection case final direction?) {
+      player.playAttack(direction);
+    }
     for (final weaponId in result.firedWeaponIds) {
       _emitAudio(_attackCueFor(weaponId));
     }

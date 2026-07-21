@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flame/components.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/components/enemy_component.dart';
@@ -8,6 +10,20 @@ import 'package:pixel_survivor/game/systems/enemy_behavior_controller.dart';
 
 void main() {
   group('EnemyComponent', () {
+    test('normal enemy keeps its hitbox while doubling its visual size', () {
+      final enemy = EnemyComponent.fromDefinition(enemyDefinitionFor(bandit)!);
+
+      expect(enemy.size, Vector2.all(18));
+      expect(enemy.visualSize, 54);
+      expect(enemy.visualScale, 3);
+      expect(enemy.maxHealth, 18);
+      expect(enemy.moveSpeed, 60);
+      expect(enemy.damage, 8);
+      expect(enemy.experienceValue, 1);
+      expect(enemy.anchor, Anchor.center);
+      expect(enemy.paint.filterQuality, FilterQuality.none);
+    });
+
     test('environmental slow changes movement and can be reset', () {
       final enemy = EnemyComponent(
         enemyId: 'test_enemy',
@@ -67,6 +83,9 @@ void main() {
       expect(enemy.damage, 16);
       expect(enemy.experienceValue, 12);
       expect(enemy.size.x, 40);
+      expect(enemy.visualSize, 81);
+      expect(enemy.visualScale, closeTo(2.025, 0.00001));
+      expect(enemy.anchor, Anchor.center);
     });
 
     test('herbalist exposes exactly one death zone after lethal damage', () {

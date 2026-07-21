@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flame/components.dart';
 import 'package:flutter/services.dart';
 
+import '../content/actor_render_sizes.dart';
 import '../content/safe_asset_loader.dart';
 import '../content/visual_asset_load_policy.dart';
 import '../models/vector_input.dart';
@@ -12,66 +14,19 @@ import '../systems/combat_feedback_tuning.dart';
 enum PlayerAnimationState { idle, walking, hit, death }
 
 abstract final class PlayerSpriteSheet {
-  static const assetKey = 'player/rookie_constable_player_32.png';
-  static final frameSize = Vector2.all(32);
-  static const walkFrames = [0, 1, 2, 3, 4, 5];
-  static const hitFrames = [6, 7];
-  static const deathFrames = [8, 9, 10, 11, 12, 13, 14, 15];
+  static const assetKey = 'player/exorcist_swordswoman_static_64.png';
+  static final frameSize = Vector2.all(64);
+  static final displaySize = Vector2.all(ActorRenderSizes.playerVisual);
+  static const frameCount = 1;
   static const hitDurationSeconds = 0.20;
 
-  static Map<PlayerAnimationState, SpriteAnimation> animations(Image image) {
-    return {
-      PlayerAnimationState.idle: SpriteAnimation.fromFrameData(
-        image,
-        SpriteAnimationData.sequenced(
-          amount: 1,
-          stepTime: 1,
-          textureSize: frameSize,
-          loop: true,
-        ),
-      ),
-      PlayerAnimationState.walking: SpriteAnimation.fromFrameData(
-        image,
-        SpriteAnimationData.range(
-          start: walkFrames.first,
-          end: walkFrames.last,
-          amount: 16,
-          amountPerRow: 4,
-          stepTimes: List.filled(walkFrames.length, 0.11),
-          textureSize: frameSize,
-          loop: true,
-        ),
-      ),
-      PlayerAnimationState.hit: SpriteAnimation.fromFrameData(
-        image,
-        SpriteAnimationData.range(
-          start: hitFrames.first,
-          end: hitFrames.last,
-          amount: 16,
-          amountPerRow: 4,
-          stepTimes: List.filled(hitFrames.length, 0.10),
-          textureSize: frameSize,
-          loop: false,
-        ),
-      ),
-      PlayerAnimationState.death: SpriteAnimation.fromFrameData(
-        image,
-        SpriteAnimationData.range(
-          start: deathFrames.first,
-          end: deathFrames.last,
-          amount: 16,
-          amountPerRow: 4,
-          stepTimes: List.filled(deathFrames.length, 0.12),
-          textureSize: frameSize,
-          loop: false,
-        ),
-      ),
-    };
-  }
+  static Sprite sprite(Image image) => Sprite(image, srcSize: frameSize);
 }
 
 class PlayerComponent
     extends SpriteAnimationGroupComponent<PlayerAnimationState> {
+  static const attackPoseDurationSeconds = 0.15;
+
   PlayerComponent({
     required this.slotIndex,
     required this.maxHealth,
@@ -82,10 +37,12 @@ class PlayerComponent
   }) : currentHealth = currentHealth ?? maxHealth,
        super(
          position: position ?? Vector2.zero(),
-         size: size ?? Vector2.all(24),
+         size: size ?? Vector2.all(ActorRenderSizes.playerCollision),
          anchor: Anchor.center,
          autoResize: false,
-       );
+       ) {
+    paint.filterQuality = FilterQuality.none;
+  }
 
   final int slotIndex;
   double maxHealth;
@@ -97,9 +54,25 @@ class PlayerComponent
   PlayerAnimationState visualState = PlayerAnimationState.idle;
   double _hitAnimationRemaining = 0;
   bool _isMoving = false;
+  Sprite? _sprite;
+  Vector2? _lastMovementDirection;
+  Vector2? _lastAttackDirection;
+  double _motionBlend = 0;
+  double _motionPhase = 0;
+  double _desiredFacingX = 1;
+  double _displayedFacingX = 1;
+  double _attackPoseRemaining = 0;
 
   bool get isAlive => currentHealth > 0;
+  bool get isMoving => _isMoving;
+  bool get isAttacking => _attackPoseRemaining > 0;
+  bool get isFacingLeft => _desiredFacingX < 0;
+  double get motionBlend => _motionBlend;
   double get environmentalSlowFraction => _environmentalSlowFraction;
+  Vector2? get lastMovementDirection => _lastMovementDirection?.clone();
+  Vector2? get lastAttackDirection => _lastAttackDirection?.clone();
+  Vector2 get preferredAttackDirection =>
+      (_lastMovementDirection ?? _lastAttackDirection ?? Vector2(1, 0)).clone();
 
   void setEnvironmentalSlow(double fraction) {
     if (!fraction.isFinite || fraction < 0 || fraction >= .8) {
@@ -157,6 +130,13 @@ class PlayerComponent
   void applyInput(VectorInput input, double dt, {Vector2? bounds}) {
     final direction = Vector2(input.x, input.y);
     _isMoving = direction.length2 > 0;
+    if (_isMoving) {
+      final normalizedDirection = direction.normalized();
+      _lastMovementDirection = normalizedDirection;
+      if (!isAttacking && normalizedDirection.x.abs() > 0.05) {
+        _desiredFacingX = normalizedDirection.x.sign;
+      }
+    }
     if (visualState != PlayerAnimationState.hit && isAlive) {
       _setVisualState(
         _isMoving ? PlayerAnimationState.walking : PlayerAnimationState.idle,
@@ -189,6 +169,17 @@ class PlayerComponent
     }
   }
 
+  void playAttack(Vector2 direction) {
+    final normalizedDirection = direction.length2 == 0
+        ? Vector2(1, 0)
+        : direction.normalized();
+    _lastAttackDirection = normalizedDirection;
+    if (normalizedDirection.x.abs() > 0.05) {
+      _desiredFacingX = normalizedDirection.x.sign;
+    }
+    _attackPoseRemaining = attackPoseDurationSeconds;
+  }
+
   @override
   void onLoad() {
     super.onLoad();
@@ -208,13 +199,13 @@ class PlayerComponent
       assetKey: PlayerSpriteSheet.assetKey,
     );
     if (image == null) return;
-    animations = PlayerSpriteSheet.animations(image);
-    current = visualState;
+    _sprite = PlayerSpriteSheet.sprite(image);
   }
 
   @override
   void update(double dt) {
     super.update(dt);
+    _updateProceduralPose(dt);
     if (visualState != PlayerAnimationState.hit) {
       return;
     }
@@ -227,29 +218,83 @@ class PlayerComponent
     }
   }
 
+  void _updateProceduralPose(double dt) {
+    final safeDt = dt.clamp(0, 0.05).toDouble();
+    final targetBlend = _isMoving ? 1.0 : 0.0;
+    final blendRate = _isMoving ? 12.0 : 8.0;
+    final blendFactor = 1 - math.exp(-blendRate * safeDt);
+    _motionBlend += (targetBlend - _motionBlend) * blendFactor;
+    if (_motionBlend < 0.0001) _motionBlend = 0;
+    if (_isMoving || _motionBlend > 0) {
+      _motionPhase = (_motionPhase + safeDt * 10) % (math.pi * 2);
+    }
+
+    final facingFactor = 1 - math.exp(-18 * safeDt);
+    _displayedFacingX += (_desiredFacingX - _displayedFacingX) * facingFactor;
+    if ((_desiredFacingX - _displayedFacingX).abs() < 0.001) {
+      _displayedFacingX = _desiredFacingX;
+    }
+    _attackPoseRemaining = math.max(0, _attackPoseRemaining - safeDt);
+  }
+
   void _setVisualState(PlayerAnimationState state) {
     visualState = state;
-    if (animations != null) {
-      current = state;
-    }
   }
 
   @override
   void render(Canvas canvas) {
-    if (animations != null) {
-      super.render(canvas);
-      return;
+    canvas.save();
+    _applyProceduralPose(canvas);
+    super.render(canvas);
+    if (_sprite case final sprite?) {
+      sprite.render(
+        canvas,
+        position: Vector2(
+          (size.x - PlayerSpriteSheet.displaySize.x) / 2,
+          size.y - PlayerSpriteSheet.displaySize.y,
+        ),
+        size: PlayerSpriteSheet.displaySize,
+        overridePaint: paint,
+      );
+    } else {
+      final bodyPaint = Paint()..color = const Color(0xff5cc8ff);
+      final outlinePaint = Paint()
+        ..color = const Color(0xfff4ead2)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2;
+
+      final center = Offset(size.x / 2, size.y / 2);
+      final radius = size.x < size.y ? size.x / 2 : size.y / 2;
+      canvas.drawCircle(center, radius, bodyPaint);
+      canvas.drawCircle(center, radius, outlinePaint);
+    }
+    canvas.restore();
+  }
+
+  void _applyProceduralPose(Canvas canvas) {
+    final walkWave = math.sin(_motionPhase);
+    final bob = -walkWave.abs() * 1.6 * _motionBlend;
+    final walkTilt = walkWave * 0.025 * _motionBlend;
+    final walkStretch = walkWave.abs() * 0.025 * _motionBlend;
+
+    var attackPulse = 0.0;
+    var attackTilt = 0.0;
+    final attackDirection = _lastAttackDirection;
+    if (isAttacking && attackDirection != null) {
+      final elapsed = 1 - _attackPoseRemaining / attackPoseDurationSeconds;
+      attackPulse = math.sin(math.pi * elapsed.clamp(0, 1));
+      attackTilt = (attackDirection.x < 0 ? 1 : -1) * 0.07 * attackPulse;
     }
 
-    final bodyPaint = Paint()..color = const Color(0xff5cc8ff);
-    final outlinePaint = Paint()
-      ..color = const Color(0xfff4ead2)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
-
-    final center = Offset(size.x / 2, size.y / 2);
-    final radius = size.x < size.y ? size.x / 2 : size.y / 2;
-    canvas.drawCircle(center, radius, bodyPaint);
-    canvas.drawCircle(center, radius, outlinePaint);
+    final pivot = Offset(size.x / 2, size.y);
+    canvas
+      ..translate(pivot.dx, pivot.dy)
+      ..translate(
+        (attackDirection?.x ?? 0) * 3.5 * attackPulse,
+        bob + (attackDirection?.y ?? 0) * 3.5 * attackPulse,
+      )
+      ..rotate(walkTilt + attackTilt)
+      ..scale(_displayedFacingX * (1 + walkStretch), 1 - walkStretch)
+      ..translate(-pivot.dx, -pivot.dy);
   }
 }

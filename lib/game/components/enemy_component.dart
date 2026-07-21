@@ -5,6 +5,7 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 import 'package:flutter/services.dart';
 
+import '../content/actor_render_sizes.dart';
 import '../content/enemy_definitions.dart';
 import '../content/enemy_behavior_definitions.dart';
 import '../content/ids.dart';
@@ -105,10 +106,11 @@ class EnemyComponent
   }) : currentHealth = currentHealth ?? maxHealth,
        super(
          position: position ?? Vector2.zero(),
-         size: size ?? Vector2.all(18),
+         size: size ?? Vector2.all(ActorRenderSizes.enemyCollisionSize(rank)),
          anchor: Anchor.center,
          autoResize: false,
        ) {
+    paint.filterQuality = FilterQuality.none;
     _behaviorProfile = behaviorProfile ?? _legacyProfileFor(behaviorType);
     _behaviorController = EnemyBehaviorController(profile: _behaviorProfile);
   }
@@ -131,7 +133,6 @@ class EnemyComponent
       targetPositionProvider: targetPositionProvider,
       nearbyEnemiesProvider: nearbyEnemiesProvider,
       position: position,
-      size: Vector2.all(definition.isElite ? 40 : 18),
     );
   }
 
@@ -165,6 +166,8 @@ class EnemyComponent
 
   bool get isDead => currentHealth <= 0;
   bool get isElite => rank == EnemyRank.elite;
+  double get visualSize => ActorRenderSizes.enemyVisualSize(rank);
+  double get visualScale => visualSize / size.x;
   bool get isDashing =>
       _behaviorController.phase == EnemyBehaviorPhase.active &&
       (_behaviorProfile.kind == EnemyBehaviorKind.dash ||
@@ -451,25 +454,30 @@ class EnemyComponent
   @override
   void render(Canvas canvas) {
     _renderWarning(canvas);
-    if (animations != null) {
-      super.render(canvas);
-      return;
+
+    canvas.save();
+    canvas.translate(size.x / 2, size.y);
+    canvas.scale(visualScale);
+    canvas.translate(-size.x / 2, -size.y);
+    super.render(canvas);
+
+    if (animations == null) {
+      final bodyPaint = Paint()
+        ..color = isHitFlashing
+            ? const Color(0xffffffff)
+            : isElite
+            ? const Color(0xfff08a5d)
+            : const Color(0xffd1495b);
+      final outlinePaint = Paint()
+        ..color = const Color(0xff2f1b25)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2;
+
+      final rect = Offset.zero & Size(size.x, size.y);
+      canvas.drawRect(rect, bodyPaint);
+      canvas.drawRect(rect, outlinePaint);
     }
-
-    final bodyPaint = Paint()
-      ..color = isHitFlashing
-          ? const Color(0xffffffff)
-          : isElite
-          ? const Color(0xfff08a5d)
-          : const Color(0xffd1495b);
-    final outlinePaint = Paint()
-      ..color = const Color(0xff2f1b25)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
-
-    final rect = Offset.zero & Size(size.x, size.y);
-    canvas.drawRect(rect, bodyPaint);
-    canvas.drawRect(rect, outlinePaint);
+    canvas.restore();
   }
 
   void _renderWarning(Canvas canvas) {

@@ -341,52 +341,86 @@ class _LobbyHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        const Text(
-          AppStrings.appTitle,
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
-        ),
-        const SizedBox(width: 16),
-        const Text('수련 단계 0'),
-        const Spacer(),
-        _ResourceBadge(icon: Icons.paid_outlined, label: '엽전 $coin'),
-        const SizedBox(width: 8),
-        _ResourceBadge(icon: Icons.diamond_outlined, label: '혼옥 $spiritJade'),
-        if (purchaseController case final purchases?) ...[
-          AnimatedBuilder(
-            animation: purchases,
-            builder: (context, _) => ActionChip(
-              key: const Key('lobby-premium-shop'),
-              visualDensity: VisualDensity.compact,
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              labelPadding: const EdgeInsets.symmetric(horizontal: 2),
-              label: Text(
-                purchases.state.walletStale
-                    ? '금옥 --'
-                    : '금옥 ${purchases.state.wallet?.balance ?? 0}',
-              ),
-              onPressed: onPremiumShop,
-            ),
-          ),
-        ] else if (purchaseInitializationFailed) ...[
-          ActionChip(
-            key: const Key('lobby-premium-shop-retry'),
+    final resourceItems = <Widget>[
+      const Text('수련 단계 0'),
+      _ResourceBadge(icon: Icons.paid_outlined, label: '엽전 $coin'),
+      _ResourceBadge(icon: Icons.diamond_outlined, label: '혼옥 $spiritJade'),
+      if (purchaseController case final purchases?)
+        AnimatedBuilder(
+          animation: purchases,
+          builder: (context, _) => ActionChip(
+            key: const Key('lobby-premium-shop'),
             visualDensity: VisualDensity.compact,
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             labelPadding: const EdgeInsets.symmetric(horizontal: 2),
-            label: const Text('금옥 재시도'),
+            label: Text(
+              purchases.state.walletStale
+                  ? '금옥 --'
+                  : '금옥 ${purchases.state.wallet?.balance ?? 0}',
+            ),
             onPressed: onPremiumShop,
           ),
-        ],
-        const SizedBox(width: 8),
-        IconButton.filledTonal(
-          key: const Key('lobby-settings'),
-          tooltip: '설정',
-          onPressed: onSettings,
-          icon: const Icon(Icons.settings_outlined),
+        )
+      else if (purchaseInitializationFailed)
+        ActionChip(
+          key: const Key('lobby-premium-shop-retry'),
+          visualDensity: VisualDensity.compact,
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          labelPadding: const EdgeInsets.symmetric(horizontal: 2),
+          label: const Text('금옥 재시도'),
+          onPressed: onPremiumShop,
         ),
-      ],
+    ];
+    final settingsButton = IconButton.filledTonal(
+      key: const Key('lobby-settings'),
+      tooltip: '설정',
+      onPressed: onSettings,
+      icon: const Icon(Icons.settings_outlined),
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 600) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      AppStrings.appTitle,
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  settingsButton,
+                ],
+              ),
+              const SizedBox(height: 8),
+              Wrap(spacing: 8, runSpacing: 8, children: resourceItems),
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            const Text(
+              AppStrings.appTitle,
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(width: 16),
+            resourceItems.first,
+            const Spacer(),
+            for (final item in resourceItems.skip(1)) ...[
+              item,
+              const SizedBox(width: 8),
+            ],
+            settingsButton,
+          ],
+        );
+      },
     );
   }
 }
