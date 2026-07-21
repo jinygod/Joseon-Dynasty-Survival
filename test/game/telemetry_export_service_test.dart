@@ -275,4 +275,35 @@ void main() {
       expect(report.repeatRunRate, 0);
     }
   });
+
+  test('aggregate excludes unobserved late FPS sentinels', () {
+    RunTelemetry run(
+      String id,
+      double averageFps,
+      double minFps,
+      double averageEnemies, {
+      bool repeat = false,
+    }) => combatTelemetry(
+      runId: id,
+      outcome: RunOutcome.defeat,
+      weaponDamageTotals: const {},
+      combatMetrics: metrics(
+        averageEnemyCount: averageEnemies,
+        lateAverageFps: averageFps,
+        lateMinFps: minFps,
+        repeat: repeat,
+      ),
+    );
+
+    final report = TelemetryExportService().aggregate([
+      run('early-ended', 0, 0, 3, repeat: true),
+      run('measured-a', 58, 41, 6),
+      run('measured-b', 52, 35, 9),
+    ]);
+
+    expect(report.lateAverageFps, 55);
+    expect(report.lateMinFps, 35);
+    expect(report.averageEnemyCount, 6);
+    expect(report.repeatRunRate, closeTo(1 / 3, .0001));
+  });
 }

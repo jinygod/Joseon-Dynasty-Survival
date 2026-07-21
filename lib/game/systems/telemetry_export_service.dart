@@ -41,6 +41,7 @@ class TelemetryExportService {
     var schemaTwoRuns = 0;
     var averageEnemyCountTotal = 0.0;
     var maxEnemyCount = 0;
+    var observedFpsRuns = 0;
     var lateAverageFpsTotal = 0.0;
     double? lateMinFps;
     var masteredRuns = 0;
@@ -79,10 +80,15 @@ class TelemetryExportService {
       if (metrics.maxEnemyCount > maxEnemyCount) {
         maxEnemyCount = metrics.maxEnemyCount;
       }
-      lateAverageFpsTotal += metrics.lateAverageFps;
-      lateMinFps = lateMinFps == null
-          ? metrics.lateMinFps
-          : _minimum(lateMinFps, metrics.lateMinFps);
+      if (metrics.lateAverageFps > 0) {
+        observedFpsRuns += 1;
+        lateAverageFpsTotal += metrics.lateAverageFps;
+      }
+      if (metrics.lateMinFps > 0) {
+        lateMinFps = lateMinFps == null
+            ? metrics.lateMinFps
+            : _minimum(lateMinFps, metrics.lateMinFps);
+      }
       if (metrics.masteredWeaponIds.isEmpty) {
         nonMasteredRuns += 1;
         if (run.outcome == RunOutcome.victory) nonMasteredWins += 1;
@@ -132,7 +138,7 @@ class TelemetryExportService {
       enemyRoleDeathCauses: enemyRoleDeaths,
       averageEnemyCount: _rate(averageEnemyCountTotal, schemaTwoRuns),
       maxEnemyCount: maxEnemyCount,
-      lateAverageFps: _rate(lateAverageFpsTotal, schemaTwoRuns),
+      lateAverageFps: _rate(lateAverageFpsTotal, observedFpsRuns),
       lateMinFps: lateMinFps ?? 0,
       masteredRunWinRate: _rate(masteredWins, masteredRuns),
       nonMasteredRunWinRate: _rate(nonMasteredWins, nonMasteredRuns),
