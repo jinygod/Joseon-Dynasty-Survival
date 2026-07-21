@@ -8,6 +8,7 @@ import 'package:pixel_survivor/game/components/player_component.dart';
 import 'package:pixel_survivor/game/components/projectile_component.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
 import 'package:pixel_survivor/game/content/ids.dart';
+import 'package:pixel_survivor/game/combat/attack_spec.dart';
 import 'package:pixel_survivor/game/systems/weapon_system.dart';
 
 void main() {
@@ -101,7 +102,7 @@ void main() {
       );
     });
 
-    test('level five hwando creates two arc attacks with knockback', () {
+    test('level five hwando creates timed arc attacks with knockback', () {
       final enemy = EnemyComponent(
         enemyId: 'bandit',
         maxHealth: 100,
@@ -110,14 +111,23 @@ void main() {
         position: Vector2(20, 0),
       );
 
-      final result = WeaponSystem(
+      final system = WeaponSystem(
         initialLevels: const {hwandoSlash: 5},
         random: Random(1),
-      ).tick(dt: 1, origin: Vector2.zero(), enemies: [enemy]);
+      );
+      final results = [
+        system.tick(dt: 1, origin: Vector2.zero(), enemies: [enemy]),
+        system.tick(dt: .05, origin: Vector2.zero(), enemies: [enemy]),
+        system.tick(dt: .05, origin: Vector2.zero(), enemies: [enemy]),
+      ];
+      final arcs = results.expand((result) => result.meleeArcs).toList();
+      final damageEvents = results
+          .expand((result) => result.damageEvents)
+          .toList();
 
-      expect(result.meleeArcs, hasLength(2));
-      expect(result.damageEvents, hasLength(2));
-      expect(result.damageEvents.every((event) => event.knockback > 0), isTrue);
+      expect(arcs, hasLength(2));
+      expect(damageEvents, hasLength(2));
+      expect(damageEvents.every((event) => event.knockback > 0), isTrue);
     });
 
     test('hwando freezes the nearest in-range enemy direction', () {
@@ -145,6 +155,8 @@ void main() {
 
       expect(result.hwandoDirection, Vector2(0, -1));
       expect(result.meleeArcs.single.direction, result.hwandoDirection);
+      expect(result.attackInstances.single.direction, result.hwandoDirection);
+      expect(result.attackInstances.single.spec.shape, AttackShape.sector);
     });
 
     test(
@@ -175,6 +187,50 @@ void main() {
         expect(result.hwandoDirection, Vector2(0, -1));
         expect(result.meleeArcs, hasLength(1));
         expect(result.damageEvents, isEmpty);
+      },
+    );
+
+    test(
+      'dead and out-of-range targets do not redirect queued hwando stages',
+      () {
+        final north = EnemyComponent(
+          enemyId: 'north',
+          maxHealth: 1,
+          moveSpeed: 0,
+          damage: 1,
+          position: Vector2(0, -20),
+        );
+        final outside = EnemyComponent(
+          enemyId: 'outside',
+          maxHealth: 100,
+          moveSpeed: 0,
+          damage: 1,
+          position: Vector2(200, 0),
+        );
+        final system = WeaponSystem(initialLevels: const {hwandoSlash: 3});
+
+        final first = system.tick(
+          dt: 1,
+          origin: Vector2.zero(),
+          enemies: [north, outside],
+          hwandoFallbackDirection: Vector2(-1, 0),
+        );
+        north.takeDamage(1);
+        system.tick(
+          dt: .05,
+          origin: Vector2.zero(),
+          enemies: [north, outside],
+          hwandoFallbackDirection: Vector2(-1, 0),
+        );
+        final second = system.tick(
+          dt: .05,
+          origin: Vector2.zero(),
+          enemies: [north, outside],
+          hwandoFallbackDirection: Vector2(-1, 0),
+        );
+
+        expect(first.attackInstances.single.direction, Vector2(0, -1));
+        expect(second.attackInstances.single.direction, Vector2(0, -1));
       },
     );
 
