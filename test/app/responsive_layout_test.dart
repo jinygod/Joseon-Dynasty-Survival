@@ -136,6 +136,44 @@ void main() {
       _expectSafe(tester, retry, entry.value);
     });
   }
+
+  testWidgets('active combat HUD flows below status without portrait overlap', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(
+            size: Size(390, 844),
+            textScaler: TextScaler.linear(2),
+          ),
+          child: GameHud(source: _ActiveHudSource(), uiScale: 1.15),
+        ),
+      ),
+    );
+
+    final boss = tester.getRect(find.byKey(const Key('boss-warning')));
+    final status = tester.getRect(find.byKey(const Key('hud-status')));
+    final notice = tester.getRect(find.byKey(const Key('combat-notice')));
+    final streak = tester.getRect(find.byKey(const Key('kill-streak')));
+    final weapons = tester.getRect(find.byKey(const Key('weapon-list')));
+    expect(status.top, greaterThanOrEqualTo(boss.bottom));
+    expect(notice.top, greaterThanOrEqualTo(status.bottom));
+    expect(streak.top, greaterThanOrEqualTo(notice.bottom));
+    expect(weapons.top, greaterThanOrEqualTo(streak.bottom));
+    for (final rect in [boss, status, notice, streak, weapons]) {
+      expect(rect.left, greaterThanOrEqualTo(0));
+      expect(rect.top, greaterThanOrEqualTo(0));
+      expect(rect.right, lessThanOrEqualTo(390));
+      expect(rect.bottom, lessThanOrEqualTo(844));
+    }
+    expect(tester.takeException(), isNull);
+  });
 }
 
 Future<void> _pumpSurface(
@@ -201,6 +239,25 @@ class _HudSource implements GameHudSource {
   List<String> get weaponLevelLabels => const ['환도 베기 레벨 3'];
   @override
   void updateMovementInput(VectorInput input) {}
+}
+
+class _ActiveHudSource extends _HudSource {
+  @override
+  String? get bossName => '타락한 관군 대장';
+  @override
+  double? get bossHealthFraction => 0.5;
+  @override
+  String? get combatNotice => '봉마참';
+  @override
+  double get combatNoticeSecondsRemaining => 1.2;
+  @override
+  int get killStreak => 12;
+  @override
+  List<String> get weaponLevelLabels => const [
+    '환도 베기 레벨 6',
+    '부적 투척 레벨 6',
+    '각궁 사격 레벨 5',
+  ];
 }
 
 class _MemorySaveStore implements SaveStore {

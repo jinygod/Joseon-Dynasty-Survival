@@ -99,6 +99,28 @@ void main() {
     );
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'active combat notice and streak are accessibility live regions',
+    (tester) async {
+      final semantics = tester.ensureSemantics();
+      await tester.pumpWidget(
+        MaterialApp(home: GameHud(source: _ActiveHudSource())),
+      );
+
+      final notice = tester.widget<Semantics>(
+        find.byKey(const Key('combat-notice')),
+      );
+      final streak = tester.widget<Semantics>(
+        find.byKey(const Key('kill-streak')),
+      );
+      expect(notice.properties.liveRegion, isTrue);
+      expect(notice.properties.label, contains('봉마참'));
+      expect(streak.properties.liveRegion, isTrue);
+      expect(streak.properties.label, contains('7'));
+      semantics.dispose();
+    },
+  );
 }
 
 class _HudSource implements GameHudSource {
@@ -133,4 +155,13 @@ class _HudSource implements GameHudSource {
   ];
   @override
   void updateMovementInput(VectorInput input) {}
+}
+
+class _ActiveHudSource extends _HudSource {
+  @override
+  String? get combatNotice => '봉마참';
+  @override
+  double get combatNoticeSecondsRemaining => 1.2;
+  @override
+  int get killStreak => 7;
 }

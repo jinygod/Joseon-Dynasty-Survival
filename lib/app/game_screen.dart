@@ -92,6 +92,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   RunTelemetry? _recordedTelemetry;
   bool _gameReady = false;
   bool _disposed = false;
+  bool _replacementStarted = false;
 
   @override
   void initState() {
@@ -125,12 +126,17 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   Future<void> _initializeGame() async {
     var ordinal = 1;
+    PlaytestRunReservation? reservation;
     try {
-      ordinal = await _playtestSessionRepository.beginRun();
+      reservation = await _playtestSessionRepository.reserveRun();
+      ordinal = reservation.ordinal;
     } on Object {
       // Playtest counting must never prevent a run from starting.
     }
-    if (_disposed) return;
+    if (_disposed) {
+      await reservation?.cancel();
+      return;
+    }
     _game = PixelSurvivorGame(
       playerSlot: widget.playerSlot,
       stageId: widget.stageId,
@@ -146,6 +152,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       ),
       isRepeatRun: ordinal > 1,
     );
+    reservation?.confirm();
     _finishGameInitialization();
     if (mounted) setState(() {});
   }
@@ -165,9 +172,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     _disposed = true;
+    final gameWasReady = _gameReady;
+    _gameReady = false;
     WidgetsBinding.instance.removeObserver(this);
     _audioSettingsController.removeListener(_applyAccessibilitySettings);
-    if (_gameReady) _game.updateMovementInput(VectorInput.zero);
+    if (gameWasReady) _game.updateMovementInput(VectorInput.zero);
     final audio = widget.audioService;
     if (audio != null) unawaited(audio.stopNonMusic());
     if (_ownsAudioSettingsController) _audioSettingsController.dispose();
@@ -222,6 +231,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   void _restartGame() {
+    if (_replacementStarted || _disposed) return;
+    _replacementStarted = true;
     Navigator.of(context).pushReplacement(
       MaterialPageRoute<void>(
         builder: (_) => GameScreen(
@@ -271,9 +282,13 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     try {
       final available = await _metaProgressionService
           .loadFirstBossRewardAvailability();
-      if (_gameReady) _game.firstBossRewardAvailable = available;
+      if (mounted && !_disposed && _gameReady) {
+        _game.firstBossRewardAvailable = available;
+      }
     } on Object {
-      if (_gameReady) _game.firstBossRewardAvailable = false;
+      if (mounted && !_disposed && _gameReady) {
+        _game.firstBossRewardAvailable = false;
+      }
     }
   }
 
@@ -342,6 +357,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                 ? null
                 : _telemetryExportService.exportAll,
             onStart: () {
+              if (_replacementStarted) return;
+              _replacementStarted = true;
               navigator.pushReplacement(
                 MaterialPageRoute<void>(
                   builder: (_) => GameScreen(

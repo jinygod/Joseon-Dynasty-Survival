@@ -22,6 +22,28 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  testWidgets('disposing a pending run start rolls its ordinal back', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final sessions = _DelayedPlaytestSessionRepository(preferences);
+
+    await tester.pumpWidget(
+      MaterialApp(home: GameScreen(playtestSessionRepository: sessions)),
+    );
+    await _pumpUntil(tester, () => sessions.begun.isCompleted, 'run reserve');
+    expect(await sessions.loadRunCount(), 1);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    sessions.release.complete();
+    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+    await tester.pump();
+
+    expect(await sessions.loadRunCount(), 0);
+    expect(find.byGame<PixelSurvivorGame>(), findsNothing);
+  });
+
   testWidgets('twenty accelerated runs release every runtime owner', (
     tester,
   ) async {
@@ -100,9 +122,11 @@ void main() {
       expect(backend.activeHandles, lessThanOrEqualTo(1), reason: 'run $run');
 
       if (run < 19) {
-        tester
-            .widget<RunSummaryScreen>(find.byType(RunSummaryScreen))
-            .onStart();
+        final summary = tester.widget<RunSummaryScreen>(
+          find.byType(RunSummaryScreen),
+        );
+        summary.onStart();
+        summary.onStart();
         await _pumpUntil(
           tester,
           () =>
@@ -129,6 +153,7 @@ void main() {
     // ignore: invalid_use_of_protected_member
     expect(settingsController.hasListeners, isFalse);
     expect(games, hasLength(20));
+    expect(await sessions.loadRunCount(), 20);
     expect(games.every((game) => !game.isAttached), isTrue);
     expect(games.every((game) => game.children.isEmpty), isTrue);
     expect(find.byGame<PixelSurvivorGame>(), findsNothing);
@@ -141,6 +166,22 @@ void main() {
     expect(backend.activeHandles, 0);
     settingsController.dispose();
   });
+}
+
+class _DelayedPlaytestSessionRepository extends PlaytestSessionRepository {
+  _DelayedPlaytestSessionRepository(SharedPreferences preferences)
+    : super(preferences: preferences);
+
+  final begun = Completer<void>();
+  final release = Completer<void>();
+
+  @override
+  Future<PlaytestRunReservation> reserveRun() async {
+    final reservation = await super.reserveRun();
+    begun.complete();
+    await release.future;
+    return reservation;
+  }
 }
 
 PixelSurvivorGame _activeGame(WidgetTester tester) => tester

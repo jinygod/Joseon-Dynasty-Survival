@@ -369,18 +369,19 @@ class PixelSurvivorGame extends FlameGame
         atSeconds: _elapsedSeconds,
       );
     }
-    final safeDt = dt.clamp(0, 0.05).toDouble();
+    final wallFrameDt = dt.isFinite && dt > 0 ? dt : 0.0;
+    final safeDt = wallFrameDt.clamp(0, 0.05).toDouble();
     final simulationDt = _combatFeedback.tick(safeDt);
     super.update(simulationDt);
     _trySpawnPendingBoss();
     _updateScreenShake(safeDt);
     _combatNoticeSecondsRemaining = max(
       0.0,
-      _combatNoticeSecondsRemaining - safeDt,
+      _combatNoticeSecondsRemaining - wallFrameDt,
     );
     _killStreakSecondsRemaining = max(
       0.0,
-      _killStreakSecondsRemaining - safeDt,
+      _killStreakSecondsRemaining - wallFrameDt,
     );
     if (_killStreakSecondsRemaining == 0) _killStreak = 0;
     if (_runOutcome != RunOutcome.inProgress || isLevelUpPending) {

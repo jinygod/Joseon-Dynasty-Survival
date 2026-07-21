@@ -218,11 +218,40 @@ void main() {
           isNot(result.weaponDamageTotals[sealingSlash]),
         );
 
+        game.update(2);
+        expect(game.combatNotice, isNull);
+
         for (var frame = 0; frame < 25; frame += 1) {
           game.update(.05);
         }
         expect(game.combatNotice, isNull);
         expect(game.combatNoticeSecondsRemaining, 0);
+      },
+    );
+
+    gameTester.testGameWidget(
+      'kill streak expires after one low-FPS wall frame',
+      setUp: (game, _) async {
+        final first = game.debugSpawnEnemy(bandit, position: Vector2(40, 40));
+        final second = game.debugSpawnEnemy(bandit, position: Vector2(60, 40));
+        game.update(0);
+        for (final enemy in [first, second]) {
+          game.debugApplyDamageEvent(
+            DamageEvent(
+              target: enemy,
+              damage: enemy.currentHealth,
+              knockback: 0,
+              direction: Vector2.zero(),
+              weaponId: hwandoSlash,
+            ),
+          );
+        }
+        game.update(0);
+      },
+      verify: (game, _) async {
+        expect(game.killStreak, 2);
+        game.update(2);
+        expect(game.killStreak, 0);
       },
     );
 
