@@ -5,11 +5,11 @@ import 'package:pixel_survivor/game/content/ids.dart';
 
 void main() {
   test(
-    'roster contains eight normal enemies three unique elites and a boss',
+    'roster contains nine normal enemies three unique elites and a boss',
     () {
       expect(
         enemyDefinitions.where((enemy) => enemy.rank == EnemyRank.normal),
-        hasLength(8),
+        hasLength(9),
       );
       expect(
         enemyDefinitions.where((enemy) => enemy.rank == EnemyRank.elite),

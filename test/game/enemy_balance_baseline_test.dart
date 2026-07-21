@@ -15,11 +15,12 @@ void main() {
     test('regular enemy roles stay inside combat safety targets', () {
       final report = const EnemyBalanceAnalyzer().analyze();
 
-      expect(report.rows, hasLength(8));
+      expect(report.rows, hasLength(9));
       expect(report.rows.map((row) => row.enemyId).toSet(), {
         plagueRatSwarm,
         bandit,
         dokkaebi,
+        sakkatSpecter,
         vengefulSpirit,
         plagueCrow,
         spearBandit,
@@ -42,13 +43,13 @@ void main() {
     test('pressure caps rise before boss relief', () {
       final report = const EnemyBalanceAnalyzer().analyze();
 
-      expect(report.preBossActiveCaps, [40, 52, 66, 80, 92]);
+      expect(report.preBossActiveCaps, [40, 52, 66, 86, 96]);
       expect(report.preBossSpawnRates, [
         closeTo(1.4, 0.001),
         closeTo(1.9, 0.001),
         closeTo(2.5, 0.001),
-        closeTo(3.2, 0.001),
-        closeTo(4.0, 0.001),
+        closeTo(3.6, 0.001),
+        closeTo(5.2, 0.001),
       ]);
       expect(report.bossActiveCap, 48);
       expect(report.hasMonotonicPreBossPressure, isTrue);

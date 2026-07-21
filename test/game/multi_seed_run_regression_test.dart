@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/balance/wave_regression_simulator.dart';
 import 'package:pixel_survivor/game/balance/combat_rhythm.dart';
+import 'package:pixel_survivor/game/content/enemy_definitions.dart';
 
 void main() {
   test('twenty five-minute seeds preserve all wave invariants', () {
@@ -20,8 +21,20 @@ void main() {
       );
       expect(report.invalidPoolRequests, 0, reason: 'seed ${report.seed}');
       expect(report.maxFrameSpawns, lessThanOrEqualTo(8));
-      expect(report.maxActiveEnemies, lessThanOrEqualTo(92));
+      expect(report.maxActiveEnemies, lessThanOrEqualTo(96));
       expect(report.totalSpawns, greaterThanOrEqualTo(400));
+      for (final enemyId in {
+        plagueRatSwarm,
+        vengefulSpirit,
+        sakkatSpecter,
+        dokkaebi,
+      }) {
+        expect(
+          report.enemySpawnCounts[enemyId],
+          greaterThan(0),
+          reason: 'seed ${report.seed} must spawn slice role $enemyId',
+        );
+      }
       expect(
         report.phaseSpawnCounts.keys.toSet(),
         CombatRhythmPhaseId.values.toSet(),

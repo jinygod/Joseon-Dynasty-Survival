@@ -53,7 +53,7 @@ const enemyDefinitions = <EnemyDefinition>[
   ),
   EnemyDefinition(
     id: sakkatSpecter,
-    name: 'Sakkat Specter',
+    name: '삿갓 망령',
     maxHealth: 25,
     moveSpeed: 42,
     damage: 9,

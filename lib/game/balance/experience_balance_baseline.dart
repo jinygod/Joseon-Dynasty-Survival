@@ -3,9 +3,9 @@ import '../content/wave_definitions.dart';
 import '../systems/run_progression_system.dart';
 
 const defaultExperienceProfiles = <ExperienceAcquisitionProfile>[
-  ExperienceAcquisitionProfile(id: 'beginner', acquisitionRate: 0.18),
-  ExperienceAcquisitionProfile(id: 'expected', acquisitionRate: 0.25),
-  ExperienceAcquisitionProfile(id: 'strong', acquisitionRate: 0.30),
+  ExperienceAcquisitionProfile(id: 'beginner', acquisitionRate: 0.15),
+  ExperienceAcquisitionProfile(id: 'expected', acquisitionRate: 0.21),
+  ExperienceAcquisitionProfile(id: 'strong', acquisitionRate: 0.25),
 ];
 
 class ExperienceAcquisitionProfile {
