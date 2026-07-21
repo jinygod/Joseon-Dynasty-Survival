@@ -50,7 +50,7 @@ void main() {
       expectedCounts: const ContentRosterCounts(
         characters: 2,
         weapons: 8,
-        weaponLevels: 40,
+        weaponLevels: 42,
         augments: 16,
         normalEnemies: 8,
         eliteEnemies: 3,

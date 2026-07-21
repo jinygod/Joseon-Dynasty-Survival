@@ -6,14 +6,16 @@ class PerformanceDevelopmentSample {
   const PerformanceDevelopmentSample({
     required this.simulatedSeconds,
     required this.frameStepMicros,
+    int? rawFrameDurationMicros,
     required this.hostUpdateLifecycleWallMicros,
     required this.mountedComponentCount,
     required this.retainedOwnerCount,
     required this.snapshot,
-  });
+  }) : rawFrameDurationMicros = rawFrameDurationMicros ?? frameStepMicros;
 
   final double simulatedSeconds;
   final int frameStepMicros;
+  final int rawFrameDurationMicros;
   final int hostUpdateLifecycleWallMicros;
   final int mountedComponentCount;
   final int retainedOwnerCount;
@@ -27,6 +29,13 @@ class PerformanceDevelopmentLog {
     required this.simulatedDurationSeconds,
     required this.totalFrameCount,
     required this.sampleCount,
+    required this.averageActiveEnemies,
+    required this.maximumActiveEnemies,
+    required this.lateFrameSampleCount,
+    required this.lateAverageActiveEnemies,
+    required this.lateMaximumActiveEnemies,
+    required this.lateAverageSimulatedFps,
+    required this.lateMinimumSimulatedFps,
     required this.budget,
     required Map<GamePopulationKind, int> peakCounts,
     required this.peakFrameStepMicros,
@@ -45,6 +54,13 @@ class PerformanceDevelopmentLog {
   final double simulatedDurationSeconds;
   final int totalFrameCount;
   final int sampleCount;
+  final double averageActiveEnemies;
+  final int maximumActiveEnemies;
+  final int lateFrameSampleCount;
+  final double lateAverageActiveEnemies;
+  final int lateMaximumActiveEnemies;
+  final double lateAverageSimulatedFps;
+  final double lateMinimumSimulatedFps;
   final GamePerformanceBudget budget;
   final Map<GamePopulationKind, int> peakCounts;
   final int peakFrameStepMicros;
@@ -59,6 +75,9 @@ class PerformanceDevelopmentLog {
 
   bool get isWithinPopulationBudget => budgetViolationSamples == 0;
   bool get isWithinMemoryProxyBudget => memoryProxyViolationSamples == 0;
+  bool get isWithinLateFrameBudget =>
+      lateFrameSampleCount > 0 &&
+      lateMinimumSimulatedFps >= GamePerformanceBudget.minimumLateSimulatedFps;
 }
 
 class PerformanceDevelopmentCollector {
@@ -75,6 +94,13 @@ class PerformanceDevelopmentCollector {
     for (final kind in GamePopulationKind.values) kind: 0,
   };
   var _sampleCount = 0;
+  var _activeEnemySum = 0;
+  var _maximumActiveEnemies = 0;
+  var _lateFrameSampleCount = 0;
+  var _lateActiveEnemySum = 0;
+  var _lateMaximumActiveEnemies = 0;
+  var _lateSimulatedFpsSum = 0.0;
+  var _lateMinimumSimulatedFps = double.infinity;
   var _peakFrameStepMicros = 0;
   var _peakHostUpdateLifecycleWallMicros = 0;
   var _peakMountedComponentCount = 0;
@@ -85,6 +111,24 @@ class PerformanceDevelopmentCollector {
 
   void record(PerformanceDevelopmentSample sample) {
     _sampleCount += 1;
+    final activeEnemies = sample.snapshot.counts[GamePopulationKind.enemy] ?? 0;
+    _activeEnemySum += activeEnemies;
+    _maximumActiveEnemies = _max(_maximumActiveEnemies, activeEnemies);
+    if (sample.simulatedSeconds >
+            GamePerformanceBudget.latePerformanceWindowStartSeconds &&
+        sample.rawFrameDurationMicros > 0) {
+      final simulatedFps = 1000000 / sample.rawFrameDurationMicros;
+      _lateFrameSampleCount += 1;
+      _lateActiveEnemySum += activeEnemies;
+      _lateMaximumActiveEnemies = _max(
+        _lateMaximumActiveEnemies,
+        activeEnemies,
+      );
+      _lateSimulatedFpsSum += simulatedFps;
+      if (simulatedFps < _lateMinimumSimulatedFps) {
+        _lateMinimumSimulatedFps = simulatedFps;
+      }
+    }
     _peakFrameStepMicros = _max(_peakFrameStepMicros, sample.frameStepMicros);
     _peakHostUpdateLifecycleWallMicros = _max(
       _peakHostUpdateLifecycleWallMicros,
@@ -129,6 +173,19 @@ class PerformanceDevelopmentCollector {
       simulatedDurationSeconds: simulatedDurationSeconds,
       totalFrameCount: totalFrameCount,
       sampleCount: _sampleCount,
+      averageActiveEnemies: _activeEnemySum / _sampleCount,
+      maximumActiveEnemies: _maximumActiveEnemies,
+      lateFrameSampleCount: _lateFrameSampleCount,
+      lateAverageActiveEnemies: _lateFrameSampleCount == 0
+          ? 0
+          : _lateActiveEnemySum / _lateFrameSampleCount,
+      lateMaximumActiveEnemies: _lateMaximumActiveEnemies,
+      lateAverageSimulatedFps: _lateFrameSampleCount == 0
+          ? 0
+          : _lateSimulatedFpsSum / _lateFrameSampleCount,
+      lateMinimumSimulatedFps: _lateFrameSampleCount == 0
+          ? 0
+          : _lateMinimumSimulatedFps,
       budget: budget,
       peakCounts: Map.of(_peakCounts),
       peakFrameStepMicros: _peakFrameStepMicros,

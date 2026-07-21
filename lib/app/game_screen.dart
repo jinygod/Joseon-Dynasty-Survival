@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flame/game.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'first_run_tutorial_overlay.dart';
@@ -18,9 +19,11 @@ import '../game/models/run_telemetry.dart';
 import '../game/models/vector_input.dart';
 import '../game/components/spirit_jade_component.dart';
 import '../game/content/stage_definitions.dart';
+import '../game/content/playtest_content_policy.dart';
 import '../game/pixel_survivor_game.dart';
 import '../game/systems/progression_system.dart';
 import '../game/systems/meta_progression_service.dart';
+import '../game/systems/playtest_session_repository.dart';
 import '../game/systems/run_telemetry_service.dart';
 import '../game/systems/save_system.dart';
 import '../game/systems/telemetry_export_service.dart';
@@ -44,6 +47,7 @@ class GameScreen extends StatefulWidget {
     this.audioSettingsController,
     this.audioService,
     this.metaProgressionService,
+    this.playtestSessionRepository,
     this.syncProgress,
     super.key,
   });
@@ -60,6 +64,7 @@ class GameScreen extends StatefulWidget {
   final AudioSettingsController? audioSettingsController;
   final GameAudioService? audioService;
   final MetaProgressionService? metaProgressionService;
+  final PlaytestSessionRepository? playtestSessionRepository;
   final Future<void> Function()? syncProgress;
 
   @override
@@ -77,6 +82,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   late final TutorialProgressRepository _tutorialProgressRepository;
   late final AudioSettingsController _audioSettingsController;
   late final MetaProgressionService _metaProgressionService;
+  late final PlaytestSessionRepository _playtestSessionRepository;
   late final bool _ownsAudioSettingsController;
   late final DateTime _runStartedAtUtc;
   bool _handledRunEnd = false;
@@ -84,6 +90,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   bool _settlingRewards = false;
   RunSettlement? _completedSettlement;
   RunTelemetry? _recordedTelemetry;
+  bool _gameReady = false;
+  bool _disposed = false;
+  bool _replacementStarted = false;
 
   @override
   void initState() {
@@ -98,22 +107,58 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     _metaProgressionService =
         widget.metaProgressionService ??
         MetaProgressionService(saveStore: SaveSystem());
+    _playtestSessionRepository =
+        widget.playtestSessionRepository ?? PlaytestSessionRepository();
     _ownsAudioSettingsController = widget.audioSettingsController == null;
     _audioSettingsController =
         widget.audioSettingsController ??
         AudioSettingsController(store: AudioSettingsRepository());
     unawaited(_audioSettingsController.load());
     _runStartedAtUtc = (widget.now ?? DateTime.now)().toUtc();
-    _game =
-        widget.game ??
-        PixelSurvivorGame(
-          playerSlot: widget.playerSlot,
-          stageId: widget.stageId,
-          onRunEnded: _handleRunEnded,
-          onAudioCue: _playAudio,
-          persistSpiritJade: _persistSpiritJade,
-          pickupIdPrefix: _runStartedAtUtc.microsecondsSinceEpoch.toString(),
-        );
+    final injectedGame = widget.game;
+    if (injectedGame != null) {
+      _game = injectedGame;
+      _finishGameInitialization();
+    } else {
+      unawaited(_initializeGame());
+    }
+  }
+
+  Future<void> _initializeGame() async {
+    var ordinal = 1;
+    PlaytestRunReservation? reservation;
+    try {
+      reservation = await _playtestSessionRepository.reserveRun();
+      ordinal = reservation.ordinal;
+    } on Object {
+      // Playtest counting must never prevent a run from starting.
+    }
+    if (_disposed) {
+      await reservation?.cancel();
+      return;
+    }
+    _game = PixelSurvivorGame(
+      playerSlot: widget.playerSlot,
+      stageId: widget.stageId,
+      onRunEnded: _handleRunEnded,
+      onAudioCue: _playAudio,
+      persistSpiritJade: _persistSpiritJade,
+      pickupIdPrefix: _runStartedAtUtc.microsecondsSinceEpoch.toString(),
+      contentPolicy: const PlaytestContentPolicy(
+        unlockAllBaseWeapons: bool.fromEnvironment(
+          'PLAYTEST_UNLOCK_ALL_BASE_WEAPONS',
+          defaultValue: kDebugMode,
+        ),
+      ),
+      isRepeatRun: ordinal > 1,
+    );
+    reservation?.confirm();
+    _finishGameInitialization();
+    if (mounted) setState(() {});
+  }
+
+  void _finishGameInitialization() {
+    _gameReady = true;
     _audioSettingsController.addListener(_applyAccessibilitySettings);
     _applyAccessibilitySettings();
     unawaited(_loadFirstBossRewardAvailability());
@@ -126,9 +171,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _disposed = true;
+    final gameWasReady = _gameReady;
+    _gameReady = false;
     WidgetsBinding.instance.removeObserver(this);
     _audioSettingsController.removeListener(_applyAccessibilitySettings);
-    _game.updateMovementInput(VectorInput.zero);
+    if (gameWasReady) _game.updateMovementInput(VectorInput.zero);
     final audio = widget.audioService;
     if (audio != null) unawaited(audio.stopNonMusic());
     if (_ownsAudioSettingsController) _audioSettingsController.dispose();
@@ -136,6 +184,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   void _applyAccessibilitySettings() {
+    if (!_gameReady) return;
     final settings = _audioSettingsController.settings;
     _game.applyAccessibilitySettings(
       screenShakeEnabled: settings.screenShakeEnabled,
@@ -157,6 +206,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   void _pauseGame() {
+    if (!_gameReady) return;
     if (!_game.canPauseRun ||
         _game.overlays.isActive(_pauseOverlayId) ||
         _game.overlays.isActive(_tutorialOverlayId)) {
@@ -170,6 +220,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   void _resumeGame() {
+    if (!_gameReady) return;
     if (!_game.canPauseRun || _game.overlays.isActive(_tutorialOverlayId)) {
       return;
     }
@@ -180,6 +231,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   void _restartGame() {
+    if (_replacementStarted || _disposed) return;
+    _replacementStarted = true;
     Navigator.of(context).pushReplacement(
       MaterialPageRoute<void>(
         builder: (_) => GameScreen(
@@ -188,6 +241,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           audioService: widget.audioService,
           audioSettingsController: widget.audioSettingsController,
           metaProgressionService: _metaProgressionService,
+          playtestSessionRepository: _playtestSessionRepository,
           syncProgress: widget.syncProgress,
         ),
       ),
@@ -206,7 +260,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     } on Object {
       // A storage failure must not trap the player behind onboarding.
     }
-    if (!mounted || !_game.canPauseRun) return;
+    if (!mounted || !_gameReady || !_game.canPauseRun) return;
     _game.overlays.remove(_tutorialOverlayId);
     _game.resumeEngine();
     final audio = widget.audioService;
@@ -226,10 +280,15 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   Future<void> _loadFirstBossRewardAvailability() async {
     try {
-      _game.firstBossRewardAvailable = await _metaProgressionService
+      final available = await _metaProgressionService
           .loadFirstBossRewardAvailability();
+      if (mounted && !_disposed && _gameReady) {
+        _game.firstBossRewardAvailable = available;
+      }
     } on Object {
-      _game.firstBossRewardAvailable = false;
+      if (mounted && !_disposed && _gameReady) {
+        _game.firstBossRewardAvailable = false;
+      }
     }
   }
 
@@ -298,6 +357,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                 ? null
                 : _telemetryExportService.exportAll,
             onStart: () {
+              if (_replacementStarted) return;
+              _replacementStarted = true;
               navigator.pushReplacement(
                 MaterialPageRoute<void>(
                   builder: (_) => GameScreen(
@@ -306,6 +367,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                     audioService: audioService,
                     audioSettingsController: audioSettingsController,
                     metaProgressionService: metaProgressionService,
+                    playtestSessionRepository: _playtestSessionRepository,
                     syncProgress: syncProgress,
                   ),
                 ),
@@ -348,6 +410,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    if (!_gameReady) {
+      return const ColoredBox(
+        color: Color(0xff101820),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
     return PopScope<void>(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {

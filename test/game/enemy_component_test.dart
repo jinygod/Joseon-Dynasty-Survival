@@ -1,13 +1,31 @@
+import 'dart:ui';
+
 import 'package:flame/components.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/components/enemy_component.dart';
 import 'package:pixel_survivor/game/components/player_component.dart';
+import 'package:pixel_survivor/game/combat/attack_spec.dart';
 import 'package:pixel_survivor/game/content/enemy_definitions.dart';
 import 'package:pixel_survivor/game/content/ids.dart';
+import 'package:pixel_survivor/game/models/damage_event.dart';
 import 'package:pixel_survivor/game/systems/enemy_behavior_controller.dart';
 
 void main() {
   group('EnemyComponent', () {
+    test('normal enemy keeps its hitbox while doubling its visual size', () {
+      final enemy = EnemyComponent.fromDefinition(enemyDefinitionFor(bandit)!);
+
+      expect(enemy.size, Vector2.all(18));
+      expect(enemy.visualSize, 54);
+      expect(enemy.visualScale, 3);
+      expect(enemy.maxHealth, 18);
+      expect(enemy.moveSpeed, 60);
+      expect(enemy.damage, 8);
+      expect(enemy.experienceValue, 1);
+      expect(enemy.anchor, Anchor.center);
+      expect(enemy.paint.filterQuality, FilterQuality.none);
+    });
+
     test('environmental slow changes movement and can be reset', () {
       final enemy = EnemyComponent(
         enemyId: 'test_enemy',
@@ -67,6 +85,9 @@ void main() {
       expect(enemy.damage, 16);
       expect(enemy.experienceValue, 12);
       expect(enemy.size.x, 40);
+      expect(enemy.visualSize, 81);
+      expect(enemy.visualScale, closeTo(2.025, 0.00001));
+      expect(enemy.anchor, Anchor.center);
     });
 
     test('herbalist exposes exactly one death zone after lethal damage', () {
@@ -117,13 +138,32 @@ void main() {
       final trackedDistance = enemy.position.x;
       enemy.update(.05);
       expect(enemy.attackPhase, EnemyBehaviorPhase.warning);
-      enemy.update(0.25);
+      enemy.update(0.55);
 
       expect(trackedDistance, closeTo(24, 0.001));
       expect(enemy.position.x - trackedDistance, greaterThan(1));
       expect(enemy.isDashing, isTrue);
       enemy.update(0.35);
       expect(enemy.isDashing, isFalse);
+    });
+
+    test('ranged warning movement preserves the locked aim facing', () {
+      var target = Vector2(180, 0);
+      final enemy = EnemyComponent.fromDefinition(
+        enemyDefinitionFor(sakkatSpecter)!,
+        position: Vector2.zero(),
+        targetPositionProvider: (_) => target,
+      );
+      enemy.update(.05);
+      expect(enemy.attackPhase, EnemyBehaviorPhase.warning);
+      final before = enemy.position.clone();
+
+      target = Vector2(0, 220);
+      enemy.update(.05);
+
+      expect(enemy.position.distanceTo(before), greaterThan(0));
+      expect(enemy.facingDirection.x, greaterThan(.99));
+      expect(enemy.facingDirection.y.abs(), lessThan(.01));
     });
 
     test('dokkaebi reduces received knockback by seventy percent', () {
@@ -138,6 +178,72 @@ void main() {
       enemy.applyKnockback(Vector2(100, 0));
 
       expect(enemy.knockbackVelocity.x, closeTo(30, 0.001));
+    });
+
+    test('dokkaebi reduces frontal normal hits but not rear explosions', () {
+      final enemy = EnemyComponent.fromDefinition(
+        enemyDefinitionFor(dokkaebi)!,
+        position: Vector2.zero(),
+      );
+      enemy.debugFace(Vector2(1, 0));
+      final frontMeleeEvent = DamageEvent(
+        target: enemy,
+        damage: 10,
+        knockback: 0,
+        direction: Vector2(-1, 0),
+        traits: const {AttackTrait.melee},
+      );
+      final rearExplosionEvent = DamageEvent(
+        target: enemy,
+        damage: 10,
+        knockback: 0,
+        direction: Vector2(1, 0),
+        traits: const {AttackTrait.explosion},
+      );
+
+      expect(enemy.resolveIncomingDamage(frontMeleeEvent), 5);
+      expect(enemy.consumeBlockFeedback(), isTrue);
+      expect(enemy.resolveIncomingDamage(rearExplosionEvent), 10);
+      expect(enemy.consumeBlockFeedback(), isFalse);
+    });
+
+    test('dokkaebi exposes a directional shield matching its facing', () {
+      final enemy = EnemyComponent.fromDefinition(enemyDefinitionFor(dokkaebi)!)
+        ..debugFace(Vector2(0, -1));
+
+      expect(enemy.hasDirectionalShield, isTrue);
+      expect(enemy.shieldDirection, Vector2(0, -1));
+    });
+
+    test('synergy bypasses the shield without block feedback', () {
+      final enemy = EnemyComponent.fromDefinition(enemyDefinitionFor(dokkaebi)!)
+        ..debugFace(Vector2(1, 0));
+      final event = DamageEvent(
+        target: enemy,
+        damage: 10,
+        knockback: 0,
+        direction: Vector2(-1, 0),
+        traits: const {AttackTrait.synergy},
+      );
+
+      expect(enemy.resolveIncomingDamage(event), 10);
+      expect(enemy.consumeBlockFeedback(), isFalse);
+    });
+
+    test('dokkaebi only partly blocks frontal piercing hits', () {
+      final enemy = EnemyComponent.fromDefinition(
+        enemyDefinitionFor(dokkaebi)!,
+      );
+      enemy.debugFace(Vector2(1, 0));
+      final event = DamageEvent(
+        target: enemy,
+        damage: 10,
+        knockback: 0,
+        direction: Vector2(-1, 0),
+        traits: const {AttackTrait.projectile, AttackTrait.piercing},
+      );
+
+      expect(enemy.resolveIncomingDamage(event), 8);
     });
 
     test('plague rats separate from nearby rats while pursuing', () {
@@ -217,6 +323,7 @@ void main() {
         vengefulSpirit,
         fallenGeneral,
       });
+      expect(EnemySpriteSheet.specs, isNot(contains(sakkatSpecter)));
       expect(EnemySpriteSheet.specs[plagueRatSwarm]!.frameSize, 24);
       expect(EnemySpriteSheet.specs[fallenGeneral]!.frameSize, 64);
     });

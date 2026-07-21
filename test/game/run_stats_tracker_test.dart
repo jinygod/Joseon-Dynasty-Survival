@@ -3,9 +3,28 @@ import 'package:pixel_survivor/game/content/weapon_definitions.dart';
 import 'package:pixel_survivor/game/models/run_choice_record.dart';
 import 'package:pixel_survivor/game/models/run_outcome.dart';
 import 'package:pixel_survivor/game/systems/run_stats_tracker.dart';
+import 'package:pixel_survivor/game/systems/combat_playtest_tracker.dart';
+import 'package:pixel_survivor/game/systems/weapon_synergy_resolver.dart';
 
 void main() {
   group('RunStatsTracker', () {
+    test('includes an immutable combat metric snapshot in the result', () {
+      final combatTracker = CombatPlaytestTracker()
+        ..recordOffer(weaponId: hwandoSlash);
+      final tracker = RunStatsTracker(combatPlaytestTracker: combatTracker);
+
+      final result = tracker.toRunResult(
+        outcome: RunOutcome.defeat,
+        survivalSeconds: 10,
+        level: 1,
+        wonWithLowHealth: false,
+        weaponLevels: const {},
+      );
+      combatTracker.recordOffer(weaponId: hwandoSlash);
+
+      expect(result.combatMetrics.weaponOfferCounts, {hwandoSlash: 1});
+    });
+
     test('records kills and boss defeats in run results', () {
       final tracker = RunStatsTracker()
         ..recordEnemyDefeat(isBoss: false)
@@ -63,6 +82,25 @@ void main() {
 
       expect(result.weaponDamageTotals, {hwandoSlash: 12});
       expect(result.weaponKillCounts, {hwandoSlash: 2});
+    });
+
+    test('attributes sealing slash damage and kills to its own source', () {
+      final tracker = RunStatsTracker()
+        ..recordWeaponDamage(weaponId: hwandoSlash, amount: 8)
+        ..recordDamageSource(sourceId: sealingSlash, amount: 12)
+        ..recordEnemyDefeat(isBoss: false, weaponId: sealingSlash);
+
+      final result = tracker.toRunResult(
+        outcome: RunOutcome.victory,
+        survivalSeconds: 30,
+        level: 2,
+        wonWithLowHealth: false,
+        weaponLevels: const {hwandoSlash: 1, talismanThrow: 1},
+      );
+
+      expect(result.weaponDamageTotals, {hwandoSlash: 8, sealingSlash: 12});
+      expect(result.weaponKillCounts, {sealingSlash: 1});
+      expect(result.weaponDamageTotals, isNot(contains(talismanThrow)));
     });
 
     test('preserves choice order time and selected level', () {

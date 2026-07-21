@@ -120,6 +120,12 @@ class _HudSource implements GameHudSource {
   @override
   int get kills => 30;
   @override
+  String? get combatNotice => null;
+  @override
+  double get combatNoticeSecondsRemaining => 0;
+  @override
+  int get killStreak => 0;
+  @override
   String? get bossName => null;
   @override
   double? get bossHealthFraction => null;

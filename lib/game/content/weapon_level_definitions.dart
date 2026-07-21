@@ -11,6 +11,8 @@ class WeaponLevelDefinition {
     required this.chainCount,
     required this.knockback,
     required this.displayEffect,
+    required this.behaviorDescription,
+    this.isMaster = false,
     this.durationSeconds = 0,
     this.slowFraction = 0,
   });
@@ -23,6 +25,8 @@ class WeaponLevelDefinition {
   final int chainCount;
   final double knockback;
   final String displayEffect;
+  final String behaviorDescription;
+  final bool isMaster;
   final double durationSeconds;
   final double slowFraction;
 }
@@ -38,6 +42,7 @@ const weaponLevels = <WeaponId, List<WeaponLevelDefinition>>{
       chainCount: 0,
       knockback: 45,
       displayEffect: '피해 8, 범위 58',
+      behaviorDescription: '가장 가까운 적을 향해 짧은 부채꼴로 베어냅니다.',
     ),
     WeaponLevelDefinition(
       damage: 10,
@@ -48,6 +53,7 @@ const weaponLevels = <WeaponId, List<WeaponLevelDefinition>>{
       chainCount: 0,
       knockback: 50,
       displayEffect: '피해 10, 범위 +10',
+      behaviorDescription: '더 넓어진 부채꼴로 전방의 적을 베어냅니다.',
     ),
     WeaponLevelDefinition(
       damage: 12,
@@ -58,6 +64,7 @@ const weaponLevels = <WeaponId, List<WeaponLevelDefinition>>{
       chainCount: 0,
       knockback: 55,
       displayEffect: '재사용 시간 0.60초',
+      behaviorDescription: '좌우로 빠르게 이어지는 두 번의 베기를 준비합니다.',
     ),
     WeaponLevelDefinition(
       damage: 15,
@@ -68,6 +75,7 @@ const weaponLevels = <WeaponId, List<WeaponLevelDefinition>>{
       chainCount: 0,
       knockback: 65,
       displayEffect: '피해 15, 범위 +14',
+      behaviorDescription: '두 번 베고 전방으로 검기를 날립니다.',
     ),
     WeaponLevelDefinition(
       damage: 18,
@@ -78,6 +86,19 @@ const weaponLevels = <WeaponId, List<WeaponLevelDefinition>>{
       chainCount: 0,
       knockback: 75,
       displayEffect: '좌우 연속 베기 2회',
+      behaviorDescription: '강한 좌우 베기와 검기로 적 무리를 밀어냅니다.',
+    ),
+    WeaponLevelDefinition(
+      damage: 24,
+      cooldownSeconds: 0.48,
+      range: 112,
+      projectileCount: 5,
+      pierce: 0,
+      chainCount: 0,
+      knockback: 90,
+      displayEffect: '검무 폭풍 5연격',
+      behaviorDescription: '표적 참격 뒤 좌우·원형·마무리 검무 폭풍을 펼칩니다.',
+      isMaster: true,
     ),
   ],
   gakgungShot: [
@@ -90,6 +111,7 @@ const weaponLevels = <WeaponId, List<WeaponLevelDefinition>>{
       chainCount: 0,
       knockback: 10,
       displayEffect: '화살 1발, 피해 7',
+      behaviorDescription: '가장 가까운 적에게 화살 한 발을 쏩니다.',
     ),
     WeaponLevelDefinition(
       damage: 9,
@@ -100,6 +122,7 @@ const weaponLevels = <WeaponId, List<WeaponLevelDefinition>>{
       chainCount: 0,
       knockback: 10,
       displayEffect: '피해 9, 재사용 시간 0.95초',
+      behaviorDescription: '더 빠르고 강한 화살을 한 발 쏩니다.',
     ),
     WeaponLevelDefinition(
       damage: 10,
@@ -110,6 +133,7 @@ const weaponLevels = <WeaponId, List<WeaponLevelDefinition>>{
       chainCount: 0,
       knockback: 12,
       displayEffect: '관통 +1',
+      behaviorDescription: '화살이 첫 대상을 뚫고 뒤의 적까지 맞힙니다.',
     ),
     WeaponLevelDefinition(
       damage: 12,
@@ -120,6 +144,7 @@ const weaponLevels = <WeaponId, List<WeaponLevelDefinition>>{
       chainCount: 0,
       knockback: 12,
       displayEffect: '화살 +1',
+      behaviorDescription: '서로 가까운 두 적에게 화살을 나누어 쏩니다.',
     ),
     WeaponLevelDefinition(
       damage: 15,
@@ -130,6 +155,7 @@ const weaponLevels = <WeaponId, List<WeaponLevelDefinition>>{
       chainCount: 0,
       knockback: 15,
       displayEffect: '관통 +1, 첫 대상 추가 피해',
+      behaviorDescription: '두 발의 강화 화살이 여러 적을 관통합니다.',
     ),
   ],
   talismanThrow: [
@@ -142,6 +168,7 @@ const weaponLevels = <WeaponId, List<WeaponLevelDefinition>>{
       chainCount: 1,
       knockback: 8,
       displayEffect: '연쇄 1회, 원혼 추가 피해',
+      behaviorDescription: '부적이 적에게 붙고 가까운 대상 한 번으로 이어집니다.',
     ),
     WeaponLevelDefinition(
       damage: 10,
@@ -152,6 +179,7 @@ const weaponLevels = <WeaponId, List<WeaponLevelDefinition>>{
       chainCount: 2,
       knockback: 8,
       displayEffect: '연쇄 +1',
+      behaviorDescription: '붙은 부적이 두 번째 가까운 적까지 연쇄됩니다.',
     ),
     WeaponLevelDefinition(
       damage: 12,
@@ -162,6 +190,7 @@ const weaponLevels = <WeaponId, List<WeaponLevelDefinition>>{
       chainCount: 3,
       knockback: 10,
       displayEffect: '연쇄 +1, 피해 12',
+      behaviorDescription: '붙은 부적이 지연 폭발하며 세 대상까지 연쇄됩니다.',
     ),
     WeaponLevelDefinition(
       damage: 14,
@@ -172,6 +201,7 @@ const weaponLevels = <WeaponId, List<WeaponLevelDefinition>>{
       chainCount: 4,
       knockback: 10,
       displayEffect: '연쇄 +1, 탐색 범위 +15',
+      behaviorDescription: '폭발한 부적이 표시 없는 적에게 옮겨 붙습니다.',
     ),
     WeaponLevelDefinition(
       damage: 17,
@@ -182,6 +212,21 @@ const weaponLevels = <WeaponId, List<WeaponLevelDefinition>>{
       chainCount: 5,
       knockback: 12,
       displayEffect: '부적 +1, 연쇄 +1',
+      behaviorDescription: '두 장의 부적이 폭발한 자리에 작은 결계를 남깁니다.',
+    ),
+    WeaponLevelDefinition(
+      damage: 21,
+      cooldownSeconds: 0.90,
+      range: 300,
+      projectileCount: 3,
+      pierce: 0,
+      chainCount: 6,
+      knockback: 14,
+      durationSeconds: 4.0,
+      slowFraction: .30,
+      displayEffect: '오방 결계 최대 3개',
+      behaviorDescription: '밀집한 적 무리에 최대 세 개의 오방 결계를 펼칩니다.',
+      isMaster: true,
     ),
   ],
   thunderCrashBomb: [
@@ -194,6 +239,7 @@ const weaponLevels = <WeaponId, List<WeaponLevelDefinition>>{
       chainCount: 0,
       knockback: 35,
       displayEffect: '폭발 범위 70, 피해 14',
+      behaviorDescription: '가까운 적의 위치에 지연 폭발탄을 떨어뜨립니다.',
     ),
     WeaponLevelDefinition(
       damage: 18,
@@ -204,6 +250,7 @@ const weaponLevels = <WeaponId, List<WeaponLevelDefinition>>{
       chainCount: 0,
       knockback: 45,
       displayEffect: '폭발 범위 +12',
+      behaviorDescription: '더 넓은 지연 폭발로 적 무리를 휩씁니다.',
     ),
     WeaponLevelDefinition(
       damage: 22,
@@ -214,6 +261,7 @@ const weaponLevels = <WeaponId, List<WeaponLevelDefinition>>{
       chainCount: 0,
       knockback: 55,
       displayEffect: '피해 22, 재사용 시간 2.20초',
+      behaviorDescription: '강화된 폭발탄을 더 자주 떨어뜨립니다.',
     ),
     WeaponLevelDefinition(
       damage: 26,
@@ -224,6 +272,7 @@ const weaponLevels = <WeaponId, List<WeaponLevelDefinition>>{
       chainCount: 0,
       knockback: 65,
       displayEffect: '폭발 +1',
+      behaviorDescription: '서로 다른 두 위치에 폭발탄을 떨어뜨립니다.',
     ),
     WeaponLevelDefinition(
       damage: 32,
@@ -234,6 +283,7 @@ const weaponLevels = <WeaponId, List<WeaponLevelDefinition>>{
       chainCount: 0,
       knockback: 80,
       displayEffect: '피해 32, 폭발 범위 120',
+      behaviorDescription: '두 개의 대형 폭발로 넓은 구역을 제압합니다.',
     ),
   ],
   jangseungWard: [
@@ -246,6 +296,7 @@ const weaponLevels = <WeaponId, List<WeaponLevelDefinition>>{
       chainCount: 0,
       knockback: 18,
       displayEffect: '결계 피해 4, 범위 72',
+      behaviorDescription: '주변을 맴도는 장승 결계가 닿은 적을 밀어냅니다.',
     ),
     WeaponLevelDefinition(
       damage: 5,
@@ -256,6 +307,7 @@ const weaponLevels = <WeaponId, List<WeaponLevelDefinition>>{
       chainCount: 0,
       knockback: 22,
       displayEffect: '피해 5, 범위 80',
+      behaviorDescription: '넓어진 장승 결계가 주변 적을 밀어냅니다.',
     ),
     WeaponLevelDefinition(
       damage: 6,
@@ -266,6 +318,7 @@ const weaponLevels = <WeaponId, List<WeaponLevelDefinition>>{
       chainCount: 0,
       knockback: 28,
       displayEffect: '피해 6, 재사용 0.60초',
+      behaviorDescription: '장승 결계가 더 빠르게 주변 적을 타격합니다.',
     ),
     WeaponLevelDefinition(
       damage: 7,
@@ -276,6 +329,7 @@ const weaponLevels = <WeaponId, List<WeaponLevelDefinition>>{
       chainCount: 0,
       knockback: 34,
       displayEffect: '범위 98, 밀쳐내기 강화',
+      behaviorDescription: '강한 장승 결계가 접근하는 적을 멀리 밀어냅니다.',
     ),
     WeaponLevelDefinition(
       damage: 9,
@@ -286,6 +340,7 @@ const weaponLevels = <WeaponId, List<WeaponLevelDefinition>>{
       chainCount: 0,
       knockback: 42,
       displayEffect: '피해 9, 범위 108',
+      behaviorDescription: '완성된 장승 결계가 넓은 주변을 계속 지킵니다.',
     ),
   ],
   singijeonVolley: [
@@ -298,6 +353,7 @@ const weaponLevels = <WeaponId, List<WeaponLevelDefinition>>{
       chainCount: 0,
       knockback: 8,
       displayEffect: '신기전 4발 일제사격',
+      behaviorDescription: '네 발의 신기전을 넓게 흩뿌립니다.',
     ),
     WeaponLevelDefinition(
       damage: 6,
@@ -308,6 +364,7 @@ const weaponLevels = <WeaponId, List<WeaponLevelDefinition>>{
       chainCount: 0,
       knockback: 8,
       displayEffect: '신기전 5발',
+      behaviorDescription: '다섯 발의 신기전을 넓게 흩뿌립니다.',
     ),
     WeaponLevelDefinition(
       damage: 7,
@@ -318,6 +375,7 @@ const weaponLevels = <WeaponId, List<WeaponLevelDefinition>>{
       chainCount: 0,
       knockback: 10,
       displayEffect: '신기전 6발, 피해 7',
+      behaviorDescription: '강화된 신기전 여섯 발을 일제히 쏩니다.',
     ),
     WeaponLevelDefinition(
       damage: 8,
@@ -328,6 +386,7 @@ const weaponLevels = <WeaponId, List<WeaponLevelDefinition>>{
       chainCount: 0,
       knockback: 10,
       displayEffect: '신기전 7발, 관통 +1',
+      behaviorDescription: '일곱 발의 신기전이 적 하나를 관통합니다.',
     ),
     WeaponLevelDefinition(
       damage: 9,
@@ -338,6 +397,7 @@ const weaponLevels = <WeaponId, List<WeaponLevelDefinition>>{
       chainCount: 0,
       knockback: 12,
       displayEffect: '신기전 9발 일제사격',
+      behaviorDescription: '아홉 발의 신기전으로 전방을 뒤덮습니다.',
     ),
   ],
   frostFlask: [
@@ -352,6 +412,7 @@ const weaponLevels = <WeaponId, List<WeaponLevelDefinition>>{
       durationSeconds: 2.5,
       slowFraction: .20,
       displayEffect: '2.5초 서리 장판, 둔화 20%',
+      behaviorDescription: '적의 위치에 짧게 유지되는 서리 장판을 만듭니다.',
     ),
     WeaponLevelDefinition(
       damage: 5,
@@ -364,6 +425,7 @@ const weaponLevels = <WeaponId, List<WeaponLevelDefinition>>{
       durationSeconds: 3.0,
       slowFraction: .25,
       displayEffect: '3초 장판, 둔화 25%',
+      behaviorDescription: '더 넓고 오래가는 서리 장판으로 적을 늦춥니다.',
     ),
     WeaponLevelDefinition(
       damage: 6,
@@ -376,6 +438,7 @@ const weaponLevels = <WeaponId, List<WeaponLevelDefinition>>{
       durationSeconds: 3.5,
       slowFraction: .30,
       displayEffect: '3.5초 장판, 둔화 30%',
+      behaviorDescription: '강화된 서리 장판이 적 무리의 이동을 늦춥니다.',
     ),
     WeaponLevelDefinition(
       damage: 7,
@@ -388,6 +451,7 @@ const weaponLevels = <WeaponId, List<WeaponLevelDefinition>>{
       durationSeconds: 4.0,
       slowFraction: .38,
       displayEffect: '4초 장판, 둔화 38%',
+      behaviorDescription: '넓은 서리 장판이 오래 유지되며 적을 묶습니다.',
     ),
     WeaponLevelDefinition(
       damage: 8,
@@ -400,6 +464,7 @@ const weaponLevels = <WeaponId, List<WeaponLevelDefinition>>{
       durationSeconds: 4.5,
       slowFraction: .45,
       displayEffect: '4.5초 장판, 둔화 45%',
+      behaviorDescription: '완성된 서리 장판이 넓은 구역을 강하게 둔화합니다.',
     ),
   ],
   windThunderFan: [
@@ -412,6 +477,7 @@ const weaponLevels = <WeaponId, List<WeaponLevelDefinition>>{
       chainCount: 0,
       knockback: 50,
       displayEffect: '전방 번개 부채꼴',
+      behaviorDescription: '전방 부채꼴에 번개 바람을 일으켜 적을 밀어냅니다.',
     ),
     WeaponLevelDefinition(
       damage: 11,
@@ -422,6 +488,7 @@ const weaponLevels = <WeaponId, List<WeaponLevelDefinition>>{
       chainCount: 0,
       knockback: 62,
       displayEffect: '피해 11, 범위 102',
+      behaviorDescription: '더 넓은 번개 바람으로 전방 적을 밀어냅니다.',
     ),
     WeaponLevelDefinition(
       damage: 13,
@@ -432,6 +499,7 @@ const weaponLevels = <WeaponId, List<WeaponLevelDefinition>>{
       chainCount: 0,
       knockback: 74,
       displayEffect: '밀쳐내기 강화',
+      behaviorDescription: '거센 번개 바람이 적을 더 멀리 밀어냅니다.',
     ),
     WeaponLevelDefinition(
       damage: 15,
@@ -442,6 +510,7 @@ const weaponLevels = <WeaponId, List<WeaponLevelDefinition>>{
       chainCount: 0,
       knockback: 86,
       displayEffect: '피해 15, 범위 126',
+      behaviorDescription: '강화된 번개 부채가 넓은 전방을 휩씁니다.',
     ),
     WeaponLevelDefinition(
       damage: 18,
@@ -452,6 +521,7 @@ const weaponLevels = <WeaponId, List<WeaponLevelDefinition>>{
       chainCount: 0,
       knockback: 100,
       displayEffect: '앞뒤 번개 부채 2회',
+      behaviorDescription: '앞뒤로 번개 부채를 펼쳐 양쪽 적을 밀어냅니다.',
     ),
   ],
 };

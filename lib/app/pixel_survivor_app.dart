@@ -21,10 +21,12 @@ import '../game/audio/audio_settings_repository.dart';
 import '../game/audio/flame_audio_backend.dart';
 import '../game/audio/game_audio_service.dart';
 import '../game/systems/save_system.dart';
+import '../game/systems/playtest_session_repository.dart';
 import '../l10n/app_strings.dart';
 import 'audio_settings_audio_binding.dart';
 import 'lobby_controller.dart';
 import 'lobby_screen.dart';
+import 'mobile_preview.dart';
 
 class PixelSurvivorApp extends StatefulWidget {
   const PixelSurvivorApp({
@@ -58,6 +60,7 @@ class _PixelSurvivorAppState extends State<PixelSurvivorApp> {
   PurchaseController? _purchaseController;
   GooglePlayPurchaseGateway? _purchaseGateway;
   late final SaveStore _saveStore;
+  late final PlaytestSessionRepository _playtestSessionRepository;
   bool _disposed = false;
   bool _purchaseInitializing = false;
   bool _purchaseInitializationFailed = false;
@@ -83,6 +86,7 @@ class _PixelSurvivorAppState extends State<PixelSurvivorApp> {
     );
     unawaited(_audioSettingsController.load());
     _saveStore = widget.saveStore ?? SaveSystem();
+    _playtestSessionRepository = PlaytestSessionRepository();
     _lobbyController = LobbyController(store: _saveStore);
     unawaited(_lobbyController.load());
     if (widget.backendConfig.enabled) {
@@ -193,6 +197,10 @@ class _PixelSurvivorAppState extends State<PixelSurvivorApp> {
     return MaterialApp(
       title: AppStrings.appTitle,
       debugShowCheckedModeBanner: false,
+      builder: (context, child) => MobilePreviewFrame(
+        enabled: MobilePreviewPolicy.enabled,
+        child: child ?? const SizedBox.shrink(),
+      ),
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xff3fbf7f)),
         splashFactory: NoSplash.splashFactory,
@@ -205,6 +213,7 @@ class _PixelSurvivorAppState extends State<PixelSurvivorApp> {
         accountController: _accountController,
         progressSyncController: _progressSyncController,
         purchaseController: _purchaseController,
+        playtestSessionRepository: _playtestSessionRepository,
         onPurchaseInitializationRetry: _purchaseInitializationFailed
             ? () => unawaited(_initializePurchasesSafely())
             : null,

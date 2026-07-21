@@ -1,4 +1,5 @@
 import 'run_choice_record.dart';
+import 'combat_playtest_metrics.dart';
 import 'run_feedback.dart';
 import 'run_outcome.dart';
 import 'run_result.dart';
@@ -22,11 +23,12 @@ class RunTelemetry {
     this.lastDamageSource,
     this.deathAtSeconds,
     this.feedback,
+    this.combatMetrics = CombatPlaytestMetrics.empty,
   }) : weaponKillCounts = Map.unmodifiable(weaponKillCounts),
        weaponDamageTotals = Map.unmodifiable(weaponDamageTotals),
        choices = List.unmodifiable(choices);
 
-  static const currentSchemaVersion = 1;
+  static const currentSchemaVersion = 2;
 
   final int schemaVersion;
   final String runId;
@@ -45,6 +47,7 @@ class RunTelemetry {
   final String? lastDamageSource;
   final int? deathAtSeconds;
   final RunFeedback? feedback;
+  final CombatPlaytestMetrics combatMetrics;
 
   RunTelemetry copyWith({RunFeedback? feedback}) {
     return RunTelemetry(
@@ -65,6 +68,7 @@ class RunTelemetry {
       lastDamageSource: lastDamageSource,
       deathAtSeconds: deathAtSeconds,
       feedback: feedback ?? this.feedback,
+      combatMetrics: combatMetrics,
     );
   }
 
@@ -91,6 +95,7 @@ class RunTelemetry {
       totalDamageTaken: result.totalDamageTaken,
       lastDamageSource: result.lastDamageSource,
       deathAtSeconds: result.deathAtSeconds,
+      combatMetrics: result.combatMetrics,
     );
   }
 
@@ -105,18 +110,19 @@ class RunTelemetry {
     'level': level,
     'kills': kills,
     'bossDefeated': bossDefeated,
-    'weaponKillCounts': weaponKillCounts,
-    'weaponDamageTotals': weaponDamageTotals,
+    'weaponKillCounts': _sortedTelemetryMap(weaponKillCounts),
+    'weaponDamageTotals': _sortedTelemetryMap(weaponDamageTotals),
     'choices': choices.map((choice) => choice.toJson()).toList(),
     'totalDamageTaken': totalDamageTaken,
     'lastDamageSource': lastDamageSource,
     'deathAtSeconds': deathAtSeconds,
     'feedback': feedback?.toJson(),
+    'combatMetrics': combatMetrics.toJson(),
   };
 
   factory RunTelemetry.fromJson(Map<String, dynamic> json) {
     final schemaVersion = json['schemaVersion'];
-    if (schemaVersion != currentSchemaVersion) {
+    if (schemaVersion != 1 && schemaVersion != currentSchemaVersion) {
       throw FormatException('Unsupported run telemetry schema: $schemaVersion');
     }
 
@@ -124,6 +130,9 @@ class RunTelemetry {
     final outcome = _parseOutcome(outcomeName);
 
     try {
+      if (schemaVersion == currentSchemaVersion) {
+        _requireSchemaTwoFields(json);
+      }
       return RunTelemetry(
         schemaVersion: schemaVersion as int,
         runId: json['runId'] as String,
@@ -138,15 +147,27 @@ class RunTelemetry {
         weaponKillCounts: Map<String, int>.from(
           json['weaponKillCounts'] as Map,
         ),
-        weaponDamageTotals: _doubleMap(json['weaponDamageTotals']),
-        choices: _choiceList(json['choices']),
-        totalDamageTaken: (json['totalDamageTaken'] as num?)?.toDouble() ?? 0,
+        weaponDamageTotals: schemaVersion == currentSchemaVersion
+            ? _requiredDoubleMap(json['weaponDamageTotals'])
+            : _doubleMap(json['weaponDamageTotals']),
+        choices: schemaVersion == currentSchemaVersion
+            ? _requiredChoiceList(json['choices'])
+            : _choiceList(json['choices']),
+        totalDamageTaken: schemaVersion == currentSchemaVersion
+            ? (json['totalDamageTaken'] as num).toDouble()
+            : (json['totalDamageTaken'] as num?)?.toDouble() ?? 0,
         lastDamageSource: json['lastDamageSource'] as String?,
         deathAtSeconds: json['deathAtSeconds'] as int?,
         feedback: _feedback(json['feedback']),
+        combatMetrics: schemaVersion == 1
+            ? CombatPlaytestMetrics.empty
+            : CombatPlaytestMetrics.fromJson(json['combatMetrics']),
       );
     } on Object catch (error) {
-      throw FormatException('Invalid run telemetry schema 1 payload', error);
+      throw FormatException(
+        'Invalid run telemetry schema $schemaVersion payload',
+        error,
+      );
     }
   }
 
@@ -173,6 +194,13 @@ class RunTelemetry {
     });
   }
 
+  static Map<String, double> _requiredDoubleMap(Object? value) {
+    if (value == null) {
+      throw const FormatException('Missing weapon damage totals');
+    }
+    return _doubleMap(value);
+  }
+
   static List<RunChoiceRecord> _choiceList(Object? value) {
     if (value == null) return const [];
     if (value is! List) {
@@ -187,6 +215,28 @@ class RunTelemetry {
     }).toList();
   }
 
+  static List<RunChoiceRecord> _requiredChoiceList(Object? value) {
+    if (value == null) throw const FormatException('Missing run choice list');
+    return _choiceList(value);
+  }
+
+  static void _requireSchemaTwoFields(Map<String, dynamic> json) {
+    const requiredFields = <String>{
+      'weaponDamageTotals',
+      'choices',
+      'totalDamageTaken',
+      'lastDamageSource',
+      'deathAtSeconds',
+      'feedback',
+      'combatMetrics',
+    };
+    for (final field in requiredFields) {
+      if (!json.containsKey(field)) {
+        throw FormatException('Missing schema 2 field: $field');
+      }
+    }
+  }
+
   static RunFeedback? _feedback(Object? value) {
     if (value == null) return null;
     if (value is! Map) {
@@ -195,3 +245,7 @@ class RunTelemetry {
     return RunFeedback.fromJson(Map<String, dynamic>.from(value));
   }
 }
+
+Map<String, T> _sortedTelemetryMap<T>(Map<String, T> source) => {
+  for (final key in source.keys.toList()..sort()) key: source[key] as T,
+};

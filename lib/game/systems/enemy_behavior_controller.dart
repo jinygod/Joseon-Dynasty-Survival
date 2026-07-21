@@ -3,7 +3,7 @@ import 'package:flame/components.dart';
 import '../content/enemy_behavior_definitions.dart';
 import '../content/ids.dart';
 
-enum EnemyAttackKind { dive, thrust, dash, shockwave, scream }
+enum EnemyAttackKind { dive, thrust, dash, shockwave, scream, projectile }
 
 class EnemyAttackRequest {
   EnemyAttackRequest({
@@ -24,11 +24,13 @@ class EnemyBehaviorTick {
   const EnemyBehaviorTick({
     required this.phase,
     required this.movementMultiplier,
+    required this.movementDirection,
     this.attack,
   });
 
   final EnemyBehaviorPhase phase;
   final double movementMultiplier;
+  final Vector2 movementDirection;
   final EnemyAttackRequest? attack;
 }
 
@@ -50,12 +52,15 @@ class EnemyBehaviorController {
   }) {
     final safeDt = !dt.isFinite || dt < 0 ? 0.0 : dt.clamp(0, .05).toDouble();
     final attackKind = _attackKindFor(profile.kind);
+    final towardTarget = _directionFrom(origin, target);
+    final movement = _movementFor(towardTarget, origin.distanceTo(target));
     if (attackKind == null) {
       phase = EnemyBehaviorPhase.tracking;
       phaseElapsed += safeDt;
-      return const EnemyBehaviorTick(
+      return EnemyBehaviorTick(
         phase: EnemyBehaviorPhase.tracking,
         movementMultiplier: 1,
+        movementDirection: towardTarget,
       );
     }
 
@@ -63,7 +68,8 @@ class EnemyBehaviorController {
     EnemyAttackRequest? attack;
     switch (phase) {
       case EnemyBehaviorPhase.tracking:
-        if (phaseElapsed >= profile.cooldownSeconds) {
+        if (profile.kind == EnemyBehaviorKind.ranged ||
+            phaseElapsed >= profile.cooldownSeconds) {
           _enter(EnemyBehaviorPhase.warning);
           _lockDirection(origin, target);
         }
@@ -98,7 +104,12 @@ class EnemyBehaviorController {
       phase: phase,
       movementMultiplier: phase == EnemyBehaviorPhase.active
           ? profile.movementMultiplier
-          : 1,
+          : movement.$1,
+      movementDirection:
+          phase == EnemyBehaviorPhase.active &&
+              profile.kind != EnemyBehaviorKind.ranged
+          ? lockedDirection.clone()
+          : movement.$2,
       attack: attack,
     );
   }
@@ -125,6 +136,18 @@ class EnemyBehaviorController {
         direction: lockedDirection,
         range: profile.range,
       );
+
+  (double, Vector2) _movementFor(Vector2 towardTarget, double distance) {
+    if (profile.kind != EnemyBehaviorKind.ranged) return (1, towardTarget);
+    if (distance < profile.minimumRange) return (-1, -towardTarget);
+    if (distance <= profile.preferredRange) return (0, Vector2.zero());
+    return (1, towardTarget);
+  }
+}
+
+Vector2 _directionFrom(Vector2 origin, Vector2 target) {
+  final direction = target - origin;
+  return direction.length2 == 0 ? Vector2(1, 0) : direction.normalized();
 }
 
 EnemyAttackKind? _attackKindFor(EnemyBehaviorKind kind) => switch (kind) {
@@ -134,6 +157,7 @@ EnemyAttackKind? _attackKindFor(EnemyBehaviorKind kind) => switch (kind) {
   EnemyBehaviorKind.doubleDash => EnemyAttackKind.dash,
   EnemyBehaviorKind.shockwave => EnemyAttackKind.shockwave,
   EnemyBehaviorKind.scream => EnemyAttackKind.scream,
+  EnemyBehaviorKind.ranged => EnemyAttackKind.projectile,
   EnemyBehaviorKind.chase ||
   EnemyBehaviorKind.swarm ||
   EnemyBehaviorKind.tank ||

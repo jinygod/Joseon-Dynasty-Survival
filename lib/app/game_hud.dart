@@ -66,31 +66,11 @@ class _GameHudState extends State<GameHud> {
                   ),
                 ),
               ),
-            if (widget.source.bossHealthFraction case final health?)
-              Positioned(
-                top: 8,
-                left: 160,
-                right: 160,
-                child: BossHealthBar(
-                  name: widget.source.bossName ?? AppStrings.genericBoss,
-                  healthFraction: health,
-                  uiScale: scale,
-                ),
-              ),
             Positioned(
-              top: widget.source.bossHealthFraction == null ? 12 : 62,
+              top: widget.source.bossHealthFraction == null ? 12 : 8,
               left: 16,
               right: 16,
-              child: _StatusBar(source: widget.source, uiScale: scale),
-            ),
-            Positioned(
-              top: widget.source.bossHealthFraction == null ? 68 : 118,
-              right: 16,
-              width: 220 * scale,
-              child: _WeaponList(
-                labels: widget.source.weaponLevelLabels,
-                uiScale: scale,
-              ),
+              child: _TopHud(source: widget.source, uiScale: scale),
             ),
             Positioned(
               left: 18,
@@ -119,6 +99,132 @@ class _GameHudState extends State<GameHud> {
                 ),
               ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TopHud extends StatelessWidget {
+  const _TopHud({required this.source, required this.uiScale});
+
+  final GameHudSource source;
+  final double uiScale;
+
+  @override
+  Widget build(BuildContext context) {
+    final notice = source.combatNotice;
+    final showNotice =
+        notice != null && source.combatNoticeSecondsRemaining > 0;
+    final showStreak = source.killStreak > 1;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (source.bossHealthFraction case final health?) ...[
+          Center(
+            child: FractionallySizedBox(
+              key: const Key('boss-warning'),
+              widthFactor: 0.65,
+              child: BossHealthBar(
+                name: source.bossName ?? AppStrings.genericBoss,
+                healthFraction: health,
+                uiScale: uiScale,
+              ),
+            ),
+          ),
+          SizedBox(height: 8 * uiScale),
+        ],
+        KeyedSubtree(
+          key: const Key('hud-status'),
+          child: _StatusBar(source: source, uiScale: uiScale),
+        ),
+        if (showNotice) ...[
+          SizedBox(height: 8 * uiScale),
+          Semantics(
+            key: const Key('combat-notice'),
+            liveRegion: true,
+            label: '전투 알림 $notice',
+            excludeSemantics: true,
+            child: Center(
+              child: _CombatNotice(label: notice, uiScale: uiScale),
+            ),
+          ),
+        ],
+        if (showStreak) ...[
+          SizedBox(height: 4 * uiScale),
+          Semantics(
+            key: const Key('kill-streak'),
+            liveRegion: true,
+            label: '${source.killStreak} 연속 처치',
+            excludeSemantics: true,
+            child: Text(
+              '${source.killStreak} 연속 처치',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: const Color(0xffffd166),
+                fontSize: 13 * uiScale,
+                fontWeight: FontWeight.w800,
+                shadows: const [
+                  Shadow(color: Color(0xff101820), blurRadius: 3),
+                ],
+              ),
+            ),
+          ),
+        ],
+        if (source.weaponLevelLabels.isNotEmpty) ...[
+          SizedBox(height: 8 * uiScale),
+          Align(
+            alignment: Alignment.topRight,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: 220 * uiScale),
+              child: KeyedSubtree(
+                key: const Key('weapon-list'),
+                child: _WeaponList(
+                  labels: source.weaponLevelLabels,
+                  uiScale: uiScale,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _CombatNotice extends StatelessWidget {
+  const _CombatNotice({required this.label, required this.uiScale});
+
+  final String label;
+  final double uiScale;
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: 240 * uiScale),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: const Color(0xff2f1b25).withValues(alpha: 0.9),
+          border: Border.all(color: const Color(0xffffd166)),
+          borderRadius: BorderRadius.circular(8 * uiScale),
+        ),
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: 14 * uiScale,
+            vertical: 7 * uiScale,
+          ),
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: const Color(0xfffff1b8),
+              fontSize: 16 * uiScale,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
         ),
       ),
     );

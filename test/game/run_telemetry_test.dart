@@ -1,12 +1,17 @@
+// ignore_for_file: prefer_const_literals_to_create_immutables
+
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/models/run_choice_record.dart';
+import 'package:pixel_survivor/game/models/combat_playtest_metrics.dart';
 import 'package:pixel_survivor/game/models/run_feedback.dart';
 import 'package:pixel_survivor/game/models/run_outcome.dart';
 import 'package:pixel_survivor/game/models/run_result.dart';
 import 'package:pixel_survivor/game/models/run_telemetry.dart';
 
 void main() {
-  test('run telemetry JSON round trip preserves schema one fields', () {
+  test('run telemetry JSON round trip preserves schema two fields', () {
     final telemetry = RunTelemetry(
       runId: 'run-20260714-001',
       appVersion: '0.1.0+1',
@@ -144,6 +149,166 @@ void main() {
     expect(decoded.lastDamageSource, isNull);
     expect(decoded.deathAtSeconds, isNull);
     expect(decoded.feedback, isNull);
+    expect(decoded.combatMetrics, CombatPlaytestMetrics.empty);
+  });
+
+  test('schema two telemetry round trips combat playtest metrics', () {
+    final metrics = CombatPlaytestMetrics(
+      weaponOfferCounts: {'hwando_slash': 2},
+      weaponSelectionCounts: {'hwando_slash': 1},
+      weaponLevelTimes: {
+        'hwando_slash': {2: 20},
+      },
+      firstMasterAtSeconds: {'hwando_slash': 190},
+      masterKillsInTenSeconds: {'hwando_slash': 8},
+      firstSynergyAtSeconds: {'sealing_slash': 60},
+      synergyDamageTotals: {'sealing_slash': 120},
+      enemyRoleDamageToPlayer: {'swarm': 20},
+      enemyRoleDeathCauses: {'tank': 1},
+      averageEnemyCount: 23.5,
+      maxEnemyCount: 42,
+      lateAverageFps: 58.5,
+      lateMinFps: 41,
+      masteredWeaponIds: {'hwando_slash'},
+      isRepeatRun: true,
+    );
+    final telemetry = RunTelemetry(
+      runId: 'combat-run',
+      appVersion: '0.1.0+1',
+      startedAtUtc: DateTime.utc(2026, 7, 14),
+      endedAtUtc: DateTime.utc(2026, 7, 14, 0, 5),
+      outcome: RunOutcome.victory,
+      survivalSeconds: 300,
+      level: 10,
+      kills: 400,
+      bossDefeated: true,
+      weaponKillCounts: const {},
+      combatMetrics: metrics,
+    );
+
+    final decoded = RunTelemetry.fromJson(telemetry.toJson());
+
+    expect(decoded.schemaVersion, 2);
+    expect(decoded.combatMetrics, metrics);
+    expect(decoded.combatMetrics.hashCode, metrics.hashCode);
+  });
+
+  test('schema two writes combat metric maps in stable key order', () {
+    final metrics = CombatPlaytestMetrics(
+      weaponOfferCounts: {'z': 1, 'a': 2},
+      weaponSelectionCounts: {},
+      weaponLevelTimes: {
+        'z': {3: 30, 1: 10},
+        'a': {2: 20},
+      },
+      firstMasterAtSeconds: {},
+      masterKillsInTenSeconds: {},
+      firstSynergyAtSeconds: {},
+      synergyDamageTotals: {},
+      enemyRoleDamageToPlayer: {},
+      enemyRoleDeathCauses: {},
+      averageEnemyCount: 0,
+      maxEnemyCount: 0,
+      lateAverageFps: 0,
+      lateMinFps: 0,
+      masteredWeaponIds: {'z', 'a'},
+      isRepeatRun: false,
+    );
+    final json = metrics.toJson();
+
+    expect((json['weaponOfferCounts'] as Map).keys, ['a', 'z']);
+    expect((json['weaponLevelTimes'] as Map).keys, ['a', 'z']);
+    expect(((json['weaponLevelTimes'] as Map)['z'] as Map).keys, ['1', '3']);
+    expect(json['masteredWeaponIds'], ['a', 'z']);
+  });
+
+  test('semantically equal schema two payloads serialize identically', () {
+    RunTelemetry telemetry({required bool reverse}) => RunTelemetry(
+      runId: 'deterministic-run',
+      appVersion: '0.1.0+1',
+      startedAtUtc: DateTime.utc(2026, 7, 14),
+      endedAtUtc: DateTime.utc(2026, 7, 14, 0, 5),
+      outcome: RunOutcome.victory,
+      survivalSeconds: 300,
+      level: 10,
+      kills: 3,
+      bossDefeated: true,
+      weaponKillCounts: reverse ? {'z': 1, 'a': 2} : {'a': 2, 'z': 1},
+      weaponDamageTotals: reverse ? {'z': 10, 'a': 20} : {'a': 20, 'z': 10},
+      combatMetrics: CombatPlaytestMetrics(
+        weaponOfferCounts: reverse ? {'z': 1, 'a': 2} : {'a': 2, 'z': 1},
+        weaponSelectionCounts: const {},
+        weaponLevelTimes: const {},
+        firstMasterAtSeconds: const {},
+        masterKillsInTenSeconds: const {},
+        firstSynergyAtSeconds: const {},
+        synergyDamageTotals: const {},
+        enemyRoleDamageToPlayer: const {},
+        enemyRoleDeathCauses: const {},
+        averageEnemyCount: 0,
+        maxEnemyCount: 0,
+        lateAverageFps: 0,
+        lateMinFps: 0,
+        masteredWeaponIds: reverse ? {'z', 'a'} : {'a', 'z'},
+        isRepeatRun: false,
+      ),
+    );
+
+    expect(
+      jsonEncode(telemetry(reverse: false).toJson()),
+      jsonEncode(telemetry(reverse: true).toJson()),
+    );
+  });
+
+  test('schema two requires complete combat playtest metrics', () {
+    final json = RunTelemetry(
+      runId: 'invalid-combat-run',
+      appVersion: '0.1.0+1',
+      startedAtUtc: DateTime.utc(2026, 7, 14),
+      endedAtUtc: DateTime.utc(2026, 7, 14, 0, 5),
+      outcome: RunOutcome.victory,
+      survivalSeconds: 300,
+      level: 10,
+      kills: 400,
+      bossDefeated: true,
+      weaponKillCounts: const {},
+    ).toJson()..remove('combatMetrics');
+
+    expect(() => RunTelemetry.fromJson(json), throwsFormatException);
+  });
+
+  test('schema two requires every top-level field including nullable ones', () {
+    final json = RunTelemetry(
+      runId: 'incomplete-run',
+      appVersion: '0.1.0+1',
+      startedAtUtc: DateTime.utc(2026, 7, 14),
+      endedAtUtc: DateTime.utc(2026, 7, 14, 0, 5),
+      outcome: RunOutcome.defeat,
+      survivalSeconds: 100,
+      level: 4,
+      kills: 50,
+      bossDefeated: false,
+      weaponKillCounts: const {},
+    ).toJson()..remove('feedback');
+
+    expect(() => RunTelemetry.fromJson(json), throwsFormatException);
+  });
+
+  test('schema two requires every schema two field', () {
+    final json = RunTelemetry(
+      runId: 'invalid-schema-two-run',
+      appVersion: '0.1.0+1',
+      startedAtUtc: DateTime.utc(2026, 7, 14),
+      endedAtUtc: DateTime.utc(2026, 7, 14, 0, 5),
+      outcome: RunOutcome.victory,
+      survivalSeconds: 300,
+      level: 10,
+      kills: 400,
+      bossDefeated: true,
+      weaponKillCounts: const {},
+    ).toJson()..remove('choices');
+
+    expect(() => RunTelemetry.fromJson(json), throwsFormatException);
   });
 
   test('run feedback validates trims and round trips', () {

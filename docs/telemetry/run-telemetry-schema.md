@@ -2,11 +2,11 @@
 
 Run telemetry is local playtest data. It is separate from `SaveState`, does not affect unlock progression, and is not uploaded to a server.
 
-## Schema 1
+## Schema 2
 
 | Field | JSON type | Meaning |
 | --- | --- | --- |
-| `schemaVersion` | integer | Exact telemetry schema version; currently `1`. |
+| `schemaVersion` | integer | Exact telemetry schema version; currently `2`. |
 | `runId` | string | Unique identifier for one run. |
 | `appVersion` | string | App version and build number used for the run. |
 | `startedAtUtc` | ISO-8601 string | Run start time normalized to UTC. |
@@ -22,8 +22,43 @@ Run telemetry is local playtest data. It is separate from `SaveState`, does not 
 | `totalDamageTaken` | number | Effective player health lost during the run. |
 | `lastDamageSource` | string or null | Enemy/content ID responsible for the latest damage. |
 | `deathAtSeconds` | integer or null | First lethal-damage time, or null for a surviving player. |
-| `feedback` | object or null | Fun 1–5, difficulty 1–5, retry intent, and an optional comment up to 200 characters. |
+| `feedback` | object or null | Fun and difficulty ratings, retry intent, and an optional comment up to 200 characters. |
+| `combatMetrics` | object | Required immutable combat-playtest measurements described below. |
 
-Core fields through `weaponKillCounts` are required. Extended playtest fields are backward-compatible additions: absent maps/lists decode empty, absent damage decodes to zero, and absent nullable fields decode to null. Unknown or malformed schemas throw `FormatException`; the telemetry repository boundary isolates that failure from progression saving and the result screen.
+Every schema 2 field is required, including nullable fields. Unknown versions and malformed or incomplete schema 2 payloads throw `FormatException`; the telemetry repository boundary isolates that failure from progression saving and the result screen.
+
+### `combatMetrics`
+
+| Field | JSON type | Meaning |
+| --- | --- | --- |
+| `weaponOfferCounts` | object | Weapon ID to number of generated level-up offers. |
+| `weaponSelectionCounts` | object | Weapon ID to number of selected weapon levels. |
+| `weaponLevelTimes` | object | Weapon ID to an object mapping level numbers to first selection time in seconds. |
+| `firstMasterAtSeconds` | object | Weapon ID to the first time level 6 (`master`) was selected. For legacy/runtime-injected runs that did not record the selection, the first mastery activation is used as a compatibility fallback. |
+| `masterKillsInTenSeconds` | object | Weapon ID to kills attributed during the ten seconds following the first actual mastery attack activation. Selecting level 6 does not start this window. |
+| `firstSynergyAtSeconds` | object | Synergy ID to first effective-damage time. |
+| `synergyDamageTotals` | object | Synergy ID to total effective damage. |
+| `enemyRoleDamageToPlayer` | object | Enemy behavior-profile ID to effective player damage. |
+| `enemyRoleDeathCauses` | object | Enemy behavior-profile ID to lethal-hit count. |
+| `averageEnemyCount` | number | Mean live-enemy count sampled once per game update. |
+| `maxEnemyCount` | integer | Maximum sampled live-enemy count. |
+| `lateAverageFps` | number | Mean FPS from raw frame durations at or after 180 seconds. |
+| `lateMinFps` | number | Minimum FPS from raw frame durations at or after 180 seconds. |
+| `masteredWeaponIds` | array | Weapon IDs that reached level 6 (`master`). A run ending before the next weapon fire still counts as mastered. Legacy/runtime-injected activation without a recorded selection is also accepted. |
+| `isRepeatRun` | boolean | Whether the playtest session marked the run as a repeat run. Task 10 defaults this to false; session injection is handled separately. |
+
+Frame durations are recorded only while a run is actively simulating and
+before combat simulation clamps `dt`, so paused level-up and finished-run
+updates cannot change density or late FPS. Map keys (including top-level
+weapon kill/damage maps) and mastered weapon IDs are written in stable
+ascending order, making semantically equivalent schema-2 payloads serialize
+identically.
+
+Public `CombatPlaytestMetrics` construction defensively copies every map,
+nested weapon-level map, and set. The shared `empty` value remains const.
+
+## Schema 1 compatibility
+
+Schema 1 remains readable. Its core fields through `weaponKillCounts` are required. Its extended fields are backward-compatible additions: absent maps/lists decode empty, absent damage decodes to zero, and absent nullable fields decode to null. Because schema 1 has no `combatMetrics`, it always loads as `CombatPlaytestMetrics.empty`.
 
 Feedback is local-only and must not contain personal information. It is added to the matching stored `runId` after the tester submits the result-screen form.

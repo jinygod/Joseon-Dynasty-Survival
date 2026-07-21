@@ -8,19 +8,20 @@ import 'package:pixel_survivor/game/components/player_component.dart';
 import 'package:pixel_survivor/game/components/projectile_component.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
 import 'package:pixel_survivor/game/content/ids.dart';
+import 'package:pixel_survivor/game/combat/attack_spec.dart';
 import 'package:pixel_survivor/game/systems/weapon_system.dart';
 
 void main() {
   group('WeaponSystem', () {
-    test('hwando_slash cannot upgrade beyond max level 5', () {
+    test('hwando_slash cannot upgrade beyond max level 6', () {
       final system = WeaponSystem();
       const unlockedWeaponIds = {hwandoSlash};
 
-      for (var i = 0; i < 6; i += 1) {
+      for (var i = 0; i < 7; i += 1) {
         system.upgrade(hwandoSlash, unlockedWeaponIds);
       }
 
-      expect(system.levelOf(hwandoSlash), 5);
+      expect(system.levelOf(hwandoSlash), 6);
       expect(system.canUpgrade(hwandoSlash, unlockedWeaponIds), isFalse);
     });
 
@@ -94,14 +95,15 @@ void main() {
         8,
       );
       expect(
-        result.damageEvents
-            .singleWhere((event) => event.weaponId == talismanThrow)
+        result.attackInstances
+            .singleWhere((attack) => attack.spec.id == 'talisman_explosion')
+            .spec
             .damage,
         closeTo(9.2, 0.0001),
       );
     });
 
-    test('level five hwando creates two arc attacks with knockback', () {
+    test('level five hwando creates timed arc attacks with knockback', () {
       final enemy = EnemyComponent(
         enemyId: 'bandit',
         maxHealth: 100,
@@ -110,17 +112,192 @@ void main() {
         position: Vector2(20, 0),
       );
 
-      final result = WeaponSystem(
+      final system = WeaponSystem(
         initialLevels: const {hwandoSlash: 5},
         random: Random(1),
-      ).tick(dt: 1, origin: Vector2.zero(), enemies: [enemy]);
+      );
+      final results = [
+        system.tick(dt: 1, origin: Vector2.zero(), enemies: [enemy]),
+        system.tick(dt: .05, origin: Vector2.zero(), enemies: [enemy]),
+        system.tick(dt: .05, origin: Vector2.zero(), enemies: [enemy]),
+      ];
+      final arcs = results.expand((result) => result.meleeArcs).toList();
+      final damageEvents = results
+          .expand((result) => result.damageEvents)
+          .toList();
 
-      expect(result.meleeArcs, hasLength(2));
-      expect(result.damageEvents, hasLength(2));
-      expect(result.damageEvents.every((event) => event.knockback > 0), isTrue);
+      expect(arcs, hasLength(2));
+      expect(damageEvents, hasLength(2));
+      expect(damageEvents.every((event) => event.knockback > 0), isTrue);
     });
 
-    test('talisman chains to unique nearby targets', () {
+    test('hwando freezes the nearest in-range enemy direction', () {
+      final north = EnemyComponent(
+        enemyId: 'north',
+        maxHealth: 100,
+        moveSpeed: 0,
+        damage: 1,
+        position: Vector2(0, -20),
+      );
+      final east = EnemyComponent(
+        enemyId: 'east',
+        maxHealth: 100,
+        moveSpeed: 0,
+        damage: 1,
+        position: Vector2(30, 0),
+      );
+
+      final result = WeaponSystem(initialLevels: const {hwandoSlash: 1}).tick(
+        dt: 1,
+        origin: Vector2.zero(),
+        enemies: [east, north],
+        hwandoFallbackDirection: Vector2(-1, 0),
+      );
+
+      expect(result.hwandoDirection, Vector2(0, -1));
+      expect(result.meleeArcs.single.direction, result.hwandoDirection);
+      expect(result.attackInstances.single.direction, result.hwandoDirection);
+      expect(result.attackInstances.single.spec.shape, AttackShape.sector);
+    });
+
+    test(
+      'hwando uses fallback when only dead or out-of-range enemies exist',
+      () {
+        final dead = EnemyComponent(
+          enemyId: 'dead',
+          maxHealth: 1,
+          moveSpeed: 0,
+          damage: 1,
+          position: Vector2(2, 0),
+        )..takeDamage(1);
+        final outside = EnemyComponent(
+          enemyId: 'outside',
+          maxHealth: 100,
+          moveSpeed: 0,
+          damage: 1,
+          position: Vector2(70, 0),
+        );
+
+        final result = WeaponSystem(initialLevels: const {hwandoSlash: 1}).tick(
+          dt: 1,
+          origin: Vector2.zero(),
+          enemies: [dead, outside],
+          hwandoFallbackDirection: Vector2(0, -4),
+        );
+
+        expect(result.hwandoDirection, Vector2(0, -1));
+        expect(result.meleeArcs, hasLength(1));
+        expect(result.damageEvents, isEmpty);
+      },
+    );
+
+    test(
+      'dead and out-of-range targets do not redirect queued hwando stages',
+      () {
+        final north = EnemyComponent(
+          enemyId: 'north',
+          maxHealth: 1,
+          moveSpeed: 0,
+          damage: 1,
+          position: Vector2(0, -20),
+        );
+        final outside = EnemyComponent(
+          enemyId: 'outside',
+          maxHealth: 100,
+          moveSpeed: 0,
+          damage: 1,
+          position: Vector2(200, 0),
+        );
+        final system = WeaponSystem(initialLevels: const {hwandoSlash: 3});
+
+        final first = system.tick(
+          dt: 1,
+          origin: Vector2.zero(),
+          enemies: [north, outside],
+          hwandoFallbackDirection: Vector2(-1, 0),
+        );
+        north.takeDamage(1);
+        system.tick(
+          dt: .05,
+          origin: Vector2.zero(),
+          enemies: [north, outside],
+          hwandoFallbackDirection: Vector2(-1, 0),
+        );
+        final second = system.tick(
+          dt: .05,
+          origin: Vector2.zero(),
+          enemies: [north, outside],
+          hwandoFallbackDirection: Vector2(-1, 0),
+        );
+
+        expect(
+          first.attackInstances.single.direction.x,
+          closeTo(-sqrt1_2, 0.000001),
+        );
+        expect(
+          first.attackInstances.single.direction.y,
+          closeTo(-sqrt1_2, 0.000001),
+        );
+        expect(
+          second.attackInstances.single.direction.x,
+          closeTo(sqrt1_2, 0.000001),
+        );
+        expect(
+          second.attackInstances.single.direction.y,
+          closeTo(-sqrt1_2, 0.000001),
+        );
+      },
+    );
+
+    test('hwando can slash along fallback when no enemy exists', () {
+      final result = WeaponSystem(initialLevels: const {hwandoSlash: 1}).tick(
+        dt: 1,
+        origin: Vector2.zero(),
+        enemies: const [],
+        hwandoFallbackDirection: Vector2(-1, 0),
+      );
+
+      expect(result.firedWeaponIds, [hwandoSlash]);
+      expect(result.hwandoDirection, Vector2(-1, 0));
+      expect(result.meleeArcs.single.direction, Vector2(-1, 0));
+    });
+
+    test('hwando effect angle and damage cone share one direction', () {
+      final inside = EnemyComponent(
+        enemyId: 'inside',
+        maxHealth: 100,
+        moveSpeed: 0,
+        damage: 1,
+        position: Vector2(20, 20),
+      );
+      final outside = EnemyComponent(
+        enemyId: 'outside',
+        maxHealth: 100,
+        moveSpeed: 0,
+        damage: 1,
+        position: Vector2(-20, -20),
+      );
+
+      final result = WeaponSystem(
+        initialLevels: const {hwandoSlash: 1},
+      ).tick(dt: 1, origin: Vector2.zero(), enemies: [inside, outside]);
+      final arc = result.meleeArcs.single;
+      final expectedTargets = [
+        inside,
+        outside,
+      ].where(arc.containsEnemy).toSet();
+
+      expect(
+        arc.facingAngle,
+        closeTo(atan2(arc.direction.y, arc.direction.x), 1e-9),
+      );
+      expect(
+        result.damageEvents.map((event) => event.target).toSet(),
+        expectedTargets,
+      );
+    });
+
+    test('talisman attaches to unique nearby targets before exploding', () {
       final enemies = List.generate(
         3,
         (index) => EnemyComponent(
@@ -132,15 +309,83 @@ void main() {
         ),
       );
 
-      final result = WeaponSystem(
+      final system = WeaponSystem(
         initialLevels: const {talismanThrow: 3},
         random: Random(1),
-      ).tick(dt: 2, origin: Vector2.zero(), enemies: enemies);
+      );
+      final attached = system.tick(
+        dt: 2,
+        origin: Vector2.zero(),
+        enemies: enemies,
+      );
 
+      expect(attached.damageEvents, isEmpty);
       expect(
-        result.damageEvents.map((event) => event.target).toSet(),
+        system.attachedTalismans.map((seal) => seal.target).toSet(),
         hasLength(3),
       );
+
+      final exploded = system.tick(
+        dt: .6,
+        origin: Vector2.zero(),
+        enemies: enemies,
+      );
+      expect(exploded.attackInstances, hasLength(3));
+    });
+
+    test('talisman mastery exposes at most three five-color wards', () {
+      final enemies = List.generate(
+        12,
+        (index) => EnemyComponent(
+          enemyId: 'enemy_$index',
+          maxHealth: 100,
+          moveSpeed: 0,
+          damage: 1,
+          position: Vector2((index ~/ 3) * 100.0, (index % 3) * 3.0),
+        ),
+      );
+
+      final result = WeaponSystem(
+        initialLevels: const {talismanThrow: 6},
+      ).tick(dt: 2, origin: Vector2.zero(), enemies: enemies);
+
+      expect(result.fiveColorWards, hasLength(3));
+      expect(
+        result.fiveColorWards.every(
+          (ward) => ward.attack.spec.presentation == AttackPresentation.master,
+        ),
+        isTrue,
+      );
+    });
+
+    test('talisman critical chance is frozen through WeaponSystem', () {
+      final target = EnemyComponent(
+        enemyId: 'bandit',
+        maxHealth: 100,
+        moveSpeed: 0,
+        damage: 1,
+        position: Vector2(20, 0),
+      );
+      final system = WeaponSystem(
+        initialLevels: const {talismanThrow: 3},
+        random: Random(1),
+      );
+      system.tick(
+        dt: 2,
+        origin: Vector2.zero(),
+        enemies: [target],
+        criticalChance: 1,
+      );
+
+      final result = system.tick(
+        dt: .6,
+        origin: Vector2.zero(),
+        enemies: [target],
+        criticalChance: 0,
+      );
+
+      expect(result.attackInstances.single.isCritical, isTrue);
+      expect(result.attackInstances.single.spec.damage, 12);
     });
 
     test('bomb creates delayed area attack instead of immediate damage', () {

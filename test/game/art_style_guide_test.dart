@@ -22,6 +22,57 @@ void main() {
     expect(JoseonArtStyle.integerScales, [1, 2, 3, 4]);
   });
 
+  test('combat slice character rendering contract is fixed', () {
+    expect(JoseonArtStyle.characterHeadRatioMin, 3);
+    expect(JoseonArtStyle.characterHeadRatioMax, 4);
+    expect(JoseonArtStyle.cellShadeStepsMin, 2);
+    expect(JoseonArtStyle.cellShadeStepsMax, 3);
+    expect(JoseonArtStyle.outlineStyle, 'bold_clean');
+    expect(JoseonArtStyle.allowsBulkFinalArt, isFalse);
+    expect(JoseonArtStyle.temporaryActorVisualSizes, {
+      'player': 108,
+      'normalEnemy': 54,
+      'eliteEnemy': 81,
+      'boss': 126,
+    });
+  });
+
+  test('Joseon character and monster vocabularies are explicit', () {
+    expect(JoseonArtStyle.characterDesignCues.keys.toSet(), {
+      'hwandoSwordsman',
+      'mudang',
+      'musketeer',
+      'dokkaebiHunter',
+    });
+    expect(JoseonArtStyle.monsterSilhouetteCues.keys.toSet(), {
+      'littleDokkaebi',
+      'jarGhost',
+      'jangseungGhost',
+      'sakkatSpecter',
+      'fireDokkaebi',
+      'eggGhost',
+      'underworldMinion',
+      'tigerDemon',
+      'plagueGhost',
+      'fallenOfficer',
+    });
+    expect(
+      JoseonArtStyle.characterDesignCues.values.every((cue) => cue.isNotEmpty),
+      isTrue,
+    );
+    expect(
+      JoseonArtStyle.monsterSilhouetteCues.values.every(
+        (cue) => cue.isNotEmpty,
+      ),
+      isTrue,
+    );
+    expect(JoseonArtStyle.forbiddenDesignCues, [
+      'japanese_samurai_armor',
+      'chinese_wuxia_robes',
+      'copied_commercial_game_assets',
+    ]);
+  });
+
   test('every catalog asset uses an approved native-size suffix', () {
     final paths = <String>[
       ...AssetCatalog.characters.values,
@@ -53,9 +104,9 @@ void main() {
     }
   });
 
-  test('player animation sheet is a 4x4 RGBA grid of 32px frames', () {
+  test('static player art is a 64px RGBA PNG', () {
     final bytes = File(
-      'assets/images/player/rookie_constable_player_32.png',
+      'assets/images/player/exorcist_swordswoman_static_64.png',
     ).readAsBytesSync();
     int readUint32(int offset) =>
         (bytes[offset] << 24) |
@@ -63,8 +114,8 @@ void main() {
         (bytes[offset + 2] << 8) |
         bytes[offset + 3];
 
-    expect(readUint32(16), 128);
-    expect(readUint32(20), 128);
+    expect(readUint32(16), 64);
+    expect(readUint32(20), 64);
     expect(bytes[25], 6, reason: 'PNG must use RGBA color type');
   });
 

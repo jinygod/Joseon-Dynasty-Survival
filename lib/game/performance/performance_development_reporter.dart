@@ -19,6 +19,13 @@ class PerformanceDevelopmentReporter {
       'simulatedDurationSeconds': log.simulatedDurationSeconds,
       'totalFrameCount': log.totalFrameCount,
       'sampleCount': log.sampleCount,
+      'averageActiveEnemies': log.averageActiveEnemies,
+      'maximumActiveEnemies': log.maximumActiveEnemies,
+      'lateFrameSampleCount': log.lateFrameSampleCount,
+      'lateAverageActiveEnemies': log.lateAverageActiveEnemies,
+      'lateMaximumActiveEnemies': log.lateMaximumActiveEnemies,
+      'lateAverageSimulatedFps': log.lateAverageSimulatedFps,
+      'lateMinimumSimulatedFps': log.lateMinimumSimulatedFps,
       'peakFrameStepMicros': log.peakFrameStepMicros,
       'peakHostUpdateLifecycleWallMicros':
           log.peakHostUpdateLifecycleWallMicros,
@@ -37,6 +44,7 @@ class PerformanceDevelopmentReporter {
       'memoryProxyViolationSamples': log.memoryProxyViolationSamples,
       'isWithinPopulationBudget': log.isWithinPopulationBudget,
       'isWithinMemoryProxyBudget': log.isWithinMemoryProxyBudget,
+      'isWithinLateFrameBudget': log.isWithinLateFrameBudget,
     });
   }
 
@@ -55,12 +63,17 @@ class PerformanceDevelopmentReporter {
 - Window: ${log.simulatedDurationSeconds.toStringAsFixed(3)} simulated seconds
 - Frames: ${_withThousands(log.totalFrameCount)} at a peak simulation step of ${log.peakFrameStepMicros} microseconds
 - Samples: ${_withThousands(log.sampleCount)}
+- Average / maximum active enemies: ${log.averageActiveEnemies.toStringAsFixed(2)} / ${log.maximumActiveEnemies}
+- Late raw-frame samples: ${_withThousands(log.lateFrameSampleCount)} after ${GamePerformanceBudget.latePerformanceWindowStartSeconds.toStringAsFixed(0)} simulated seconds
+- Late average / maximum active enemies: ${log.lateAverageActiveEnemies.toStringAsFixed(2)} / ${log.lateMaximumActiveEnemies}
+- Late average / minimum simulated FPS: ${log.lateAverageSimulatedFps.toStringAsFixed(2)} / ${log.lateMinimumSimulatedFps.toStringAsFixed(2)} (minimum ${GamePerformanceBudget.minimumLateSimulatedFps.toStringAsFixed(0)})
 - Peak host test-loop wall time for `game.update` plus lifecycle processing: ${log.peakHostUpdateLifecycleWallMicros} microseconds
 - Peak mounted Flame components: ${log.peakMountedComponentCount}
 - Peak retained production owners: ${log.peakRetainedOwnerCount} (limit ${log.maxRetainedOwners})
 - Peak memory proxy (mounted components + retained owners): ${log.peakMemoryProxyComponents} (limit ${log.maxMemoryProxyComponents})
 - Population budget result: ${log.isWithinPopulationBudget ? 'PASS' : 'FAIL'}
 - Memory-proxy budget result: ${log.isWithinMemoryProxyBudget ? 'PASS' : 'FAIL'}
+- Late raw-frame budget result: ${log.isWithinLateFrameBudget ? 'PASS' : 'FAIL'}
 
 | Population | Peak | Limit |
 | --- | ---: | ---: |

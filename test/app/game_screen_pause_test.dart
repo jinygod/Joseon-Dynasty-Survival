@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/app/game_screen.dart';
+import 'package:pixel_survivor/app/pause_menu_overlay.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
 import 'package:pixel_survivor/game/content/stage_definitions.dart';
 import 'package:pixel_survivor/game/audio/audio_settings_controller.dart';
@@ -11,6 +14,9 @@ import 'package:pixel_survivor/game/models/player_slot.dart';
 import 'package:pixel_survivor/game/models/vector_input.dart';
 import 'package:pixel_survivor/game/pixel_survivor_game.dart';
 import 'package:pixel_survivor/game/systems/tutorial_progress_repository.dart';
+import 'package:pixel_survivor/game/systems/playtest_session_repository.dart';
+import 'package:pixel_survivor/game/systems/meta_progression_service.dart';
+import 'package:pixel_survivor/game/systems/save_system.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/recording_audio_backend.dart';
@@ -126,7 +132,10 @@ void main() {
         home: GameScreen(playerSlot: slot, stageId: moonlitAbandonedOffice),
       ),
     );
-    await tester.pump();
+    await _pumpUntil(
+      tester,
+      () => find.byKey(const Key('hud-pause')).evaluate().isNotEmpty,
+    );
 
     await tester.tap(find.byKey(const Key('hud-pause')));
     await tester.pump();
@@ -149,6 +158,57 @@ void main() {
       screens.every((screen) => screen.stageId == moonlitAbandonedOffice),
       isTrue,
     );
+  });
+
+  testWidgets('rapid duplicate pause restart starts exactly one new run', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final sessions = PlaytestSessionRepository(preferences: preferences);
+    await tester.pumpWidget(
+      MaterialApp(home: GameScreen(playtestSessionRepository: sessions)),
+    );
+    await _pumpUntil(
+      tester,
+      () => find.byKey(const Key('hud-pause')).evaluate().isNotEmpty,
+    );
+
+    await tester.tap(find.byKey(const Key('hud-pause')));
+    await tester.pump();
+    final pause = tester.widget<PauseMenuOverlay>(
+      find.byType(PauseMenuOverlay),
+    );
+    pause.onRestart();
+    pause.onRestart();
+
+    await _pumpUntil(
+      tester,
+      () => find.byType(GameScreen).evaluate().length == 1,
+    );
+    await _pumpUntil(tester, () async => await sessions.loadRunCount() == 2);
+    expect(await sessions.loadRunCount(), 2);
+  });
+
+  testWidgets('late boss availability does not mutate a disposed game', (
+    tester,
+  ) async {
+    final store = _DelayedSaveStore();
+    final game = _game()..firstBossRewardAvailable = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GameScreen(
+          game: game,
+          metaProgressionService: MetaProgressionService(saveStore: store),
+        ),
+      ),
+    );
+    await tester.pumpWidget(const SizedBox.shrink());
+    store.release.complete(SaveState.defaults());
+    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+    await tester.pump();
+
+    expect(game.firstBossRewardAvailable, isFalse);
   });
 
   testWidgets('game screen loads persisted audio settings', (tester) async {
@@ -195,6 +255,28 @@ void main() {
     expect(controller.settings.musicVolume, 0.3);
     controller.dispose();
   });
+}
+
+Future<void> _pumpUntil(
+  WidgetTester tester,
+  FutureOr<bool> Function() condition,
+) async {
+  for (var attempt = 0; attempt < 120; attempt += 1) {
+    if (await condition()) return;
+    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+    await tester.pump(const Duration(milliseconds: 16));
+  }
+  fail('Timed out waiting for condition');
+}
+
+class _DelayedSaveStore implements SaveStore {
+  final release = Completer<SaveState>();
+
+  @override
+  Future<SaveState> load() => release.future;
+
+  @override
+  Future<void> save(SaveState state) async {}
 }
 
 PixelSurvivorGame _game() {

@@ -211,6 +211,12 @@ class _GoldenHudSource implements GameHudSource {
   @override
   int get kills => 184;
   @override
+  String? get combatNotice => null;
+  @override
+  double get combatNoticeSecondsRemaining => 0;
+  @override
+  int get killStreak => 0;
+  @override
   int get playerLevel => 11;
   @override
   String get playerHealthLabel => '78/120';

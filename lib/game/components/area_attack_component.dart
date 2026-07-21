@@ -4,12 +4,14 @@ import 'dart:ui';
 
 import 'package:flame/components.dart';
 
+import '../combat/attack_spec.dart';
 import '../content/combat_effect_atlas.dart';
 import '../content/ids.dart';
 import '../content/weapon_effect_atlas.dart';
 import '../models/damage_event.dart';
 import 'enemy_component.dart';
 import 'player_component.dart';
+import 'talisman_presentation_component.dart';
 
 class AreaAttackComponent extends PositionComponent {
   AreaAttackComponent({
@@ -27,6 +29,7 @@ class AreaAttackComponent extends PositionComponent {
          position: position,
          size: Vector2.all(radius * 2),
          anchor: Anchor.center,
+         priority: isBossAttack ? AttackPresentationPriority.warning : 0,
        );
 
   final WeaponId? weaponId;
@@ -80,6 +83,7 @@ class AreaAttackComponent extends PositionComponent {
             knockback: knockback,
             direction: _directionTo(enemy.position),
             weaponId: weaponId,
+            traits: const {AttackTrait.explosion},
           ),
     ];
   }

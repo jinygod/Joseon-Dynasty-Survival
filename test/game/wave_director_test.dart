@@ -31,10 +31,39 @@ void main() {
     });
 
     test('pre-boss cap peaks and boss phase stays populated', () {
-      expect(wavePressureForSecond(240).maxActiveEnemies, 80);
-      expect(wavePressureForSecond(269.999).maxActiveEnemies, 92);
+      expect(wavePressureForSecond(240).maxActiveEnemies, 86);
+      expect(wavePressureForSecond(269.999).maxActiveEnemies, 96);
       expect(wavePressureForSecond(270).spawnsPerSecond, 1.5);
       expect(wavePressureForSecond(329.999).maxActiveEnemies, 64);
+    });
+
+    test('each 180-270 second wave contains all four slice roles', () {
+      final lateWaves = moonlitAbandonedOfficeWaves.where(
+        (wave) => wave.startSecond >= 180 && wave.startSecond < 270,
+      );
+
+      for (final wave in lateWaves) {
+        expect(
+          wave.enemyWeights.keys,
+          containsAll({
+            plagueRatSwarm,
+            vengefulSpirit,
+            sakkatSpecter,
+            dokkaebi,
+          }),
+          reason: '${wave.startSecond}-${wave.endSecond} seconds',
+        );
+      }
+    });
+
+    test('late pressure prioritizes count without inflating normal health', () {
+      final pressure = wavePressureForSecond(255);
+
+      expect(pressure.maxActiveEnemies, greaterThanOrEqualTo(90));
+      expect(enemyDefinitionFor(plagueRatSwarm)!.maxHealth, 8);
+      expect(enemyDefinitionFor(vengefulSpirit)!.maxHealth, 22);
+      expect(enemyDefinitionFor(sakkatSpecter)!.maxHealth, 25);
+      expect(enemyDefinitionFor(dokkaebi)!.maxHealth, 38);
     });
 
     test('stage rosters differ and plague market has higher pressure', () {
@@ -154,9 +183,8 @@ void main() {
             .map((request) => request.enemyId),
         everyElement(isIn(waveDefinitionForSecond(210).eliteWeights.keys)),
       );
-      expect(late.spawnRequests.length, lessThanOrEqualTo(5));
       expect(late.spawnRequests.length, lessThanOrEqualTo(8));
-      expect(late.maxActiveEnemies, 73);
+      expect(late.maxActiveEnemies, 77);
     });
 
     test('limits consecutive requests for a selected enemy to group size', () {
@@ -186,7 +214,7 @@ void main() {
       final blocked = director.tick(
         elapsedSeconds: 260,
         dt: 100,
-        activeEnemyCount: 92,
+        activeEnemyCount: 96,
       );
       final released = director.tick(
         elapsedSeconds: 260.1,

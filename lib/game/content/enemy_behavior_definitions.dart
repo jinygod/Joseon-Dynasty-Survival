@@ -12,6 +12,9 @@ class EnemyBehaviorProfile {
     this.range = 0,
     this.effectMultiplier = 1,
     this.maxOwnedEffects = 0,
+    this.preferredRange = 0,
+    this.minimumRange = 0,
+    this.projectileSpeed = 0,
   });
 
   final EnemyBehaviorProfileId id;
@@ -24,6 +27,9 @@ class EnemyBehaviorProfile {
   final double range;
   final double effectMultiplier;
   final int maxOwnedEffects;
+  final double preferredRange;
+  final double minimumRange;
+  final double projectileSpeed;
 }
 
 const enemyBehaviorProfiles = <EnemyBehaviorProfileId, EnemyBehaviorProfile>{
@@ -32,13 +38,25 @@ const enemyBehaviorProfiles = <EnemyBehaviorProfileId, EnemyBehaviorProfile>{
   'dash': EnemyBehaviorProfile(
     id: 'dash',
     kind: EnemyBehaviorKind.dash,
-    warningSeconds: .22,
+    warningSeconds: .5,
     activeSeconds: .35,
     recoverySeconds: .18,
     cooldownSeconds: 2.4,
     movementMultiplier: 3.2,
   ),
   'tank': EnemyBehaviorProfile(id: 'tank', kind: EnemyBehaviorKind.tank),
+  'sakkat_ranged': EnemyBehaviorProfile(
+    id: 'sakkat_ranged',
+    kind: EnemyBehaviorKind.ranged,
+    warningSeconds: .7,
+    activeSeconds: .05,
+    recoverySeconds: .3,
+    cooldownSeconds: 2.6,
+    range: 420,
+    preferredRange: 170,
+    minimumRange: 105,
+    projectileSpeed: 150,
+  ),
   'crow_dive': EnemyBehaviorProfile(
     id: 'crow_dive',
     kind: EnemyBehaviorKind.dive,

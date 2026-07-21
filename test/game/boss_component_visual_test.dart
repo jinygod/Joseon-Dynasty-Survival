@@ -13,8 +13,14 @@ void main() {
       targetPositionProvider: (_) => Vector2(100, 0),
     );
 
+    expect(boss.size, Vector2.all(42));
+    expect(boss.visualSize, 126);
+    expect(boss.visualScale, 3);
+    expect(boss.anchor, Anchor.center);
+
     boss.update(1);
     expect(boss.visualState, EnemyAnimationState.attacking);
+    expect(boss.warningSnapshot, isNotNull);
 
     boss.takeDamage(definition.enemy.maxHealth);
     expect(boss.visualState, EnemyAnimationState.death);

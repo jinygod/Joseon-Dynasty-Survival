@@ -28,6 +28,7 @@ class WaveRegressionSimulator {
       for (final phase in CombatRhythmPhaseId.values) phase: 0,
     };
     final enemySpawnCounts = <EnemyId, int>{};
+    final lateSliceEnemySpawnCounts = <EnemyId, int>{};
     var bossRequests = 0;
     var capViolations = 0;
     var overCapFrames = 0;
@@ -70,6 +71,10 @@ class WaveRegressionSimulator {
         }
         enemySpawnCounts[request.enemyId] =
             (enemySpawnCounts[request.enemyId] ?? 0) + 1;
+        if (elapsed >= 240 && elapsed < 270) {
+          lateSliceEnemySpawnCounts[request.enemyId] =
+              (lateSliceEnemySpawnCounts[request.enemyId] ?? 0) + 1;
+        }
         active.add(
           _ActiveSpawn(expiresAt: elapsed + _lifetime(request.enemyId)),
         );
@@ -83,6 +88,7 @@ class WaveRegressionSimulator {
       phaseSpawnCounts: phaseSpawnCounts,
       phaseEliteCounts: phaseEliteCounts,
       enemySpawnCounts: enemySpawnCounts,
+      lateSliceEnemySpawnCounts: lateSliceEnemySpawnCounts,
       bossRequests: bossRequests,
       capViolations: capViolations,
       overCapFrames: overCapFrames,
@@ -105,6 +111,7 @@ class WaveRegressionReport {
     required Map<CombatRhythmPhaseId, int> phaseSpawnCounts,
     required Map<CombatRhythmPhaseId, int> phaseEliteCounts,
     required Map<EnemyId, int> enemySpawnCounts,
+    required Map<EnemyId, int> lateSliceEnemySpawnCounts,
     required this.bossRequests,
     required this.capViolations,
     required this.overCapFrames,
@@ -113,13 +120,15 @@ class WaveRegressionReport {
     required this.maxActiveEnemies,
   }) : phaseSpawnCounts = Map.unmodifiable(phaseSpawnCounts),
        phaseEliteCounts = Map.unmodifiable(phaseEliteCounts),
-       enemySpawnCounts = Map.unmodifiable(enemySpawnCounts);
+       enemySpawnCounts = Map.unmodifiable(enemySpawnCounts),
+       lateSliceEnemySpawnCounts = Map.unmodifiable(lateSliceEnemySpawnCounts);
 
   final int seed;
   final int durationSeconds;
   final Map<CombatRhythmPhaseId, int> phaseSpawnCounts;
   final Map<CombatRhythmPhaseId, int> phaseEliteCounts;
   final Map<EnemyId, int> enemySpawnCounts;
+  final Map<EnemyId, int> lateSliceEnemySpawnCounts;
   final int bossRequests;
   final int capViolations;
   final int overCapFrames;
@@ -142,7 +151,13 @@ class WaveRegressionReport {
         .where((enemy) => !enemy.isBoss)
         .map((enemy) => '${enemy.id}:${enemySpawnCounts[enemy.id] ?? 0}')
         .join('|');
-    return '$phases#$enemies#$maxActiveEnemies#$overCapFrames';
+    final lateSlice = enemyDefinitions
+        .where((enemy) => !enemy.isBoss)
+        .map(
+          (enemy) => '${enemy.id}:${lateSliceEnemySpawnCounts[enemy.id] ?? 0}',
+        )
+        .join('|');
+    return '$phases#$enemies#$lateSlice#$maxActiveEnemies#$overCapFrames';
   }
 
   Map<String, Object> toJson() => {
@@ -155,6 +170,7 @@ class WaveRegressionReport {
       for (final entry in phaseEliteCounts.entries) entry.key.name: entry.value,
     },
     'enemySpawnCounts': enemySpawnCounts,
+    'lateSliceEnemySpawnCounts': lateSliceEnemySpawnCounts,
     'bossRequests': bossRequests,
     'capViolations': capViolations,
     'overCapFrames': overCapFrames,

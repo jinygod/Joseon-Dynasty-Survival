@@ -4,6 +4,7 @@ import 'enemy_behavior_definitions.dart';
 const plagueRatSwarm = 'plague_rat_swarm';
 const bandit = 'bandit';
 const dokkaebi = 'dokkaebi';
+const sakkatSpecter = 'sakkat_specter';
 const vengefulSpirit = 'vengeful_spirit';
 const plagueCrow = 'plague_crow';
 const spearBandit = 'spear_bandit';
@@ -49,6 +50,17 @@ const enemyDefinitions = <EnemyDefinition>[
     rank: EnemyRank.normal,
     behaviorProfileId: 'tank',
     behaviorType: EnemyBehaviorType.tank,
+  ),
+  EnemyDefinition(
+    id: sakkatSpecter,
+    name: '삿갓 망령',
+    maxHealth: 25,
+    moveSpeed: 42,
+    damage: 9,
+    experience: 3,
+    faction: EnemyFaction.spirit,
+    rank: EnemyRank.normal,
+    behaviorProfileId: 'sakkat_ranged',
   ),
   EnemyDefinition(
     id: vengefulSpirit,

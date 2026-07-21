@@ -1,8 +1,13 @@
 import '../models/run_choice_record.dart';
 import '../models/run_result.dart';
 import '../models/run_outcome.dart';
+import 'combat_playtest_tracker.dart';
 
 class RunStatsTracker {
+  RunStatsTracker({CombatPlaytestTracker? combatPlaytestTracker})
+    : combatPlaytestTracker = combatPlaytestTracker ?? CombatPlaytestTracker();
+
+  final CombatPlaytestTracker combatPlaytestTracker;
   int _kills = 0;
   int _eliteKills = 0;
   int _spiritJadeCollected = 0;
@@ -41,9 +46,13 @@ class RunStatsTracker {
   }
 
   void recordWeaponDamage({required String weaponId, required double amount}) {
+    recordDamageSource(sourceId: weaponId, amount: amount);
+  }
+
+  void recordDamageSource({required String sourceId, required double amount}) {
     if (amount <= 0) return;
     _weaponDamageTotals.update(
-      weaponId,
+      sourceId,
       (total) => total + amount,
       ifAbsent: () => amount,
     );
@@ -90,6 +99,7 @@ class RunStatsTracker {
       deathAtSeconds: _deathAtSeconds,
       eliteKills: _eliteKills,
       spiritJadeCollected: _spiritJadeCollected,
+      combatMetrics: combatPlaytestTracker.snapshot(),
     );
   }
 }

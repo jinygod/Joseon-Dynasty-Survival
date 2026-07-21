@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
@@ -16,6 +17,41 @@ import 'package:pixel_survivor/game/pixel_survivor_game.dart';
 import 'package:pixel_survivor/game/systems/wave_director.dart';
 
 void main() {
+  test('late FPS uses raw frame duration instead of clamped combat step', () {
+    const budget = GamePerformanceBudget.standard;
+    final collector = PerformanceDevelopmentCollector(
+      budget: budget,
+      maxMemoryProxyComponents: 10,
+      maxRetainedOwners: 5,
+    );
+    for (final rawFrameDurationMicros in [100000, 20000]) {
+      collector.record(
+        PerformanceDevelopmentSample(
+          simulatedSeconds: 200,
+          frameStepMicros: 50000,
+          rawFrameDurationMicros: rawFrameDurationMicros,
+          hostUpdateLifecycleWallMicros: 1,
+          mountedComponentCount: 1,
+          retainedOwnerCount: 1,
+          snapshot: GamePerformanceSnapshot(
+            budget: budget,
+            counts: const {GamePopulationKind.enemy: 1},
+          ),
+        ),
+      );
+    }
+
+    final log = collector.finish(
+      scenario: 'raw-frame-duration',
+      seed: 1,
+      simulatedDurationSeconds: 200,
+      totalFrameCount: 2,
+    );
+
+    expect(log.lateAverageSimulatedFps, 30);
+    expect(log.lateMinimumSimulatedFps, 10);
+  });
+
   test('production wave admission covers 18000 logical frames', () {
     const frameCount = 18000;
     const dt = 1 / 60;
@@ -115,6 +151,7 @@ void main() {
           PerformanceDevelopmentSample(
             simulatedSeconds: frame * frameStepSeconds,
             frameStepMicros: frameStepMicros,
+            rawFrameDurationMicros: frameStepMicros,
             hostUpdateLifecycleWallMicros: stopwatch.elapsedMicroseconds,
             mountedComponentCount: mountedComponentCount,
             retainedOwnerCount: game.performanceRetainedOwnerCount,
@@ -138,9 +175,22 @@ void main() {
       expect(game.elapsedSeconds, closeTo(300, 0.001));
       expect(log.sampleCount, frameCount ~/ observationIntervalFrames);
       expect(log.peakFrameStepMicros, frameStepMicros);
-      expect(log.peakMountedComponentCount, greaterThan(1));
-      expect(log.peakRetainedOwnerCount, greaterThan(0));
-      expect(log.peakMemoryProxyComponents, greaterThan(0));
+      expect(log.averageActiveEnemies, closeTo(15.68288888888889, 1e-12));
+      expect(log.maximumActiveEnemies, 51);
+      expect(log.lateFrameSampleCount, 7200);
+      expect(log.lateAverageActiveEnemies, inInclusiveRange(27, 28));
+      expect(log.lateMaximumActiveEnemies, 51);
+      expect(
+        log.lateAverageSimulatedFps,
+        closeTo(1000000 / frameStepMicros, 1e-9),
+      );
+      expect(
+        log.lateMinimumSimulatedFps,
+        closeTo(1000000 / frameStepMicros, 1e-12),
+      );
+      expect(log.peakMountedComponentCount, 262);
+      expect(log.peakRetainedOwnerCount, 13);
+      expect(log.peakMemoryProxyComponents, 272);
       for (final kind in GamePopulationKind.values) {
         expect(log.peakCounts[kind], greaterThan(0), reason: kind.name);
         expect(
@@ -149,8 +199,15 @@ void main() {
           reason: kind.name,
         );
       }
+      expect(log.peakCounts, {
+        GamePopulationKind.enemy: 51,
+        GamePopulationKind.projectile: 14,
+        GamePopulationKind.damageNumber: 24,
+        GamePopulationKind.combatEffect: 23,
+      });
       expect(log.isWithinPopulationBudget, isTrue);
       expect(log.isWithinMemoryProxyBudget, isTrue);
+      expect(log.isWithinLateFrameBudget, isTrue);
       expect(
         game.children.whereType<ExperienceGemComponent>().length,
         lessThanOrEqualTo(PixelSurvivorGame.maxExperienceGemComponents),
@@ -159,6 +216,33 @@ void main() {
         'production-high-risk-performance-log.json',
         'production-high-risk-performance-log.md',
       });
+      final json =
+          jsonDecode(artifacts['production-high-risk-performance-log.json']!)
+              as Map<String, dynamic>;
+      expect(json['averageActiveEnemies'], 15.68288888888889);
+      expect(json['maximumActiveEnemies'], 51);
+      expect(json['lateAverageActiveEnemies'], 27.236944444444443);
+      expect(json['lateMaximumActiveEnemies'], 51);
+      expect(
+        json['lateAverageSimulatedFps'],
+        closeTo(1000000 / frameStepMicros, 1e-9),
+      );
+      expect(
+        json['lateMinimumSimulatedFps'],
+        closeTo(1000000 / frameStepMicros, 1e-9),
+      );
+      expect(json['isWithinLateFrameBudget'], isTrue);
+
+      final markdown = artifacts['production-high-risk-performance-log.md']!;
+      expect(
+        markdown,
+        contains('- Average / maximum active enemies: 15.68 / 51'),
+      );
+      expect(
+        markdown,
+        contains('- Late average / minimum simulated FPS: 60.00 / 60.00'),
+      );
+      expect(markdown, contains('- Late raw-frame budget result: PASS'));
     },
     timeout: const Timeout(Duration(minutes: 2)),
   );

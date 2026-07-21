@@ -12,16 +12,24 @@ import 'package:flutter/widgets.dart' show KeyEventResult;
 import '../app/game_hud_source.dart';
 import 'components/area_attack_component.dart';
 import 'audio/audio_cue.dart';
+import 'combat/attack_geometry.dart';
+import 'combat/attack_spec.dart';
+import 'combat/talisman_damage.dart';
+import 'components/attack_effect_component.dart';
 import 'components/boss_component.dart';
 import 'components/combat_effect_component.dart';
 import 'components/damage_number_component.dart';
 import 'components/enemy_component.dart';
+import 'components/enemy_combat_overlay_component.dart';
+import 'components/enemy_projectile_component.dart';
 import 'components/enemy_hazard_component.dart';
 import 'components/experience_gem_component.dart';
 import 'components/frost_field_component.dart';
+import 'components/five_color_ward_component.dart';
 import 'components/player_component.dart';
 import 'components/projectile_component.dart';
 import 'components/spirit_jade_component.dart';
+import 'components/talisman_presentation_component.dart';
 import 'components/ward_aura_component.dart';
 import 'balance/meta_reward_balance.dart';
 import 'content/augment_definitions.dart';
@@ -30,6 +38,7 @@ import 'content/character_definitions.dart';
 import 'content/combat_effect_atlas.dart';
 import 'content/enemy_definitions.dart';
 import 'content/ids.dart';
+import 'content/playtest_content_policy.dart';
 import 'content/stage_definitions.dart';
 import 'content/wave_definitions.dart';
 import 'content/weapon_definitions.dart';
@@ -46,14 +55,17 @@ import 'systems/level_up_system.dart';
 import 'systems/augment_effect_resolver.dart';
 import 'systems/meta_reward_policy.dart';
 import 'systems/combat_feedback_tuning.dart';
+import 'systems/combat_feedback_controller.dart';
 import 'systems/combat_system.dart';
 import 'systems/character_passive_modifiers.dart';
 import 'systems/enemy_aura_resolver.dart';
 import 'systems/enemy_behavior_controller.dart';
 import 'systems/run_progression_system.dart';
 import 'systems/run_stats_tracker.dart';
+import 'systems/combat_playtest_tracker.dart';
 import 'systems/wave_director.dart';
 import 'systems/weapon_system.dart';
+import 'systems/weapon_synergy_resolver.dart';
 
 class PixelSurvivorGame extends FlameGame
     with KeyboardEvents
@@ -77,7 +89,14 @@ class PixelSurvivorGame extends FlameGame
     this.performanceBudget = GamePerformanceBudget.standard,
     this.onPerformanceDiagnostic,
     this.loadVisualAssets = true,
-  }) : weaponSystem = WeaponSystem(random: random),
+    this.contentPolicy = const PlaytestContentPolicy(
+      unlockAllBaseWeapons: false,
+    ),
+    bool isRepeatRun = false,
+  }) : runStats = RunStatsTracker(
+         combatPlaytestTracker: CombatPlaytestTracker(isRepeatRun: isRepeatRun),
+       ),
+       weaponSystem = WeaponSystem(random: random),
        waveDirector = WaveDirector(
          random: random ?? Random(),
          definitions: waveDefinitionsForStage(stageId),
@@ -87,6 +106,9 @@ class PixelSurvivorGame extends FlameGame
            pickupIdPrefix ?? DateTime.now().microsecondsSinceEpoch.toString(),
        _rewardRoll = rewardRoll ?? Random().nextDouble,
        _bossRoll = bossRoll ?? random?.nextDouble ?? Random().nextDouble {
+    _combatFeedback = CombatFeedbackController(
+      screenShakeEnabled: screenShakeEnabled,
+    );
     if (!playerSlot.isActive) {
       throw ArgumentError.value(playerSlot, 'playerSlot', 'must be active');
     }
@@ -109,6 +131,7 @@ class PixelSurvivorGame extends FlameGame
   final GamePerformanceDiagnosticReporter? onPerformanceDiagnostic;
   @override
   final bool loadVisualAssets;
+  final PlaytestContentPolicy contentPolicy;
   final MetaRewardPolicy _metaRewardPolicy = const MetaRewardPolicy();
   final AugmentEffectResolver _augmentEffectResolver =
       const AugmentEffectResolver();
@@ -116,8 +139,10 @@ class PixelSurvivorGame extends FlameGame
   final WaveDirector waveDirector;
   final LevelUpSystem levelUpSystem;
   final RunProgressionSystem runProgression = RunProgressionSystem();
-  final RunStatsTracker runStats = RunStatsTracker();
+  final RunStatsTracker runStats;
+  final WeaponSynergyResolver _weaponSynergyResolver = WeaponSynergyResolver();
   final CombatSystem combatSystem = CombatSystem();
+  late final CombatFeedbackController _combatFeedback;
   final List<PlayerComponent> _activePlayers = [];
   late final List<PlayerComponent> _activePlayersView = UnmodifiableListView(
     _activePlayers,
@@ -128,6 +153,8 @@ class PixelSurvivorGame extends FlameGame
   final Map<EnemyComponent, WeaponId> _lastWeaponHitByEnemy = {};
   final Set<EnemyComponent> _recordedEnemyDefeats = {};
   final Map<EnemyComponent, bool> _pendingSpiritJadeDrops = {};
+  final Map<EnemyComponent, TalismanAttachmentComponent>
+  _talismanAttachmentComponents = {};
   int _spiritJadeDropSequence = 0;
   double? _rewardCollectionSecondsRemaining;
   int _pendingBossSpiritJade = 0;
@@ -149,6 +176,11 @@ class PixelSurvivorGame extends FlameGame
   double _screenShakeMagnitude = 0;
   double _screenShakePhase = 0;
   final Vector2 _screenShakeOffset = Vector2.zero();
+  int _nextOriginatingAttackId = 0;
+  double _combatNoticeSecondsRemaining = 0;
+  double _killStreakSecondsRemaining = 0;
+  int _killStreak = 0;
+  int _projectileSlotsRemaining = 0;
 
   @override
   double get elapsedSeconds => _elapsedSeconds;
@@ -163,6 +195,12 @@ class PixelSurvivorGame extends FlameGame
   );
   @override
   int get kills => runStats.kills;
+  @override
+  String? get combatNotice => _combatNoticeSecondsRemaining > 0 ? '봉마참' : null;
+  @override
+  double get combatNoticeSecondsRemaining => _combatNoticeSecondsRemaining;
+  @override
+  int get killStreak => _killStreakSecondsRemaining > 0 ? _killStreak : 0;
   RunOutcome get runOutcome => _runOutcome;
   bool get isGameOver => _runOutcome != RunOutcome.inProgress;
   bool get canPauseRun =>
@@ -186,6 +224,8 @@ class PixelSurvivorGame extends FlameGame
   @override
   double? get bossHealthFraction => _boss?.healthFraction;
   Vector2 get screenShakeOffset => _screenShakeOffset.clone();
+  @visibleForTesting
+  double get combatHitStopRemaining => _combatFeedback.hitStopRemaining;
   GamePerformanceSnapshot get performanceSnapshot => GamePerformanceSnapshot(
     budget: performanceBudget,
     counts: {
@@ -209,6 +249,7 @@ class PixelSurvivorGame extends FlameGame
   }) {
     this.screenShakeEnabled = screenShakeEnabled;
     this.damageNumbersEnabled = damageNumbersEnabled;
+    _combatFeedback.screenShakeEnabled = screenShakeEnabled;
     if (!screenShakeEnabled) _clearScreenShake();
   }
 
@@ -327,27 +368,52 @@ class PixelSurvivorGame extends FlameGame
 
   @override
   void update(double dt) {
-    final safeDt = dt.clamp(0, 0.05).toDouble();
-    super.update(safeDt);
+    if (_runOutcome == RunOutcome.inProgress && !isLevelUpPending) {
+      runStats.combatPlaytestTracker.recordFrame(
+        dt: dt,
+        enemyCount: enemyCount,
+        atSeconds: _elapsedSeconds,
+      );
+    }
+    final wallFrameDt = dt.isFinite && dt > 0 ? dt : 0.0;
+    final safeDt = wallFrameDt.clamp(0, 0.05).toDouble();
+    final simulationDt = _combatFeedback.tick(safeDt);
+    super.update(simulationDt);
+    _cleanupCombatPresentationOwners();
     _trySpawnPendingBoss();
     _updateScreenShake(safeDt);
+    _combatNoticeSecondsRemaining = max(
+      0.0,
+      _combatNoticeSecondsRemaining - wallFrameDt,
+    );
+    _killStreakSecondsRemaining = max(
+      0.0,
+      _killStreakSecondsRemaining - wallFrameDt,
+    );
+    if (_killStreakSecondsRemaining == 0) _killStreak = 0;
     if (_runOutcome != RunOutcome.inProgress || isLevelUpPending) {
       return;
     }
 
     if (_rewardCollectionSecondsRemaining != null) {
-      _updateRewardCollection(safeDt);
+      _updateRewardCollection(simulationDt);
       return;
     }
 
     _advanceTime(safeDt);
+    // Hit-stop freezes combat, but the five-minute wave schedule follows wall
+    // time so strong attacks cannot quietly reduce late-run enemy density.
     _spawnWaveEnemies(safeDt);
-    _updatePlayerMovement(safeDt);
-    _updateWeapons(safeDt);
+    if (safeDt > 0 && simulationDt <= 0) return;
+
+    _updatePlayerMovement(simulationDt);
+    _resetProjectileAdmissionBudget();
+    _updateWeapons(simulationDt);
     _applyProjectileHits();
     _resolveAreaAttacks();
     _resolveFrostFields();
     _resolveEnemyActions();
+    _resolveEnemyProjectiles();
     _resolveEnemyHazards();
     _resolveEnemyAuras();
     _recordNewEnemyDefeats();
@@ -387,6 +453,36 @@ class PixelSurvivorGame extends FlameGame
     if (choice.type == LevelUpChoiceType.augment && selectedAugment == null) {
       return;
     }
+    if (choice.type == LevelUpChoiceType.weapon) {
+      final currentLevel = weaponSystem.levelOf(choice.id);
+      if (choice.currentLevel != currentLevel ||
+          choice.nextLevel != currentLevel + 1 ||
+          !weaponSystem.canUpgrade(choice.id, unlockedWeaponIds)) {
+        return;
+      }
+    }
+
+    switch (choice.type) {
+      case LevelUpChoiceType.weapon:
+        final weaponId = choice.id;
+        weaponSystem.upgrade(weaponId, unlockedWeaponIds);
+        if (weaponSystem.levelOf(weaponId) != choice.nextLevel) return;
+        runStats.combatPlaytestTracker.recordLevel(
+          weaponId: weaponId,
+          level: choice.nextLevel,
+          atSeconds: _elapsedSeconds,
+        );
+      case LevelUpChoiceType.augment:
+        final augmentId = choice.id;
+        unlockedAugmentIds.add(augmentId);
+        final definition = selectedAugment!;
+        final currentLevel = augmentLevels[augmentId] ?? 0;
+        if (currentLevel < definition.maxLevel) {
+          augmentLevels[augmentId] = currentLevel + 1;
+          _applyImmediateAugmentEffects(definition);
+        }
+        _applyAugmentEffects();
+    }
 
     runStats.recordChoice(
       RunChoiceRecord(
@@ -399,22 +495,6 @@ class PixelSurvivorGame extends FlameGame
         selectedLevel: choice.nextLevel,
       ),
     );
-    switch (choice.type) {
-      case LevelUpChoiceType.weapon:
-        final weaponId = choice.id;
-        unlockedWeaponIds.add(weaponId);
-        weaponSystem.upgrade(weaponId, unlockedWeaponIds);
-      case LevelUpChoiceType.augment:
-        final augmentId = choice.id;
-        unlockedAugmentIds.add(augmentId);
-        final definition = selectedAugment!;
-        final currentLevel = augmentLevels[augmentId] ?? 0;
-        if (currentLevel < definition.maxLevel) {
-          augmentLevels[augmentId] = currentLevel + 1;
-          _applyImmediateAugmentEffects(definition);
-        }
-        _applyAugmentEffects();
-    }
 
     _pendingLevelUpChoices = const [];
     if (isMounted) {
@@ -513,7 +593,7 @@ class PixelSurvivorGame extends FlameGame
     _bossSpawnPending = false;
     _boss = boss;
     _bossSpawnCount += 1;
-    add(boss);
+    _addEnemyWithWarningOverlay(boss);
   }
 
   void _summonBossMinions(List<EnemyId> enemyIds) {
@@ -533,7 +613,9 @@ class PixelSurvivorGame extends FlameGame
 
   void _addEnemy(EnemyId enemyId, int spawnIndex) {
     final offset = _spawnOffsetFor(spawnIndex);
-    add(_createEnemy(enemyId, Vector2(size.x / 2, size.y / 2) + offset));
+    _addEnemyWithWarningOverlay(
+      _createEnemy(enemyId, Vector2(size.x / 2, size.y / 2) + offset),
+    );
   }
 
   EnemyComponent _createEnemy(EnemyId enemyId, Vector2 position) {
@@ -543,6 +625,11 @@ class PixelSurvivorGame extends FlameGame
       targetPositionProvider: _nearestActivePlayerPosition,
       nearbyEnemiesProvider: () => children.whereType<EnemyComponent>(),
     );
+  }
+
+  void _addEnemyWithWarningOverlay(EnemyComponent enemy) {
+    add(enemy);
+    add(EnemyWarningOverlayComponent(enemy: enemy));
   }
 
   void _updateWeapons(double dt) {
@@ -563,24 +650,47 @@ class PixelSurvivorGame extends FlameGame
       criticalChance: criticalChance,
       sizeMultiplier: weaponSizeMultiplier,
       elementDamageMultipliers: elementDamageMultipliers,
+      hwandoFallbackDirection: player.preferredAttackDirection,
     );
+    if (result.hwandoDirection case final direction?) {
+      player.playAttack(direction);
+    }
+    _syncTalismanPresentation(result);
+    final masterWards = result.fiveColorWards.where(
+      (ward) => ward.attack.spec.presentation == AttackPresentation.master,
+    );
+    if (masterWards.firstOrNull case final ward?) {
+      _requestAttackFeedback(ward.attack, weaponId: talismanThrow);
+    }
     for (final weaponId in result.firedWeaponIds) {
+      if (weaponId == hwandoSlash && result.attackInstances.isNotEmpty) {
+        continue;
+      }
+      if (weaponId == talismanThrow) {
+        final hasTalismanAttack = result.attackInstances.any(
+          (attack) => attack.spec.id.startsWith('talisman_'),
+        );
+        if (!hasTalismanAttack) _emitAudio(AudioCue.talismanAttack);
+        if (result.fiveColorWards.any(
+          (ward) => ward.attack.spec.presentation == AttackPresentation.master,
+        )) {
+          _emitAudio(AudioCue.talismanMasterAttack);
+        }
+        continue;
+      }
       _emitAudio(_attackCueFor(weaponId));
     }
-    _applyDamageEvents(result.damageEvents);
-    var projectileSlots = max(
-      0,
-      performanceBudget.maxProjectiles - _projectileComponentCount,
+    _applyDamageEvents(
+      result.damageEvents.where((event) => event.weaponId != hwandoSlash),
     );
+    for (final attack in result.attackInstances) {
+      _resolveSharedAttack(attack);
+    }
     for (final projectile in result.projectiles) {
-      if (projectileSlots > 0) {
-        add(projectile);
-        projectileSlots -= 1;
-      } else {
-        _rejectPopulation(GamePopulationKind.projectile, 1);
-      }
+      _admitProjectile(projectile);
     }
     for (final arc in result.meleeArcs) {
+      if (arc.weaponId == hwandoSlash) continue;
       add(arc);
     }
     for (final areaAttack in result.areaAttacks) {
@@ -591,6 +701,195 @@ class PixelSurvivorGame extends FlameGame
       if (activeFields.length >= 3) activeFields.first.removeFromParent();
       add(frostField);
     }
+    _addFiveColorWards(result.fiveColorWards);
+  }
+
+  void _addFiveColorWards(List<FiveColorWardComponent> requests) {
+    for (final presentation in AttackPresentation.values) {
+      final matchingRequests = requests
+          .where((ward) => ward.attack.spec.presentation == presentation)
+          .toList(growable: false);
+      if (matchingRequests.isEmpty) continue;
+      final activeWards = children
+          .whereType<FiveColorWardComponent>()
+          .where((active) => !active.isRemoving)
+          .where((active) => active.attack.spec.presentation == presentation)
+          .toList();
+      final cap = presentation == AttackPresentation.master ? 3 : 12;
+      final overflow = max(
+        0,
+        activeWards.length + matchingRequests.length - cap,
+      );
+      for (final ward in activeWards.take(overflow)) {
+        ward.removeFromParent();
+      }
+      final retained = max(0, activeWards.length - overflow);
+      for (final ward in matchingRequests.take(cap - retained)) {
+        add(ward);
+      }
+    }
+  }
+
+  void _syncTalismanPresentation(WeaponTickResult result) {
+    final desired = {
+      for (final seal in result.attachedTalismans) seal.target: seal,
+    };
+    final staleTargets = _talismanAttachmentComponents.keys
+        .where((target) => !desired.containsKey(target))
+        .toList(growable: false);
+    for (final target in staleTargets) {
+      _talismanAttachmentComponents.remove(target)?.removeFromParent();
+    }
+    for (final entry in desired.entries) {
+      if (_talismanAttachmentComponents.containsKey(entry.key)) continue;
+      final component = TalismanAttachmentComponent(seal: entry.value);
+      _talismanAttachmentComponents[entry.key] = component;
+      add(component);
+    }
+    for (final cue in result.talismanTransfers) {
+      if (_combatEffectCount >= performanceBudget.maxCombatEffects) {
+        _rejectPopulation(GamePopulationKind.combatEffect, 1);
+        continue;
+      }
+      _combatEffectCount += 1;
+      add(
+        TalismanTransferCueComponent(
+          cue: cue,
+          onExpired: () {
+            _combatEffectCount = max(0, _combatEffectCount - 1);
+          },
+        ),
+      );
+    }
+  }
+
+  void _cleanupCombatPresentationOwners() {
+    for (final overlay
+        in children
+            .whereType<EnemyWarningOverlayComponent>()
+            .where((item) => item.enemy.isDead || item.enemy.isRemoving)
+            .toList(growable: false)) {
+      overlay.removeFromParent();
+    }
+    final staleTargets = _talismanAttachmentComponents.keys
+        .where((target) => target.isDead || target.isRemoving)
+        .toList(growable: false);
+    for (final target in staleTargets) {
+      _talismanAttachmentComponents.remove(target)?.removeFromParent();
+    }
+  }
+
+  void _resolveSharedAttack(AttackInstance attack) {
+    _spawnAttackEffect(attack);
+    final enemies = children
+        .whereType<EnemyComponent>()
+        .where((enemy) => !enemy.isDead && !enemy.isRemoving)
+        .toList(growable: false);
+    final events = <DamageEvent>[];
+    final synergyAttacks = <AttackInstance>[];
+    final originatingAttackId = _nextOriginatingAttackId++;
+    final weaponId = attack.spec.id == sealingSlash
+        ? sealingSlash
+        : attack.spec.id.startsWith('talisman_')
+        ? talismanThrow
+        : hwandoSlash;
+    for (final enemy in enemies) {
+      if (!AttackGeometry.contains(attack, enemy.position, enemy.size.x / 2)) {
+        continue;
+      }
+      final direction = enemy.position - attack.origin;
+      if (direction.length2 > 0) direction.normalize();
+      events.add(
+        DamageEvent(
+          target: enemy,
+          damage: weaponId == talismanThrow
+              ? talismanDamageForTarget(attack, enemy)
+              : attack.spec.damage * (attack.isCritical ? 2 : 1),
+          knockback: attack.spec.knockback,
+          direction: direction,
+          weaponId: weaponId,
+          sourceId: attack.spec.id,
+          traits: attack.spec.traits,
+          isCritical: attack.isCritical,
+        ),
+      );
+      if (weaponId == hwandoSlash &&
+          weaponSystem.levelOf(hwandoSlash) > 0 &&
+          weaponSystem.levelOf(talismanThrow) > 0) {
+        final resolution = _weaponSynergyResolver.onHwandoHit(
+          target: enemy,
+          nearby: enemies,
+          now: _elapsedSeconds,
+          originatingAttackId: originatingAttackId,
+        );
+        if (resolution.attack case final synergyAttack?) {
+          synergyAttacks.add(synergyAttack);
+        }
+        if (resolution.showFirstActivationNotice) {
+          _combatNoticeSecondsRemaining = 1.2;
+        }
+      }
+    }
+    _applyDamageEvents(events);
+    _emitSharedAttackAudio(attack);
+    for (final synergyAttack in synergyAttacks) {
+      _resolveSharedAttack(synergyAttack);
+    }
+
+    _requestAttackFeedback(attack, weaponId: weaponId);
+  }
+
+  void _requestAttackFeedback(
+    AttackInstance attack, {
+    required WeaponId weaponId,
+  }) {
+    final beat = _combatFeedback.requestAttack(attack);
+    if (beat == CombatFeedbackBeat.masteryStart) {
+      runStats.combatPlaytestTracker.recordMasterActivation(
+        weaponId: weaponId,
+        atSeconds: _elapsedSeconds,
+      );
+    }
+    final shake = _combatFeedback.takePendingShakeMagnitude();
+    if (shake > 0) _startScreenShake(shake);
+  }
+
+  void _emitSharedAttackAudio(AttackInstance attack) {
+    if (attack.spec.id == sealingSlash) {
+      _emitAudio(AudioCue.sealingSlash);
+      return;
+    }
+    if (attack.spec.id.startsWith('talisman_')) {
+      if (attack.sequenceIndex == 0) {
+        _emitAudio(AudioCue.talismanAttack);
+        if (attack.spec.presentation == AttackPresentation.master) {
+          _emitAudio(AudioCue.talismanMasterAttack);
+        }
+      }
+      return;
+    }
+    if (attack.sequenceIndex == 0) {
+      _emitAudio(AudioCue.hwandoAttack);
+      if (attack.spec.presentation == AttackPresentation.master) {
+        _emitAudio(AudioCue.hwandoMasterAttack);
+      }
+    }
+  }
+
+  void _spawnAttackEffect(AttackInstance attack) {
+    if (_combatEffectCount >= performanceBudget.maxCombatEffects) {
+      _rejectPopulation(GamePopulationKind.combatEffect, 1);
+      return;
+    }
+    _combatEffectCount += 1;
+    add(
+      AttackEffectComponent(
+        instance: attack,
+        onExpired: () {
+          _combatEffectCount = max(0, _combatEffectCount - 1);
+        },
+      ),
+    );
   }
 
   void _ensureWardAura(PlayerComponent player) {
@@ -646,6 +945,10 @@ class PixelSurvivorGame extends FlameGame
               knockback: projectile.knockback,
               direction: direction,
               weaponId: projectile.weaponId,
+              traits: {
+                AttackTrait.projectile,
+                if (projectile.pierce > 0) AttackTrait.piercing,
+              },
             ),
           ]);
           if (projectile.isSpent) {
@@ -693,21 +996,29 @@ class PixelSurvivorGame extends FlameGame
         .whereType<EnemyComponent>()
         .where((enemy) => !enemy.isDead)
         .toList();
-    final fields = children
-        .whereType<FrostFieldComponent>()
-        .where((field) => !field.isExpired)
-        .toList();
+    final fields = children.whereType<FrostFieldComponent>().toList();
+    final wards = children.whereType<FiveColorWardComponent>().toList();
     for (final enemy in enemies) {
       var strongestSlow = 0.0;
       for (final field in fields) {
-        if (field.containsEnemy(enemy) && field.slowFraction > strongestSlow) {
+        if (!field.isExpired &&
+            field.containsEnemy(enemy) &&
+            field.slowFraction > strongestSlow) {
           strongestSlow = field.slowFraction;
+        }
+      }
+      for (final ward in wards) {
+        if (!ward.isExpired) {
+          strongestSlow = max(strongestSlow, ward.slowFor(enemy));
         }
       }
       enemy.setEnvironmentalSlow(strongestSlow);
     }
     for (final field in fields) {
       _applyDamageEvents(field.collectDamageEvents(enemies));
+    }
+    for (final ward in wards) {
+      _applyDamageEvents(ward.collectDamageEvents(enemies));
     }
   }
 
@@ -750,9 +1061,63 @@ class PixelSurvivorGame extends FlameGame
               ),
             );
             break;
+          case EnemyAttackKind.projectile:
+            _admitProjectile(
+              EnemyProjectileComponent(
+                sourceId: enemy.enemyId,
+                damage: enemy.damage,
+                position: request.origin,
+                velocity:
+                    request.direction * enemy.behaviorProfile.projectileSpeed,
+              ),
+            );
+            break;
         }
       }
     }
+  }
+
+  void _resolveEnemyProjectiles() {
+    for (final projectile
+        in children.whereType<EnemyProjectileComponent>().toList()) {
+      if (projectile.isExpired ||
+          projectile.isSpent ||
+          _isPositionOutsideBounds(projectile.position)) {
+        projectile.removeFromParent();
+        continue;
+      }
+      for (final player in _activePlayers.where((player) => player.isAlive)) {
+        if (!projectile.overlapsPlayer(player) || !projectile.registerHit()) {
+          continue;
+        }
+        final healthBefore = player.currentHealth;
+        if (player.takeDamage(projectile.damage, now: _elapsedSeconds)) {
+          _recordPlayerDamage(
+            player: player,
+            healthBefore: healthBefore,
+            sourceId: projectile.sourceId,
+          );
+        }
+        projectile.removeFromParent();
+        break;
+      }
+    }
+  }
+
+  void _resetProjectileAdmissionBudget() {
+    _projectileSlotsRemaining = max(
+      0,
+      performanceBudget.maxProjectiles - _projectileComponentCount,
+    );
+  }
+
+  void _admitProjectile(PositionComponent projectile) {
+    if (_projectileSlotsRemaining <= 0) {
+      _rejectPopulation(GamePopulationKind.projectile, 1);
+      return;
+    }
+    _projectileSlotsRemaining -= 1;
+    add(projectile);
   }
 
   void _resolveEnemyHazards() {
@@ -856,28 +1221,41 @@ class PixelSurvivorGame extends FlameGame
     for (final event in events) {
       if (event.target.isDead) continue;
       final healthBefore = event.target.currentHealth;
-      event.target.takeDamage(event.damage);
+      final resolvedDamage = event.target.resolveIncomingDamage(event);
+      final wasBlocked = event.target.consumeBlockFeedback();
+      event.target.takeDamage(resolvedDamage);
       final effectiveDamage = healthBefore - event.target.currentHealth;
       final weaponId = event.weaponId;
       if (weaponId != null && effectiveDamage > 0) {
-        runStats.recordWeaponDamage(
-          weaponId: weaponId,
+        runStats.recordDamageSource(
+          sourceId: weaponId,
           amount: effectiveDamage,
         );
         _lastWeaponHitByEnemy[event.target] = weaponId;
+        if (weaponId == sealingSlash) {
+          runStats.combatPlaytestTracker.recordSynergyDamage(
+            synergyId: sealingSlash,
+            amount: effectiveDamage,
+            atSeconds: _elapsedSeconds,
+          );
+        }
       }
       event.target.registerHit(knockback: event.direction * event.knockback);
-      _spawnDamageNumber(event);
-      _spawnCombatEffect(
-        event.isCritical ? CombatEffectKind.critical : CombatEffectKind.hit,
-        event.target.position,
-        size: event.isCritical ? 48 : 32,
-      );
+      _spawnDamageNumber(event, effectiveDamage);
+      if (wasBlocked) {
+        _spawnShieldBlockEffect(event.target);
+      } else {
+        _spawnCombatEffect(
+          event.isCritical ? CombatEffectKind.critical : CombatEffectKind.hit,
+          event.target.position,
+          size: event.isCritical ? 48 : 32,
+        );
+      }
       if (event.isCritical) _emitAudio(AudioCue.criticalHit);
     }
   }
 
-  void _spawnDamageNumber(DamageEvent event) {
+  void _spawnDamageNumber(DamageEvent event, double effectiveDamage) {
     if (!damageNumbersEnabled) return;
     if (_damageNumberCount >= performanceBudget.maxDamageNumbers) {
       _rejectPopulation(GamePopulationKind.damageNumber, 1);
@@ -886,7 +1264,7 @@ class PixelSurvivorGame extends FlameGame
     _damageNumberCount += 1;
     add(
       DamageNumberComponent(
-        damage: event.damage,
+        damage: effectiveDamage,
         isCritical: event.isCritical,
         position: event.target.position.clone(),
         onExpired: () {
@@ -911,6 +1289,23 @@ class PixelSurvivorGame extends FlameGame
         kind: kind,
         position: position.clone(),
         size: Vector2.all(size),
+        onExpired: () {
+          _combatEffectCount = max(0, _combatEffectCount - 1);
+        },
+      ),
+    );
+  }
+
+  void _spawnShieldBlockEffect(EnemyComponent enemy) {
+    if (_combatEffectCount >= performanceBudget.maxCombatEffects) {
+      _rejectPopulation(GamePopulationKind.combatEffect, 1);
+      return;
+    }
+    _combatEffectCount += 1;
+    add(
+      ShieldBlockEffectComponent(
+        position: enemy.position.clone(),
+        facingDirection: enemy.shieldDirection,
         onExpired: () {
           _combatEffectCount = max(0, _combatEffectCount - 1);
         },
@@ -1012,11 +1407,23 @@ class PixelSurvivorGame extends FlameGame
   void _recordEnemyDefeat(EnemyComponent enemy) {
     if (!_recordedEnemyDefeats.add(enemy)) return;
     final enemyDefinition = _enemyDefinitionFor(enemy.enemyId);
+    final weaponId = _lastWeaponHitByEnemy[enemy];
+    if (weaponId == hwandoSlash) {
+      weaponSystem.recordHwandoKill(count: 1);
+    }
     runStats.recordEnemyDefeat(
       isBoss: enemyDefinition.isBoss,
       isElite: enemy.isElite,
-      weaponId: _lastWeaponHitByEnemy.remove(enemy),
+      weaponId: weaponId,
     );
+    _killStreak = _killStreakSecondsRemaining > 0 ? _killStreak + 1 : 1;
+    _killStreakSecondsRemaining = 1.5;
+    runStats.combatPlaytestTracker.recordKill(
+      atSeconds: _elapsedSeconds,
+      sourceId: weaponId ?? 'unknown',
+      enemyBehaviorId: enemyDefinition.behaviorProfileId,
+    );
+    _lastWeaponHitByEnemy.remove(enemy);
     final firstBossReward = enemyDefinition.isBoss && firstBossRewardAvailable;
     if (persistSpiritJade != null &&
         _metaRewardPolicy.shouldDropSpiritJade(
@@ -1197,12 +1604,23 @@ class PixelSurvivorGame extends FlameGame
     required double healthBefore,
     required String sourceId,
   }) {
+    final effectiveDamage = healthBefore - player.currentHealth;
     runStats.recordPlayerDamage(
-      amount: healthBefore - player.currentHealth,
+      amount: effectiveDamage,
       sourceId: sourceId,
       atSeconds: _elapsedSeconds.floor(),
       isLethal: !player.isAlive,
     );
+    final enemyBehaviorId = _enemyDefinitionFor(sourceId).behaviorProfileId;
+    runStats.combatPlaytestTracker.recordEnemyDamage(
+      enemyBehaviorId: enemyBehaviorId,
+      amount: effectiveDamage,
+    );
+    if (!player.isAlive) {
+      runStats.combatPlaytestTracker.recordEnemyDeath(
+        enemyBehaviorId: enemyBehaviorId,
+      );
+    }
   }
 
   List<LevelUpChoice> levelUpChoices() {
@@ -1224,9 +1642,11 @@ class PixelSurvivorGame extends FlameGame
 
   void _addStartingRunUnlocks() {
     unlockedWeaponIds.addAll(
-      weaponDefinitions
-          .where((definition) => definition.startsUnlocked)
-          .map((definition) => definition.id),
+      contentPolicy.resolveWeaponIds(
+        weaponDefinitions
+            .where((definition) => definition.startsUnlocked)
+            .map((definition) => definition.id),
+      ),
     );
     _addStartingAugments();
   }
@@ -1238,6 +1658,11 @@ class PixelSurvivorGame extends FlameGame
     }
 
     _pendingLevelUpChoices = choices;
+    for (final choice in choices.where(
+      (choice) => choice.type == LevelUpChoiceType.weapon,
+    )) {
+      runStats.combatPlaytestTracker.recordOffer(weaponId: choice.id);
+    }
     _emitAudio(AudioCue.levelUp);
     if (isMounted) {
       pauseEngine();
@@ -1299,7 +1724,7 @@ class PixelSurvivorGame extends FlameGame
   @visibleForTesting
   EnemyComponent debugSpawnEnemy(EnemyId enemyId, {required Vector2 position}) {
     final enemy = _createEnemy(enemyId, position);
-    add(enemy);
+    _addEnemyWithWarningOverlay(enemy);
     return enemy;
   }
 
@@ -1386,8 +1811,12 @@ class PixelSurvivorGame extends FlameGame
       .length;
 
   int get _projectileComponentCount => children
-      .whereType<ProjectileComponent>()
-      .where((projectile) => !projectile.isRemoving)
+      .where(
+        (component) =>
+            (component is ProjectileComponent ||
+                component is EnemyProjectileComponent) &&
+            !component.isRemoving,
+      )
       .length;
 
   AudioCue _attackCueFor(WeaponId weaponId) => switch (weaponId) {
@@ -1470,11 +1899,15 @@ class PixelSurvivorGame extends FlameGame
   }
 
   bool _isProjectileOutsideBounds(ProjectileComponent projectile) {
+    return _isPositionOutsideBounds(projectile.position);
+  }
+
+  bool _isPositionOutsideBounds(Vector2 position) {
     const margin = 64.0;
-    return projectile.position.x < -margin ||
-        projectile.position.y < -margin ||
-        projectile.position.x > size.x + margin ||
-        projectile.position.y > size.y + margin;
+    return position.x < -margin ||
+        position.y < -margin ||
+        position.x > size.x + margin ||
+        position.y > size.y + margin;
   }
 
   VectorInput _movementInputFromKeys(Set<LogicalKeyboardKey> keysPressed) {

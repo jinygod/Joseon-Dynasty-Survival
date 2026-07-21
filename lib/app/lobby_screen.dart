@@ -13,6 +13,7 @@ import '../game/content/character_definitions.dart';
 import '../game/content/stage_definitions.dart';
 import '../game/models/player_slot.dart';
 import '../game/systems/tutorial_progress_repository.dart';
+import '../game/systems/playtest_session_repository.dart';
 import '../l10n/app_strings.dart';
 import 'character_select_screen.dart';
 import 'account_section.dart';
@@ -34,6 +35,7 @@ class LobbyScreen extends StatefulWidget {
     this.progressSyncController,
     this.purchaseController,
     this.onPurchaseInitializationRetry,
+    this.playtestSessionRepository,
     super.key,
   });
 
@@ -45,6 +47,7 @@ class LobbyScreen extends StatefulWidget {
   final ProgressSyncController? progressSyncController;
   final PurchaseController? purchaseController;
   final VoidCallback? onPurchaseInitializationRetry;
+  final PlaytestSessionRepository? playtestSessionRepository;
 
   @override
   State<LobbyScreen> createState() => _LobbyScreenState();
@@ -191,6 +194,7 @@ class _LobbyScreenState extends State<LobbyScreen> with WidgetsBindingObserver {
           tutorialProgressRepository: tutorial,
           audioService: widget.audioService,
           audioSettingsController: widget.audioSettingsController,
+          playtestSessionRepository: widget.playtestSessionRepository,
           syncProgress: widget.controller.syncNow,
         ),
       ),
@@ -341,52 +345,86 @@ class _LobbyHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        const Text(
-          AppStrings.appTitle,
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
-        ),
-        const SizedBox(width: 16),
-        const Text('수련 단계 0'),
-        const Spacer(),
-        _ResourceBadge(icon: Icons.paid_outlined, label: '엽전 $coin'),
-        const SizedBox(width: 8),
-        _ResourceBadge(icon: Icons.diamond_outlined, label: '혼옥 $spiritJade'),
-        if (purchaseController case final purchases?) ...[
-          AnimatedBuilder(
-            animation: purchases,
-            builder: (context, _) => ActionChip(
-              key: const Key('lobby-premium-shop'),
-              visualDensity: VisualDensity.compact,
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              labelPadding: const EdgeInsets.symmetric(horizontal: 2),
-              label: Text(
-                purchases.state.walletStale
-                    ? '금옥 --'
-                    : '금옥 ${purchases.state.wallet?.balance ?? 0}',
-              ),
-              onPressed: onPremiumShop,
-            ),
-          ),
-        ] else if (purchaseInitializationFailed) ...[
-          ActionChip(
-            key: const Key('lobby-premium-shop-retry'),
+    final resourceItems = <Widget>[
+      const Text('수련 단계 0'),
+      _ResourceBadge(icon: Icons.paid_outlined, label: '엽전 $coin'),
+      _ResourceBadge(icon: Icons.diamond_outlined, label: '혼옥 $spiritJade'),
+      if (purchaseController case final purchases?)
+        AnimatedBuilder(
+          animation: purchases,
+          builder: (context, _) => ActionChip(
+            key: const Key('lobby-premium-shop'),
             visualDensity: VisualDensity.compact,
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             labelPadding: const EdgeInsets.symmetric(horizontal: 2),
-            label: const Text('금옥 재시도'),
+            label: Text(
+              purchases.state.walletStale
+                  ? '금옥 --'
+                  : '금옥 ${purchases.state.wallet?.balance ?? 0}',
+            ),
             onPressed: onPremiumShop,
           ),
-        ],
-        const SizedBox(width: 8),
-        IconButton.filledTonal(
-          key: const Key('lobby-settings'),
-          tooltip: '설정',
-          onPressed: onSettings,
-          icon: const Icon(Icons.settings_outlined),
+        )
+      else if (purchaseInitializationFailed)
+        ActionChip(
+          key: const Key('lobby-premium-shop-retry'),
+          visualDensity: VisualDensity.compact,
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          labelPadding: const EdgeInsets.symmetric(horizontal: 2),
+          label: const Text('금옥 재시도'),
+          onPressed: onPremiumShop,
         ),
-      ],
+    ];
+    final settingsButton = IconButton.filledTonal(
+      key: const Key('lobby-settings'),
+      tooltip: '설정',
+      onPressed: onSettings,
+      icon: const Icon(Icons.settings_outlined),
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 600) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      AppStrings.appTitle,
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  settingsButton,
+                ],
+              ),
+              const SizedBox(height: 8),
+              Wrap(spacing: 8, runSpacing: 8, children: resourceItems),
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            const Text(
+              AppStrings.appTitle,
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(width: 16),
+            resourceItems.first,
+            const Spacer(),
+            for (final item in resourceItems.skip(1)) ...[
+              item,
+              const SizedBox(width: 8),
+            ],
+            settingsButton,
+          ],
+        );
+      },
     );
   }
 }

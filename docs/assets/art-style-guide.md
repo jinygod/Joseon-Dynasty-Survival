@@ -1,71 +1,60 @@
-# 조선 왕조 서바이벌 아트 스타일 가이드
+# Joseon Combat Slice Art Contract
 
-## 방향
+## Approved visual direction
 
-핵심 문장은 **“달빛 아래 낡은 관아에서 한지·먹·봉인색이 살아 움직이는 조선 민속 호러 픽셀 아트”**다. 역사 재현보다 전투 가독성을 우선하되 갓, 포졸복, 부적, 환도, 각궁, 장승, 기와와 같은 조선 시각 어휘를 원형 그대로 복제하지 않고 게임용 실루엣으로 단순화한다.
+The combat slice uses clean, readable illustrated characters rather than a
+pixel-only style. Human characters use compact **3-4-head proportions**, a
+**bold clean outline**, and **2-3-shade cel rendering**. Forms must remain
+legible at gameplay scale without depending on fine texture.
 
-화면의 70%는 저채도 달빛 배경, 20%는 캐릭터 고유색, 10%만 공격·위험·보상 강조색으로 사용한다. 같은 프레임에서 네온 계열 강조색은 최대 두 종류만 허용한다.
+Joseon clothing and equipment are the design vocabulary: gat, jeonbok,
+durumagi, military coats and headcloths, mudang ritual sleeves and ribbons,
+straw rain capes, hwando, matchlocks, talismans, bells, bows, clubs, and
+village guardian carvings. Do not use Japanese samurai armor, Chinese wuxia
+robes, or copied commercial-game assets.
 
-## 고정 팔레트
+## Character vocabulary
 
-| 토큰 | ARGB | 용도 |
-| --- | --- | --- |
-| `inkNight` | `#101820` | 최암부, 배경, UI 그림자 |
-| `moonSlate` | `#263849` | 돌·기와·밤 중간톤 |
-| `moonMist` | `#9FB3C8` | 달빛 림라이트, 비활성 정보 |
-| `hanji` | `#F4EAD2` | 한지, 주요 문자, 밝은 외곽선 |
-| `sealRed` | `#D1495B` | 봉인·피격·적대 표식 |
-| `deepSeal` | `#8F2D38` | 잠금·위험의 어두운 단계 |
-| `brass` | `#F2CC8F` | 금속 장식, 희귀도, 치명타 |
-| `jade` | `#3FBF7F` | 보호·회복·선택 가능 상태 |
-| `spiritCyan` | `#7BDFF2` | 혼령·경험치·마법 |
-| `ember` | `#F08A5D` | 도깨비·화약·불꽃 |
-| `danger` | `#E63946` | 보스 장판과 즉시 위험 전용 |
+- `hwandoSwordsman`: layered durumagi and jeonbok, a gat silhouette, and a
+  hwando worn at the hip.
+- `mudang`: striped ceremonial sleeves, ritual ribbons, bells, and paper
+  talismans.
+- `musketeer`: Joseon military coat and headcloth with a long matchlock.
+- `dokkaebiHunter`: straw rain cape, rope charms, horn trophies, and a
+  practical club.
 
-한 스프라이트는 투명색을 제외하고 기본 6~10색, 보스는 최대 16색을 사용한다. 순수 검정과 순수 흰색은 금지하고 `inkNight`와 `hanji`로 치환한다.
+## Ten monster silhouettes
 
-## 해상도와 확대
+Each family needs a distinct outer contour before color and interior detail:
 
-- 16×16: 경험치·회복·상태 표식.
-- 24×24: 쥐떼 같은 낮고 작은 군집, 소형 소품.
-- 32×32: 플레이어, 일반 적, 무기·증강 아이콘, 타일.
-- 64×64: 보스와 넓은 공격 효과.
-- 원본 캔버스에 1~2px 투명 여백을 둔다. 실루엣 점유율은 코드의 `SilhouetteRule` 범위를 따른다.
-- 런타임 확대는 1×·2×·3×·4× 정수 배율과 최근접 보간만 사용한다. 비정수 확대, 안티앨리어싱, 흐림, 회전 리샘플링은 금지한다.
+1. `littleDokkaebi`: small horns, broad grin, oversized club.
+2. `jarGhost`: round earthenware jar and leaking spirit plume.
+3. `jangseungGhost`: tall carved pole face and splintered arms.
+4. `sakkatSpecter`: wide conical hat above a narrow floating robe.
+5. `fireDokkaebi`: forked flame crown, compact torso, ember fists.
+6. `eggGhost`: smooth egg body, tiny feet, cracked face.
+7. `underworldMinion`: ledger tag, hooked staff, hunched official robe.
+8. `tigerDemon`: low feline shoulders, striped tail, exaggerated claws.
+9. `plagueGhost`: swollen sleeves, bent posture, trailing sickly vapor.
+10. `fallenOfficer`: broken Joseon command hat, lamellar coat, long blade.
 
-## 외곽선과 명암
+## Temporary gameplay render sizes
 
-- 기본 외곽선은 원본 기준 1px, 64px 보스는 바깥 2px와 내부 분리선 1px을 허용한다.
-- 외곽선은 `inkNight` 단색을 기본으로 하되 달빛을 받는 좌상단 25%에는 한 단계 밝은 색을 사용한다.
-- 광원은 항상 좌상단 달빛 하나다. 불꽃·부적·혼령은 보조 자체광을 가질 수 있으나 본체 전체의 명암 방향을 뒤집지 않는다.
-- 명암은 바탕·그림자·하이라이트 3단계를 기본으로 하고, 금속과 보스 갑옷만 4단계를 허용한다.
-- 접지 그림자는 1~2px 높이의 반투명 타원으로 제한한다. 비행 혼령은 그림자 대신 1px 간격을 둔다.
+These are current on-screen visual sizes, not source-canvas or pixel-art frame
+requirements:
 
-## 실루엣 문법
+- Player: **108**
+- Normal enemy: **54**
+- Elite enemy: **81**
+- Boss: **126**
 
-- 플레이어: 직립 자세와 머리 위 갓/도구의 끊김으로 적과 구분한다.
-- 쥐떼: 낮고 넓은 세 개 이상의 덩어리로 단일 대형 쥐처럼 보이지 않게 한다.
-- 추격 적: 전방 기울기와 한쪽 무기 돌출을 사용한다.
-- 탱크: 넓은 어깨, 낮은 무게중심, 사각 하체를 사용한다.
-- 혼령: 좁은 상체와 끊어진 부유 하단으로 지상 적과 구분한다.
-- 보스: 일반 적의 최소 두 배 면적, 고유 지휘 무기, 비대칭 갑옷 파손 세 지표를 동시에 갖는다.
+## Production rule
 
-모든 전투 스프라이트는 색을 제거한 단색 마스크와 32px 모바일 미리보기에서도 역할을 맞힐 수 있어야 한다.
+Do not bulk-produce final art during the combat slice. Create only the minimum
+temporary or representative assets needed to validate silhouette, combat
+readability, proportions, and Joseon vocabulary. A reviewed representative
+asset must establish the direction before any later production batch.
 
-## 애니메이션·효과
-
-- 대기 2~4프레임, 이동 4~6프레임, 공격 4~8프레임, 피격 2프레임, 사망 6~10프레임을 기준으로 한다.
-- 공격 예고는 결과 프레임과 다른 실루엣·색을 모두 사용한다. 위험 예고는 `danger`, 실제 타격 중심은 `hanji` 또는 `ember`를 사용한다.
-- 히트 플래시는 1프레임 완전 백색 대신 `hanji` 70% 혼합을 사용한다.
-- 투사체 궤적은 본체보다 얇고 밝게, 장판 외곽은 내부보다 높은 대비로 그린다.
-
-## 납품 규칙
-
-- PNG, 투명 배경, sRGB, 원본 해상도, 소문자 snake_case와 크기 접미사를 사용한다.
-- 타일만 완전 불투명 배경을 허용한다.
-- 원본·프롬프트·라이선스 출처를 자산별로 기록한다.
-- 검수는 원본 배율, 2× 게임 배율, 채도 0 단색, 밝기 50% 화면에서 각각 수행한다.
-- 외부 게임·작가·캐릭터의 이름이나 고유 실루엣을 참조하지 않는다.
-- 모든 납품물은 `asset-rights-policy.md`의 반입 절차를 따르고 `asset-rights-ledger.csv` 상태가 `approved`여야 릴리스 자산으로 등록한다.
-
-코드 기준은 `JoseonArtStyle`, 파일 기준은 `AssetCatalog`, 생성 프롬프트 기준은 `pixel-art-prompts.md`다. 세 자료가 충돌하면 이 문서의 전투 가독성 규칙을 우선하고 코드 토큰을 함께 수정한다.
+The machine-testable mirror of this contract is `JoseonArtStyle`. Existing
+palette and legacy asset-validation constants remain in place for assets that
+the current build still consumes; they do not redefine the new art direction.

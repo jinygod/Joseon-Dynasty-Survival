@@ -26,6 +26,13 @@ abstract final class AudioAssetCatalog {
     ),
     AudioCue.defeatMusic: AudioAssetDefinition(path: 'audio/music/defeat.ogg'),
     AudioCue.hwandoAttack: AudioAssetDefinition(path: 'audio/sfx/hwando.ogg'),
+    AudioCue.hwandoMasterAttack: AudioAssetDefinition(
+      path: 'audio/sfx/critical.ogg',
+    ),
+    AudioCue.talismanMasterAttack: AudioAssetDefinition(
+      path: 'audio/sfx/talisman.ogg',
+    ),
+    AudioCue.sealingSlash: AudioAssetDefinition(path: 'audio/sfx/hwando.ogg'),
     AudioCue.bowAttack: AudioAssetDefinition(path: 'audio/sfx/bow.ogg'),
     AudioCue.talismanAttack: AudioAssetDefinition(
       path: 'audio/sfx/talisman.ogg',

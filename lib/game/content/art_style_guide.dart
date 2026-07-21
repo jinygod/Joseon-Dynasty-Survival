@@ -1,6 +1,49 @@
 class JoseonArtStyle {
   const JoseonArtStyle._();
 
+  static const characterHeadRatioMin = 3;
+  static const characterHeadRatioMax = 4;
+  static const cellShadeStepsMin = 2;
+  static const cellShadeStepsMax = 3;
+  static const outlineStyle = 'bold_clean';
+  static const allowsBulkFinalArt = false;
+  static const temporaryActorVisualSizes = <String, double>{
+    'player': 108,
+    'normalEnemy': 54,
+    'eliteEnemy': 81,
+    'boss': 126,
+  };
+
+  static const characterDesignCues = <String, String>{
+    'hwandoSwordsman':
+        'Joseon durumagi and jeonbok layers, gat silhouette, hwando at hip',
+    'mudang':
+        'striped ceremonial sleeves, ritual ribbons, bells and paper talismans',
+    'musketeer':
+        'Joseon military coat and headcloth with a long matchlock musket',
+    'dokkaebiHunter':
+        'straw rain cape, rope charms, horn trophies and a practical club',
+  };
+
+  static const monsterSilhouetteCues = <String, String>{
+    'littleDokkaebi': 'small horned head, broad grin and oversized club',
+    'jarGhost': 'round earthenware jar body with a leaking spirit plume',
+    'jangseungGhost': 'tall carved village-pole face and splintered arms',
+    'sakkatSpecter': 'wide conical hat above a narrow floating robe',
+    'fireDokkaebi': 'forked flame crown, compact torso and ember fists',
+    'eggGhost': 'smooth egg-shaped body with tiny feet and a cracked face',
+    'underworldMinion': 'ledger tag, hooked staff and hunched official robe',
+    'tigerDemon': 'low feline shoulders, striped tail and exaggerated claws',
+    'plagueGhost': 'swollen sleeves, bent posture and trailing sickly vapor',
+    'fallenOfficer': 'broken Joseon command hat, lamellar coat and long blade',
+  };
+
+  static const forbiddenDesignCues = <String>[
+    'japanese_samurai_armor',
+    'chinese_wuxia_robes',
+    'copied_commercial_game_assets',
+  ];
+
   static const pickupSize = 16;
   static const swarmSize = 24;
   static const standardSize = 32;

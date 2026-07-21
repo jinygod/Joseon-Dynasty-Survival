@@ -5,17 +5,22 @@ import 'package:flame/components.dart';
 import '../components/area_attack_component.dart';
 import '../components/enemy_component.dart';
 import '../components/frost_field_component.dart';
+import '../components/five_color_ward_component.dart';
 import '../components/melee_arc_component.dart';
 import '../components/projectile_component.dart';
-import '../content/enemy_definitions.dart';
+import '../combat/attack_spec.dart';
 import '../content/ids.dart';
 import '../content/weapon_definitions.dart';
 import '../content/weapon_level_definitions.dart';
 import '../models/damage_event.dart';
+import 'hwando_aim_resolver.dart';
+import 'hwando_executor.dart';
+import 'talisman_executor.dart';
 
 class WeaponSystem {
   WeaponSystem({Map<WeaponId, int>? initialLevels, Random? random})
-    : _random = random ?? Random() {
+    : _random = random ?? Random(),
+      _talismanExecutor = TalismanExecutor(random: random) {
     if (initialLevels != null) {
       _levels.addAll(initialLevels);
     }
@@ -24,10 +29,18 @@ class WeaponSystem {
   final Map<WeaponId, int> _levels = {};
   final Map<WeaponId, double> _cooldowns = {};
   final Random _random;
+  final HwandoExecutor _hwandoExecutor = HwandoExecutor();
+  final TalismanExecutor _talismanExecutor;
+  double _talismanNow = 0;
 
   Map<WeaponId, int> get levels => Map.unmodifiable(_levels);
+  List<AttachedTalisman> get attachedTalismans => _talismanExecutor.attached;
 
   int levelOf(WeaponId weaponId) => _levels[weaponId] ?? 0;
+
+  void recordHwandoKill({required int count}) {
+    _hwandoExecutor.recordKill(count: count);
+  }
 
   bool canUpgrade(WeaponId weaponId, Set<WeaponId> unlockedWeaponIds) {
     final definition = _definitionFor(weaponId);
@@ -59,24 +72,28 @@ class WeaponSystem {
     double criticalChance = 0,
     double sizeMultiplier = 1,
     Map<ElementType, double> elementDamageMultipliers = const {},
+    Vector2? hwandoFallbackDirection,
   }) {
-    final aliveEnemies = enemies.where((enemy) => !enemy.isDead).toList();
-    if (aliveEnemies.isEmpty) {
-      return const WeaponTickResult.empty();
-    }
-
+    final aliveEnemies = enemies
+        .where((enemy) => !enemy.isDead && !enemy.isRemoving)
+        .toList();
     final damageEvents = <DamageEvent>[];
     final projectiles = <ProjectileComponent>[];
     final meleeArcs = <MeleeArcComponent>[];
     final areaAttacks = <AreaAttackComponent>[];
     final frostFields = <FrostFieldComponent>[];
+    final fiveColorWards = <FiveColorWardComponent>[];
     final firedWeaponIds = <WeaponId>[];
+    final attackInstances = <AttackInstance>[];
+
+    _talismanNow += max(0, dt);
 
     final hwandoEventCount = damageEvents.length + meleeArcs.length;
-    _fireHwando(
+    final hwandoDirection = _fireHwando(
       dt: dt,
       origin: origin,
       enemies: aliveEnemies,
+      fallbackDirection: hwandoFallbackDirection ?? Vector2(1, 0),
       damageMultiplier:
           damageMultiplier *
           _elementDamageMultiplier(hwandoSlash, elementDamageMultipliers),
@@ -85,9 +102,51 @@ class WeaponSystem {
       sizeMultiplier: sizeMultiplier,
       damageEvents: damageEvents,
       meleeArcs: meleeArcs,
+      attackInstances: attackInstances,
     );
     if (damageEvents.length + meleeArcs.length > hwandoEventCount) {
       firedWeaponIds.add(hwandoSlash);
+    }
+    final attachedBefore = _talismanExecutor.attached.length;
+    final talismanResult = _talismanExecutor.tick(
+      TalismanTickInput(
+        dt: dt,
+        level: levelOf(talismanThrow),
+        now: _talismanNow,
+        origin: origin,
+        enemies: aliveEnemies,
+        damageMultiplier:
+            damageMultiplier *
+            _elementDamageMultiplier(talismanThrow, elementDamageMultipliers),
+        sizeMultiplier: sizeMultiplier,
+        attackSpeedMultiplier: attackSpeedMultiplier,
+        criticalChance: criticalChance,
+      ),
+    );
+    attackInstances.addAll(talismanResult.attacks);
+    fiveColorWards.addAll(
+      talismanResult.wards.map(
+        (request) => FiveColorWardComponent(
+          attack: request.attack,
+          tickSeconds: request.tickSeconds,
+        ),
+      ),
+    );
+    final talismanFired =
+        talismanResult.attacks.isNotEmpty ||
+        talismanResult.wards.isNotEmpty ||
+        talismanResult.attached.length > attachedBefore;
+    if (aliveEnemies.isEmpty) {
+      return WeaponTickResult(
+        damageEvents: damageEvents,
+        meleeArcs: meleeArcs,
+        attackInstances: attackInstances,
+        fiveColorWards: fiveColorWards,
+        attachedTalismans: talismanResult.attached,
+        talismanTransfers: talismanResult.transfers,
+        firedWeaponIds: firedWeaponIds,
+        hwandoDirection: hwandoDirection,
+      );
     }
     final gakgungProjectileCount = projectiles.length;
     _fireGakgung(
@@ -105,22 +164,7 @@ class WeaponSystem {
     if (projectiles.length > gakgungProjectileCount) {
       firedWeaponIds.add(gakgungShot);
     }
-    final talismanDamageCount = damageEvents.length;
-    _fireTalisman(
-      dt: dt,
-      origin: origin,
-      enemies: aliveEnemies,
-      damageMultiplier:
-          damageMultiplier *
-          _elementDamageMultiplier(talismanThrow, elementDamageMultipliers),
-      attackSpeedMultiplier: attackSpeedMultiplier,
-      criticalChance: criticalChance,
-      sizeMultiplier: sizeMultiplier,
-      damageEvents: damageEvents,
-    );
-    if (damageEvents.length > talismanDamageCount) {
-      firedWeaponIds.add(talismanThrow);
-    }
+    if (talismanFired) firedWeaponIds.add(talismanThrow);
     final bombAreaCount = areaAttacks.length;
     _fireBomb(
       dt: dt,
@@ -208,61 +252,92 @@ class WeaponSystem {
       meleeArcs: meleeArcs,
       areaAttacks: areaAttacks,
       frostFields: frostFields,
+      fiveColorWards: fiveColorWards,
+      attachedTalismans: talismanResult.attached,
+      talismanTransfers: talismanResult.transfers,
       firedWeaponIds: firedWeaponIds,
+      attackInstances: attackInstances,
+      hwandoDirection: hwandoDirection,
     );
   }
 
-  void _fireHwando({
+  Vector2? _fireHwando({
     required double dt,
     required Vector2 origin,
     required List<EnemyComponent> enemies,
+    required Vector2 fallbackDirection,
     required double damageMultiplier,
     required double attackSpeedMultiplier,
     required double criticalChance,
     required double sizeMultiplier,
     required List<DamageEvent> damageEvents,
     required List<MeleeArcComponent> meleeArcs,
+    required List<AttackInstance> attackInstances,
   }) {
     final level = levelOf(hwandoSlash);
-    if (level == 0) return;
+    if (level == 0) return null;
     final stats = weaponLevelFor(hwandoSlash, level);
-    if (!_consumeCooldown(
-      hwandoSlash,
-      dt,
-      stats.cooldownSeconds / _positiveMultiplier(attackSpeedMultiplier),
-    )) {
-      return;
-    }
-
-    final nearest = _nearestEnemy(origin, enemies)!;
-    final baseDirection = _direction(origin, nearest.position);
-    for (var index = 0; index < stats.projectileCount; index += 1) {
-      final offset = stats.projectileCount == 1
-          ? 0.0
-          : (index == 0 ? -0.18 : 0.18);
-      final direction = baseDirection.clone()..rotate(offset);
+    final baseDirection = HwandoAimResolver.resolve(
+      origin: origin,
+      enemies: enemies,
+      maxRange: stats.range * sizeMultiplier,
+      fallbackDirection: fallbackDirection,
+    ).direction;
+    final scheduled = _hwandoExecutor.tick(
+      HwandoTickInput(
+        dt: dt * _positiveMultiplier(attackSpeedMultiplier),
+        level: level,
+        origin: origin,
+        aimDirection: baseDirection,
+        damageMultiplier: damageMultiplier,
+        sizeMultiplier: sizeMultiplier,
+      ),
+    );
+    final emitted = [
+      for (final attack in scheduled)
+        AttackInstance(
+          spec: attack.spec,
+          origin: attack.origin,
+          direction: attack.direction,
+          sequenceIndex: attack.sequenceIndex,
+          isCritical: _random.nextDouble() < criticalChance.clamp(0, 1),
+        ),
+    ];
+    attackInstances.addAll(emitted);
+    for (final attack in emitted) {
+      final range = attack.spec.shape == AttackShape.circle
+          ? attack.spec.radius
+          : attack.spec.range;
       final arc = MeleeArcComponent(
         weaponId: hwandoSlash,
-        damage: stats.damage * damageMultiplier,
-        knockback: stats.knockback,
-        position: origin.clone(),
-        direction: direction,
-        range: stats.range * sizeMultiplier,
+        damage: attack.spec.damage,
+        knockback: attack.spec.knockback,
+        position: attack.origin,
+        direction: attack.direction,
+        range: range,
+        angleRadians: attack.spec.shape == AttackShape.circle
+            ? pi * 2
+            : attack.spec.angleRadians == 0
+            ? pi / 2
+            : attack.spec.angleRadians,
       );
       meleeArcs.add(arc);
       for (final enemy in enemies.where(arc.containsEnemy)) {
         damageEvents.add(
-          _damageEvent(
+          DamageEvent(
             weaponId: hwandoSlash,
             target: enemy,
-            origin: origin,
-            damage: stats.damage * damageMultiplier,
-            knockback: stats.knockback,
-            criticalChance: criticalChance,
+            direction: _direction(attack.origin, enemy.position),
+            damage: attack.spec.damage * (attack.isCritical ? 2 : 1),
+            knockback: attack.spec.knockback,
+            isCritical: attack.isCritical,
+            sourceId: attack.spec.id,
+            traits: attack.spec.traits,
           ),
         );
       }
     }
+    return emitted.isEmpty ? null : emitted.first.direction;
   }
 
   void _fireGakgung({
@@ -303,55 +378,6 @@ class WeaponSystem {
           pierce: stats.pierce,
           knockback: stats.knockback,
           size: Vector2.all(8 * sizeMultiplier),
-        ),
-      );
-    }
-  }
-
-  void _fireTalisman({
-    required double dt,
-    required Vector2 origin,
-    required List<EnemyComponent> enemies,
-    required double damageMultiplier,
-    required double attackSpeedMultiplier,
-    required double criticalChance,
-    required double sizeMultiplier,
-    required List<DamageEvent> damageEvents,
-  }) {
-    final level = levelOf(talismanThrow);
-    if (level == 0) return;
-    final stats = weaponLevelFor(talismanThrow, level);
-    if (!_consumeCooldown(
-      talismanThrow,
-      dt,
-      stats.cooldownSeconds / _positiveMultiplier(attackSpeedMultiplier),
-    )) {
-      return;
-    }
-
-    final maxRangeSquared = pow(stats.range * sizeMultiplier, 2);
-    final targets =
-        enemies
-            .where(
-              (enemy) =>
-                  enemy.position.distanceToSquared(origin) <= maxRangeSquared,
-            )
-            .toList()
-          ..sort(
-            (a, b) => a.position
-                .distanceToSquared(origin)
-                .compareTo(b.position.distanceToSquared(origin)),
-          );
-    for (final target in targets.take(stats.chainCount)) {
-      final spiritMultiplier = target.enemyId == vengefulSpirit ? 1.25 : 1.0;
-      damageEvents.add(
-        _damageEvent(
-          weaponId: talismanThrow,
-          target: target,
-          origin: origin,
-          damage: stats.damage * damageMultiplier * spiritMultiplier,
-          knockback: stats.knockback,
-          criticalChance: criticalChance,
         ),
       );
     }
@@ -690,7 +716,12 @@ class WeaponTickResult {
     this.meleeArcs = const [],
     this.areaAttacks = const [],
     this.frostFields = const [],
+    this.fiveColorWards = const [],
     this.firedWeaponIds = const [],
+    this.attackInstances = const [],
+    this.attachedTalismans = const [],
+    this.talismanTransfers = const [],
+    this.hwandoDirection,
   });
 
   const WeaponTickResult.empty()
@@ -699,12 +730,22 @@ class WeaponTickResult {
       meleeArcs = const [],
       areaAttacks = const [],
       frostFields = const [],
-      firedWeaponIds = const [];
+      fiveColorWards = const [],
+      firedWeaponIds = const [],
+      attackInstances = const [],
+      attachedTalismans = const [],
+      talismanTransfers = const [],
+      hwandoDirection = null;
 
   final List<DamageEvent> damageEvents;
   final List<ProjectileComponent> projectiles;
   final List<MeleeArcComponent> meleeArcs;
   final List<AreaAttackComponent> areaAttacks;
   final List<FrostFieldComponent> frostFields;
+  final List<FiveColorWardComponent> fiveColorWards;
   final List<WeaponId> firedWeaponIds;
+  final List<AttackInstance> attackInstances;
+  final List<AttachedTalisman> attachedTalismans;
+  final List<TalismanTransferCue> talismanTransfers;
+  final Vector2? hwandoDirection;
 }

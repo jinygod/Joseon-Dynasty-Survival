@@ -63,6 +63,29 @@ void main() {
     await tester.tap(find.byKey(const Key('hud-pause')));
     expect(pauses, 1);
   });
+
+  testWidgets('combat notice stays below boss warning and expires', (
+    tester,
+  ) async {
+    final source = FakeGameHudSource(
+      bossName: '타락한 관군 대장',
+      bossHealthFraction: 0.5,
+      weaponLevelLabels: const [],
+      combatNotice: '봉마참',
+      combatNoticeSecondsRemaining: 1.2,
+      killStreak: 7,
+    );
+
+    await tester.pumpWidget(MaterialApp(home: GameHud(source: source)));
+
+    expect(find.text('봉마참'), findsOneWidget);
+    expect(tester.getTopLeft(find.text('봉마참')).dy, greaterThan(80));
+    expect(find.text('7 연속 처치'), findsOneWidget);
+
+    source.combatNoticeSecondsRemaining = 0;
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(find.text('봉마참'), findsNothing);
+  });
 }
 
 class FakeGameHudSource implements GameHudSource {
@@ -70,6 +93,9 @@ class FakeGameHudSource implements GameHudSource {
     required this.bossName,
     required this.bossHealthFraction,
     required this.weaponLevelLabels,
+    this.combatNotice,
+    this.combatNoticeSecondsRemaining = 0,
+    this.killStreak = 0,
   });
 
   @override
@@ -78,6 +104,12 @@ class FakeGameHudSource implements GameHudSource {
   final double? bossHealthFraction;
   @override
   final List<String> weaponLevelLabels;
+  @override
+  final String? combatNotice;
+  @override
+  double combatNoticeSecondsRemaining;
+  @override
+  final int killStreak;
   @override
   double get elapsedSeconds => 275;
   @override

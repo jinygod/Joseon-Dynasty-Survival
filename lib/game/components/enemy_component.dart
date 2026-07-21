@@ -5,6 +5,8 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 import 'package:flutter/services.dart';
 
+import '../combat/attack_spec.dart';
+import '../content/actor_render_sizes.dart';
 import '../content/enemy_definitions.dart';
 import '../content/enemy_behavior_definitions.dart';
 import '../content/ids.dart';
@@ -12,10 +14,27 @@ import '../content/safe_asset_loader.dart';
 import '../content/visual_asset_load_policy.dart';
 import '../systems/combat_feedback_tuning.dart';
 import '../systems/enemy_behavior_controller.dart';
+import '../models/damage_event.dart';
 import 'player_component.dart';
 
 typedef TargetPositionProvider = Vector2? Function(Vector2 enemyPosition);
 typedef NearbyEnemiesProvider = Iterable<EnemyComponent> Function();
+
+class EnemyWarningSnapshot {
+  EnemyWarningSnapshot({
+    required this.kind,
+    required Vector2 direction,
+    required this.range,
+    required this.progress,
+  }) : _direction = direction.clone();
+
+  final EnemyBehaviorKind kind;
+  final Vector2 _direction;
+  final double range;
+  final double progress;
+
+  Vector2 get direction => _direction.clone();
+}
 
 enum EnemyAnimationState { moving, attacking, hit, death }
 
@@ -105,10 +124,11 @@ class EnemyComponent
   }) : currentHealth = currentHealth ?? maxHealth,
        super(
          position: position ?? Vector2.zero(),
-         size: size ?? Vector2.all(18),
+         size: size ?? Vector2.all(ActorRenderSizes.enemyCollisionSize(rank)),
          anchor: Anchor.center,
          autoResize: false,
        ) {
+    paint.filterQuality = FilterQuality.none;
     _behaviorProfile = behaviorProfile ?? _legacyProfileFor(behaviorType);
     _behaviorController = EnemyBehaviorController(profile: _behaviorProfile);
   }
@@ -131,7 +151,6 @@ class EnemyComponent
       targetPositionProvider: targetPositionProvider,
       nearbyEnemiesProvider: nearbyEnemiesProvider,
       position: position,
-      size: Vector2.all(definition.isElite ? 40 : 18),
     );
   }
 
@@ -157,7 +176,9 @@ class EnemyComponent
   double _environmentalSlowFraction = 0;
   double _environmentalHasteFraction = 0;
   bool _deathZonePending = false;
+  bool _blockFeedbackPending = false;
   final Vector2 knockbackVelocity = Vector2.zero();
+  final Vector2 facingDirection = Vector2(1, 0);
   EnemyAnimationState visualState = EnemyAnimationState.moving;
 
   bool get deathVisualComplete =>
@@ -165,6 +186,8 @@ class EnemyComponent
 
   bool get isDead => currentHealth <= 0;
   bool get isElite => rank == EnemyRank.elite;
+  double get visualSize => ActorRenderSizes.enemyVisualSize(rank);
+  double get visualScale => visualSize / size.x;
   bool get isDashing =>
       _behaviorController.phase == EnemyBehaviorPhase.active &&
       (_behaviorProfile.kind == EnemyBehaviorKind.dash ||
@@ -184,6 +207,21 @@ class EnemyComponent
       ? _behaviorProfile.effectMultiplier
       : 0;
   double get slowAuraFraction => enemyId == sorrowfulMaidenGhost ? .25 : 0;
+  bool get hasDirectionalShield => behaviorType == EnemyBehaviorType.tank;
+  Vector2 get shieldDirection => facingDirection.clone();
+  EnemyWarningSnapshot? get warningSnapshot {
+    if (_behaviorController.phase != EnemyBehaviorPhase.warning) return null;
+    return EnemyWarningSnapshot(
+      kind: _behaviorProfile.kind,
+      direction: _behaviorController.lockedDirection,
+      range: _behaviorProfile.range,
+      progress: _behaviorProfile.warningSeconds <= 0
+          ? 1
+          : (_behaviorController.phaseElapsed / _behaviorProfile.warningSeconds)
+                .clamp(0, 1)
+                .toDouble(),
+    );
+  }
 
   void setEnvironmentalSlow(double fraction) {
     if (!fraction.isFinite || fraction < 0 || fraction >= .8) {
@@ -208,6 +246,12 @@ class EnemyComponent
   bool consumeDeathZone() {
     if (!_deathZonePending) return false;
     _deathZonePending = false;
+    return true;
+  }
+
+  bool consumeBlockFeedback() {
+    if (!_blockFeedbackPending) return false;
+    _blockFeedbackPending = false;
     return true;
   }
 
@@ -270,6 +314,22 @@ class EnemyComponent
     }
   }
 
+  double resolveIncomingDamage(DamageEvent event) {
+    if (behaviorType != EnemyBehaviorType.tank) return event.damage;
+    if (event.traits.contains(AttackTrait.explosion) ||
+        event.traits.contains(AttackTrait.synergy)) {
+      return event.damage;
+    }
+    final frontal =
+        facingDirection.dot(-event.direction) >= math.cos(math.pi / 3);
+    if (!frontal) return event.damage;
+    final reduction = event.traits.contains(AttackTrait.piercing) ? .2 : .5;
+    _blockFeedbackPending = true;
+    return event.damage * (1 - reduction);
+  }
+
+  void debugFace(Vector2 direction) => _face(direction);
+
   bool overlapsPlayer(PlayerComponent player) {
     final hitRadius = (size.x + player.size.x) / 2;
     return position.distanceToSquared(player.position) < hitRadius * hitRadius;
@@ -289,6 +349,7 @@ class EnemyComponent
       }
     }
 
+    _face(direction);
     position.add(direction * effectiveMoveSpeed * dt);
     if (visualState != EnemyAnimationState.hit &&
         visualState != EnemyAnimationState.attacking &&
@@ -333,7 +394,16 @@ class EnemyComponent
     final target = targetPositionProvider?.call(position);
     if (target != null && !isDead) {
       final behavior = _tickBehavior(dt, target);
+      final hasLockedAttackFacing =
+          _behaviorProfile.kind == EnemyBehaviorKind.ranged &&
+          (_behaviorController.phase == EnemyBehaviorPhase.warning ||
+              _behaviorController.phase == EnemyBehaviorPhase.active);
+      if (_behaviorController.phase == EnemyBehaviorPhase.warning ||
+          hasLockedAttackFacing) {
+        _face(_behaviorController.lockedDirection);
+      }
       if (isDashing) {
+        _face(_behaviorController.lockedDirection);
         position.add(
           _behaviorController.lockedDirection *
               effectiveMoveSpeed *
@@ -344,6 +414,15 @@ class EnemyComponent
         if (_behaviorProfile.kind == EnemyBehaviorKind.dive &&
             _behaviorController.phase == EnemyBehaviorPhase.tracking) {
           _moveCrowToward(target, dt);
+        } else if (_behaviorProfile.kind == EnemyBehaviorKind.ranged) {
+          final speed = behavior.movementMultiplier.abs();
+          if (speed > 0) {
+            if (!hasLockedAttackFacing) _face(behavior.movementDirection);
+            position.add(
+              behavior.movementDirection * effectiveMoveSpeed * speed * dt,
+            );
+            playMove();
+          }
         } else {
           moveToward(target, dt);
         }
@@ -410,7 +489,13 @@ class EnemyComponent
     toward.normalize();
     final direction = toward * .45 + Vector2(-toward.y, toward.x) * .55;
     direction.normalize();
+    _face(direction);
     position.add(direction * effectiveMoveSpeed * dt);
+  }
+
+  void _face(Vector2 direction) {
+    if (direction.length2 <= .0001) return;
+    facingDirection.setFrom(direction.normalized());
   }
 
   void _setVisualState(EnemyAnimationState state) {
@@ -450,46 +535,69 @@ class EnemyComponent
 
   @override
   void render(Canvas canvas) {
-    _renderWarning(canvas);
-    if (animations != null) {
-      super.render(canvas);
-      return;
+    canvas.save();
+    canvas.translate(size.x / 2, size.y);
+    canvas.scale(visualScale);
+    canvas.translate(-size.x / 2, -size.y);
+    super.render(canvas);
+
+    if (animations == null) {
+      final bodyPaint = Paint()
+        ..color = isHitFlashing
+            ? const Color(0xffffffff)
+            : isElite
+            ? const Color(0xfff08a5d)
+            : const Color(0xffd1495b);
+      final outlinePaint = Paint()
+        ..color = const Color(0xff2f1b25)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2;
+
+      if (enemyId == sakkatSpecter) {
+        final centerX = size.x / 2;
+        final hat = Path()
+          ..moveTo(1, size.y * .38)
+          ..lineTo(centerX, 1)
+          ..lineTo(size.x - 1, size.y * .38)
+          ..close();
+        canvas.drawPath(hat, bodyPaint);
+        canvas.drawPath(hat, outlinePaint);
+        final body = Path()
+          ..moveTo(size.x * .31, size.y * .36)
+          ..quadraticBezierTo(size.x * .2, size.y * .76, centerX, size.y - 1)
+          ..quadraticBezierTo(
+            size.x * .8,
+            size.y * .76,
+            size.x * .69,
+            size.y * .36,
+          )
+          ..close();
+        canvas.drawPath(body, bodyPaint);
+        canvas.drawPath(body, outlinePaint);
+      } else {
+        final rect = Offset.zero & Size(size.x, size.y);
+        canvas.drawRect(rect, bodyPaint);
+        canvas.drawRect(rect, outlinePaint);
+      }
     }
-
-    final bodyPaint = Paint()
-      ..color = isHitFlashing
-          ? const Color(0xffffffff)
-          : isElite
-          ? const Color(0xfff08a5d)
-          : const Color(0xffd1495b);
-    final outlinePaint = Paint()
-      ..color = const Color(0xff2f1b25)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
-
-    final rect = Offset.zero & Size(size.x, size.y);
-    canvas.drawRect(rect, bodyPaint);
-    canvas.drawRect(rect, outlinePaint);
-  }
-
-  void _renderWarning(Canvas canvas) {
-    if (_behaviorController.phase != EnemyBehaviorPhase.warning) return;
-    final paint = Paint()
-      ..color = const Color(0xaaffd166)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
-    final center = Offset(size.x / 2, size.y / 2);
-    if (_behaviorProfile.kind == EnemyBehaviorKind.shockwave ||
-        _behaviorProfile.kind == EnemyBehaviorKind.scream) {
-      canvas.drawCircle(center, _behaviorProfile.range, paint);
-      return;
+    canvas.restore();
+    if (hasDirectionalShield) {
+      final angle = math.atan2(facingDirection.y, facingDirection.x);
+      canvas.drawArc(
+        Rect.fromCircle(
+          center: Offset(size.x / 2, size.y / 2),
+          radius: size.x * .58,
+        ),
+        angle - math.pi / 3,
+        math.pi * 2 / 3,
+        false,
+        Paint()
+          ..color = const Color(0xffbde0fe)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 4
+          ..strokeCap = StrokeCap.round,
+      );
     }
-    final direction = _behaviorController.lockedDirection;
-    canvas.drawLine(
-      center,
-      center + Offset(direction.x, direction.y) * _behaviorProfile.range,
-      paint,
-    );
   }
 }
 

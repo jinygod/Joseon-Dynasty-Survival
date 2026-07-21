@@ -24,6 +24,9 @@ class GamePerformanceBudget {
     maxCombatEffects: 32,
   );
 
+  static const latePerformanceWindowStartSeconds = 180.0;
+  static const minimumLateSimulatedFps = 55.0;
+
   final int maxEnemies;
   final int maxProjectiles;
   final int maxDamageNumbers;

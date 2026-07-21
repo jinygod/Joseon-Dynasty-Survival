@@ -153,6 +153,9 @@ class LevelUpSystem {
 
 String _weaponDeltaDescription(WeaponId id, int currentLevel) {
   final next = weaponLevelFor(id, currentLevel + 1);
+  if (next.isMaster) {
+    return '마스터 · ${next.behaviorDescription}';
+  }
   if (currentLevel == 0) {
     return '신규 · ${next.displayEffect}';
   }
