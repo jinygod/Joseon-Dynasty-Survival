@@ -401,9 +401,11 @@ class PixelSurvivorGame extends FlameGame
     }
 
     _advanceTime(safeDt);
+    // Hit-stop freezes combat, but the five-minute wave schedule follows wall
+    // time so strong attacks cannot quietly reduce late-run enemy density.
+    _spawnWaveEnemies(safeDt);
     if (safeDt > 0 && simulationDt <= 0) return;
 
-    _spawnWaveEnemies(simulationDt);
     _updatePlayerMovement(simulationDt);
     _resetProjectileAdmissionBudget();
     _updateWeapons(simulationDt);
