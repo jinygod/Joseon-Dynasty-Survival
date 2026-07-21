@@ -29,16 +29,10 @@ flutter test test/game/telemetry_export_service_test.dart test/game/run_telemetr
 
 ## 2026-07-22 완료 게이트 증거
 
-검증 대상은 `5fbddbc588aa144b77067c1bf6df57bef2f1e573`와 아래의 안정된 사용자 소유
-작업 트리 변경 6개였다. 변경을 버리거나 Task 13 검증자가 임의로 수정하지 않았으며,
-게이트 뒤 별도 커밋 `cc4257ced3ed8b7fff88e5bb68e6eb711c8587b1`에 그대로 포함됐다.
-
-- `lib/game/balance/experience_balance_baseline.dart`
-- `lib/game/content/enemy_definitions.dart`
-- `test/game/enemy_balance_baseline_test.dart`
-- `test/game/enemy_behavior_definitions_test.dart`
-- `test/game/experience_balance_baseline_test.dart`
-- `test/game/multi_seed_run_regression_test.dart`
+승인 증거는 최종 검토 수정 커밋
+`38fa106349e347c94e90a2ed4542e06394fedc42` 하나에서 시작하고 끝난 단일 실행
+순서만 사용한다. 각 주요 게이트 직전과 직후에 같은 HEAD와 깨끗한 작업 트리를
+확인했으며, 전체 순서가 끝난 뒤에도 동일했다.
 
 Flutter SDK는 `C:\Users\전성진\source\flutter`를 가리키는 ASCII `Y:` 드라이브를
 사용했다. `Z:\` 드라이브 루트에서는 Dart 3.12 분석 서버의 세션 로그 정규화가
@@ -48,32 +42,34 @@ Flutter SDK는 `C:\Users\전성진\source\flutter`를 가리키는 ASCII `Y:` �
 
 | 게이트 | 실행 시각 (KST) | 종료 코드 | 관측 결과 |
 | --- | --- | ---: | --- |
-| `git status --short` | 02:23:45.673–02:23:45.784 | 0 | 위의 사용자 소유 변경 6개 확인 |
-| `git diff --check` | 02:23:53.109–02:23:53.213 | 0 | 공백 오류 없음 |
-| `dart format --output=none --set-exit-if-changed lib test` | 02:23:53.109–02:23:54.646 | 0 | 270개 파일 검사, 변경 0 |
-| `flutter analyze` | 02:23:59.373–02:24:28.781 | 0 | `No issues found!` (분석 23.0초) |
-| `flutter test -r compact` | 02:24:37.662–02:25:43.169 | 0 | 정확히 732개 통과, `All tests passed!` |
-| `flutter build web` | 02:26:01.609–02:27:35.000 | 0 | `build/web`, 73개 파일, 합계 43,754,013 bytes |
-| `flutter build apk --debug` | 02:36:57.448–02:38:45.385 | 0 | 아래 APK 생성 및 원본 표준 경로로 복사 |
-| 고정 시드 5분 슬라이스 3개 파일 | 02:34:10.170–02:34:29.981 | 0 | 정확히 6개 통과, `All tests passed!` |
+| `git status --short` | 02:51:26.393–02:51:26.516 | 0 | HEAD `38fa106`, 작업 트리 깨끗함 |
+| `git diff --check` | 02:51:34.077–02:51:34.211 | 0 | 공백 오류 없음 |
+| `dart format --output=none --set-exit-if-changed lib test` | 02:51:34.091–02:51:35.741 | 0 | 270개 파일 검사, 변경 0 |
+| `flutter analyze` | 02:51:45.747–02:52:17.798 | 0 | `No issues found!` (분석 26.3초) |
+| `flutter test -r compact` | 02:52:28.379–02:53:13.600 | 0 | 정확히 732개 통과, `All tests passed!` |
+| `flutter build web` | 02:53:30.568–02:54:27.267 | 0 | `build/web`, 73개 파일, 합계 43,754,013 bytes |
+| `flutter build apk --debug` | 02:58:29.660–03:00:26.423 | 0 | 아래 APK 생성 및 표준 경로로 복사 |
+| 고정 시드 5분 슬라이스 3개 파일 | 03:00:59.539–03:01:29.514 | 0 | 정확히 6개 통과, `All tests passed!` |
 
 Android Gradle은 junction/subst 경로를 원래 비 ASCII 경로로 정규화했고, 사용자 Pub
 캐시와 사라진 외부 `P:` Flutter 매핑도 각각 별도의 실패 원인이 되었다. 성공 게이트는
-현재 작업 트리를 `C:\codex-task13\apk-repo`에 새로 물리 복사한 뒤 Git 추적 파일
+최종 HEAD를 `C:\codex-task13-final-38fa-r2\repo`에 새로 물리 복사한 뒤 Git 추적 파일
 633개의 SHA-256이 원본과 모두 일치함을 확인하고, ASCII Flutter/Android SDK,
 `PUB_CACHE`, `TEMP`, `TMP`로 실행했다. 생성된 APK를 표준 경로에 복사한 뒤 해시가
 동일함을 재확인했다.
 
-- 임시 빌드 경로: `C:\codex-task13\apk-repo\build\app\outputs\flutter-apk\app-debug.apk`
+- 임시 빌드 경로: `C:\codex-task13-final-38fa-r2\repo\build\app\outputs\flutter-apk\app-debug.apk`
 - 표준 경로: `build/app/outputs/flutter-apk/app-debug.apk`
-- 크기: 162,745,711 bytes
-- SHA-256: `F2F0FCBE0CCB38CA11FFE0CDB72571A7530D55FA09BAA4A71A02749B26929844`
-- 수정 시각: 2026-07-22 02:38:42.733 KST
+- 크기: 162,745,951 bytes
+- SHA-256: `C5E875945B246688888052A513FB61F09ED50535EC3F376AC185C8F7FA3652C0`
+- 수정 시각: 2026-07-22 03:00:23.518 KST
 
-고정 스냅샷 이전의 전체 테스트 실행(02:18:51–02:19:45)은 실행 중 위 6개 파일이
-변경되어 730개 통과·2개 실패로 끝났다. 실패 내용은 변경 도중 읽힌 삿갓 적 영문명과
-이전 압박 기대값이었다. 파일 수정 시각이 안정된 뒤 게이트 전체를 처음부터 다시
-실행했으며, 이 중간 실행을 제품 회귀나 통과 증거로 사용하지 않았다.
+03:00 성공 전에 만든 동일 최종 HEAD의 첫 Android 복사본도 633개 해시가 일치했지만,
+C: 여유 공간이 0 byte가 되어 02:55:28.313–02:56:36.990에 종료 코드 1로 실패했다.
+이 산출물은 폐기했고 성공 증거로 사용하지 않았다. 검증자가 만든 이전 Task 13 임시
+복사본 두 개만 제거해 2,590,248,960 bytes를 확보한 뒤 완전히 새로운 `r2` 복사본에서
+위 성공 게이트를 실행했다. 이전 커밋·변경 중 실행된 모든 로그와 APK도 이번 승인
+증거에서 제외했다.
 
 ### 고정 시드 밀도·성능 값
 
@@ -85,6 +81,7 @@ Android Gradle은 junction/subst 경로를 원래 비 ASCII 경로로 정규화�
 - 적/투사체/피해 숫자/전투 효과 최대치: 43 / 14 / 20 / 21
 - 인구 제한 위반 표본: 0, 메모리 프록시 위반 표본: 0
 - 최대 mounted component: 214, 최대 유지 소유자: 15/128, 최대 메모리 프록시: 224/512
+- host test-loop의 `update`+lifecycle 최대 관측 시간: 8,235 microseconds
 - 고정 시드 런의 보스 요청과 실제 보스 생성: 각각 1회
 - 시드 3107의 240–270초 혼합 역할 생성: 쥐떼 33, 원혼 20, 삿갓 망령 21,
   도깨비 23, 장승령 7, 처녀귀 6으로 모두 0보다 큼
