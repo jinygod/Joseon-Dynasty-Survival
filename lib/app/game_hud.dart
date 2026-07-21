@@ -67,7 +67,7 @@ class _GameHudState extends State<GameHud> {
                 ),
               ),
             Positioned(
-              top: 8,
+              top: widget.source.bossHealthFraction == null ? 12 : 8,
               left: 16,
               right: 16,
               child: _TopHud(source: widget.source, uiScale: scale),
