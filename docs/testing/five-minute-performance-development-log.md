@@ -9,7 +9,7 @@
 - Late raw-frame samples: 7,200 after 180 simulated seconds
 - Late average / maximum active enemies: 23.69 / 43
 - Late average / minimum simulated FPS: 60.00 / 60.00 (minimum 55)
-- Peak host test-loop wall time for `game.update` plus lifecycle processing: 7156 microseconds
+- Peak host test-loop wall time for `game.update` plus lifecycle processing: 7304 microseconds
 - Peak mounted Flame components: 214
 - Peak retained production owners: 15 (limit 128)
 - Peak memory proxy (mounted components + retained owners): 224 (limit 512)
