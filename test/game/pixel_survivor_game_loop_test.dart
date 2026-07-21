@@ -15,6 +15,7 @@ import 'package:pixel_survivor/game/content/augment_definitions.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
 import 'package:pixel_survivor/game/content/ids.dart';
 import 'package:pixel_survivor/game/content/enemy_definitions.dart';
+import 'package:pixel_survivor/game/content/playtest_content_policy.dart';
 import 'package:pixel_survivor/game/content/stage_definitions.dart';
 import 'package:pixel_survivor/game/content/wave_definitions.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
@@ -49,6 +50,34 @@ void main() {
   }, gameSize: Vector2(960, 540));
 
   group('PixelSurvivorGame run loop progression', () {
+    test('playtest construction opens every implemented base weapon', () {
+      final game = PixelSurvivorGame(
+        playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
+        onRunEnded: null,
+        contentPolicy: const PlaytestContentPolicy(unlockAllBaseWeapons: true),
+      );
+
+      expect(
+        game.unlockedWeaponIds,
+        weaponDefinitions.map((definition) => definition.id).toSet(),
+      );
+    });
+
+    test('default construction keeps normal weapon availability', () {
+      final game = PixelSurvivorGame(
+        playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
+        onRunEnded: null,
+      );
+
+      expect(
+        game.unlockedWeaponIds,
+        weaponDefinitions
+            .where((definition) => definition.startsUnlocked)
+            .map((definition) => definition.id)
+            .toSet(),
+      );
+    });
+
     test('selected stage configures the game wave director', () {
       final game = PixelSurvivorGame(
         playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flame/game.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'first_run_tutorial_overlay.dart';
@@ -18,6 +19,7 @@ import '../game/models/run_telemetry.dart';
 import '../game/models/vector_input.dart';
 import '../game/components/spirit_jade_component.dart';
 import '../game/content/stage_definitions.dart';
+import '../game/content/playtest_content_policy.dart';
 import '../game/pixel_survivor_game.dart';
 import '../game/systems/progression_system.dart';
 import '../game/systems/meta_progression_service.dart';
@@ -113,6 +115,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           onAudioCue: _playAudio,
           persistSpiritJade: _persistSpiritJade,
           pickupIdPrefix: _runStartedAtUtc.microsecondsSinceEpoch.toString(),
+          contentPolicy: PlaytestContentPolicy(
+            unlockAllBaseWeapons: const bool.fromEnvironment(
+              'PLAYTEST_UNLOCK_ALL_BASE_WEAPONS',
+              defaultValue: kDebugMode,
+            ),
+          ),
         );
     _audioSettingsController.addListener(_applyAccessibilitySettings);
     _applyAccessibilitySettings();

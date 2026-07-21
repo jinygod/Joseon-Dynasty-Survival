@@ -30,6 +30,7 @@ import 'content/character_definitions.dart';
 import 'content/combat_effect_atlas.dart';
 import 'content/enemy_definitions.dart';
 import 'content/ids.dart';
+import 'content/playtest_content_policy.dart';
 import 'content/stage_definitions.dart';
 import 'content/wave_definitions.dart';
 import 'content/weapon_definitions.dart';
@@ -77,6 +78,9 @@ class PixelSurvivorGame extends FlameGame
     this.performanceBudget = GamePerformanceBudget.standard,
     this.onPerformanceDiagnostic,
     this.loadVisualAssets = true,
+    this.contentPolicy = const PlaytestContentPolicy(
+      unlockAllBaseWeapons: false,
+    ),
   }) : weaponSystem = WeaponSystem(random: random),
        waveDirector = WaveDirector(
          random: random ?? Random(),
@@ -109,6 +113,7 @@ class PixelSurvivorGame extends FlameGame
   final GamePerformanceDiagnosticReporter? onPerformanceDiagnostic;
   @override
   final bool loadVisualAssets;
+  final PlaytestContentPolicy contentPolicy;
   final MetaRewardPolicy _metaRewardPolicy = const MetaRewardPolicy();
   final AugmentEffectResolver _augmentEffectResolver =
       const AugmentEffectResolver();
@@ -1228,9 +1233,11 @@ class PixelSurvivorGame extends FlameGame
 
   void _addStartingRunUnlocks() {
     unlockedWeaponIds.addAll(
-      weaponDefinitions
-          .where((definition) => definition.startsUnlocked)
-          .map((definition) => definition.id),
+      contentPolicy.resolveWeaponIds(
+        weaponDefinitions
+            .where((definition) => definition.startsUnlocked)
+            .map((definition) => definition.id),
+      ),
     );
     _addStartingAugments();
   }

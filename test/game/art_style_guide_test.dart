@@ -22,6 +22,57 @@ void main() {
     expect(JoseonArtStyle.integerScales, [1, 2, 3, 4]);
   });
 
+  test('combat slice character rendering contract is fixed', () {
+    expect(JoseonArtStyle.characterHeadRatioMin, 3);
+    expect(JoseonArtStyle.characterHeadRatioMax, 4);
+    expect(JoseonArtStyle.cellShadeStepsMin, 2);
+    expect(JoseonArtStyle.cellShadeStepsMax, 3);
+    expect(JoseonArtStyle.outlineStyle, 'bold_clean');
+    expect(JoseonArtStyle.allowsBulkFinalArt, isFalse);
+    expect(JoseonArtStyle.temporaryActorVisualSizes, {
+      'player': 108,
+      'normalEnemy': 54,
+      'eliteEnemy': 81,
+      'boss': 126,
+    });
+  });
+
+  test('Joseon character and monster vocabularies are explicit', () {
+    expect(JoseonArtStyle.characterDesignCues.keys.toSet(), {
+      'hwandoSwordsman',
+      'mudang',
+      'musketeer',
+      'dokkaebiHunter',
+    });
+    expect(JoseonArtStyle.monsterSilhouetteCues.keys.toSet(), {
+      'littleDokkaebi',
+      'jarGhost',
+      'jangseungGhost',
+      'sakkatSpecter',
+      'fireDokkaebi',
+      'eggGhost',
+      'underworldMinion',
+      'tigerDemon',
+      'plagueGhost',
+      'fallenOfficer',
+    });
+    expect(
+      JoseonArtStyle.characterDesignCues.values.every((cue) => cue.isNotEmpty),
+      isTrue,
+    );
+    expect(
+      JoseonArtStyle.monsterSilhouetteCues.values.every(
+        (cue) => cue.isNotEmpty,
+      ),
+      isTrue,
+    );
+    expect(JoseonArtStyle.forbiddenDesignCues, [
+      'japanese_samurai_armor',
+      'chinese_wuxia_robes',
+      'copied_commercial_game_assets',
+    ]);
+  });
+
   test('every catalog asset uses an approved native-size suffix', () {
     final paths = <String>[
       ...AssetCatalog.characters.values,
