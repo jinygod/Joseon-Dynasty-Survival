@@ -60,6 +60,7 @@ import 'systems/enemy_aura_resolver.dart';
 import 'systems/enemy_behavior_controller.dart';
 import 'systems/run_progression_system.dart';
 import 'systems/run_stats_tracker.dart';
+import 'systems/combat_playtest_tracker.dart';
 import 'systems/wave_director.dart';
 import 'systems/weapon_system.dart';
 import 'systems/weapon_synergy_resolver.dart';
@@ -89,7 +90,11 @@ class PixelSurvivorGame extends FlameGame
     this.contentPolicy = const PlaytestContentPolicy(
       unlockAllBaseWeapons: false,
     ),
-  }) : weaponSystem = WeaponSystem(random: random),
+    bool isRepeatRun = false,
+  }) : runStats = RunStatsTracker(
+         combatPlaytestTracker: CombatPlaytestTracker(isRepeatRun: isRepeatRun),
+       ),
+       weaponSystem = WeaponSystem(random: random),
        waveDirector = WaveDirector(
          random: random ?? Random(),
          definitions: waveDefinitionsForStage(stageId),
@@ -132,7 +137,7 @@ class PixelSurvivorGame extends FlameGame
   final WaveDirector waveDirector;
   final LevelUpSystem levelUpSystem;
   final RunProgressionSystem runProgression = RunProgressionSystem();
-  final RunStatsTracker runStats = RunStatsTracker();
+  final RunStatsTracker runStats;
   final WeaponSynergyResolver _weaponSynergyResolver = WeaponSynergyResolver();
   final CombatSystem combatSystem = CombatSystem();
   late final CombatFeedbackController _combatFeedback;
@@ -169,6 +174,8 @@ class PixelSurvivorGame extends FlameGame
   final Vector2 _screenShakeOffset = Vector2.zero();
   int _nextOriginatingAttackId = 0;
   double _combatNoticeSecondsRemaining = 0;
+  double _killStreakSecondsRemaining = 0;
+  int _killStreak = 0;
   int _projectileSlotsRemaining = 0;
 
   @override
@@ -184,8 +191,12 @@ class PixelSurvivorGame extends FlameGame
   );
   @override
   int get kills => runStats.kills;
+  @override
   String? get combatNotice => _combatNoticeSecondsRemaining > 0 ? '봉마참' : null;
+  @override
   double get combatNoticeSecondsRemaining => _combatNoticeSecondsRemaining;
+  @override
+  int get killStreak => _killStreakSecondsRemaining > 0 ? _killStreak : 0;
   RunOutcome get runOutcome => _runOutcome;
   bool get isGameOver => _runOutcome != RunOutcome.inProgress;
   bool get canPauseRun =>
@@ -365,6 +376,11 @@ class PixelSurvivorGame extends FlameGame
       0.0,
       _combatNoticeSecondsRemaining - safeDt,
     );
+    _killStreakSecondsRemaining = max(
+      0.0,
+      _killStreakSecondsRemaining - safeDt,
+    );
+    if (_killStreakSecondsRemaining == 0) _killStreak = 0;
     if (_runOutcome != RunOutcome.inProgress || isLevelUpPending) {
       return;
     }
@@ -1297,6 +1313,8 @@ class PixelSurvivorGame extends FlameGame
       isElite: enemy.isElite,
       weaponId: weaponId,
     );
+    _killStreak = _killStreakSecondsRemaining > 0 ? _killStreak + 1 : 1;
+    _killStreakSecondsRemaining = 1.5;
     runStats.combatPlaytestTracker.recordKill(
       atSeconds: _elapsedSeconds,
       sourceId: weaponId ?? 'unknown',

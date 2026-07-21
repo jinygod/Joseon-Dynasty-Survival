@@ -8,6 +8,9 @@ abstract interface class GameHudSource {
   int get experienceToNextLevel;
   int get enemyCount;
   int get kills;
+  String? get combatNotice;
+  double get combatNoticeSecondsRemaining;
+  int get killStreak;
   String? get bossName;
   double? get bossHealthFraction;
   List<String> get weaponLevelLabels;

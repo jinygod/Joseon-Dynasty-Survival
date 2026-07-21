@@ -47,6 +47,7 @@ class _GameHudState extends State<GameHud> {
         ? widget.source as RewardCollectionHudSource
         : null;
     final scale = widget.uiScale;
+    final combatNotice = widget.source.combatNotice;
     return Material(
       color: Colors.transparent,
       child: SafeArea(
@@ -83,6 +84,37 @@ class _GameHudState extends State<GameHud> {
               right: 16,
               child: _StatusBar(source: widget.source, uiScale: scale),
             ),
+            if (combatNotice != null &&
+                widget.source.combatNoticeSecondsRemaining > 0)
+              Positioned(
+                top: widget.source.bossHealthFraction == null ? 72 : 122,
+                left: 72,
+                right: 72,
+                child: Center(
+                  child: _CombatNotice(label: combatNotice, uiScale: scale),
+                ),
+              ),
+            if (widget.source.killStreak > 1)
+              Positioned(
+                top: widget.source.bossHealthFraction == null ? 116 : 166,
+                left: 96,
+                right: 96,
+                child: Center(
+                  child: Text(
+                    '${widget.source.killStreak} 연속 처치',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: const Color(0xffffd166),
+                      fontSize: 13 * scale,
+                      fontWeight: FontWeight.w800,
+                      shadows: const [
+                        Shadow(color: Color(0xff101820), blurRadius: 3),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             Positioned(
               top: widget.source.bossHealthFraction == null ? 68 : 118,
               right: 16,
@@ -119,6 +151,44 @@ class _GameHudState extends State<GameHud> {
                 ),
               ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CombatNotice extends StatelessWidget {
+  const _CombatNotice({required this.label, required this.uiScale});
+
+  final String label;
+  final double uiScale;
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: 240 * uiScale),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: const Color(0xff2f1b25).withValues(alpha: 0.9),
+          border: Border.all(color: const Color(0xffffd166)),
+          borderRadius: BorderRadius.circular(8 * uiScale),
+        ),
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: 14 * uiScale,
+            vertical: 7 * uiScale,
+          ),
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: const Color(0xfffff1b8),
+              fontSize: 16 * uiScale,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
         ),
       ),
     );

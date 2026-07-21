@@ -13,6 +13,7 @@ import '../game/content/character_definitions.dart';
 import '../game/content/stage_definitions.dart';
 import '../game/models/player_slot.dart';
 import '../game/systems/tutorial_progress_repository.dart';
+import '../game/systems/playtest_session_repository.dart';
 import '../l10n/app_strings.dart';
 import 'character_select_screen.dart';
 import 'account_section.dart';
@@ -34,6 +35,7 @@ class LobbyScreen extends StatefulWidget {
     this.progressSyncController,
     this.purchaseController,
     this.onPurchaseInitializationRetry,
+    this.playtestSessionRepository,
     super.key,
   });
 
@@ -45,6 +47,7 @@ class LobbyScreen extends StatefulWidget {
   final ProgressSyncController? progressSyncController;
   final PurchaseController? purchaseController;
   final VoidCallback? onPurchaseInitializationRetry;
+  final PlaytestSessionRepository? playtestSessionRepository;
 
   @override
   State<LobbyScreen> createState() => _LobbyScreenState();
@@ -191,6 +194,7 @@ class _LobbyScreenState extends State<LobbyScreen> with WidgetsBindingObserver {
           tutorialProgressRepository: tutorial,
           audioService: widget.audioService,
           audioSettingsController: widget.audioSettingsController,
+          playtestSessionRepository: widget.playtestSessionRepository,
           syncProgress: widget.controller.syncNow,
         ),
       ),

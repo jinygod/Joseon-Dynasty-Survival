@@ -15,6 +15,7 @@ import 'package:pixel_survivor/game/audio/audio_settings_repository.dart';
 import 'package:pixel_survivor/game/audio/game_audio_service.dart';
 import 'package:pixel_survivor/game/pixel_survivor_game.dart';
 import 'package:pixel_survivor/game/systems/meta_progression_service.dart';
+import 'package:pixel_survivor/game/systems/playtest_session_repository.dart';
 import 'package:pixel_survivor/game/systems/save_system.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -39,6 +40,8 @@ void main() {
       saveStore: _MemorySaveStore(SaveState.defaults()),
     );
     final games = <PixelSurvivorGame>[];
+    final preferences = await SharedPreferences.getInstance();
+    final sessions = PlaytestSessionRepository(preferences: preferences);
 
     await tester.pumpWidget(
       MaterialApp(
@@ -46,6 +49,7 @@ void main() {
           audioSettingsController: settingsController,
           audioService: audioService,
           metaProgressionService: progression,
+          playtestSessionRepository: sessions,
         ),
       ),
     );
@@ -60,6 +64,11 @@ void main() {
       games.add(game);
       await tester.runAsync(game.ready);
       expect(game.performanceSnapshot.isWithinBudget, isTrue);
+      expect(
+        game.currentRunResult().combatMetrics.isRepeatRun,
+        run > 0,
+        reason: 'run $run repeat flag',
+      );
 
       game.debugAdvanceTo(300);
       game.debugKillPlayer();
