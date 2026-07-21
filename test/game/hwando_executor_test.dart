@@ -57,29 +57,68 @@ void main() {
     expect(emitted.last.spec.shape, AttackShape.line);
   });
 
-  test('level five kill refund cannot exceed its per-cycle cap', () {
+  test('cooldown progresses while scheduled stages remain', () {
     final executor = HwandoExecutor();
-    executor.tick(input(dt: 0, level: 5));
-    executor.recordKill(count: 100);
+    final emitted = <AttackInstance>[];
+    emitted.addAll(executor.tick(input(dt: 0, level: 4)));
 
-    for (var frame = 0; frame < 9; frame += 1) {
-      expect(
-        executor.tick(input(dt: .05, level: 5)),
-        isNot(
-          contains(
-            isA<AttackInstance>().having(
-              (a) => a.sequenceIndex,
-              'sequenceIndex',
-              0,
-            ),
-          ),
-        ),
-      );
+    for (var frame = 0; frame < 32; frame += 1) {
+      emitted.addAll(executor.tick(input(dt: .02, level: 4)));
+    }
+
+    expect(emitted.where((attack) => attack.sequenceIndex == 0), hasLength(2));
+  });
+
+  test('level five huge kill refund is capped at exactly point two four', () {
+    expect(HwandoExecutor.maxKillRefundPerCycle, .24);
+    final hugeRefund = HwandoExecutor();
+    final cappedRefund = HwandoExecutor();
+    final hugeEmitted = <AttackInstance>[];
+    final cappedEmitted = <AttackInstance>[];
+    hugeEmitted.addAll(hugeRefund.tick(input(dt: 0, level: 5)));
+    cappedEmitted.addAll(cappedRefund.tick(input(dt: 0, level: 5)));
+    hugeRefund.recordKill(count: 100);
+    cappedRefund.recordKill(count: 4);
+
+    for (var frame = 0; frame < 5; frame += 1) {
+      hugeEmitted.addAll(hugeRefund.tick(input(dt: .05, level: 5)));
+      cappedEmitted.addAll(cappedRefund.tick(input(dt: .05, level: 5)));
     }
     expect(
-      executor.tick(input(dt: .05, level: 5)).map((a) => a.sequenceIndex),
-      contains(0),
+      hugeEmitted.where((attack) => attack.sequenceIndex == 0),
+      hasLength(1),
     );
+
+    hugeEmitted.addAll(hugeRefund.tick(input(dt: .05, level: 5)));
+    cappedEmitted.addAll(cappedRefund.tick(input(dt: .05, level: 5)));
+    expect(
+      hugeEmitted.where((attack) => attack.sequenceIndex == 0),
+      hasLength(2),
+    );
+    expect(
+      hugeEmitted.map((attack) => attack.spec.id),
+      cappedEmitted.map((attack) => attack.spec.id),
+    );
+  });
+
+  test('a new level five cycle resets the kill refund allowance', () {
+    final executor = HwandoExecutor();
+    final emitted = <AttackInstance>[];
+    emitted.addAll(executor.tick(input(dt: 0, level: 5)));
+    executor.recordKill(count: 100);
+    for (var frame = 0; frame < 6; frame += 1) {
+      emitted.addAll(executor.tick(input(dt: .05, level: 5)));
+    }
+    expect(emitted.where((attack) => attack.sequenceIndex == 0), hasLength(2));
+
+    executor.recordKill(count: 100);
+    for (var frame = 0; frame < 5; frame += 1) {
+      emitted.addAll(executor.tick(input(dt: .05, level: 5)));
+    }
+    expect(emitted.where((attack) => attack.sequenceIndex == 0), hasLength(2));
+
+    emitted.addAll(executor.tick(input(dt: .05, level: 5)));
+    expect(emitted.where((attack) => attack.sequenceIndex == 0), hasLength(3));
   });
 
   test('queued stages retain the direction frozen at cycle start', () {
@@ -101,7 +140,7 @@ void main() {
     () {
       final executor = HwandoExecutor();
       final emitted = <AttackInstance>[];
-      for (var frame = 0; frame < 40; frame++) {
+      for (var frame = 0; frame < 24; frame++) {
         emitted.addAll(
           executor.tick(input(dt: .02, level: 6, aimDirection: Vector2(0, -1))),
         );
@@ -125,4 +164,16 @@ void main() {
       expect(emitted[2].spec.angleRadians, pi);
     },
   );
+
+  test('master starts its next cycle on configured cooldown', () {
+    final executor = HwandoExecutor();
+    final emitted = <AttackInstance>[];
+    emitted.addAll(executor.tick(input(dt: 0, level: 6)));
+
+    for (var frame = 0; frame < 30; frame += 1) {
+      emitted.addAll(executor.tick(input(dt: .02, level: 6)));
+    }
+
+    expect(emitted.where((attack) => attack.sequenceIndex == 0), hasLength(2));
+  });
 }

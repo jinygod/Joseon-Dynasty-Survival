@@ -35,6 +35,7 @@ class HwandoExecutor {
 
   List<AttackInstance> tick(HwandoTickInput input) {
     final dt = input.dt.clamp(0, .05).toDouble();
+    _cooldown = max(0, _cooldown - dt);
 
     if (_stages.isNotEmpty) {
       for (final stage in _stages) {
@@ -51,7 +52,6 @@ class HwandoExecutor {
       return const [];
     }
 
-    _cooldown = max(0, _cooldown - dt);
     if (_cooldown > 0 || input.level == 0) return const [];
 
     final level = weaponLevelFor(hwandoSlash, input.level);
