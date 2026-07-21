@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flame/components.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/combat/attack_spec.dart';
@@ -51,7 +53,9 @@ void main() {
     final next = enemy('next', 28);
     final executor = TalismanExecutor();
     executor.tick(input(now: 0, level: 4, enemies: [first], dt: 2));
-    executor.tick(input(now: .1, level: 4, enemies: [alreadyMarked], dt: 2));
+    executor.tick(
+      input(now: .1, level: 4, enemies: [first, alreadyMarked], dt: 2),
+    );
     alreadyMarked.takeDamage(alreadyMarked.maxHealth);
 
     final result = executor.tick(
@@ -145,5 +149,56 @@ void main() {
 
     expect(result.attached, isEmpty);
     expect(result.removedTargetIds, contains('target'));
+  });
+
+  test('critical roll is frozen while a talisman remains attached', () {
+    final target = enemy('target', 20);
+    final executor = TalismanExecutor(random: Random(1));
+    executor.tick(
+      TalismanTickInput(
+        dt: 2,
+        level: 3,
+        now: 0,
+        origin: Vector2.zero(),
+        enemies: [target],
+        damageMultiplier: 1,
+        sizeMultiplier: 1,
+        criticalChance: 1,
+      ),
+    );
+
+    final result = executor.tick(
+      TalismanTickInput(
+        dt: 0,
+        level: 3,
+        now: .6,
+        origin: Vector2.zero(),
+        enemies: [target],
+        damageMultiplier: 1,
+        sizeMultiplier: 1,
+        criticalChance: 0,
+      ),
+    );
+
+    expect(result.attacks.single.isCritical, isTrue);
+    expect(result.attacks.single.spec.damage, 12);
+  });
+
+  test('level six seal explosions remain ordinary strong attacks', () {
+    final targets = [enemy('a', 20), enemy('b', 25)];
+    final executor = TalismanExecutor();
+    executor.tick(input(now: 0, level: 6, enemies: targets, dt: 2));
+
+    final result = executor.tick(input(now: .6, level: 6, enemies: targets));
+
+    expect(result.attacks, isNotEmpty);
+    expect(
+      result.attacks.every(
+        (attack) =>
+            attack.spec.presentation == AttackPresentation.strong &&
+            !attack.spec.traits.contains(AttackTrait.master),
+      ),
+      isTrue,
+    );
   });
 }

@@ -344,6 +344,36 @@ void main() {
       );
     });
 
+    test('talisman critical chance is frozen through WeaponSystem', () {
+      final target = EnemyComponent(
+        enemyId: 'bandit',
+        maxHealth: 100,
+        moveSpeed: 0,
+        damage: 1,
+        position: Vector2(20, 0),
+      );
+      final system = WeaponSystem(
+        initialLevels: const {talismanThrow: 3},
+        random: Random(1),
+      );
+      system.tick(
+        dt: 2,
+        origin: Vector2.zero(),
+        enemies: [target],
+        criticalChance: 1,
+      );
+
+      final result = system.tick(
+        dt: .6,
+        origin: Vector2.zero(),
+        enemies: [target],
+        criticalChance: 0,
+      );
+
+      expect(result.attackInstances.single.isCritical, isTrue);
+      expect(result.attackInstances.single.spec.damage, 12);
+    });
+
     test('bomb creates delayed area attack instead of immediate damage', () {
       final enemy = EnemyComponent(
         enemyId: 'bandit',

@@ -14,6 +14,7 @@ import 'components/area_attack_component.dart';
 import 'audio/audio_cue.dart';
 import 'combat/attack_geometry.dart';
 import 'combat/attack_spec.dart';
+import 'combat/talisman_damage.dart';
 import 'components/attack_effect_component.dart';
 import 'components/boss_component.dart';
 import 'components/combat_effect_component.dart';
@@ -597,8 +598,7 @@ class PixelSurvivorGame extends FlameGame
         if (hasTalismanAttack) continue;
         _emitAudio(AudioCue.talismanAttack);
         if (result.fiveColorWards.any(
-          (ward) =>
-              ward.attack.spec.presentation == AttackPresentation.master,
+          (ward) => ward.attack.spec.presentation == AttackPresentation.master,
         )) {
           _emitAudio(AudioCue.talismanMasterAttack);
         }
@@ -636,21 +636,32 @@ class PixelSurvivorGame extends FlameGame
       if (activeFields.length >= 3) activeFields.first.removeFromParent();
       add(frostField);
     }
-    for (final ward in result.fiveColorWards) {
+    _addFiveColorWards(result.fiveColorWards);
+  }
+
+  void _addFiveColorWards(List<FiveColorWardComponent> requests) {
+    for (final presentation in AttackPresentation.values) {
+      final matchingRequests = requests
+          .where((ward) => ward.attack.spec.presentation == presentation)
+          .toList(growable: false);
+      if (matchingRequests.isEmpty) continue;
       final activeWards = children
           .whereType<FiveColorWardComponent>()
           .where((active) => !active.isRemoving)
-          .where(
-            (active) =>
-                active.attack.spec.presentation ==
-                ward.attack.spec.presentation,
-          )
+          .where((active) => active.attack.spec.presentation == presentation)
           .toList();
-      final cap = ward.attack.spec.presentation == AttackPresentation.master
-          ? 3
-          : 12;
-      if (activeWards.length >= cap) activeWards.first.removeFromParent();
-      add(ward);
+      final cap = presentation == AttackPresentation.master ? 3 : 12;
+      final overflow = max(
+        0,
+        activeWards.length + matchingRequests.length - cap,
+      );
+      for (final ward in activeWards.take(overflow)) {
+        ward.removeFromParent();
+      }
+      final retained = max(0, activeWards.length - overflow);
+      for (final ward in matchingRequests.take(cap - retained)) {
+        add(ward);
+      }
     }
   }
 
@@ -673,7 +684,9 @@ class PixelSurvivorGame extends FlameGame
       events.add(
         DamageEvent(
           target: enemy,
-          damage: attack.spec.damage * (attack.isCritical ? 2 : 1),
+          damage: weaponId == talismanThrow
+              ? talismanDamageForTarget(attack, enemy)
+              : attack.spec.damage * (attack.isCritical ? 2 : 1),
           knockback: attack.spec.knockback,
           direction: direction,
           weaponId: weaponId,
@@ -830,23 +843,21 @@ class PixelSurvivorGame extends FlameGame
         .whereType<EnemyComponent>()
         .where((enemy) => !enemy.isDead)
         .toList();
-    final fields = children
-        .whereType<FrostFieldComponent>()
-        .where((field) => !field.isExpired)
-        .toList();
-    final wards = children
-        .whereType<FiveColorWardComponent>()
-        .where((ward) => !ward.isExpired)
-        .toList();
+    final fields = children.whereType<FrostFieldComponent>().toList();
+    final wards = children.whereType<FiveColorWardComponent>().toList();
     for (final enemy in enemies) {
       var strongestSlow = 0.0;
       for (final field in fields) {
-        if (field.containsEnemy(enemy) && field.slowFraction > strongestSlow) {
+        if (!field.isExpired &&
+            field.containsEnemy(enemy) &&
+            field.slowFraction > strongestSlow) {
           strongestSlow = field.slowFraction;
         }
       }
       for (final ward in wards) {
-        strongestSlow = max(strongestSlow, ward.slowFor(enemy));
+        if (!ward.isExpired) {
+          strongestSlow = max(strongestSlow, ward.slowFor(enemy));
+        }
       }
       enemy.setEnvironmentalSlow(strongestSlow);
     }

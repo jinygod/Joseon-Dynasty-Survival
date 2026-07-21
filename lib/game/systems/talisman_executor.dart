@@ -4,7 +4,6 @@ import 'package:flame/components.dart';
 
 import '../combat/attack_spec.dart';
 import '../components/enemy_component.dart';
-import '../content/enemy_definitions.dart';
 import '../content/weapon_definitions.dart';
 import '../content/weapon_level_definitions.dart';
 
@@ -18,6 +17,7 @@ class TalismanTickInput {
     required this.damageMultiplier,
     required this.sizeMultiplier,
     this.attackSpeedMultiplier = 1,
+    this.criticalChance = 0,
   });
 
   final double dt;
@@ -28,6 +28,7 @@ class TalismanTickInput {
   final double damageMultiplier;
   final double sizeMultiplier;
   final double attackSpeedMultiplier;
+  final double criticalChance;
 }
 
 class AttachedTalisman {
@@ -36,33 +37,27 @@ class AttachedTalisman {
     required this.attachedAtSeconds,
     required this.explodeAtSeconds,
     required this.transferDepth,
+    required this.isCritical,
   });
 
   final EnemyComponent target;
   final double attachedAtSeconds;
   final double explodeAtSeconds;
   final int transferDepth;
+  final bool isCritical;
 }
 
 class WardSpawnRequest {
-  WardSpawnRequest({
-    required Vector2 position,
-    required this.attack,
-    required this.durationSeconds,
-    required this.tickSeconds,
-    required this.slowFraction,
-    required this.presentation,
-  }) : _position = position.clone();
+  WardSpawnRequest({required this.attack, required this.tickSeconds});
 
-  final Vector2 _position;
   final AttackInstance attack;
-  final double durationSeconds;
   final double tickSeconds;
-  final double slowFraction;
-  final AttackPresentation presentation;
 
-  Vector2 get position => _position.clone();
+  Vector2 get position => attack.origin;
   double get radius => attack.spec.radius;
+  double get durationSeconds => attack.spec.lingerSeconds;
+  double get slowFraction => attack.spec.slowFraction;
+  AttackPresentation get presentation => attack.spec.presentation;
 }
 
 class TalismanTickResult {
@@ -80,25 +75,30 @@ class TalismanTickResult {
 }
 
 class TalismanExecutor {
+  TalismanExecutor({Random? random}) : _random = random ?? Random();
+
   static const maxAttachedSeals = 24;
   static const maxTransferDepth = 2;
   static const maxMasterWards = 3;
   static const _attachmentDelaySeconds = .6;
 
   final Map<EnemyComponent, AttachedTalisman> _attached = {};
+  final Random _random;
   double _cooldown = 0;
 
   List<AttachedTalisman> get attached => List.unmodifiable(_attached.values);
 
   TalismanTickResult tick(TalismanTickInput input) {
     final removedTargetIds = <String>[];
+    final inputEnemies = input.enemies.toSet();
     _attached.removeWhere((enemy, seal) {
-      final remove = enemy.isDead || enemy.isRemoving;
+      final remove =
+          enemy.isDead || enemy.isRemoving || !inputEnemies.contains(enemy);
       if (remove) removedTargetIds.add(enemy.enemyId);
       return remove;
     });
 
-    final enemies = input.enemies
+    final enemies = inputEnemies
         .where((enemy) => !enemy.isDead && !enemy.isRemoving)
         .toList(growable: false);
     final attacks = <AttackInstance>[];
@@ -109,7 +109,13 @@ class TalismanExecutor {
     for (final entry in expired) {
       _attached.remove(entry.key);
       removedTargetIds.add(entry.key.enemyId);
-      attacks.add(_explosionFor(entry.key.position, input, target: entry.key));
+      attacks.add(
+        _explosionFor(
+          entry.key.position,
+          input,
+          isCritical: entry.value.isCritical,
+        ),
+      );
       if (input.level >= 5) {
         wards.add(_wardFor(entry.key.position, input, master: false));
       }
@@ -166,9 +172,15 @@ class TalismanExecutor {
     final count = stats.chainCount;
     for (final target in candidates.take(count)) {
       if (input.level < 3) {
-        attacks.add(_explosionFor(target.position, input, target: target));
+        attacks.add(
+          _explosionFor(
+            target.position,
+            input,
+            isCritical: _rollCritical(input.criticalChance),
+          ),
+        );
       } else {
-        _attach(target, input.now, 0);
+        _attach(target, input.now, 0, input.criticalChance);
       }
     }
   }
@@ -197,10 +209,17 @@ class TalismanExecutor {
                 .distanceToSquared(source.position)
                 .compareTo(b.position.distanceToSquared(source.position)),
           );
-    if (candidates.isNotEmpty) _attach(candidates.first, input.now, depth);
+    if (candidates.isNotEmpty) {
+      _attach(candidates.first, input.now, depth, input.criticalChance);
+    }
   }
 
-  void _attach(EnemyComponent target, double now, int transferDepth) {
+  void _attach(
+    EnemyComponent target,
+    double now,
+    int transferDepth,
+    double criticalChance,
+  ) {
     if (_attached.length >= maxAttachedSeals || _attached.containsKey(target)) {
       return;
     }
@@ -209,24 +228,21 @@ class TalismanExecutor {
       attachedAtSeconds: now,
       explodeAtSeconds: now + _attachmentDelaySeconds,
       transferDepth: transferDepth,
+      isCritical: _rollCritical(criticalChance),
     );
   }
 
   AttackInstance _explosionFor(
     Vector2 center,
     TalismanTickInput input, {
-    EnemyComponent? target,
+    required bool isCritical,
   }) {
     final stats = weaponLevelFor(talismanThrow, input.level);
-    final master = input.level == 6;
     return AttackInstance(
       spec: AttackSpec(
-        id: master ? 'talisman_master_explosion' : 'talisman_explosion',
+        id: 'talisman_explosion',
         shape: AttackShape.circle,
-        damage:
-            stats.damage *
-            input.damageMultiplier *
-            (target?.enemyId == vengefulSpirit ? 1.25 : 1),
+        damage: stats.damage * input.damageMultiplier,
         range: 0,
         angleRadians: 0,
         radius: (28 + input.level * 3) * input.sizeMultiplier,
@@ -236,14 +252,13 @@ class TalismanExecutor {
         lingerSeconds: .14,
         knockback: stats.knockback,
         slowFraction: 0,
-        traits: {AttackTrait.explosion, if (master) AttackTrait.master},
-        presentation: master
-            ? AttackPresentation.master
-            : AttackPresentation.strong,
+        traits: const {AttackTrait.explosion},
+        presentation: AttackPresentation.strong,
       ),
       origin: center,
       direction: Vector2(1, 0),
       sequenceIndex: 0,
+      isCritical: isCritical,
     );
   }
 
@@ -279,15 +294,9 @@ class TalismanExecutor {
       origin: center,
       direction: Vector2(1, 0),
       sequenceIndex: 0,
+      isCritical: _rollCritical(input.criticalChance),
     );
-    return WardSpawnRequest(
-      position: center,
-      attack: attack,
-      durationSeconds: duration,
-      tickSeconds: .5,
-      slowFraction: slow,
-      presentation: presentation,
-    );
+    return WardSpawnRequest(attack: attack, tickSeconds: .5);
   }
 
   List<Vector2> _masterWardCenters(List<EnemyComponent> enemies) {
@@ -329,4 +338,7 @@ class TalismanExecutor {
   }
 
   double _positive(double value) => value.isFinite && value > 0 ? value : 1;
+
+  bool _rollCritical(double chance) =>
+      _random.nextDouble() < chance.clamp(0, 1);
 }

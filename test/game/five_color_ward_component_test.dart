@@ -60,4 +60,40 @@ void main() {
     expect(ward.collectDamageEvents([target]), hasLength(3));
     expect(ward.isExpired, isTrue);
   });
+
+  test('critical ward damage and spirit bonus are applied per target', () {
+    final criticalAttack = AttackInstance(
+      spec: attack().spec,
+      origin: Vector2.zero(),
+      direction: Vector2(1, 0),
+      sequenceIndex: 0,
+      isCritical: true,
+    );
+    final ward = FiveColorWardComponent(
+      attack: criticalAttack,
+      tickSeconds: .5,
+    );
+    final ordinary = enemyAt(10);
+    final spirit = EnemyComponent(
+      enemyId: 'vengeful_spirit',
+      maxHealth: 100,
+      moveSpeed: 0,
+      damage: 1,
+      position: Vector2(15, 0),
+      size: Vector2.all(10),
+    );
+
+    ward.update(.5);
+    final events = ward.collectDamageEvents([ordinary, spirit]);
+
+    expect(
+      events.singleWhere((event) => identical(event.target, ordinary)).damage,
+      8,
+    );
+    expect(
+      events.singleWhere((event) => identical(event.target, spirit)).damage,
+      10,
+    );
+    expect(events.every((event) => event.isCritical), isTrue);
+  });
 }

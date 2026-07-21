@@ -19,7 +19,8 @@ import 'talisman_executor.dart';
 
 class WeaponSystem {
   WeaponSystem({Map<WeaponId, int>? initialLevels, Random? random})
-    : _random = random ?? Random() {
+    : _random = random ?? Random(),
+      _talismanExecutor = TalismanExecutor(random: random) {
     if (initialLevels != null) {
       _levels.addAll(initialLevels);
     }
@@ -29,7 +30,7 @@ class WeaponSystem {
   final Map<WeaponId, double> _cooldowns = {};
   final Random _random;
   final HwandoExecutor _hwandoExecutor = HwandoExecutor();
-  final TalismanExecutor _talismanExecutor = TalismanExecutor();
+  final TalismanExecutor _talismanExecutor;
   double _talismanNow = 0;
 
   Map<WeaponId, int> get levels => Map.unmodifiable(_levels);
@@ -119,6 +120,7 @@ class WeaponSystem {
             _elementDamageMultiplier(talismanThrow, elementDamageMultipliers),
         sizeMultiplier: sizeMultiplier,
         attackSpeedMultiplier: attackSpeedMultiplier,
+        criticalChance: criticalChance,
       ),
     );
     attackInstances.addAll(talismanResult.attacks);

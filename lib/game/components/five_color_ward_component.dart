@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 
 import '../combat/attack_spec.dart';
+import '../combat/talisman_damage.dart';
 import '../content/weapon_definitions.dart';
 import '../models/damage_event.dart';
 import 'enemy_component.dart';
@@ -41,23 +42,29 @@ class FiveColorWardComponent extends PositionComponent {
       !enemy.isDead && containsEnemy(enemy) ? slowFraction : 0;
 
   List<DamageEvent> collectDamageEvents(Iterable<EnemyComponent> enemies) {
-    if (_pendingTicks == 0) return const [];
+    if (_pendingTicks == 0) {
+      if (isExpired) removeFromParent();
+      return const [];
+    }
     final ticks = _pendingTicks;
     _pendingTicks = 0;
-    return [
+    final events = [
       for (var tick = 0; tick < ticks; tick += 1)
         for (final enemy in enemies)
           if (!enemy.isDead && !enemy.isRemoving && containsEnemy(enemy))
             DamageEvent(
               target: enemy,
-              damage: attack.spec.damage,
+              damage: talismanDamageForTarget(attack, enemy),
               knockback: attack.spec.knockback,
               direction: _directionTo(enemy.position),
               weaponId: talismanThrow,
               sourceId: attack.spec.id,
               traits: attack.spec.traits,
+              isCritical: attack.isCritical,
             ),
     ];
+    if (isExpired) removeFromParent();
+    return events;
   }
 
   @override
@@ -65,12 +72,13 @@ class FiveColorWardComponent extends PositionComponent {
     super.update(dt);
     final previousElapsed = _elapsed;
     _elapsed = (_elapsed + max(0, dt)).clamp(0, durationSeconds).toDouble();
+    if (durationSeconds - _elapsed <= 1e-9) _elapsed = durationSeconds;
     if (_nextTick == 0) _nextTick = tickSeconds;
     while (_nextTick <= _elapsed && _nextTick > previousElapsed) {
       _pendingTicks += 1;
       _nextTick += tickSeconds;
     }
-    if (isExpired) removeFromParent();
+    if (isExpired && _pendingTicks == 0) removeFromParent();
   }
 
   @override

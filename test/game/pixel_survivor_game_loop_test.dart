@@ -9,11 +9,13 @@ import 'package:pixel_survivor/game/components/combat_effect_component.dart';
 import 'package:pixel_survivor/game/components/enemy_hazard_component.dart';
 import 'package:pixel_survivor/game/components/experience_gem_component.dart';
 import 'package:pixel_survivor/game/components/frost_field_component.dart';
+import 'package:pixel_survivor/game/components/five_color_ward_component.dart';
 import 'package:pixel_survivor/game/components/projectile_component.dart';
 import 'package:pixel_survivor/game/components/spirit_jade_component.dart';
 import 'package:pixel_survivor/game/components/ward_aura_component.dart';
 import 'package:pixel_survivor/game/audio/audio_cue.dart';
 import 'package:pixel_survivor/game/combat/attack_geometry.dart';
+import 'package:pixel_survivor/game/combat/attack_spec.dart';
 import 'package:pixel_survivor/game/content/augment_definitions.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
 import 'package:pixel_survivor/game/content/combat_effect_atlas.dart';
@@ -38,6 +40,37 @@ void main() {
       onRunEnded: null,
     );
   }
+
+  AttackInstance wardAttack({
+    required Vector2 position,
+    double damage = 4,
+    double radius = 40,
+    double duration = .5,
+    double slow = .3,
+    AttackPresentation presentation = AttackPresentation.strong,
+  }) => AttackInstance(
+    spec: AttackSpec(
+      id: presentation == AttackPresentation.master
+          ? 'talisman_master_ward'
+          : 'talisman_small_ward',
+      shape: AttackShape.circle,
+      damage: damage,
+      range: 0,
+      angleRadians: 0,
+      radius: radius,
+      width: 0,
+      windupSeconds: 0,
+      activeSeconds: .1,
+      lingerSeconds: duration,
+      knockback: 0,
+      slowFraction: slow,
+      traits: const {AttackTrait.explosion},
+      presentation: presentation,
+    ),
+    origin: position,
+    direction: Vector2(1, 0),
+    sequenceIndex: 0,
+  );
 
   final gameTester = FlameTester<PixelSurvivorGame>(
     newGame,
@@ -372,6 +405,272 @@ void main() {
           game.children.whereType<FrostFieldComponent>().length,
           lessThanOrEqualTo(3),
         );
+      },
+    );
+
+    gameTester.testGameWidget(
+      'ward collects its final tick at the exact expiration boundary',
+      setUp: (game, _) async {
+        final position = Vector2(100, 100);
+        await game.ensureAdd(
+          EnemyComponent(
+            enemyId: bandit,
+            maxHealth: 100,
+            moveSpeed: 0,
+            damage: 0,
+            position: position,
+          ),
+        );
+        await game.ensureAdd(
+          FiveColorWardComponent(
+            attack: wardAttack(position: position, duration: 1.5),
+            tickSeconds: .5,
+          ),
+        );
+      },
+      verify: (game, _) async {
+        final target = game.children.whereType<EnemyComponent>().singleWhere(
+          (enemy) => enemy.enemyId == bandit,
+        );
+        for (var frame = 0; frame < 30; frame += 1) {
+          game.update(.05);
+        }
+
+        expect(target.currentHealth, 88);
+      },
+    );
+
+    gameTester.testGameWidget(
+      'ward and frost apply only their strongest slow',
+      setUp: (game, _) async {
+        final position = Vector2(100, 100);
+        await game.ensureAdd(
+          EnemyComponent(
+            enemyId: bandit,
+            maxHealth: 100,
+            moveSpeed: 100,
+            damage: 0,
+            position: position,
+          ),
+        );
+        await game.ensureAdd(
+          FrostFieldComponent(
+            weaponId: frostFlask,
+            damage: 0,
+            radius: 40,
+            durationSeconds: 2,
+            slowFraction: .2,
+            knockback: 0,
+            position: position,
+          ),
+        );
+        await game.ensureAdd(
+          FiveColorWardComponent(
+            attack: wardAttack(position: position, duration: 2, slow: .35),
+          ),
+        );
+      },
+      verify: (game, _) async {
+        game.update(.05);
+        final target = game.children.whereType<EnemyComponent>().singleWhere(
+          (enemy) => enemy.enemyId == bandit,
+        );
+
+        expect(target.environmentalSlowFraction, .35);
+      },
+    );
+
+    gameTester.testGameWidget(
+      'removed talisman targets are cleaned up in the live loop',
+      setUp: (game, _) async {
+        game.unlockedWeaponIds.add(talismanThrow);
+        for (var level = 0; level < 3; level += 1) {
+          game.weaponSystem.upgrade(talismanThrow, game.unlockedWeaponIds);
+        }
+        await game.ensureAdd(
+          EnemyComponent(
+            enemyId: bandit,
+            maxHealth: 100,
+            moveSpeed: 0,
+            damage: 0,
+            position: game.activePlayers.single.position + Vector2(20, 0),
+          ),
+        );
+      },
+      verify: (game, _) async {
+        game.update(.05);
+        final target = game.weaponSystem.attachedTalismans.single.target;
+        target.removeFromParent();
+        game.update(.05);
+
+        expect(game.weaponSystem.attachedTalismans, isEmpty);
+      },
+    );
+
+    gameTester.testGameWidget(
+      'live transfer skips a living target that already has a seal',
+      setUp: (game, _) async {
+        game.unlockedWeaponIds.add(talismanThrow);
+        for (var level = 0; level < 4; level += 1) {
+          game.weaponSystem.upgrade(talismanThrow, game.unlockedWeaponIds);
+        }
+        final origin = game.activePlayers.single.position;
+        for (final entry in [(bandit, 20.0), (dokkaebi, 24.0)]) {
+          await game.ensureAdd(
+            EnemyComponent(
+              enemyId: entry.$1,
+              maxHealth: 1000,
+              moveSpeed: 0,
+              damage: 0,
+              position: origin + Vector2(entry.$2, 0),
+            ),
+          );
+        }
+      },
+      verify: (game, _) async {
+        game.update(.05);
+        final origin = game.activePlayers.single.position;
+        final candidate = EnemyComponent(
+          enemyId: vengefulSpirit,
+          maxHealth: 1000,
+          moveSpeed: 0,
+          damage: 0,
+          position: origin + Vector2(28, 0),
+        );
+        game.add(candidate);
+        game.processLifecycleEvents();
+        for (var frame = 0; frame < 12; frame += 1) {
+          game.update(.05);
+        }
+
+        expect(
+          game.weaponSystem.attachedTalismans.any(
+            (seal) =>
+                identical(seal.target, candidate) && seal.transferDepth == 1,
+          ),
+          isTrue,
+        );
+      },
+    );
+
+    gameTester.testGameWidget(
+      'talisman explosion applies spirit bonus per damaged target',
+      setUp: (game, _) async {
+        game.unlockedWeaponIds.add(talismanThrow);
+        game.weaponSystem.upgrade(talismanThrow, game.unlockedWeaponIds);
+        final origin = game.activePlayers.single.position;
+        await game.ensureAdd(
+          EnemyComponent(
+            enemyId: bandit,
+            maxHealth: 100,
+            moveSpeed: 0,
+            damage: 0,
+            position: origin + Vector2(20, 0),
+          ),
+        );
+        await game.ensureAdd(
+          EnemyComponent(
+            enemyId: vengefulSpirit,
+            maxHealth: 100,
+            moveSpeed: 0,
+            damage: 0,
+            position: origin + Vector2(22, 0),
+          ),
+        );
+      },
+      verify: (game, _) async {
+        game.update(.05);
+        final targets = game.children.whereType<EnemyComponent>();
+        final ordinary = targets.singleWhere(
+          (enemy) => enemy.enemyId == bandit,
+        );
+        final spirit = targets.singleWhere(
+          (enemy) => enemy.enemyId == vengefulSpirit,
+        );
+
+        expect(ordinary.currentHealth, 92);
+        expect(spirit.currentHealth, 90);
+      },
+    );
+
+    audioGameTester.testGameWidget(
+      'simultaneous level six seal explosions do not repeat master audio',
+      setUp: (game, _) async {
+        game.unlockedWeaponIds.add(talismanThrow);
+        for (var level = 0; level < 6; level += 1) {
+          game.weaponSystem.upgrade(talismanThrow, game.unlockedWeaponIds);
+        }
+        final origin = game.activePlayers.single.position;
+        for (var index = 0; index < 6; index += 1) {
+          await game.ensureAdd(
+            EnemyComponent(
+              enemyId: 'master_target_$index',
+              maxHealth: 10000,
+              moveSpeed: 0,
+              damage: 0,
+              position: origin + Vector2(20 + index * 4.0, 0),
+            ),
+          );
+        }
+      },
+      verify: (game, _) async {
+        for (var frame = 0; frame < 13; frame += 1) {
+          game.update(.05);
+        }
+
+        expect(
+          audioCues.where((cue) => cue == AudioCue.talismanMasterAttack),
+          hasLength(1),
+        );
+      },
+    );
+
+    gameTester.testGameWidget(
+      'live talisman wards retain runtime caps',
+      setUp: (game, _) async {
+        game.unlockedWeaponIds.add(talismanThrow);
+        for (var level = 0; level < 6; level += 1) {
+          game.weaponSystem.upgrade(talismanThrow, game.unlockedWeaponIds);
+        }
+        final origin = game.activePlayers.single.position;
+        for (var index = 0; index < 18; index += 1) {
+          await game.ensureAdd(
+            EnemyComponent(
+              enemyId: 'cap_target_$index',
+              maxHealth: 100000,
+              moveSpeed: 0,
+              damage: 0,
+              position:
+                  origin + Vector2((index ~/ 6) * 85.0 + 20, (index % 6) * 6.0),
+            ),
+          );
+        }
+      },
+      verify: (game, _) async {
+        for (var frame = 0; frame < 100; frame += 1) {
+          game.update(.05);
+          final wards = game.children.whereType<FiveColorWardComponent>();
+          expect(
+            wards
+                .where(
+                  (ward) =>
+                      ward.attack.spec.presentation ==
+                      AttackPresentation.master,
+                )
+                .length,
+            lessThanOrEqualTo(3),
+          );
+          expect(
+            wards
+                .where(
+                  (ward) =>
+                      ward.attack.spec.presentation !=
+                      AttackPresentation.master,
+                )
+                .length,
+            lessThanOrEqualTo(12),
+          );
+        }
       },
     );
 
