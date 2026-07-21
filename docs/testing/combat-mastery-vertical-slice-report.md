@@ -27,61 +27,58 @@
 flutter test test/game/telemetry_export_service_test.dart test/game/run_telemetry_test.dart
 ```
 
-## 2026-07-22 완료 게이트 증거
+## 2026-07-22 최종 완료 게이트 증거
 
-승인 증거는 최종 검토 수정 커밋
-`38fa106349e347c94e90a2ed4542e06394fedc42` 하나에서 시작하고 끝난 단일 실행
-순서만 사용한다. 각 주요 게이트 직전과 직후에 같은 HEAD와 깨끗한 작업 트리를
-확인했으며, 전체 순서가 끝난 뒤에도 동일했다.
+승인 증거는 시각 통합 성능 기준선 갱신 커밋
+`f59b5c90b94cafd1ec5d64bdc1b0cfc7fceb6b6c` 하나에서 시작하고 끝난 실행만 사용한다.
+각 주요 게이트 직전과 직후에 같은 HEAD와 깨끗한 작업 트리를 확인했다. 외부 배포,
+merge, push는 수행하지 않았다.
 
 Flutter SDK는 `C:\Users\전성진\source\flutter`를 가리키는 ASCII `Y:` 드라이브를
-사용했다. `Z:\` 드라이브 루트에서는 Dart 3.12 분석 서버의 세션 로그 정규화가
-`{{workspaceFolder-0}}\`를 잘못 이스케이프해 종료 코드 255가 재현되었으므로, 동일
-체크아웃을 가리키는 비 루트 ASCII junction `C:\codex-task13\repo`에서 명령을
-실행했다. 외부 배포는 수행하지 않았다.
+사용했다. `Z:\` 드라이브 루트의 Dart 3.12 분석 서버 세션 로그 오류를 피하기 위해
+분석은 동일 체크아웃의 비 루트 junction `C:\codex-task13\repo`에서 실행했다. 전체
+테스트와 web 빌드는 `D:\codex-task13-final-f59b5c9-gates\repo`, APK 빌드는 별도의
+`D:\codex-task13-final-f59b5c9-apk\repo` 물리 복사본에서 실행했다. 두 복사본 모두
+Git 추적 파일 638개의 SHA-256이 원본과 전부 일치했고 불일치는 0개였다.
 
 | 게이트 | 실행 시각 (KST) | 종료 코드 | 관측 결과 |
 | --- | --- | ---: | --- |
-| `git status --short` | 02:51:26.393–02:51:26.516 | 0 | HEAD `38fa106`, 작업 트리 깨끗함 |
-| `git diff --check` | 02:51:34.077–02:51:34.211 | 0 | 공백 오류 없음 |
-| `dart format --output=none --set-exit-if-changed lib test` | 02:51:34.091–02:51:35.741 | 0 | 270개 파일 검사, 변경 0 |
-| `flutter analyze` | 02:51:45.747–02:52:17.798 | 0 | `No issues found!` (분석 26.3초) |
-| `flutter test -r compact` | 02:52:28.379–02:53:13.600 | 0 | 정확히 732개 통과, `All tests passed!` |
-| `flutter build web` | 02:53:30.568–02:54:27.267 | 0 | `build/web`, 73개 파일, 합계 43,754,013 bytes |
-| `flutter build apk --debug` | 02:58:29.660–03:00:26.423 | 0 | 아래 APK 생성 및 표준 경로로 복사 |
-| 고정 시드 5분 슬라이스 3개 파일 | 03:00:59.539–03:01:29.514 | 0 | 정확히 6개 통과, `All tests passed!` |
+| `git diff --check` 및 `dart format --output=none --set-exit-if-changed lib test` | 04:02:55.359–04:02:56.903 | 0 | 274개 파일 검사, 변경 0, 공백 오류 없음 |
+| `flutter analyze` | 04:03:08.299–04:03:50.794 | 0 | `No issues found!` (분석 36.2초) |
+| `flutter test -r compact` | 04:06:41.257–04:12:47.918 | 0 | 정확히 745개 통과, `All tests passed!` |
+| `flutter build web` | 04:13:06.112–04:14:38.725 | 0 | 73개 파일, 합계 43,761,508 bytes |
+| 고정 시드 5분 슬라이스 3개 파일 | 04:14:54.435–04:15:10.272 | 0 | 정확히 6개 통과, `All tests passed!` |
+| `flutter build apk --debug` | 04:16:10.494–04:27:22.988 | 0 | Gradle 663.8초, 아래 APK 생성 및 표준 경로 복사 |
 
-Android Gradle은 junction/subst 경로를 원래 비 ASCII 경로로 정규화했고, 사용자 Pub
-캐시와 사라진 외부 `P:` Flutter 매핑도 각각 별도의 실패 원인이 되었다. 성공 게이트는
-최종 HEAD를 `C:\codex-task13-final-38fa-r2\repo`에 새로 물리 복사한 뒤 Git 추적 파일
-633개의 SHA-256이 원본과 모두 일치함을 확인하고, ASCII Flutter/Android SDK,
-`PUB_CACHE`, `TEMP`, `TMP`로 실행했다. 생성된 APK를 표준 경로에 복사한 뒤 해시가
-동일함을 재확인했다.
+web 산출물은
+`D:\codex-task13-final-f59b5c9-gates\repo\build\web`에 있으며 73개 파일,
+43,761,508 bytes이다. APK는 별도의 깨끗한 물리 복사본에서 새로 만들고 표준 경로에
+복사한 뒤 SHA-256, 크기와 수정 시각이 모두 같은지 확인했다.
 
-- 임시 빌드 경로: `C:\codex-task13-final-38fa-r2\repo\build\app\outputs\flutter-apk\app-debug.apk`
+- 임시 빌드 경로: `D:\codex-task13-final-f59b5c9-apk\repo\build\app\outputs\flutter-apk\app-debug.apk`
 - 표준 경로: `build/app/outputs/flutter-apk/app-debug.apk`
-- 크기: 162,745,951 bytes
-- SHA-256: `C5E875945B246688888052A513FB61F09ED50535EC3F376AC185C8F7FA3652C0`
-- 수정 시각: 2026-07-22 03:00:23.518 KST
+- 크기: 162,758,707 bytes
+- SHA-256: `05E9C14BBA2BBC15184CC6C2CD069D077069206B98504F4ABB0332C90D4AF727`
+- 수정 시각: 2026-07-22 04:27:15.227 KST
 
-03:00 성공 전에 만든 동일 최종 HEAD의 첫 Android 복사본도 633개 해시가 일치했지만,
-C: 여유 공간이 0 byte가 되어 02:55:28.313–02:56:36.990에 종료 코드 1로 실패했다.
-이 산출물은 폐기했고 성공 증거로 사용하지 않았다. 검증자가 만든 이전 Task 13 임시
-복사본 두 개만 제거해 2,590,248,960 bytes를 확보한 뒤 완전히 새로운 `r2` 복사본에서
-위 성공 게이트를 실행했다. 이전 커밋·변경 중 실행된 모든 로그와 APK도 이번 승인
-증거에서 제외했다.
+승인 순서 전에 C: 디스크 부족으로 끝난 테스트, 이전 성능 기준선이 남아 744개 통과와
+1개 실패를 기록한 테스트, 외부 테스트 프로세스가 공유 `build/unit_test_assets`를
+점유해 `shaders/ink_sparkle.frag`가 누락된 테스트는 환경 또는 기준선 수정 전 실행이다.
+이 실행들의 로그와 산출물은 모두 최종 승인 증거에서 제외했다.
 
-### 고정 시드 밀도·성능 값
+### 고정 시드 밀도·성능 및 컴포넌트 값
 
 시드 `3107`, 300초, 18,000 논리 프레임의 새 `build/qa` 산출물에서 확인한 값이다.
 
-- 전체 평균/최대 활성 적: 13.5522222222 / 43
-- 후반 평균/최대 활성 적: 23.6940277778 / 43 (7,200 표본)
-- 후반 평균/최저 시뮬레이션 FPS: 59.998800024 / 59.998800024
-- 적/투사체/피해 숫자/전투 효과 최대치: 43 / 14 / 20 / 21
+- 전체 평균/최대 활성 적: 13.657666666666668 / 45
+- 후반 평균/최대 활성 적: 23.773888888888887 / 45 (7,200 표본)
+- 후반 평균/최저 시뮬레이션 FPS: 59.998800023996225 / 59.99880002399952
+- 적/투사체/피해 숫자/전투 효과 최대치: 45 / 14 / 20 / 17
 - 인구 제한 위반 표본: 0, 메모리 프록시 위반 표본: 0
-- 최대 mounted component: 214, 최대 유지 소유자: 15/128, 최대 메모리 프록시: 224/512
-- host test-loop의 `update`+lifecycle 최대 관측 시간: 8,235 microseconds
+- 최대 mounted component: 253, 최대 유지 소유자: 14/128,
+  최대 메모리 프록시: 263/512
+- 모든 인구·컴포넌트·소유자·메모리 프록시 예산 판정: 통과
+- host test-loop의 `update`+lifecycle 최대 관측 시간: 11,373 microseconds
 - 고정 시드 런의 보스 요청과 실제 보스 생성: 각각 1회
 - 시드 3107의 240–270초 혼합 역할 생성: 쥐떼 33, 원혼 20, 삿갓 망령 21,
   도깨비 23, 장승령 7, 처녀귀 6으로 모두 0보다 큼
@@ -90,9 +87,11 @@ C: 여유 공간이 0 byte가 되어 02:55:28.313–02:56:36.990에 종료 코�
 - 20개 시드 회귀는 시드별 보스 요청 1회, 최대 활성 적 96 이하, 프레임당 생성 8
   이하, 총 생성 400 이상, pressure 구간 elite 합계가 0보다 큼을 검증
 
-원본 자동 산출물은 `build/qa/production-high-risk-performance-log.json`과
+원본 자동 산출물은 격리 복사본의
+`build/qa/production-high-risk-performance-log.json`과
 `build/qa/production-high-risk-performance-log.md`에 있다. 위 FPS는 고정된 원시
-프레임 간격에서 계산한 결정론적 호스트 시뮬레이션 값이며 실제 기기 FPS가 아니다.
+프레임 간격에서 계산한 결정론적 호스트 시뮬레이션 값이다. host wall time도 개발
+호스트 진단값일 뿐 실제 모바일 기기 FPS 또는 프레임 시간 측정값이 아니다.
 
 ## 수동 검증 — 실제 플레이 결과 미기록
 
