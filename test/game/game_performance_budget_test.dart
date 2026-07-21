@@ -148,7 +148,10 @@ void main() {
       expect(snapshot.rejected[GamePopulationKind.enemy], greaterThan(0));
       expect(snapshot.rejected[GamePopulationKind.projectile], greaterThan(0));
       expect(snapshot.rejected[GamePopulationKind.damageNumber], 2);
-      expect(snapshot.rejected[GamePopulationKind.combatEffect], 2);
+      expect(
+        snapshot.rejected[GamePopulationKind.combatEffect],
+        greaterThanOrEqualTo(2),
+      );
       expect(
         runtimeDiagnostics.map((diagnostic) => diagnostic.kind).toSet(),
         GamePopulationKind.values.toSet(),

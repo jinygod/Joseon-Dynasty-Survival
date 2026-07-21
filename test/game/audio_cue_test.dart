@@ -31,4 +31,16 @@ void main() {
     expect(AudioCueCatalog.channelFor(AudioCue.uiConfirm), AudioChannel.ui);
     expect(AudioCueCatalog.channelFor(AudioCue.uiBack), AudioChannel.ui);
   });
+
+  test('mastery combat cues use the sfx channel', () {
+    expect(
+      AudioCueCatalog.channelFor(AudioCue.hwandoMasterAttack),
+      AudioChannel.sfx,
+    );
+    expect(
+      AudioCueCatalog.channelFor(AudioCue.talismanMasterAttack),
+      AudioChannel.sfx,
+    );
+    expect(AudioCueCatalog.channelFor(AudioCue.sealingSlash), AudioChannel.sfx);
+  });
 }

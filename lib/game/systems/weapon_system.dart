@@ -33,6 +33,10 @@ class WeaponSystem {
 
   int levelOf(WeaponId weaponId) => _levels[weaponId] ?? 0;
 
+  void recordHwandoKill({required int count}) {
+    _hwandoExecutor.recordKill(count: count);
+  }
+
   bool canUpgrade(WeaponId weaponId, Set<WeaponId> unlockedWeaponIds) {
     final definition = _definitionFor(weaponId);
     if (definition == null || !unlockedWeaponIds.contains(weaponId)) {

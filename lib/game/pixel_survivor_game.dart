@@ -12,6 +12,9 @@ import 'package:flutter/widgets.dart' show KeyEventResult;
 import '../app/game_hud_source.dart';
 import 'components/area_attack_component.dart';
 import 'audio/audio_cue.dart';
+import 'combat/attack_geometry.dart';
+import 'combat/attack_spec.dart';
+import 'components/attack_effect_component.dart';
 import 'components/boss_component.dart';
 import 'components/combat_effect_component.dart';
 import 'components/damage_number_component.dart';
@@ -47,6 +50,7 @@ import 'systems/level_up_system.dart';
 import 'systems/augment_effect_resolver.dart';
 import 'systems/meta_reward_policy.dart';
 import 'systems/combat_feedback_tuning.dart';
+import 'systems/combat_feedback_controller.dart';
 import 'systems/combat_system.dart';
 import 'systems/character_passive_modifiers.dart';
 import 'systems/enemy_aura_resolver.dart';
@@ -91,6 +95,9 @@ class PixelSurvivorGame extends FlameGame
            pickupIdPrefix ?? DateTime.now().microsecondsSinceEpoch.toString(),
        _rewardRoll = rewardRoll ?? Random().nextDouble,
        _bossRoll = bossRoll ?? random?.nextDouble ?? Random().nextDouble {
+    _combatFeedback = CombatFeedbackController(
+      screenShakeEnabled: screenShakeEnabled,
+    );
     if (!playerSlot.isActive) {
       throw ArgumentError.value(playerSlot, 'playerSlot', 'must be active');
     }
@@ -123,6 +130,7 @@ class PixelSurvivorGame extends FlameGame
   final RunProgressionSystem runProgression = RunProgressionSystem();
   final RunStatsTracker runStats = RunStatsTracker();
   final CombatSystem combatSystem = CombatSystem();
+  late final CombatFeedbackController _combatFeedback;
   final List<PlayerComponent> _activePlayers = [];
   late final List<PlayerComponent> _activePlayersView = UnmodifiableListView(
     _activePlayers,
@@ -214,6 +222,7 @@ class PixelSurvivorGame extends FlameGame
   }) {
     this.screenShakeEnabled = screenShakeEnabled;
     this.damageNumbersEnabled = damageNumbersEnabled;
+    _combatFeedback.screenShakeEnabled = screenShakeEnabled;
     if (!screenShakeEnabled) _clearScreenShake();
   }
 
@@ -333,7 +342,8 @@ class PixelSurvivorGame extends FlameGame
   @override
   void update(double dt) {
     final safeDt = dt.clamp(0, 0.05).toDouble();
-    super.update(safeDt);
+    final simulationDt = _combatFeedback.tick(safeDt);
+    super.update(simulationDt);
     _trySpawnPendingBoss();
     _updateScreenShake(safeDt);
     if (_runOutcome != RunOutcome.inProgress || isLevelUpPending) {
@@ -341,14 +351,16 @@ class PixelSurvivorGame extends FlameGame
     }
 
     if (_rewardCollectionSecondsRemaining != null) {
-      _updateRewardCollection(safeDt);
+      _updateRewardCollection(simulationDt);
       return;
     }
 
     _advanceTime(safeDt);
-    _spawnWaveEnemies(safeDt);
-    _updatePlayerMovement(safeDt);
-    _updateWeapons(safeDt);
+    if (safeDt > 0 && simulationDt <= 0) return;
+
+    _spawnWaveEnemies(simulationDt);
+    _updatePlayerMovement(simulationDt);
+    _updateWeapons(simulationDt);
     _applyProjectileHits();
     _resolveAreaAttacks();
     _resolveFrostFields();
@@ -574,9 +586,17 @@ class PixelSurvivorGame extends FlameGame
       player.playAttack(direction);
     }
     for (final weaponId in result.firedWeaponIds) {
+      if (weaponId == hwandoSlash && result.attackInstances.isNotEmpty) {
+        continue;
+      }
       _emitAudio(_attackCueFor(weaponId));
     }
-    _applyDamageEvents(result.damageEvents);
+    _applyDamageEvents(
+      result.damageEvents.where((event) => event.weaponId != hwandoSlash),
+    );
+    for (final attack in result.attackInstances) {
+      _resolveSharedAttack(attack);
+    }
     var projectileSlots = max(
       0,
       performanceBudget.maxProjectiles - _projectileComponentCount,
@@ -590,6 +610,7 @@ class PixelSurvivorGame extends FlameGame
       }
     }
     for (final arc in result.meleeArcs) {
+      if (arc.weaponId == hwandoSlash) continue;
       add(arc);
     }
     for (final areaAttack in result.areaAttacks) {
@@ -600,6 +621,69 @@ class PixelSurvivorGame extends FlameGame
       if (activeFields.length >= 3) activeFields.first.removeFromParent();
       add(frostField);
     }
+  }
+
+  void _resolveSharedAttack(AttackInstance attack) {
+    final enemies = children
+        .whereType<EnemyComponent>()
+        .where((enemy) => !enemy.isDead && !enemy.isRemoving)
+        .toList(growable: false);
+    final events = <DamageEvent>[];
+    for (final enemy in enemies) {
+      if (!AttackGeometry.contains(attack, enemy.position, enemy.size.x / 2)) {
+        continue;
+      }
+      final direction = enemy.position - attack.origin;
+      if (direction.length2 > 0) direction.normalize();
+      events.add(
+        DamageEvent(
+          target: enemy,
+          damage: attack.spec.damage,
+          knockback: attack.spec.knockback,
+          direction: direction,
+          weaponId: hwandoSlash,
+          sourceId: attack.spec.id,
+          traits: attack.spec.traits,
+        ),
+      );
+    }
+    _applyDamageEvents(events);
+    _spawnAttackEffect(attack);
+    _emitSharedAttackAudio(attack);
+
+    if (attack.spec.presentation == AttackPresentation.master) {
+      _combatFeedback.request(const CombatFeedbackRequest.master());
+      final shake = _combatFeedback.takePendingShakeMagnitude();
+      if (shake > 0) _startScreenShake(shake);
+    }
+  }
+
+  void _emitSharedAttackAudio(AttackInstance attack) {
+    if (attack.sequenceIndex == 0) {
+      _emitAudio(AudioCue.hwandoAttack);
+      if (attack.spec.presentation == AttackPresentation.master) {
+        _emitAudio(AudioCue.hwandoMasterAttack);
+      }
+    }
+    if (attack.spec.presentation == AttackPresentation.strong) {
+      _emitAudio(AudioCue.sealingSlash);
+    }
+  }
+
+  void _spawnAttackEffect(AttackInstance attack) {
+    if (_combatEffectCount >= performanceBudget.maxCombatEffects) {
+      _rejectPopulation(GamePopulationKind.combatEffect, 1);
+      return;
+    }
+    _combatEffectCount += 1;
+    add(
+      AttackEffectComponent(
+        instance: attack,
+        onExpired: () {
+          _combatEffectCount = max(0, _combatEffectCount - 1);
+        },
+      ),
+    );
   }
 
   void _ensureWardAura(PlayerComponent player) {
@@ -1021,11 +1105,16 @@ class PixelSurvivorGame extends FlameGame
   void _recordEnemyDefeat(EnemyComponent enemy) {
     if (!_recordedEnemyDefeats.add(enemy)) return;
     final enemyDefinition = _enemyDefinitionFor(enemy.enemyId);
+    final weaponId = _lastWeaponHitByEnemy[enemy];
+    if (weaponId == hwandoSlash) {
+      weaponSystem.recordHwandoKill(count: 1);
+    }
     runStats.recordEnemyDefeat(
       isBoss: enemyDefinition.isBoss,
       isElite: enemy.isElite,
-      weaponId: _lastWeaponHitByEnemy.remove(enemy),
+      weaponId: weaponId,
     );
+    _lastWeaponHitByEnemy.remove(enemy);
     final firstBossReward = enemyDefinition.isBoss && firstBossRewardAvailable;
     if (persistSpiritJade != null &&
         _metaRewardPolicy.shouldDropSpiritJade(

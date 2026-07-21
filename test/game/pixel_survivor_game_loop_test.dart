@@ -4,6 +4,7 @@ import 'package:flame/components.dart';
 import 'package:flame_test/flame_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/components/enemy_component.dart';
+import 'package:pixel_survivor/game/components/attack_effect_component.dart';
 import 'package:pixel_survivor/game/components/enemy_hazard_component.dart';
 import 'package:pixel_survivor/game/components/experience_gem_component.dart';
 import 'package:pixel_survivor/game/components/frost_field_component.dart';
@@ -11,6 +12,7 @@ import 'package:pixel_survivor/game/components/projectile_component.dart';
 import 'package:pixel_survivor/game/components/spirit_jade_component.dart';
 import 'package:pixel_survivor/game/components/ward_aura_component.dart';
 import 'package:pixel_survivor/game/audio/audio_cue.dart';
+import 'package:pixel_survivor/game/combat/attack_geometry.dart';
 import 'package:pixel_survivor/game/content/augment_definitions.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
 import 'package:pixel_survivor/game/content/ids.dart';
@@ -47,6 +49,34 @@ void main() {
       onRunEnded: null,
       onAudioCue: audioCues.add,
     );
+  }, gameSize: Vector2(960, 540));
+  final masterGameTester = FlameTester<PixelSurvivorGame>(() {
+    audioCues = <AudioCue>[];
+    final game = PixelSurvivorGame(
+      playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
+      onRunEnded: null,
+      onAudioCue: audioCues.add,
+    );
+    for (var level = 0; level < 6; level += 1) {
+      game.weaponSystem.upgrade(hwandoSlash, game.unlockedWeaponIds);
+    }
+    for (final position in [
+      Vector2(448, 300),
+      Vector2(400, 348),
+      Vector2(352, 300),
+      Vector2(520, 420),
+    ]) {
+      game.add(
+        EnemyComponent(
+          enemyId: bandit,
+          maxHealth: 10000,
+          moveSpeed: 0,
+          damage: 0,
+          position: position,
+        ),
+      );
+    }
+    return game;
   }, gameSize: Vector2(960, 540));
 
   group('PixelSurvivorGame run loop progression', () {
@@ -348,6 +378,48 @@ void main() {
         expect(player.position.x, greaterThan(before));
         expect(player.isMoving, isTrue);
         expect(player.isAttacking, isTrue);
+      },
+    );
+
+    masterGameTester.testGameWidget(
+      'master hwando resolves the shared geometry and cues once per sequence',
+      verify: (game, _) async {
+        game.update(.05);
+        game.update(0);
+        final effect = game.children.whereType<AttackEffectComponent>().single;
+        final enemies = game.children.whereType<EnemyComponent>().toList();
+        final expected = enemies
+            .where(
+              (enemy) => AttackGeometry.contains(
+                effect.instance,
+                enemy.position,
+                enemy.size.x / 2,
+              ),
+            )
+            .toSet();
+        final damaged = enemies
+            .where((enemy) => enemy.currentHealth < enemy.maxHealth)
+            .toSet();
+
+        expect(damaged, expected);
+        var sawSecondStage = false;
+        for (var frame = 0; frame < 10 && !sawSecondStage; frame += 1) {
+          game.update(.05);
+          game.update(0);
+          final effects = game.children.whereType<AttackEffectComponent>();
+          sawSecondStage = effects.any(
+            (effect) => effect.instance.sequenceIndex == 1,
+          );
+        }
+        expect(sawSecondStage, isTrue);
+        final pausedEnemy = damaged.first;
+        final pausedPosition = pausedEnemy.position.clone();
+        game.update(.02);
+        expect(pausedEnemy.position, pausedPosition);
+        expect(
+          audioCues.where((cue) => cue == AudioCue.hwandoMasterAttack),
+          hasLength(1),
+        );
       },
     );
 
