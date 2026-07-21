@@ -68,4 +68,56 @@ void main() {
     controller.tick(dt: 10, origin: Vector2.zero(), target: Vector2.zero());
     expect(controller.phaseElapsed - before, closeTo(.05, .001));
   });
+
+  test(
+    'ranged profile retreats inside minimum range and warns before shooting',
+    () {
+      final controller = EnemyBehaviorController(
+        profile: enemyBehaviorProfiles['sakkat_ranged']!,
+      );
+      final close = controller.tick(
+        dt: .1,
+        origin: Vector2.zero(),
+        target: Vector2(40, 0),
+      );
+      expect(close.movementMultiplier, lessThan(0));
+      expect(close.movementDirection.x, lessThan(0));
+
+      EnemyAttackRequest? shot;
+      for (var i = 0; i < 70; i++) {
+        shot ??= controller
+            .tick(dt: .05, origin: Vector2.zero(), target: Vector2(180, 0))
+            .attack;
+      }
+      expect(shot?.kind, EnemyAttackKind.projectile);
+    },
+  );
+
+  test('ranged warning freezes shot direction at warning start', () {
+    final controller = EnemyBehaviorController(
+      profile: enemyBehaviorProfiles['sakkat_ranged']!,
+    );
+    for (var i = 0; i < 53; i++) {
+      controller.tick(dt: .05, origin: Vector2.zero(), target: Vector2(180, 0));
+    }
+    expect(controller.phase, EnemyBehaviorPhase.warning);
+
+    EnemyAttackRequest? shot;
+    for (var i = 0; i < 15 && shot == null; i++) {
+      shot = controller
+          .tick(dt: .05, origin: Vector2.zero(), target: Vector2(0, 180))
+          .attack;
+    }
+    expect(shot, isNotNull);
+    expect(shot!.direction.x, greaterThan(.99));
+    expect(shot.direction.y.abs(), lessThan(.01));
+  });
+
+  test('all authored dash and ranged attacks have readable warnings', () {
+    expect(
+      enemyBehaviorProfiles['dash']!.warningSeconds,
+      greaterThanOrEqualTo(.5),
+    );
+    expect(enemyBehaviorProfiles['sakkat_ranged']!.warningSeconds, .7);
+  });
 }

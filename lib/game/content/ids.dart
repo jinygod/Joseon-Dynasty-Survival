@@ -25,6 +25,7 @@ enum EnemyBehaviorKind {
   doubleDash,
   shockwave,
   scream,
+  ranged,
 }
 
 enum EnemyBehaviorPhase { tracking, warning, active, recovery, cooldown }

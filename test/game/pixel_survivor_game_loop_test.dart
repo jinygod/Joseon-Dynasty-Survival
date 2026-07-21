@@ -8,6 +8,7 @@ import 'package:pixel_survivor/game/components/enemy_component.dart';
 import 'package:pixel_survivor/game/components/attack_effect_component.dart';
 import 'package:pixel_survivor/game/components/combat_effect_component.dart';
 import 'package:pixel_survivor/game/components/enemy_hazard_component.dart';
+import 'package:pixel_survivor/game/components/enemy_projectile_component.dart';
 import 'package:pixel_survivor/game/components/experience_gem_component.dart';
 import 'package:pixel_survivor/game/components/frost_field_component.dart';
 import 'package:pixel_survivor/game/components/five_color_ward_component.dart';
@@ -32,6 +33,7 @@ import 'package:pixel_survivor/game/models/run_outcome.dart';
 import 'package:pixel_survivor/game/models/run_result.dart';
 import 'package:pixel_survivor/game/models/vector_input.dart';
 import 'package:pixel_survivor/game/pixel_survivor_game.dart';
+import 'package:pixel_survivor/game/game_performance_budget.dart';
 import 'package:pixel_survivor/game/systems/level_up_system.dart';
 import 'package:pixel_survivor/game/systems/weapon_synergy_resolver.dart';
 
@@ -134,6 +136,19 @@ void main() {
     );
     return game;
   }, gameSize: Vector2(960, 540));
+  final cappedProjectileGameTester = FlameTester<PixelSurvivorGame>(
+    () => PixelSurvivorGame(
+      playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
+      onRunEnded: null,
+      performanceBudget: const GamePerformanceBudget(
+        maxEnemies: 96,
+        maxProjectiles: 1,
+        maxDamageNumbers: 24,
+        maxCombatEffects: 32,
+      ),
+    ),
+    gameSize: Vector2(960, 540),
+  );
 
   group('PixelSurvivorGame run loop progression', () {
     test('synergy presentation uses a golden slash and five O-bang colors', () {
@@ -951,6 +966,54 @@ void main() {
         );
         expect(target.environmentalHasteFraction, .2);
         expect(game.activePlayers.single.environmentalSlowFraction, .25);
+      },
+    );
+
+    gameTester.testGameWidget(
+      'sakkat projectile damages player once and is removed',
+      setUp: (game, _) async {
+        final player = game.activePlayers.single;
+        game.debugSpawnEnemy(
+          sakkatSpecter,
+          position: player.position + Vector2(180, 0),
+        );
+      },
+      verify: (game, _) async {
+        final player = game.activePlayers.single;
+        final healthBefore = player.currentHealth;
+        for (var i = 0; i < 100; i++) {
+          game.update(.05);
+        }
+        expect(player.currentHealth, lessThan(healthBefore));
+        expect(game.children.whereType<EnemyProjectileComponent>(), isEmpty);
+      },
+    );
+
+    cappedProjectileGameTester.testGameWidget(
+      'hostile projectiles share the projectile population cap',
+      setUp: (game, _) async {
+        final player = game.activePlayers.single;
+        game.debugSpawnEnemy(
+          sakkatSpecter,
+          position: player.position + Vector2(180, -40),
+        );
+        game.debugSpawnEnemy(
+          sakkatSpecter,
+          position: player.position + Vector2(180, 40),
+        );
+      },
+      verify: (game, _) async {
+        for (var i = 0; i < 70; i++) {
+          game.update(.05);
+        }
+        expect(
+          game.children.whereType<EnemyProjectileComponent>().length,
+          lessThanOrEqualTo(1),
+        );
+        expect(
+          game.performanceSnapshot.counts[GamePopulationKind.projectile],
+          lessThanOrEqualTo(1),
+        );
       },
     );
 

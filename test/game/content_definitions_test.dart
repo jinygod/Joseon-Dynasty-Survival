@@ -3,6 +3,9 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/content/augment_definitions.dart';
 import 'package:pixel_survivor/game/content/content_integrity.dart';
+import 'package:pixel_survivor/game/content/asset_catalog.dart';
+import 'package:pixel_survivor/game/content/content_roster_contract.dart';
+import 'package:pixel_survivor/game/content/enemy_definitions.dart';
 import 'package:pixel_survivor/game/content/ids.dart';
 import 'package:pixel_survivor/game/content/stage_definitions.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
@@ -46,12 +49,25 @@ void main() {
     expect(report.counts.weapons, 8);
     expect(report.counts.weaponLevels, 42);
     expect(report.counts.augments, 16);
-    expect(report.counts.normalEnemies, 8);
+    expect(report.counts.normalEnemies, 9);
     expect(report.counts.eliteEnemies, 3);
     expect(report.counts.stages, 2);
     expect(report.counts.bosses, 3);
     expect(report.counts.unlockGoals, 15);
     expect(report.issues, isEmpty);
+  });
+
+  test('sakkat specter is a registered normal spirit with fallback art', () {
+    final sakkat = enemyDefinitionFor(sakkatSpecter)!;
+    expect(sakkat.rank, EnemyRank.normal);
+    expect(sakkat.faction, EnemyFaction.spirit);
+    expect(
+      sakkat.maxHealth,
+      greaterThan(enemyDefinitionFor(plagueRatSwarm)!.maxHealth),
+    );
+    expect(sakkat.maxHealth, lessThan(enemyDefinitionFor(dokkaebi)!.maxHealth));
+    expect(ContentRosterContract.enemyIds, contains(sakkatSpecter));
+    expect(AssetCatalog.monsters, contains(sakkatSpecter));
   });
 
   test('roster exposes two stages with distinct presentation metadata', () {

@@ -39,6 +39,7 @@ abstract final class ContentRosterContract {
     'plague_rat_swarm',
     'bandit',
     'dokkaebi',
+    'sakkat_specter',
     'vengeful_spirit',
     'plague_crow',
     'spear_bandit',

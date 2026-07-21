@@ -20,6 +20,7 @@ import 'components/boss_component.dart';
 import 'components/combat_effect_component.dart';
 import 'components/damage_number_component.dart';
 import 'components/enemy_component.dart';
+import 'components/enemy_projectile_component.dart';
 import 'components/enemy_hazard_component.dart';
 import 'components/experience_gem_component.dart';
 import 'components/frost_field_component.dart';
@@ -377,6 +378,7 @@ class PixelSurvivorGame extends FlameGame
     _resolveAreaAttacks();
     _resolveFrostFields();
     _resolveEnemyActions();
+    _resolveEnemyProjectiles();
     _resolveEnemyHazards();
     _resolveEnemyAuras();
     _recordNewEnemyDefeats();
@@ -903,6 +905,10 @@ class PixelSurvivorGame extends FlameGame
   }
 
   void _resolveEnemyActions() {
+    var projectileSlots = max(
+      0,
+      performanceBudget.maxProjectiles - _projectileComponentCount,
+    );
     for (final enemy in children.whereType<EnemyComponent>().where(
       (enemy) => !enemy.isDead,
     )) {
@@ -941,7 +947,50 @@ class PixelSurvivorGame extends FlameGame
               ),
             );
             break;
+          case EnemyAttackKind.projectile:
+            if (projectileSlots > 0) {
+              add(
+                EnemyProjectileComponent(
+                  sourceId: enemy.enemyId,
+                  damage: enemy.damage,
+                  position: request.origin,
+                  velocity:
+                      request.direction * enemy.behaviorProfile.projectileSpeed,
+                ),
+              );
+              projectileSlots -= 1;
+            } else {
+              _rejectPopulation(GamePopulationKind.projectile, 1);
+            }
+            break;
         }
+      }
+    }
+  }
+
+  void _resolveEnemyProjectiles() {
+    for (final projectile
+        in children.whereType<EnemyProjectileComponent>().toList()) {
+      if (projectile.isExpired ||
+          projectile.isSpent ||
+          _isPositionOutsideBounds(projectile.position)) {
+        projectile.removeFromParent();
+        continue;
+      }
+      for (final player in _activePlayers.where((player) => player.isAlive)) {
+        if (!projectile.overlapsPlayer(player) || !projectile.registerHit()) {
+          continue;
+        }
+        final healthBefore = player.currentHealth;
+        if (player.takeDamage(projectile.damage, now: _elapsedSeconds)) {
+          _recordPlayerDamage(
+            player: player,
+            healthBefore: healthBefore,
+            sourceId: projectile.sourceId,
+          );
+        }
+        projectile.removeFromParent();
+        break;
       }
     }
   }
@@ -1047,7 +1096,7 @@ class PixelSurvivorGame extends FlameGame
     for (final event in events) {
       if (event.target.isDead) continue;
       final healthBefore = event.target.currentHealth;
-      event.target.takeDamage(event.damage);
+      event.target.takeDamage(event.target.resolveIncomingDamage(event));
       final effectiveDamage = healthBefore - event.target.currentHealth;
       final weaponId = event.weaponId;
       if (weaponId != null && effectiveDamage > 0) {
@@ -1584,8 +1633,12 @@ class PixelSurvivorGame extends FlameGame
       .length;
 
   int get _projectileComponentCount => children
-      .whereType<ProjectileComponent>()
-      .where((projectile) => !projectile.isRemoving)
+      .where(
+        (component) =>
+            (component is ProjectileComponent ||
+                component is EnemyProjectileComponent) &&
+            !component.isRemoving,
+      )
       .length;
 
   AudioCue _attackCueFor(WeaponId weaponId) => switch (weaponId) {
@@ -1668,11 +1721,15 @@ class PixelSurvivorGame extends FlameGame
   }
 
   bool _isProjectileOutsideBounds(ProjectileComponent projectile) {
+    return _isPositionOutsideBounds(projectile.position);
+  }
+
+  bool _isPositionOutsideBounds(Vector2 position) {
     const margin = 64.0;
-    return projectile.position.x < -margin ||
-        projectile.position.y < -margin ||
-        projectile.position.x > size.x + margin ||
-        projectile.position.y > size.y + margin;
+    return position.x < -margin ||
+        position.y < -margin ||
+        position.x > size.x + margin ||
+        position.y > size.y + margin;
   }
 
   VectorInput _movementInputFromKeys(Set<LogicalKeyboardKey> keysPressed) {

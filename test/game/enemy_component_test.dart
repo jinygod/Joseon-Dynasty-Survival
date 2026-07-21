@@ -4,8 +4,10 @@ import 'package:flame/components.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/components/enemy_component.dart';
 import 'package:pixel_survivor/game/components/player_component.dart';
+import 'package:pixel_survivor/game/combat/attack_spec.dart';
 import 'package:pixel_survivor/game/content/enemy_definitions.dart';
 import 'package:pixel_survivor/game/content/ids.dart';
+import 'package:pixel_survivor/game/models/damage_event.dart';
 import 'package:pixel_survivor/game/systems/enemy_behavior_controller.dart';
 
 void main() {
@@ -136,7 +138,7 @@ void main() {
       final trackedDistance = enemy.position.x;
       enemy.update(.05);
       expect(enemy.attackPhase, EnemyBehaviorPhase.warning);
-      enemy.update(0.25);
+      enemy.update(0.55);
 
       expect(trackedDistance, closeTo(24, 0.001));
       expect(enemy.position.x - trackedDistance, greaterThan(1));
@@ -157,6 +159,47 @@ void main() {
       enemy.applyKnockback(Vector2(100, 0));
 
       expect(enemy.knockbackVelocity.x, closeTo(30, 0.001));
+    });
+
+    test('dokkaebi reduces frontal normal hits but not rear explosions', () {
+      final enemy = EnemyComponent.fromDefinition(
+        enemyDefinitionFor(dokkaebi)!,
+        position: Vector2.zero(),
+      );
+      enemy.debugFace(Vector2(1, 0));
+      final frontMeleeEvent = DamageEvent(
+        target: enemy,
+        damage: 10,
+        knockback: 0,
+        direction: Vector2(-1, 0),
+        traits: const {AttackTrait.melee},
+      );
+      final rearExplosionEvent = DamageEvent(
+        target: enemy,
+        damage: 10,
+        knockback: 0,
+        direction: Vector2(1, 0),
+        traits: const {AttackTrait.explosion},
+      );
+
+      expect(enemy.resolveIncomingDamage(frontMeleeEvent), 5);
+      expect(enemy.resolveIncomingDamage(rearExplosionEvent), 10);
+    });
+
+    test('dokkaebi only partly blocks frontal piercing hits', () {
+      final enemy = EnemyComponent.fromDefinition(
+        enemyDefinitionFor(dokkaebi)!,
+      );
+      enemy.debugFace(Vector2(1, 0));
+      final event = DamageEvent(
+        target: enemy,
+        damage: 10,
+        knockback: 0,
+        direction: Vector2(-1, 0),
+        traits: const {AttackTrait.projectile, AttackTrait.piercing},
+      );
+
+      expect(enemy.resolveIncomingDamage(event), 8);
     });
 
     test('plague rats separate from nearby rats while pursuing', () {
@@ -236,6 +279,7 @@ void main() {
         vengefulSpirit,
         fallenGeneral,
       });
+      expect(EnemySpriteSheet.specs, isNot(contains(sakkatSpecter)));
       expect(EnemySpriteSheet.specs[plagueRatSwarm]!.frameSize, 24);
       expect(EnemySpriteSheet.specs[fallenGeneral]!.frameSize, 64);
     });

@@ -33,7 +33,7 @@ class ContentRosterCounts {
     weapons: 8,
     weaponLevels: 42,
     augments: 16,
-    normalEnemies: 8,
+    normalEnemies: 9,
     eliteEnemies: 3,
     stages: 2,
     bosses: 3,
