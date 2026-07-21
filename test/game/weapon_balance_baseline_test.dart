@@ -7,10 +7,10 @@ import 'package:pixel_survivor/game/models/run_telemetry.dart';
 
 void main() {
   group('WeaponBaselineSimulator', () {
-    test('simulates all forty implemented weapon levels', () {
+    test('simulates all forty-two implemented weapon levels', () {
       final report = const WeaponBaselineSimulator().simulate();
 
-      expect(report.rows, hasLength(40));
+      expect(report.rows, hasLength(42));
       expect(report.rows.map((row) => row.weaponId).toSet(), {
         hwandoSlash,
         gakgungShot,

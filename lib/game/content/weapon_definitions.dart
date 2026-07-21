@@ -14,7 +14,7 @@ const weaponDefinitions = <WeaponDefinition>[
     id: hwandoSlash,
     name: '환도 베기',
     element: ElementType.physical,
-    maxLevel: 5,
+    maxLevel: 6,
     startsUnlocked: true,
   ),
   WeaponDefinition(
@@ -28,7 +28,7 @@ const weaponDefinitions = <WeaponDefinition>[
     id: talismanThrow,
     name: '부적 투척',
     element: ElementType.magic,
-    maxLevel: 5,
+    maxLevel: 6,
     startsUnlocked: false,
   ),
   WeaponDefinition(

@@ -50,12 +50,42 @@ void main() {
       final choices = system.choices(
         unlockedWeaponIds: {hwandoSlash, gakgungShot},
         unlockedAugmentIds: const {},
-        currentWeaponLevels: const {hwandoSlash: 5},
+        currentWeaponLevels: const {hwandoSlash: 6},
         currentAugmentLevels: const {},
       );
 
       expect(choices.map((choice) => choice.id), isNot(contains(hwandoSlash)));
       expect(choices.map((choice) => choice.id), contains(gakgungShot));
+    });
+
+    test('level six mastery uses the explicit behavior description', () {
+      final choices = LevelUpSystem(random: Random(1)).choices(
+        unlockedWeaponIds: {hwandoSlash, talismanThrow},
+        unlockedAugmentIds: const {},
+        currentWeaponLevels: const {hwandoSlash: 5, talismanThrow: 5},
+        currentAugmentLevels: const {},
+        maxChoices: 2,
+      );
+
+      expect(choices, hasLength(2));
+      expect(
+        choices.every(
+          (choice) => choice.effectDescription.startsWith('마스터 · '),
+        ),
+        isTrue,
+      );
+      expect(
+        choices
+            .singleWhere((choice) => choice.id == hwandoSlash)
+            .effectDescription,
+        contains('검무 폭풍'),
+      );
+      expect(
+        choices
+            .singleWhere((choice) => choice.id == talismanThrow)
+            .effectDescription,
+        contains('오방 결계'),
+      );
     });
 
     test('currentLevel and nextLevel are correct', () {

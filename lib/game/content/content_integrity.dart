@@ -31,7 +31,7 @@ class ContentRosterCounts {
   static const production = ContentRosterCounts(
     characters: 3,
     weapons: 8,
-    weaponLevels: 40,
+    weaponLevels: 42,
     augments: 16,
     normalEnemies: 8,
     eliteEnemies: 3,
@@ -341,7 +341,10 @@ void _validateWeapons(
   final weaponIds = weapons.map((item) => item.id).toSet();
   for (final weapon in weapons) {
     final entries = levels[weapon.id];
-    if (weapon.maxLevel != 5 || entries?.length != weapon.maxLevel) {
+    final expectedMaxLevel =
+        weapon.id == hwandoSlash || weapon.id == talismanThrow ? 6 : 5;
+    if (weapon.maxLevel != expectedMaxLevel ||
+        entries?.length != weapon.maxLevel) {
       issues.add('Invalid weapon level coverage: ${weapon.id}');
       continue;
     }
@@ -362,7 +365,9 @@ void _validateWeapons(
           level.durationSeconds < 0 ||
           !level.slowFraction.isFinite ||
           level.slowFraction < 0 ||
-          level.slowFraction > 1) {
+          level.slowFraction > 1 ||
+          level.behaviorDescription.trim().isEmpty ||
+          level.isMaster != (expectedMaxLevel == 6 && index == 5)) {
         issues.add('Invalid weapon tuning: ${weapon.id}/${index + 1}');
       }
     }

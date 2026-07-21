@@ -12,15 +12,15 @@ import 'package:pixel_survivor/game/systems/weapon_system.dart';
 
 void main() {
   group('WeaponSystem', () {
-    test('hwando_slash cannot upgrade beyond max level 5', () {
+    test('hwando_slash cannot upgrade beyond max level 6', () {
       final system = WeaponSystem();
       const unlockedWeaponIds = {hwandoSlash};
 
-      for (var i = 0; i < 6; i += 1) {
+      for (var i = 0; i < 7; i += 1) {
         system.upgrade(hwandoSlash, unlockedWeaponIds);
       }
 
-      expect(system.levelOf(hwandoSlash), 5);
+      expect(system.levelOf(hwandoSlash), 6);
       expect(system.canUpgrade(hwandoSlash, unlockedWeaponIds), isFalse);
     });
 

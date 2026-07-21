@@ -44,7 +44,7 @@ void main() {
 
     expect(report.counts.characters, 3);
     expect(report.counts.weapons, 8);
-    expect(report.counts.weaponLevels, 40);
+    expect(report.counts.weaponLevels, 42);
     expect(report.counts.augments, 16);
     expect(report.counts.normalEnemies, 8);
     expect(report.counts.eliteEnemies, 3);
@@ -70,7 +70,7 @@ void main() {
     });
   });
 
-  test('roster exposes eight weapons with five levels each', () {
+  test('roster exposes eight weapons with slice mastery levels', () {
     expect(
       weaponDefinitions.map((definition) => definition.id),
       orderedEquals([
@@ -88,8 +88,43 @@ void main() {
       weaponLevels.keys,
       containsAll(weaponDefinitions.map((item) => item.id)),
     );
-    expect(weaponLevels.values.every((levels) => levels.length == 5), isTrue);
-    expect(weaponLevels.values.expand((levels) => levels), hasLength(40));
+    expect(weaponLevels[hwandoSlash], hasLength(6));
+    expect(weaponLevels[talismanThrow], hasLength(6));
+    expect(
+      weaponLevels.entries
+          .where(
+            (entry) => entry.key != hwandoSlash && entry.key != talismanThrow,
+          )
+          .every((entry) => entry.value.length == 5),
+      isTrue,
+    );
+    expect(weaponLevels.values.expand((levels) => levels), hasLength(42));
+  });
+
+  test('slice weapons have a distinct sixth master level', () {
+    expect(
+      weaponDefinitions.singleWhere((w) => w.id == hwandoSlash).maxLevel,
+      6,
+    );
+    expect(
+      weaponDefinitions.singleWhere((w) => w.id == talismanThrow).maxLevel,
+      6,
+    );
+    expect(weaponLevelFor(hwandoSlash, 5).isMaster, isFalse);
+    expect(weaponLevelFor(hwandoSlash, 6).isMaster, isTrue);
+    expect(weaponLevelFor(talismanThrow, 6).isMaster, isTrue);
+    expect(
+      weaponDefinitions
+          .where((w) => w.id != hwandoSlash && w.id != talismanThrow)
+          .every((w) => w.maxLevel == 5),
+      isTrue,
+    );
+    expect(
+      weaponLevels.values
+          .expand((levels) => levels)
+          .every((level) => level.behaviorDescription.isNotEmpty),
+      isTrue,
+    );
   });
 
   test('field weapons expose duration and slow tuning', () {
@@ -154,6 +189,16 @@ void main() {
           chainCount: 0,
           knockback: 75,
           displayEffect: '좌우 연속 베기 2회',
+        ),
+        (
+          damage: 24,
+          cooldownSeconds: 0.48,
+          range: 112,
+          projectileCount: 5,
+          pierce: 0,
+          chainCount: 0,
+          knockback: 90,
+          displayEffect: '검무 폭풍 5연격',
         ),
       ],
       gakgungShot: [
@@ -258,6 +303,16 @@ void main() {
           chainCount: 5,
           knockback: 12,
           displayEffect: '부적 +1, 연쇄 +1',
+        ),
+        (
+          damage: 21,
+          cooldownSeconds: 0.90,
+          range: 300,
+          projectileCount: 3,
+          pierce: 0,
+          chainCount: 6,
+          knockback: 14,
+          displayEffect: '오방 결계 최대 3개',
         ),
       ],
       thunderCrashBomb: [
@@ -770,8 +825,8 @@ void main() {
     );
   });
 
-  test('weaponLevelFor rejects levels outside one through five', () {
-    for (final invalidLevel in [0, 6]) {
+  test('weaponLevelFor rejects levels outside each weapon range', () {
+    for (final invalidLevel in [0, 7]) {
       expect(
         () => weaponLevelFor(hwandoSlash, invalidLevel),
         throwsA(
@@ -785,6 +840,7 @@ void main() {
         ),
       );
     }
+    expect(() => weaponLevelFor(gakgungShot, 6), throwsRangeError);
   });
 }
 
