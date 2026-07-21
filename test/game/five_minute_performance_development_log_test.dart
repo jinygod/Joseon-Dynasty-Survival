@@ -175,11 +175,11 @@ void main() {
       expect(game.elapsedSeconds, closeTo(300, 0.001));
       expect(log.sampleCount, frameCount ~/ observationIntervalFrames);
       expect(log.peakFrameStepMicros, frameStepMicros);
-      expect(log.averageActiveEnemies, closeTo(13.552222222222222, 1e-12));
-      expect(log.maximumActiveEnemies, 43);
+      expect(log.averageActiveEnemies, closeTo(13.657666666666668, 1e-12));
+      expect(log.maximumActiveEnemies, 45);
       expect(log.lateFrameSampleCount, 7200);
       expect(log.lateAverageActiveEnemies, inInclusiveRange(23, 25));
-      expect(log.lateMaximumActiveEnemies, 43);
+      expect(log.lateMaximumActiveEnemies, 45);
       expect(
         log.lateAverageSimulatedFps,
         closeTo(1000000 / frameStepMicros, 1e-9),
@@ -188,9 +188,9 @@ void main() {
         log.lateMinimumSimulatedFps,
         closeTo(1000000 / frameStepMicros, 1e-12),
       );
-      expect(log.peakMountedComponentCount, greaterThan(1));
-      expect(log.peakRetainedOwnerCount, greaterThan(0));
-      expect(log.peakMemoryProxyComponents, greaterThan(0));
+      expect(log.peakMountedComponentCount, 253);
+      expect(log.peakRetainedOwnerCount, 14);
+      expect(log.peakMemoryProxyComponents, 263);
       for (final kind in GamePopulationKind.values) {
         expect(log.peakCounts[kind], greaterThan(0), reason: kind.name);
         expect(
@@ -200,10 +200,10 @@ void main() {
         );
       }
       expect(log.peakCounts, {
-        GamePopulationKind.enemy: 43,
+        GamePopulationKind.enemy: 45,
         GamePopulationKind.projectile: 14,
         GamePopulationKind.damageNumber: 20,
-        GamePopulationKind.combatEffect: 21,
+        GamePopulationKind.combatEffect: 17,
       });
       expect(log.isWithinPopulationBudget, isTrue);
       expect(log.isWithinMemoryProxyBudget, isTrue);
@@ -219,10 +219,10 @@ void main() {
       final json =
           jsonDecode(artifacts['production-high-risk-performance-log.json']!)
               as Map<String, dynamic>;
-      expect(json['averageActiveEnemies'], 13.552222222222222);
-      expect(json['maximumActiveEnemies'], 43);
-      expect(json['lateAverageActiveEnemies'], 23.694027777777777);
-      expect(json['lateMaximumActiveEnemies'], 43);
+      expect(json['averageActiveEnemies'], 13.657666666666668);
+      expect(json['maximumActiveEnemies'], 45);
+      expect(json['lateAverageActiveEnemies'], 23.773888888888887);
+      expect(json['lateMaximumActiveEnemies'], 45);
       expect(
         json['lateAverageSimulatedFps'],
         closeTo(1000000 / frameStepMicros, 1e-9),
@@ -236,7 +236,7 @@ void main() {
       final markdown = artifacts['production-high-risk-performance-log.md']!;
       expect(
         markdown,
-        contains('- Average / maximum active enemies: 13.55 / 43'),
+        contains('- Average / maximum active enemies: 13.66 / 45'),
       );
       expect(
         markdown,
