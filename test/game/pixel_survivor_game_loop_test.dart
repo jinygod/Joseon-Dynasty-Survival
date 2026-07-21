@@ -149,6 +149,19 @@ void main() {
     ),
     gameSize: Vector2(960, 540),
   );
+  final mixedProjectileGameTester = FlameTester<PixelSurvivorGame>(
+    () => PixelSurvivorGame(
+      playerSlot: const PlayerSlot(index: 0, characterId: mountainHunter),
+      onRunEnded: null,
+      performanceBudget: const GamePerformanceBudget(
+        maxEnemies: 96,
+        maxProjectiles: 1,
+        maxDamageNumbers: 24,
+        maxCombatEffects: 32,
+      ),
+    ),
+    gameSize: Vector2(960, 540),
+  );
 
   group('PixelSurvivorGame run loop progression', () {
     test('synergy presentation uses a golden slash and five O-bang colors', () {
@@ -1013,6 +1026,34 @@ void main() {
         expect(
           game.performanceSnapshot.counts[GamePopulationKind.projectile],
           lessThanOrEqualTo(1),
+        );
+      },
+    );
+
+    mixedProjectileGameTester.testGameWidget(
+      'player and hostile same-frame projectiles share one admission budget',
+      setUp: (game, _) async {
+        final player = game.activePlayers.single;
+        final enemy = game.debugSpawnEnemy(
+          sakkatSpecter,
+          position: player.position + Vector2(180, 0),
+        );
+        enemy.update(3.3);
+      },
+      verify: (game, _) async {
+        game.update(.05);
+        game.update(0);
+
+        final playerProjectiles = game.children
+            .whereType<ProjectileComponent>()
+            .length;
+        final hostileProjectiles = game.children
+            .whereType<EnemyProjectileComponent>()
+            .length;
+        expect(playerProjectiles + hostileProjectiles, 1);
+        expect(
+          game.performanceSnapshot.counts[GamePopulationKind.projectile],
+          1,
         );
       },
     );

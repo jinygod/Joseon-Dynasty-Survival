@@ -169,6 +169,7 @@ class PixelSurvivorGame extends FlameGame
   final Vector2 _screenShakeOffset = Vector2.zero();
   int _nextOriginatingAttackId = 0;
   double _combatNoticeSecondsRemaining = 0;
+  int _projectileSlotsRemaining = 0;
 
   @override
   double get elapsedSeconds => _elapsedSeconds;
@@ -373,6 +374,7 @@ class PixelSurvivorGame extends FlameGame
 
     _spawnWaveEnemies(simulationDt);
     _updatePlayerMovement(simulationDt);
+    _resetProjectileAdmissionBudget();
     _updateWeapons(simulationDt);
     _applyProjectileHits();
     _resolveAreaAttacks();
@@ -623,17 +625,8 @@ class PixelSurvivorGame extends FlameGame
     for (final attack in result.attackInstances) {
       _resolveSharedAttack(attack);
     }
-    var projectileSlots = max(
-      0,
-      performanceBudget.maxProjectiles - _projectileComponentCount,
-    );
     for (final projectile in result.projectiles) {
-      if (projectileSlots > 0) {
-        add(projectile);
-        projectileSlots -= 1;
-      } else {
-        _rejectPopulation(GamePopulationKind.projectile, 1);
-      }
+      _admitProjectile(projectile);
     }
     for (final arc in result.meleeArcs) {
       if (arc.weaponId == hwandoSlash) continue;
@@ -905,10 +898,6 @@ class PixelSurvivorGame extends FlameGame
   }
 
   void _resolveEnemyActions() {
-    var projectileSlots = max(
-      0,
-      performanceBudget.maxProjectiles - _projectileComponentCount,
-    );
     for (final enemy in children.whereType<EnemyComponent>().where(
       (enemy) => !enemy.isDead,
     )) {
@@ -948,20 +937,15 @@ class PixelSurvivorGame extends FlameGame
             );
             break;
           case EnemyAttackKind.projectile:
-            if (projectileSlots > 0) {
-              add(
-                EnemyProjectileComponent(
-                  sourceId: enemy.enemyId,
-                  damage: enemy.damage,
-                  position: request.origin,
-                  velocity:
-                      request.direction * enemy.behaviorProfile.projectileSpeed,
-                ),
-              );
-              projectileSlots -= 1;
-            } else {
-              _rejectPopulation(GamePopulationKind.projectile, 1);
-            }
+            _admitProjectile(
+              EnemyProjectileComponent(
+                sourceId: enemy.enemyId,
+                damage: enemy.damage,
+                position: request.origin,
+                velocity:
+                    request.direction * enemy.behaviorProfile.projectileSpeed,
+              ),
+            );
             break;
         }
       }
@@ -993,6 +977,22 @@ class PixelSurvivorGame extends FlameGame
         break;
       }
     }
+  }
+
+  void _resetProjectileAdmissionBudget() {
+    _projectileSlotsRemaining = max(
+      0,
+      performanceBudget.maxProjectiles - _projectileComponentCount,
+    );
+  }
+
+  void _admitProjectile(PositionComponent projectile) {
+    if (_projectileSlotsRemaining <= 0) {
+      _rejectPopulation(GamePopulationKind.projectile, 1);
+      return;
+    }
+    _projectileSlotsRemaining -= 1;
+    add(projectile);
   }
 
   void _resolveEnemyHazards() {

@@ -355,7 +355,12 @@ class EnemyComponent
     final target = targetPositionProvider?.call(position);
     if (target != null && !isDead) {
       final behavior = _tickBehavior(dt, target);
-      if (_behaviorController.phase == EnemyBehaviorPhase.warning) {
+      final hasLockedAttackFacing =
+          _behaviorProfile.kind == EnemyBehaviorKind.ranged &&
+          (_behaviorController.phase == EnemyBehaviorPhase.warning ||
+              _behaviorController.phase == EnemyBehaviorPhase.active);
+      if (_behaviorController.phase == EnemyBehaviorPhase.warning ||
+          hasLockedAttackFacing) {
         _face(_behaviorController.lockedDirection);
       }
       if (isDashing) {
@@ -373,7 +378,7 @@ class EnemyComponent
         } else if (_behaviorProfile.kind == EnemyBehaviorKind.ranged) {
           final speed = behavior.movementMultiplier.abs();
           if (speed > 0) {
-            _face(behavior.movementDirection);
+            if (!hasLockedAttackFacing) _face(behavior.movementDirection);
             position.add(
               behavior.movementDirection * effectiveMoveSpeed * speed * dt,
             );
