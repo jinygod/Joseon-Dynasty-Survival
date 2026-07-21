@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
+import 'package:pixel_survivor/game/models/combat_playtest_metrics.dart';
 import 'package:pixel_survivor/game/systems/combat_playtest_tracker.dart';
 import 'package:pixel_survivor/game/systems/weapon_synergy_resolver.dart';
 
@@ -107,6 +108,62 @@ void main() {
         () => metrics.masteredWeaponIds.add(talismanThrow),
         throwsUnsupportedError,
       );
+    });
+
+    test('metrics defensively copy every caller-owned collection', () {
+      final offers = <String, int>{hwandoSlash: 1};
+      final selections = <String, int>{hwandoSlash: 1};
+      final levelTwo = <int, double>{2: 10};
+      final levelTimes = <String, Map<int, double>>{hwandoSlash: levelTwo};
+      final firstMaster = <String, double>{hwandoSlash: 20};
+      final masterKills = <String, int>{hwandoSlash: 3};
+      final firstSynergy = <String, double>{sealingSlash: 30};
+      final synergyDamage = <String, double>{sealingSlash: 40};
+      final roleDamage = <String, double>{'swarm': 5};
+      final deathCauses = <String, int>{'tank': 1};
+      final mastered = <String>{hwandoSlash};
+      final metrics = CombatPlaytestMetrics(
+        weaponOfferCounts: offers,
+        weaponSelectionCounts: selections,
+        weaponLevelTimes: levelTimes,
+        firstMasterAtSeconds: firstMaster,
+        masterKillsInTenSeconds: masterKills,
+        firstSynergyAtSeconds: firstSynergy,
+        synergyDamageTotals: synergyDamage,
+        enemyRoleDamageToPlayer: roleDamage,
+        enemyRoleDeathCauses: deathCauses,
+        averageEnemyCount: 1,
+        maxEnemyCount: 2,
+        lateAverageFps: 60,
+        lateMinFps: 30,
+        masteredWeaponIds: mastered,
+        isRepeatRun: false,
+      );
+
+      offers.clear();
+      selections.clear();
+      levelTwo.clear();
+      levelTimes.clear();
+      firstMaster.clear();
+      masterKills.clear();
+      firstSynergy.clear();
+      synergyDamage.clear();
+      roleDamage.clear();
+      deathCauses.clear();
+      mastered.clear();
+
+      expect(metrics.weaponOfferCounts, {hwandoSlash: 1});
+      expect(metrics.weaponSelectionCounts, {hwandoSlash: 1});
+      expect(metrics.weaponLevelTimes, {
+        hwandoSlash: {2: 10},
+      });
+      expect(metrics.firstMasterAtSeconds, {hwandoSlash: 20});
+      expect(metrics.masterKillsInTenSeconds, {hwandoSlash: 3});
+      expect(metrics.firstSynergyAtSeconds, {sealingSlash: 30});
+      expect(metrics.synergyDamageTotals, {sealingSlash: 40});
+      expect(metrics.enemyRoleDamageToPlayer, {'swarm': 5});
+      expect(metrics.enemyRoleDeathCauses, {'tank': 1});
+      expect(metrics.masteredWeaponIds, {hwandoSlash});
     });
 
     test('records repeat-run state in every snapshot', () {

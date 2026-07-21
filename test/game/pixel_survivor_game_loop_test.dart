@@ -508,12 +508,86 @@ void main() {
       });
     });
 
+    test('rejected weapon choices do not record selections or level times', () {
+      const firstLevel = LevelUpChoice(
+        id: hwandoSlash,
+        displayName: 'hwando',
+        effectDescription: 'level one',
+        type: LevelUpChoiceType.weapon,
+        currentLevel: 0,
+        nextLevel: 1,
+      );
+      final staleGame = newGame()..unlockedWeaponIds.add(hwandoSlash);
+      staleGame
+        ..applyLevelUpChoice(firstLevel)
+        ..applyLevelUpChoice(firstLevel);
+      expect(staleGame.weaponSystem.levelOf(hwandoSlash), 1);
+      expect(staleGame.currentRunResult().combatMetrics.weaponSelectionCounts, {
+        hwandoSlash: 1,
+      });
+
+      final maxedGame = newGame()..unlockedWeaponIds.add(hwandoSlash);
+      for (var level = 0; level < 6; level += 1) {
+        maxedGame.weaponSystem.upgrade(
+          hwandoSlash,
+          maxedGame.unlockedWeaponIds,
+        );
+      }
+      maxedGame.applyLevelUpChoice(
+        const LevelUpChoice(
+          id: hwandoSlash,
+          displayName: 'hwando',
+          effectDescription: 'master',
+          type: LevelUpChoiceType.weapon,
+          currentLevel: 5,
+          nextLevel: 6,
+        ),
+      );
+      expect(
+        maxedGame.currentRunResult().combatMetrics.weaponSelectionCounts,
+        isEmpty,
+      );
+
+      final unknownGame = newGame();
+      unknownGame.applyLevelUpChoice(
+        const LevelUpChoice(
+          id: 'unknown_weapon',
+          displayName: 'unknown',
+          effectDescription: 'unknown',
+          type: LevelUpChoiceType.weapon,
+          currentLevel: 0,
+          nextLevel: 1,
+        ),
+      );
+      expect(unknownGame.currentRunResult().choices, isEmpty);
+      expect(
+        unknownGame.currentRunResult().combatMetrics.weaponLevelTimes,
+        isEmpty,
+      );
+      expect(unknownGame.unlockedWeaponIds, isNot(contains('unknown_weapon')));
+    });
+
     test('combat metrics use raw frame dt before simulation clamping', () {
       final game = newGame()..debugAdvanceTo(240);
 
       game.update(.2);
 
       expect(game.currentRunResult().combatMetrics.lateMinFps, 5);
+    });
+
+    test('pending and finished updates do not record frame metrics', () {
+      final pendingGame = newGame()..debugAdvanceTo(240);
+      pendingGame.gainExperience(11);
+      final beforePending = pendingGame.currentRunResult().combatMetrics;
+      pendingGame.update(.2);
+      expect(pendingGame.currentRunResult().combatMetrics, beforePending);
+
+      final finishedGame = newGame()..debugAdvanceTo(240);
+      finishedGame.debugKillPlayer();
+      finishedGame.update(.016);
+      final afterFinish = finishedGame.currentRunResult().combatMetrics;
+      finishedGame.update(.2);
+      expect(finishedGame.currentRunResult().combatMetrics, afterFinish);
     });
 
     gameTester.testGameWidget(

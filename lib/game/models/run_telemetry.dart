@@ -110,8 +110,8 @@ class RunTelemetry {
     'level': level,
     'kills': kills,
     'bossDefeated': bossDefeated,
-    'weaponKillCounts': weaponKillCounts,
-    'weaponDamageTotals': weaponDamageTotals,
+    'weaponKillCounts': _sortedTelemetryMap(weaponKillCounts),
+    'weaponDamageTotals': _sortedTelemetryMap(weaponDamageTotals),
     'choices': choices.map((choice) => choice.toJson()).toList(),
     'totalDamageTaken': totalDamageTaken,
     'lastDamageSource': lastDamageSource,
@@ -245,3 +245,7 @@ class RunTelemetry {
     return RunFeedback.fromJson(Map<String, dynamic>.from(value));
   }
 }
+
+Map<String, T> _sortedTelemetryMap<T>(Map<String, T> source) => {
+  for (final key in source.keys.toList()..sort()) key: source[key] as T,
+};

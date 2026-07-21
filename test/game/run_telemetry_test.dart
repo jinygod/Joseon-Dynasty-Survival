@@ -1,3 +1,7 @@
+// ignore_for_file: prefer_const_literals_to_create_immutables
+
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/models/run_choice_record.dart';
 import 'package:pixel_survivor/game/models/combat_playtest_metrics.dart';
@@ -149,7 +153,7 @@ void main() {
   });
 
   test('schema two telemetry round trips combat playtest metrics', () {
-    const metrics = CombatPlaytestMetrics(
+    final metrics = CombatPlaytestMetrics(
       weaponOfferCounts: {'hwando_slash': 2},
       weaponSelectionCounts: {'hwando_slash': 1},
       weaponLevelTimes: {
@@ -190,7 +194,7 @@ void main() {
   });
 
   test('schema two writes combat metric maps in stable key order', () {
-    const metrics = CombatPlaytestMetrics(
+    final metrics = CombatPlaytestMetrics(
       weaponOfferCounts: {'z': 1, 'a': 2},
       weaponSelectionCounts: {},
       weaponLevelTimes: {
@@ -216,6 +220,44 @@ void main() {
     expect((json['weaponLevelTimes'] as Map).keys, ['a', 'z']);
     expect(((json['weaponLevelTimes'] as Map)['z'] as Map).keys, ['1', '3']);
     expect(json['masteredWeaponIds'], ['a', 'z']);
+  });
+
+  test('semantically equal schema two payloads serialize identically', () {
+    RunTelemetry telemetry({required bool reverse}) => RunTelemetry(
+      runId: 'deterministic-run',
+      appVersion: '0.1.0+1',
+      startedAtUtc: DateTime.utc(2026, 7, 14),
+      endedAtUtc: DateTime.utc(2026, 7, 14, 0, 5),
+      outcome: RunOutcome.victory,
+      survivalSeconds: 300,
+      level: 10,
+      kills: 3,
+      bossDefeated: true,
+      weaponKillCounts: reverse ? {'z': 1, 'a': 2} : {'a': 2, 'z': 1},
+      weaponDamageTotals: reverse ? {'z': 10, 'a': 20} : {'a': 20, 'z': 10},
+      combatMetrics: CombatPlaytestMetrics(
+        weaponOfferCounts: reverse ? {'z': 1, 'a': 2} : {'a': 2, 'z': 1},
+        weaponSelectionCounts: const {},
+        weaponLevelTimes: const {},
+        firstMasterAtSeconds: const {},
+        masterKillsInTenSeconds: const {},
+        firstSynergyAtSeconds: const {},
+        synergyDamageTotals: const {},
+        enemyRoleDamageToPlayer: const {},
+        enemyRoleDeathCauses: const {},
+        averageEnemyCount: 0,
+        maxEnemyCount: 0,
+        lateAverageFps: 0,
+        lateMinFps: 0,
+        masteredWeaponIds: reverse ? {'z', 'a'} : {'a', 'z'},
+        isRepeatRun: false,
+      ),
+    );
+
+    expect(
+      jsonEncode(telemetry(reverse: false).toJson()),
+      jsonEncode(telemetry(reverse: true).toJson()),
+    );
   });
 
   test('schema two requires complete combat playtest metrics', () {

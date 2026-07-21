@@ -4,7 +4,44 @@ import 'package:flutter/foundation.dart';
 
 @immutable
 class CombatPlaytestMetrics {
-  const CombatPlaytestMetrics({
+  factory CombatPlaytestMetrics({
+    required Map<String, int> weaponOfferCounts,
+    required Map<String, int> weaponSelectionCounts,
+    required Map<String, Map<int, double>> weaponLevelTimes,
+    required Map<String, double> firstMasterAtSeconds,
+    required Map<String, int> masterKillsInTenSeconds,
+    required Map<String, double> firstSynergyAtSeconds,
+    required Map<String, double> synergyDamageTotals,
+    required Map<String, double> enemyRoleDamageToPlayer,
+    required Map<String, int> enemyRoleDeathCauses,
+    required double averageEnemyCount,
+    required int maxEnemyCount,
+    required double lateAverageFps,
+    required double lateMinFps,
+    required Set<String> masteredWeaponIds,
+    required bool isRepeatRun,
+  }) => CombatPlaytestMetrics._(
+    weaponOfferCounts: Map.unmodifiable(Map.of(weaponOfferCounts)),
+    weaponSelectionCounts: Map.unmodifiable(Map.of(weaponSelectionCounts)),
+    weaponLevelTimes: Map.unmodifiable({
+      for (final entry in weaponLevelTimes.entries)
+        entry.key: Map<int, double>.unmodifiable(Map.of(entry.value)),
+    }),
+    firstMasterAtSeconds: Map.unmodifiable(Map.of(firstMasterAtSeconds)),
+    masterKillsInTenSeconds: Map.unmodifiable(Map.of(masterKillsInTenSeconds)),
+    firstSynergyAtSeconds: Map.unmodifiable(Map.of(firstSynergyAtSeconds)),
+    synergyDamageTotals: Map.unmodifiable(Map.of(synergyDamageTotals)),
+    enemyRoleDamageToPlayer: Map.unmodifiable(Map.of(enemyRoleDamageToPlayer)),
+    enemyRoleDeathCauses: Map.unmodifiable(Map.of(enemyRoleDeathCauses)),
+    averageEnemyCount: averageEnemyCount,
+    maxEnemyCount: maxEnemyCount,
+    lateAverageFps: lateAverageFps,
+    lateMinFps: lateMinFps,
+    masteredWeaponIds: Set.unmodifiable(Set.of(masteredWeaponIds)),
+    isRepeatRun: isRepeatRun,
+  );
+
+  const CombatPlaytestMetrics._({
     required Map<String, int> weaponOfferCounts,
     required Map<String, int> weaponSelectionCounts,
     required Map<String, Map<int, double>> weaponLevelTimes,
@@ -31,21 +68,21 @@ class CombatPlaytestMetrics {
        _enemyRoleDeathCauses = enemyRoleDeathCauses,
        _masteredWeaponIds = masteredWeaponIds;
 
-  static const empty = CombatPlaytestMetrics(
-    weaponOfferCounts: {},
-    weaponSelectionCounts: {},
-    weaponLevelTimes: {},
-    firstMasterAtSeconds: {},
-    masterKillsInTenSeconds: {},
-    firstSynergyAtSeconds: {},
-    synergyDamageTotals: {},
-    enemyRoleDamageToPlayer: {},
-    enemyRoleDeathCauses: {},
+  static const empty = CombatPlaytestMetrics._(
+    weaponOfferCounts: <String, int>{},
+    weaponSelectionCounts: <String, int>{},
+    weaponLevelTimes: <String, Map<int, double>>{},
+    firstMasterAtSeconds: <String, double>{},
+    masterKillsInTenSeconds: <String, int>{},
+    firstSynergyAtSeconds: <String, double>{},
+    synergyDamageTotals: <String, double>{},
+    enemyRoleDamageToPlayer: <String, double>{},
+    enemyRoleDeathCauses: <String, int>{},
     averageEnemyCount: 0,
     maxEnemyCount: 0,
     lateAverageFps: 0,
     lateMinFps: 0,
-    masteredWeaponIds: {},
+    masteredWeaponIds: <String>{},
     isRepeatRun: false,
   );
 

@@ -47,7 +47,15 @@ Every schema 2 field is required, including nullable fields. Unknown versions an
 | `masteredWeaponIds` | array | Weapon IDs that activated a mastery attack. |
 | `isRepeatRun` | boolean | Whether the playtest session marked the run as a repeat run. Task 10 defaults this to false; session injection is handled separately. |
 
-Frame durations are recorded before combat simulation clamps `dt`, so late FPS represents delivered frame pacing rather than the capped simulation step. Map keys and mastered weapon IDs are written in stable ascending order.
+Frame durations are recorded only while a run is actively simulating and
+before combat simulation clamps `dt`, so paused level-up and finished-run
+updates cannot change density or late FPS. Map keys (including top-level
+weapon kill/damage maps) and mastered weapon IDs are written in stable
+ascending order, making semantically equivalent schema-2 payloads serialize
+identically.
+
+Public `CombatPlaytestMetrics` construction defensively copies every map,
+nested weapon-level map, and set. The shared `empty` value remains const.
 
 ## Schema 1 compatibility
 

@@ -362,11 +362,13 @@ class PixelSurvivorGame extends FlameGame
 
   @override
   void update(double dt) {
-    runStats.combatPlaytestTracker.recordFrame(
-      dt: dt,
-      enemyCount: enemyCount,
-      atSeconds: _elapsedSeconds,
-    );
+    if (_runOutcome == RunOutcome.inProgress && !isLevelUpPending) {
+      runStats.combatPlaytestTracker.recordFrame(
+        dt: dt,
+        enemyCount: enemyCount,
+        atSeconds: _elapsedSeconds,
+      );
+    }
     final safeDt = dt.clamp(0, 0.05).toDouble();
     final simulationDt = _combatFeedback.tick(safeDt);
     super.update(simulationDt);
@@ -441,6 +443,36 @@ class PixelSurvivorGame extends FlameGame
     if (choice.type == LevelUpChoiceType.augment && selectedAugment == null) {
       return;
     }
+    if (choice.type == LevelUpChoiceType.weapon) {
+      final currentLevel = weaponSystem.levelOf(choice.id);
+      if (choice.currentLevel != currentLevel ||
+          choice.nextLevel != currentLevel + 1 ||
+          !weaponSystem.canUpgrade(choice.id, unlockedWeaponIds)) {
+        return;
+      }
+    }
+
+    switch (choice.type) {
+      case LevelUpChoiceType.weapon:
+        final weaponId = choice.id;
+        weaponSystem.upgrade(weaponId, unlockedWeaponIds);
+        if (weaponSystem.levelOf(weaponId) != choice.nextLevel) return;
+        runStats.combatPlaytestTracker.recordLevel(
+          weaponId: weaponId,
+          level: choice.nextLevel,
+          atSeconds: _elapsedSeconds,
+        );
+      case LevelUpChoiceType.augment:
+        final augmentId = choice.id;
+        unlockedAugmentIds.add(augmentId);
+        final definition = selectedAugment!;
+        final currentLevel = augmentLevels[augmentId] ?? 0;
+        if (currentLevel < definition.maxLevel) {
+          augmentLevels[augmentId] = currentLevel + 1;
+          _applyImmediateAugmentEffects(definition);
+        }
+        _applyAugmentEffects();
+    }
 
     runStats.recordChoice(
       RunChoiceRecord(
@@ -453,29 +485,6 @@ class PixelSurvivorGame extends FlameGame
         selectedLevel: choice.nextLevel,
       ),
     );
-    if (choice.type == LevelUpChoiceType.weapon) {
-      runStats.combatPlaytestTracker.recordLevel(
-        weaponId: choice.id,
-        level: choice.nextLevel,
-        atSeconds: _elapsedSeconds,
-      );
-    }
-    switch (choice.type) {
-      case LevelUpChoiceType.weapon:
-        final weaponId = choice.id;
-        unlockedWeaponIds.add(weaponId);
-        weaponSystem.upgrade(weaponId, unlockedWeaponIds);
-      case LevelUpChoiceType.augment:
-        final augmentId = choice.id;
-        unlockedAugmentIds.add(augmentId);
-        final definition = selectedAugment!;
-        final currentLevel = augmentLevels[augmentId] ?? 0;
-        if (currentLevel < definition.maxLevel) {
-          augmentLevels[augmentId] = currentLevel + 1;
-          _applyImmediateAugmentEffects(definition);
-        }
-        _applyAugmentEffects();
-    }
 
     _pendingLevelUpChoices = const [];
     if (isMounted) {
