@@ -68,7 +68,8 @@ class EnemyBehaviorController {
     EnemyAttackRequest? attack;
     switch (phase) {
       case EnemyBehaviorPhase.tracking:
-        if (phaseElapsed >= profile.cooldownSeconds) {
+        if (profile.kind == EnemyBehaviorKind.ranged ||
+            phaseElapsed >= profile.cooldownSeconds) {
           _enter(EnemyBehaviorPhase.warning);
           _lockDirection(origin, target);
         }

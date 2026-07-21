@@ -981,7 +981,7 @@ void main() {
       verify: (game, _) async {
         final player = game.activePlayers.single;
         final healthBefore = player.currentHealth;
-        for (var i = 0; i < 100; i++) {
+        for (var i = 0; i < 60; i++) {
           game.update(.05);
         }
         expect(player.currentHealth, lessThan(healthBefore));

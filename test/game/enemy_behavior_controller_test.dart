@@ -84,7 +84,7 @@ void main() {
       expect(close.movementDirection.x, lessThan(0));
 
       EnemyAttackRequest? shot;
-      for (var i = 0; i < 70; i++) {
+      for (var i = 0; i < 20; i++) {
         shot ??= controller
             .tick(dt: .05, origin: Vector2.zero(), target: Vector2(180, 0))
             .attack;
@@ -97,9 +97,7 @@ void main() {
     final controller = EnemyBehaviorController(
       profile: enemyBehaviorProfiles['sakkat_ranged']!,
     );
-    for (var i = 0; i < 53; i++) {
-      controller.tick(dt: .05, origin: Vector2.zero(), target: Vector2(180, 0));
-    }
+    controller.tick(dt: .05, origin: Vector2.zero(), target: Vector2(180, 0));
     expect(controller.phase, EnemyBehaviorPhase.warning);
 
     EnemyAttackRequest? shot;
