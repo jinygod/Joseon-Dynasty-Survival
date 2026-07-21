@@ -115,8 +115,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           onAudioCue: _playAudio,
           persistSpiritJade: _persistSpiritJade,
           pickupIdPrefix: _runStartedAtUtc.microsecondsSinceEpoch.toString(),
-          contentPolicy: PlaytestContentPolicy(
-            unlockAllBaseWeapons: const bool.fromEnvironment(
+          contentPolicy: const PlaytestContentPolicy(
+            unlockAllBaseWeapons: bool.fromEnvironment(
               'PLAYTEST_UNLOCK_ALL_BASE_WEAPONS',
               defaultValue: kDebugMode,
             ),
