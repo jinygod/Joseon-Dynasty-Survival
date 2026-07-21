@@ -1,6 +1,8 @@
 import '../combat/attack_spec.dart';
 import 'combat_feedback_tuning.dart';
 
+enum CombatFeedbackBeat { none, strong, masteryStart, masteryFinish }
+
 class CombatFeedbackRequest {
   const CombatFeedbackRequest({
     required this.hitStopSeconds,
@@ -12,6 +14,11 @@ class CombatFeedbackRequest {
     : hitStopSeconds = .035,
       shakeMagnitude = 4,
       presentation = AttackPresentation.master;
+
+  const CombatFeedbackRequest.strong()
+    : hitStopSeconds = .020,
+      shakeMagnitude = 0,
+      presentation = AttackPresentation.strong;
 
   final double hitStopSeconds;
   final double shakeMagnitude;
@@ -44,6 +51,22 @@ class CombatFeedbackController {
     }
   }
 
+  CombatFeedbackBeat requestAttack(AttackInstance attack) {
+    final beat = _beatFor(attack);
+    switch (beat) {
+      case CombatFeedbackBeat.strong:
+        request(const CombatFeedbackRequest.strong());
+        break;
+      case CombatFeedbackBeat.masteryStart:
+      case CombatFeedbackBeat.masteryFinish:
+        request(const CombatFeedbackRequest.master());
+        break;
+      case CombatFeedbackBeat.none:
+        break;
+    }
+    return beat;
+  }
+
   double tick(double dt) {
     final safeDt = dt.isFinite && dt > 0 ? dt : 0.0;
     final consumed = safeDt.clamp(0, hitStopRemaining).toDouble();
@@ -55,5 +78,21 @@ class CombatFeedbackController {
     final magnitude = pendingShakeMagnitude;
     pendingShakeMagnitude = 0;
     return magnitude;
+  }
+}
+
+CombatFeedbackBeat _beatFor(AttackInstance attack) {
+  switch (attack.spec.presentation) {
+    case AttackPresentation.strong:
+      return CombatFeedbackBeat.strong;
+    case AttackPresentation.master:
+      if (attack.sequenceIndex == 0) return CombatFeedbackBeat.masteryStart;
+      if (attack.spec.id == 'hwando_master_finisher') {
+        return CombatFeedbackBeat.masteryFinish;
+      }
+      return CombatFeedbackBeat.none;
+    case AttackPresentation.normal:
+    case AttackPresentation.synergy:
+      return CombatFeedbackBeat.none;
   }
 }

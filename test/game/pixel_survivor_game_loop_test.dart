@@ -613,7 +613,7 @@ void main() {
     });
 
     test('combat metrics use raw frame dt before simulation clamping', () {
-      final game = newGame()..debugAdvanceTo(240);
+      final game = newGame()..debugAdvanceTo(180);
 
       game.update(.2);
 
@@ -635,8 +635,8 @@ void main() {
       expect(finishedGame.currentRunResult().combatMetrics, afterFinish);
     });
 
-    gameTester.testGameWidget(
-      'talisman master ward activation is recorded',
+    audioGameTester.testGameWidget(
+      'talisman master ward activation gets one mastery start feedback',
       setUp: (game, _) async {
         game.unlockedWeaponIds.add(talismanThrow);
         for (var level = 0; level < 6; level += 1) {
@@ -650,12 +650,35 @@ void main() {
         );
       },
       verify: (game, _) async {
-        game.update(.05);
-
         expect(
           game.currentRunResult().combatMetrics.firstMasterAtSeconds,
           contains(talismanThrow),
         );
+        expect(game.combatHitStopRemaining, .035);
+        expect(
+          audioCues.where((cue) => cue == AudioCue.talismanMasterAttack),
+          hasLength(1),
+        );
+      },
+    );
+
+    gameTester.testGameWidget(
+      'ordinary talisman explosion requests twenty milliseconds of hit stop',
+      setUp: (game, _) async {
+        game.unlockedWeaponIds.add(talismanThrow);
+        game.weaponSystem.upgrade(talismanThrow, game.unlockedWeaponIds);
+        await game.ensureAdd(
+          EnemyComponent(
+            enemyId: 'strong_feedback_target',
+            maxHealth: 1000,
+            moveSpeed: 0,
+            damage: 0,
+            position: game.activePlayers.single.position + Vector2(20, 0),
+          ),
+        );
+      },
+      verify: (game, _) async {
+        expect(game.combatHitStopRemaining, .020);
       },
     );
 
@@ -999,7 +1022,15 @@ void main() {
         final ordinaryBefore = audioCues
             .where((cue) => cue == AudioCue.talismanAttack)
             .length;
-        game.update(.05);
+        for (var frame = 0; frame < 100; frame += 1) {
+          if (audioCues
+                  .where((cue) => cue == AudioCue.talismanMasterAttack)
+                  .length ==
+              3) {
+            break;
+          }
+          game.update(.05);
+        }
 
         expect(
           audioCues.where((cue) => cue == AudioCue.talismanMasterAttack),
@@ -1089,9 +1120,8 @@ void main() {
     );
 
     masterGameTester.testGameWidget(
-      'critical chance zero preserves shared geometry and one cue per sequence',
+      'hwando mastery enhances only sequence start and finish',
       verify: (game, _) async {
-        game.update(.05);
         game.update(0);
         final effect = game.children.whereType<AttackEffectComponent>().single;
         final enemies = game.children.whereType<EnemyComponent>().toList();
@@ -1118,20 +1148,24 @@ void main() {
           game.children.whereType<CombatEffectComponent>().single.kind,
           CombatEffectKind.hit,
         );
-        var sawSecondStage = false;
-        for (var frame = 0; frame < 10 && !sawSecondStage; frame += 1) {
+        expect(game.combatHitStopRemaining, .035);
+        var masteryFeedbackBeats = 1;
+        game.update(game.combatHitStopRemaining);
+
+        for (
+          var frame = 0;
+          frame < 20 && masteryFeedbackBeats < 2;
+          frame += 1
+        ) {
           game.update(.05);
-          game.update(0);
-          final effects = game.children.whereType<AttackEffectComponent>();
-          sawSecondStage = effects.any(
-            (effect) => effect.instance.sequenceIndex == 1,
-          );
+          if (game.combatHitStopRemaining > 0) {
+            expect(game.combatHitStopRemaining, .035);
+            masteryFeedbackBeats += 1;
+          }
         }
-        expect(sawSecondStage, isTrue);
-        final pausedEnemy = damaged.first;
-        final pausedPosition = pausedEnemy.position.clone();
-        game.update(.02);
-        expect(pausedEnemy.position, pausedPosition);
+
+        expect(masteryFeedbackBeats, 2);
+        expect(game.combatHitStopRemaining, .035);
         expect(
           audioCues.where((cue) => cue == AudioCue.hwandoMasterAttack),
           hasLength(1),

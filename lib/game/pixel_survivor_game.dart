@@ -224,6 +224,8 @@ class PixelSurvivorGame extends FlameGame
   @override
   double? get bossHealthFraction => _boss?.healthFraction;
   Vector2 get screenShakeOffset => _screenShakeOffset.clone();
+  @visibleForTesting
+  double get combatHitStopRemaining => _combatFeedback.hitStopRemaining;
   GamePerformanceSnapshot get performanceSnapshot => GamePerformanceSnapshot(
     budget: performanceBudget,
     counts: {
@@ -652,13 +654,11 @@ class PixelSurvivorGame extends FlameGame
       player.playAttack(direction);
     }
     _syncTalismanPresentation(result);
-    if (result.fiveColorWards.any(
+    final masterWards = result.fiveColorWards.where(
       (ward) => ward.attack.spec.presentation == AttackPresentation.master,
-    )) {
-      runStats.combatPlaytestTracker.recordMasterActivation(
-        weaponId: talismanThrow,
-        atSeconds: _elapsedSeconds,
-      );
+    );
+    if (masterWards.firstOrNull case final ward?) {
+      _requestAttackFeedback(ward.attack, weaponId: talismanThrow);
     }
     for (final weaponId in result.firedWeaponIds) {
       if (weaponId == hwandoSlash && result.attackInstances.isNotEmpty) {
@@ -834,15 +834,22 @@ class PixelSurvivorGame extends FlameGame
       _resolveSharedAttack(synergyAttack);
     }
 
-    if (attack.spec.presentation == AttackPresentation.master) {
+    _requestAttackFeedback(attack, weaponId: weaponId);
+  }
+
+  void _requestAttackFeedback(
+    AttackInstance attack, {
+    required WeaponId weaponId,
+  }) {
+    final beat = _combatFeedback.requestAttack(attack);
+    if (beat == CombatFeedbackBeat.masteryStart) {
       runStats.combatPlaytestTracker.recordMasterActivation(
         weaponId: weaponId,
         atSeconds: _elapsedSeconds,
       );
-      _combatFeedback.request(const CombatFeedbackRequest.master());
-      final shake = _combatFeedback.takePendingShakeMagnitude();
-      if (shake > 0) _startScreenShake(shake);
     }
+    final shake = _combatFeedback.takePendingShakeMagnitude();
+    if (shake > 0) _startScreenShake(shake);
   }
 
   void _emitSharedAttackAudio(AttackInstance attack) {
