@@ -3,10 +3,28 @@ import 'package:pixel_survivor/game/content/weapon_definitions.dart';
 import 'package:pixel_survivor/game/models/run_choice_record.dart';
 import 'package:pixel_survivor/game/models/run_outcome.dart';
 import 'package:pixel_survivor/game/systems/run_stats_tracker.dart';
+import 'package:pixel_survivor/game/systems/combat_playtest_tracker.dart';
 import 'package:pixel_survivor/game/systems/weapon_synergy_resolver.dart';
 
 void main() {
   group('RunStatsTracker', () {
+    test('includes an immutable combat metric snapshot in the result', () {
+      final combatTracker = CombatPlaytestTracker()
+        ..recordOffer(weaponId: hwandoSlash);
+      final tracker = RunStatsTracker(combatPlaytestTracker: combatTracker);
+
+      final result = tracker.toRunResult(
+        outcome: RunOutcome.defeat,
+        survivalSeconds: 10,
+        level: 1,
+        wonWithLowHealth: false,
+        weaponLevels: const {},
+      );
+      combatTracker.recordOffer(weaponId: hwandoSlash);
+
+      expect(result.combatMetrics.weaponOfferCounts, {hwandoSlash: 1});
+    });
+
     test('records kills and boss defeats in run results', () {
       final tracker = RunStatsTracker()
         ..recordEnemyDefeat(isBoss: false)

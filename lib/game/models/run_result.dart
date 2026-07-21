@@ -1,5 +1,6 @@
 import 'run_outcome.dart';
 import 'run_choice_record.dart';
+import 'combat_playtest_metrics.dart';
 
 class RunResult {
   const RunResult({
@@ -18,6 +19,7 @@ class RunResult {
     this.deathAtSeconds,
     this.eliteKills = 0,
     this.spiritJadeCollected = 0,
+    this.combatMetrics = CombatPlaytestMetrics.empty,
   });
 
   final RunOutcome outcome;
@@ -35,4 +37,5 @@ class RunResult {
   final int? deathAtSeconds;
   final int eliteKills;
   final int spiritJadeCollected;
+  final CombatPlaytestMetrics combatMetrics;
 }

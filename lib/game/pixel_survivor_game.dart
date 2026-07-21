@@ -351,6 +351,11 @@ class PixelSurvivorGame extends FlameGame
 
   @override
   void update(double dt) {
+    runStats.combatPlaytestTracker.recordFrame(
+      dt: dt,
+      enemyCount: enemyCount,
+      atSeconds: _elapsedSeconds,
+    );
     final safeDt = dt.clamp(0, 0.05).toDouble();
     final simulationDt = _combatFeedback.tick(safeDt);
     super.update(simulationDt);
@@ -432,6 +437,13 @@ class PixelSurvivorGame extends FlameGame
         selectedLevel: choice.nextLevel,
       ),
     );
+    if (choice.type == LevelUpChoiceType.weapon) {
+      runStats.combatPlaytestTracker.recordLevel(
+        weaponId: choice.id,
+        level: choice.nextLevel,
+        atSeconds: _elapsedSeconds,
+      );
+    }
     switch (choice.type) {
       case LevelUpChoiceType.weapon:
         final weaponId = choice.id;
@@ -601,6 +613,14 @@ class PixelSurvivorGame extends FlameGame
     if (result.hwandoDirection case final direction?) {
       player.playAttack(direction);
     }
+    if (result.fiveColorWards.any(
+      (ward) => ward.attack.spec.presentation == AttackPresentation.master,
+    )) {
+      runStats.combatPlaytestTracker.recordMasterActivation(
+        weaponId: talismanThrow,
+        atSeconds: _elapsedSeconds,
+      );
+    }
     for (final weaponId in result.firedWeaponIds) {
       if (weaponId == hwandoSlash && result.attackInstances.isNotEmpty) {
         continue;
@@ -727,6 +747,10 @@ class PixelSurvivorGame extends FlameGame
     }
 
     if (attack.spec.presentation == AttackPresentation.master) {
+      runStats.combatPlaytestTracker.recordMasterActivation(
+        weaponId: weaponId,
+        atSeconds: _elapsedSeconds,
+      );
       _combatFeedback.request(const CombatFeedbackRequest.master());
       final shake = _combatFeedback.takePendingShakeMagnitude();
       if (shake > 0) _startScreenShake(shake);
@@ -1110,6 +1134,13 @@ class PixelSurvivorGame extends FlameGame
           amount: effectiveDamage,
         );
         _lastWeaponHitByEnemy[event.target] = weaponId;
+        if (weaponId == sealingSlash) {
+          runStats.combatPlaytestTracker.recordSynergyDamage(
+            synergyId: sealingSlash,
+            amount: effectiveDamage,
+            atSeconds: _elapsedSeconds,
+          );
+        }
       }
       event.target.registerHit(knockback: event.direction * event.knockback);
       _spawnDamageNumber(event, effectiveDamage);
@@ -1265,6 +1296,11 @@ class PixelSurvivorGame extends FlameGame
       isBoss: enemyDefinition.isBoss,
       isElite: enemy.isElite,
       weaponId: weaponId,
+    );
+    runStats.combatPlaytestTracker.recordKill(
+      atSeconds: _elapsedSeconds,
+      sourceId: weaponId ?? 'unknown',
+      enemyBehaviorId: enemyDefinition.behaviorProfileId,
     );
     _lastWeaponHitByEnemy.remove(enemy);
     final firstBossReward = enemyDefinition.isBoss && firstBossRewardAvailable;
@@ -1447,12 +1483,23 @@ class PixelSurvivorGame extends FlameGame
     required double healthBefore,
     required String sourceId,
   }) {
+    final effectiveDamage = healthBefore - player.currentHealth;
     runStats.recordPlayerDamage(
-      amount: healthBefore - player.currentHealth,
+      amount: effectiveDamage,
       sourceId: sourceId,
       atSeconds: _elapsedSeconds.floor(),
       isLethal: !player.isAlive,
     );
+    final enemyBehaviorId = _enemyDefinitionFor(sourceId).behaviorProfileId;
+    runStats.combatPlaytestTracker.recordEnemyDamage(
+      enemyBehaviorId: enemyBehaviorId,
+      amount: effectiveDamage,
+    );
+    if (!player.isAlive) {
+      runStats.combatPlaytestTracker.recordEnemyDeath(
+        enemyBehaviorId: enemyBehaviorId,
+      );
+    }
   }
 
   List<LevelUpChoice> levelUpChoices() {
@@ -1490,6 +1537,11 @@ class PixelSurvivorGame extends FlameGame
     }
 
     _pendingLevelUpChoices = choices;
+    for (final choice in choices.where(
+      (choice) => choice.type == LevelUpChoiceType.weapon,
+    )) {
+      runStats.combatPlaytestTracker.recordOffer(weaponId: choice.id);
+    }
     _emitAudio(AudioCue.levelUp);
     if (isMounted) {
       pauseEngine();

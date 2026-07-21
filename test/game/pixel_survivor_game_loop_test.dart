@@ -475,6 +475,14 @@ void main() {
       expect(game.currentExperience, 0);
       expect(game.isLevelUpPending, isTrue);
       expect(game.pendingLevelUpChoices, isNotEmpty);
+      for (final choice in game.pendingLevelUpChoices.where(
+        (choice) => choice.type == LevelUpChoiceType.weapon,
+      )) {
+        expect(
+          game.currentRunResult().combatMetrics.weaponOfferCounts[choice.id],
+          1,
+        );
+      }
     });
 
     test('applyLevelUpChoice upgrades a weapon and clears pending state', () {
@@ -492,7 +500,45 @@ void main() {
 
       expect(game.weaponSystem.levelOf(hwandoSlash), 1);
       expect(game.isLevelUpPending, isFalse);
+      expect(game.currentRunResult().combatMetrics.weaponSelectionCounts, {
+        hwandoSlash: 1,
+      });
+      expect(game.currentRunResult().combatMetrics.weaponLevelTimes, {
+        hwandoSlash: {1: 0},
+      });
     });
+
+    test('combat metrics use raw frame dt before simulation clamping', () {
+      final game = newGame()..debugAdvanceTo(240);
+
+      game.update(.2);
+
+      expect(game.currentRunResult().combatMetrics.lateMinFps, 5);
+    });
+
+    gameTester.testGameWidget(
+      'talisman master ward activation is recorded',
+      setUp: (game, _) async {
+        game.unlockedWeaponIds.add(talismanThrow);
+        for (var level = 0; level < 6; level += 1) {
+          game.weaponSystem.upgrade(talismanThrow, game.unlockedWeaponIds);
+        }
+        await game.ensureAdd(
+          EnemyComponent.fromDefinition(
+            enemyDefinitionFor(dokkaebi)!,
+            position: game.activePlayers.single.position + Vector2(20, 0),
+          ),
+        );
+      },
+      verify: (game, _) async {
+        game.update(.05);
+
+        expect(
+          game.currentRunResult().combatMetrics.firstMasterAtSeconds,
+          contains(talismanThrow),
+        );
+      },
+    );
 
     gameTester.testGameWidget(
       'new field weapons join the live game loop with capped frost fields',
