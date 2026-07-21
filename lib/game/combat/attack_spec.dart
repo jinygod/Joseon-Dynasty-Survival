@@ -9,7 +9,7 @@ enum AttackPresentation { normal, strong, master, synergy }
 
 @immutable
 class AttackSpec {
-  const AttackSpec({
+  AttackSpec({
     required this.id,
     required this.shape,
     required this.damage,
@@ -22,9 +22,9 @@ class AttackSpec {
     required this.lingerSeconds,
     required this.knockback,
     required this.slowFraction,
-    required this.traits,
+    required Set<AttackTrait> traits,
     required this.presentation,
-  });
+  }) : traits = Set<AttackTrait>.unmodifiable(traits);
 
   final String id;
   final AttackShape shape;
@@ -49,13 +49,16 @@ class AttackInstance {
     required Vector2 origin,
     required Vector2 direction,
     required this.sequenceIndex,
-  }) : origin = origin.clone(),
-       direction = _unit(direction);
+  }) : _origin = origin.clone(),
+       _direction = _unit(direction);
 
   final AttackSpec spec;
-  final Vector2 origin;
-  final Vector2 direction;
+  final Vector2 _origin;
+  final Vector2 _direction;
   final int sequenceIndex;
+
+  Vector2 get origin => _origin.clone();
+  Vector2 get direction => _direction.clone();
 }
 
 Vector2 _unit(Vector2 direction) {

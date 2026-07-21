@@ -5,7 +5,7 @@ import '../combat/attack_spec.dart';
 import '../content/ids.dart';
 
 class DamageEvent {
-  const DamageEvent({
+  DamageEvent({
     required this.target,
     required this.damage,
     required this.knockback,
@@ -13,8 +13,8 @@ class DamageEvent {
     this.weaponId,
     this.isCritical = false,
     this.sourceId,
-    this.traits = const {},
-  });
+    Set<AttackTrait> traits = const {},
+  }) : traits = Set<AttackTrait>.unmodifiable(traits);
 
   final EnemyComponent target;
   final double damage;

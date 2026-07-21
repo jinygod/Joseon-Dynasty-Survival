@@ -12,7 +12,7 @@ void main() {
     final origin = Vector2.zero();
     final direction = Vector2(1, 0);
     final attack = AttackInstance(
-      spec: const AttackSpec(
+      spec: AttackSpec(
         id: 'test_sector',
         shape: AttackShape.sector,
         damage: 8,
@@ -25,7 +25,7 @@ void main() {
         lingerSeconds: .12,
         knockback: 20,
         slowFraction: 0,
-        traits: {AttackTrait.melee},
+        traits: const {AttackTrait.melee},
         presentation: AttackPresentation.normal,
       ),
       origin: origin,
@@ -40,6 +40,90 @@ void main() {
     expect(AttackGeometry.contains(attack, Vector2(-40, 0), 9), isFalse);
     expect(attack.origin, Vector2.zero());
     expect(attack.direction, Vector2(1, 0));
+  });
+
+  test('mutating returned vectors cannot change frozen attack geometry', () {
+    final attack = AttackInstance(
+      spec: _spec(shape: AttackShape.line, range: 20, width: 2),
+      origin: Vector2.zero(),
+      direction: Vector2(1, 0),
+      sequenceIndex: 0,
+    );
+
+    attack.origin.setValues(100, 100);
+    attack.direction.setValues(-1, 0);
+
+    expect(attack.origin, Vector2.zero());
+    expect(attack.direction, Vector2(1, 0));
+    expect(AttackGeometry.contains(attack, Vector2(10, 0), 0), isTrue);
+    expect(AttackGeometry.contains(attack, Vector2(-10, 0), 0), isFalse);
+  });
+
+  test('attack spec defensively freezes caller traits', () {
+    final traits = <AttackTrait>{AttackTrait.melee};
+    final spec = _spec(shape: AttackShape.line, traits: traits);
+
+    traits.add(AttackTrait.master);
+
+    expect(spec.traits, {AttackTrait.melee});
+    expect(() => spec.traits.add(AttackTrait.synergy), throwsUnsupportedError);
+  });
+
+  test('sector includes a target centered inside the wedge', () {
+    final attack = AttackInstance(
+      spec: _spec(shape: AttackShape.sector, range: 60, angleRadians: pi / 2),
+      origin: Vector2.zero(),
+      direction: Vector2(1, 0),
+      sequenceIndex: 0,
+    );
+
+    expect(AttackGeometry.contains(attack, Vector2(30, 0), 2), isTrue);
+  });
+
+  test('sector includes a target circle overlapping a side ray', () {
+    final attack = AttackInstance(
+      spec: _spec(shape: AttackShape.sector, range: 60, angleRadians: pi / 2),
+      origin: Vector2.zero(),
+      direction: Vector2(1, 0),
+      sequenceIndex: 0,
+    );
+    final side = Vector2(cos(pi / 4), sin(pi / 4));
+    for (final sign in [-1.0, 1.0]) {
+      final signedSide = Vector2(side.x, side.y * sign);
+      final outward = Vector2(-signedSide.y * sign, signedSide.x * sign);
+      expect(
+        AttackGeometry.contains(attack, signedSide * 40 + outward * 4.9, 5),
+        isTrue,
+      );
+    }
+  });
+
+  test('sector includes a target circle overlapping the outer arc', () {
+    final attack = AttackInstance(
+      spec: _spec(shape: AttackShape.sector, range: 60, angleRadians: pi / 2),
+      origin: Vector2.zero(),
+      direction: Vector2(1, 0),
+      sequenceIndex: 0,
+    );
+
+    expect(AttackGeometry.contains(attack, Vector2(64.9, 0), 5), isTrue);
+    expect(AttackGeometry.contains(attack, Vector2(65.01, 0), 5), isFalse);
+  });
+
+  test('sector excludes a target circle just outside a side ray', () {
+    final attack = AttackInstance(
+      spec: _spec(shape: AttackShape.sector, range: 60, angleRadians: pi / 2),
+      origin: Vector2.zero(),
+      direction: Vector2(1, 0),
+      sequenceIndex: 0,
+    );
+    final side = Vector2(cos(pi / 4), sin(pi / 4));
+    final outward = Vector2(-side.y, side.x);
+
+    expect(
+      AttackGeometry.contains(attack, side * 40 + outward * 5.01, 5),
+      isFalse,
+    );
   });
 
   test('circle includes a target whose edge reaches the attack radius', () {
@@ -100,6 +184,27 @@ void main() {
     expect(event.sourceId, isNull);
     expect(event.traits, isEmpty);
   });
+
+  test('damage event defensively freezes caller traits', () {
+    final traits = <AttackTrait>{AttackTrait.projectile};
+    final event = DamageEvent(
+      target: EnemyComponent(
+        enemyId: 'test_enemy',
+        maxHealth: 1,
+        moveSpeed: 0,
+        damage: 0,
+      ),
+      damage: 1,
+      knockback: 0,
+      direction: Vector2.zero(),
+      traits: traits,
+    );
+
+    traits.add(AttackTrait.piercing);
+
+    expect(event.traits, {AttackTrait.projectile});
+    expect(() => event.traits.clear(), throwsUnsupportedError);
+  });
 }
 
 AttackSpec _spec({
@@ -107,13 +212,15 @@ AttackSpec _spec({
   double range = 0,
   double radius = 0,
   double width = 0,
+  double angleRadians = 0,
+  Set<AttackTrait> traits = const {},
 }) {
   return AttackSpec(
     id: 'test_${shape.name}',
     shape: shape,
     damage: 1,
     range: range,
-    angleRadians: 0,
+    angleRadians: angleRadians,
     radius: radius,
     width: width,
     windupSeconds: 0,
@@ -121,7 +228,7 @@ AttackSpec _spec({
     lingerSeconds: 0,
     knockback: 0,
     slowFraction: 0,
-    traits: const {},
+    traits: traits,
     presentation: AttackPresentation.normal,
   );
 }
