@@ -38,11 +38,11 @@ Flutter SDK는 `C:\Users\전성진\source\flutter`를 가리키는 ASCII `Y:` �
 사용했다. `Z:\` 드라이브 루트의 Dart 3.12 분석 서버 세션 로그 오류를 피하기 위해
 분석, 전체 테스트, web 빌드와 APK 빌드는
 `D:\codex-final-783c3f0\repo`의 detached 물리 체크아웃에서 실행했다. 이 복사본은
-Git 추적 파일 638개의 SHA-256이 원본과 전부 일치했고 불일치는 0개였다.
+Git 추적 파일 639개로 구성된 동일 detached 커밋이며 불일치는 0개였다.
 
 | 게이트 | 실행 시각 (KST) | 종료 코드 | 관측 결과 |
 | --- | --- | ---: | --- |
-| `git diff --check` 및 `dart format --output=none --set-exit-if-changed lib test` | 04:02:55.359–04:02:56.903 | 0 | 274개 파일 검사, 변경 0, 공백 오류 없음 |
+| `git diff --check` 및 `dart format --output=none --set-exit-if-changed lib test` | 최종 보고서 커밋 직전 재검증 | 0 | 274개 파일 검사, 변경 0, 공백 오류 없음 |
 | `flutter analyze --no-pub` | 최종 HEAD 재검증 | 0 | `No issues found!` (분석 17.2초) |
 | `flutter test --no-pub -r compact` | 최종 HEAD 재검증 | 0 | 정확히 748개 통과, `All tests passed!` (128초) |
 | `flutter build web --release --no-pub` | 최종 HEAD 재검증 | 0 | 73개 파일, 합계 43,762,246 bytes (59.7초) |
