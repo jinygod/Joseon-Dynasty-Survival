@@ -16,6 +16,41 @@ import 'package:pixel_survivor/game/pixel_survivor_game.dart';
 import 'package:pixel_survivor/game/systems/wave_director.dart';
 
 void main() {
+  test('late FPS uses raw frame duration instead of clamped combat step', () {
+    const budget = GamePerformanceBudget.standard;
+    final collector = PerformanceDevelopmentCollector(
+      budget: budget,
+      maxMemoryProxyComponents: 10,
+      maxRetainedOwners: 5,
+    );
+    for (final rawFrameDurationMicros in [100000, 20000]) {
+      collector.record(
+        PerformanceDevelopmentSample(
+          simulatedSeconds: 200,
+          frameStepMicros: 50000,
+          rawFrameDurationMicros: rawFrameDurationMicros,
+          hostUpdateLifecycleWallMicros: 1,
+          mountedComponentCount: 1,
+          retainedOwnerCount: 1,
+          snapshot: GamePerformanceSnapshot(
+            budget: budget,
+            counts: const {GamePopulationKind.enemy: 1},
+          ),
+        ),
+      );
+    }
+
+    final log = collector.finish(
+      scenario: 'raw-frame-duration',
+      seed: 1,
+      simulatedDurationSeconds: 200,
+      totalFrameCount: 2,
+    );
+
+    expect(log.lateAverageSimulatedFps, 30);
+    expect(log.lateMinimumSimulatedFps, 10);
+  });
+
   test('production wave admission covers 18000 logical frames', () {
     const frameCount = 18000;
     const dt = 1 / 60;
@@ -115,6 +150,7 @@ void main() {
           PerformanceDevelopmentSample(
             simulatedSeconds: frame * frameStepSeconds,
             frameStepMicros: frameStepMicros,
+            rawFrameDurationMicros: frameStepMicros,
             hostUpdateLifecycleWallMicros: stopwatch.elapsedMicroseconds,
             mountedComponentCount: mountedComponentCount,
             retainedOwnerCount: game.performanceRetainedOwnerCount,
@@ -138,6 +174,12 @@ void main() {
       expect(game.elapsedSeconds, closeTo(300, 0.001));
       expect(log.sampleCount, frameCount ~/ observationIntervalFrames);
       expect(log.peakFrameStepMicros, frameStepMicros);
+      expect(log.averageActiveEnemies, greaterThan(0));
+      expect(log.maximumActiveEnemies, greaterThanOrEqualTo(40));
+      expect(log.maximumActiveEnemies, greaterThan(log.averageActiveEnemies));
+      expect(log.lateFrameSampleCount, 7200);
+      expect(log.lateAverageSimulatedFps, closeTo(60, 0.01));
+      expect(log.lateMinimumSimulatedFps, closeTo(60, 0.01));
       expect(log.peakMountedComponentCount, greaterThan(1));
       expect(log.peakRetainedOwnerCount, greaterThan(0));
       expect(log.peakMemoryProxyComponents, greaterThan(0));

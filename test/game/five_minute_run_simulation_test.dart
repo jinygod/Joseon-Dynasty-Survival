@@ -23,6 +23,7 @@ void main() {
       game.debugAdvanceTo(300);
 
       expect(game.elapsedSeconds, 300);
+      expect(game.bossRequestCount, 1);
       expect(game.bossSpawnCount, 1);
       expect(game.enemyCount, lessThanOrEqualTo(game.currentEnemyCap));
       expect(game.runOutcome, RunOutcome.inProgress);
