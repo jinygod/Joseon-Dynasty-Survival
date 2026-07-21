@@ -1,8 +1,12 @@
 import 'dart:math';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:flame/components.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/combat/attack_spec.dart';
+import 'package:pixel_survivor/game/combat/attack_geometry.dart';
+import 'package:pixel_survivor/game/components/attack_effect_component.dart';
 import 'package:pixel_survivor/game/systems/hwando_executor.dart';
 
 void main() {
@@ -40,6 +44,18 @@ void main() {
     expect(executor.tick(input(dt: .05, level: 3)).map((a) => a.spec.id), [
       'hwando_slash_right',
     ]);
+  });
+
+  test('level three opposite slashes freeze distinct coverage directions', () {
+    final executor = HwandoExecutor();
+    final first = executor.tick(input(dt: 0, level: 3)).single;
+    executor.tick(input(dt: .05, level: 3));
+    final second = executor.tick(input(dt: .05, level: 3)).single;
+
+    expect(first.direction, isNot(second.direction));
+    final firstOnly = first.direction * 45;
+    expect(AttackGeometry.contains(first, firstOnly, 0), isTrue);
+    expect(AttackGeometry.contains(second, firstOnly, 0), isFalse);
   });
 
   test('level four emits a line blade wave after the second slash', () {
@@ -131,8 +147,10 @@ void main() {
       input(dt: .05, level: 3, aimDirection: Vector2(1, 0)),
     );
 
-    expect(first.single.direction, Vector2(0, -1));
-    expect(second.single.direction, Vector2(0, -1));
+    expect(first.single.direction.x, closeTo(-sqrt1_2, 0.000001));
+    expect(first.single.direction.y, closeTo(-sqrt1_2, 0.000001));
+    expect(second.single.direction.x, closeTo(sqrt1_2, 0.000001));
+    expect(second.single.direction.y, closeTo(-sqrt1_2, 0.000001));
   });
 
   test(
@@ -162,8 +180,29 @@ void main() {
       );
       expect(emitted[1].spec.angleRadians, pi);
       expect(emitted[2].spec.angleRadians, pi);
+      expect(emitted[0].direction, isNot(emitted[1].direction));
+      expect(
+        emitted[1].direction.x,
+        closeTo(-emitted[2].direction.x, 0.000001),
+      );
+      expect(
+        emitted[1].direction.y,
+        closeTo(-emitted[2].direction.y, 0.000001),
+      );
+      final leftOnly = emitted[1].direction * 45;
+      expect(AttackGeometry.contains(emitted[1], leftOnly, 0), isTrue);
+      expect(AttackGeometry.contains(emitted[2], leftOnly, 0), isFalse);
     },
   );
+
+  test('renderer reflects the exact distinct level three instances', () async {
+    final executor = HwandoExecutor();
+    final first = executor.tick(input(dt: 0, level: 3)).single;
+    executor.tick(input(dt: .05, level: 3));
+    final second = executor.tick(input(dt: .05, level: 3)).single;
+
+    expect(await _renderBytes(first), isNot(await _renderBytes(second)));
+  });
 
   test('master starts its next cycle on configured cooldown', () {
     final executor = HwandoExecutor();
@@ -176,4 +215,13 @@ void main() {
 
     expect(emitted.where((attack) => attack.sequenceIndex == 0), hasLength(2));
   });
+}
+
+Future<Uint8List> _renderBytes(AttackInstance instance) async {
+  final recorder = ui.PictureRecorder();
+  final canvas = ui.Canvas(recorder)..translate(100, 100);
+  AttackEffectComponent(instance: instance).render(canvas);
+  final image = await recorder.endRecording().toImage(200, 200);
+  final data = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+  return data!.buffer.asUint8List();
 }

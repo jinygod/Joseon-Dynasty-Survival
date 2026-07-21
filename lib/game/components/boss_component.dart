@@ -1,5 +1,4 @@
 import 'dart:math' as math;
-import 'dart:ui';
 
 import 'package:flame/components.dart';
 
@@ -101,6 +100,28 @@ class BossComponent extends EnemyComponent {
       _warningRemaining > 0 && _warningPattern?.kind == BossPatternKind.charge;
   bool get isPatternWarningActive => _warningRemaining > 0;
   String? get warningPatternId => _warningPattern?.id;
+  @override
+  EnemyWarningSnapshot? get warningSnapshot {
+    final behaviorWarning = super.warningSnapshot;
+    if (behaviorWarning != null) return behaviorWarning;
+    final pattern = _warningPattern;
+    if (_warningRemaining <= 0 || pattern == null) return null;
+    return switch (pattern.kind) {
+      BossPatternKind.charge => EnemyWarningSnapshot(
+        kind: EnemyBehaviorKind.dash,
+        direction: _chargeDirection,
+        range: 190,
+        progress: 1 - (_warningRemaining / pattern.warningSeconds),
+      ),
+      BossPatternKind.summon => EnemyWarningSnapshot(
+        kind: EnemyBehaviorKind.scream,
+        direction: _chargeDirection,
+        range: 72,
+        progress: 1 - (_warningRemaining / pattern.warningSeconds),
+      ),
+      BossPatternKind.cone || BossPatternKind.radial => null,
+    };
+  }
 
   @override
   void moveToward(Vector2 target, double dt) {
@@ -178,33 +199,6 @@ class BossComponent extends EnemyComponent {
           case BossPatternKind.radial:
             break;
         }
-    }
-  }
-
-  @override
-  void render(Canvas canvas) {
-    super.render(canvas);
-    if (_warningRemaining <= 0) return;
-    final pattern = _warningPattern;
-    if (pattern == null ||
-        (pattern.kind != BossPatternKind.charge &&
-            pattern.kind != BossPatternKind.summon)) {
-      return;
-    }
-
-    final center = Offset(size.x / 2, size.y / 2);
-    final paint = Paint()
-      ..color = const Color(0xffffd166)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3;
-    if (pattern.kind == BossPatternKind.charge) {
-      canvas.drawLine(
-        center,
-        center + Offset(_chargeDirection.x, _chargeDirection.y) * 190,
-        paint,
-      );
-    } else {
-      canvas.drawCircle(center, 72, paint);
     }
   }
 

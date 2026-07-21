@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/components/area_attack_component.dart';
 import 'package:pixel_survivor/game/components/damage_number_component.dart';
 import 'package:pixel_survivor/game/components/enemy_component.dart';
+import 'package:pixel_survivor/game/components/enemy_combat_overlay_component.dart';
 import 'package:pixel_survivor/game/components/attack_effect_component.dart';
 import 'package:pixel_survivor/game/components/combat_effect_component.dart';
 import 'package:pixel_survivor/game/components/enemy_hazard_component.dart';
@@ -16,6 +17,7 @@ import 'package:pixel_survivor/game/components/frost_field_component.dart';
 import 'package:pixel_survivor/game/components/five_color_ward_component.dart';
 import 'package:pixel_survivor/game/components/projectile_component.dart';
 import 'package:pixel_survivor/game/components/spirit_jade_component.dart';
+import 'package:pixel_survivor/game/components/talisman_presentation_component.dart';
 import 'package:pixel_survivor/game/components/ward_aura_component.dart';
 import 'package:pixel_survivor/game/audio/audio_cue.dart';
 import 'package:pixel_survivor/game/combat/attack_geometry.dart';
@@ -38,6 +40,7 @@ import 'package:pixel_survivor/game/models/vector_input.dart';
 import 'package:pixel_survivor/game/pixel_survivor_game.dart';
 import 'package:pixel_survivor/game/game_performance_budget.dart';
 import 'package:pixel_survivor/game/systems/level_up_system.dart';
+import 'package:pixel_survivor/game/systems/talisman_executor.dart';
 import 'package:pixel_survivor/game/systems/weapon_synergy_resolver.dart';
 
 void main() {
@@ -161,6 +164,19 @@ void main() {
         maxProjectiles: 1,
         maxDamageNumbers: 24,
         maxCombatEffects: 32,
+      ),
+    ),
+    gameSize: Vector2(960, 540),
+  );
+  final cappedTalismanEffectGameTester = FlameTester<PixelSurvivorGame>(
+    () => PixelSurvivorGame(
+      playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
+      onRunEnded: null,
+      performanceBudget: const GamePerformanceBudget(
+        maxEnemies: 96,
+        maxProjectiles: 128,
+        maxDamageNumbers: 24,
+        maxCombatEffects: 1,
       ),
     ),
     gameSize: Vector2(960, 540),
@@ -771,10 +787,16 @@ void main() {
       verify: (game, _) async {
         game.update(.05);
         final target = game.weaponSystem.attachedTalismans.single.target;
+        final mark = game.children
+            .whereType<TalismanAttachmentComponent>()
+            .single;
+        expect(mark.seal.target, same(target));
         target.removeFromParent();
         game.update(.05);
+        game.processLifecycleEvents();
 
         expect(game.weaponSystem.attachedTalismans, isEmpty);
+        expect(game.children.whereType<TalismanAttachmentComponent>(), isEmpty);
       },
     );
 
@@ -820,6 +842,55 @@ void main() {
                 identical(seal.target, candidate) && seal.transferDepth == 1,
           ),
           isTrue,
+        );
+        expect(
+          game.children.whereType<TalismanTransferCueComponent>(),
+          isNotEmpty,
+        );
+        expect(
+          game.children.whereType<TalismanAttachmentComponent>().length,
+          lessThanOrEqualTo(TalismanExecutor.maxAttachedSeals),
+        );
+      },
+    );
+
+    cappedTalismanEffectGameTester.testGameWidget(
+      'simultaneous talisman transfers share the combat effect cap',
+      setUp: (game, _) async {
+        game.unlockedWeaponIds.add(talismanThrow);
+        for (var level = 0; level < 4; level += 1) {
+          game.weaponSystem.upgrade(talismanThrow, game.unlockedWeaponIds);
+        }
+        final origin = game.activePlayers.single.position;
+        for (var index = 0; index < 8; index += 1) {
+          await game.ensureAdd(
+            EnemyComponent(
+              enemyId: 'transfer_cap_$index',
+              maxHealth: 10000,
+              moveSpeed: 0,
+              damage: 0,
+              position: origin + Vector2(20 + index * 5.0, 0),
+            ),
+          );
+        }
+      },
+      verify: (game, _) async {
+        for (var frame = 0; frame < 13; frame += 1) {
+          game.update(.05);
+          game.processLifecycleEvents();
+        }
+
+        expect(
+          game.children.whereType<TalismanTransferCueComponent>().length,
+          lessThanOrEqualTo(1),
+        );
+        expect(
+          game.performanceSnapshot.counts[GamePopulationKind.combatEffect],
+          lessThanOrEqualTo(1),
+        );
+        expect(
+          game.performanceSnapshot.rejected[GamePopulationKind.combatEffect],
+          greaterThan(0),
         );
       },
     );
@@ -1375,7 +1446,35 @@ void main() {
       expect(number.damage, 5);
       expect(number.isCritical, isTrue);
       expect(game.currentRunResult().weaponDamageTotals[gakgungShot], 5);
+      expect(
+        game.children.whereType<ShieldBlockEffectComponent>(),
+        hasLength(1),
+      );
+      expect(game.children.whereType<CombatEffectComponent>(), isEmpty);
     });
+
+    test(
+      'spawned enemy warning overlay outranks attacks without raising body',
+      () async {
+        final game = newGame();
+        game.onGameResize(Vector2(960, 540));
+        await game.onLoad();
+        final enemy = game.debugSpawnEnemy(
+          plagueCrow,
+          position: Vector2(40, 40),
+        );
+        game.processLifecycleEvents();
+        final overlay = game.children
+            .whereType<EnemyWarningOverlayComponent>()
+            .singleWhere((item) => identical(item.enemy, enemy));
+
+        expect(enemy.priority, lessThan(AttackPresentationPriority.attack));
+        expect(
+          overlay.priority,
+          greaterThan(AttackPresentationPriority.attack),
+        );
+      },
+    );
 
     gameTester.testGameWidget(
       'contact damage records actual health loss and source',

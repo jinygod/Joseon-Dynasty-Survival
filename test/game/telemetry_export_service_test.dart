@@ -6,6 +6,8 @@ import 'package:pixel_survivor/game/models/run_feedback.dart';
 import 'package:pixel_survivor/game/models/run_outcome.dart';
 import 'package:pixel_survivor/game/models/run_telemetry.dart';
 import 'package:pixel_survivor/game/systems/telemetry_export_service.dart';
+import 'package:pixel_survivor/game/systems/combat_playtest_tracker.dart';
+import 'package:pixel_survivor/game/content/weapon_definitions.dart';
 
 void main() {
   RunTelemetry telemetry(String runId) => RunTelemetry(
@@ -244,6 +246,29 @@ void main() {
     expect(report.nonMasteredRunWinRate, 0);
     expect(report.repeatRunRate, closeTo(1 / 3, .0001));
   });
+
+  test(
+    'level six selected before run end aggregates as mastered before firing',
+    () {
+      final metrics =
+          (CombatPlaytestTracker()
+                ..recordLevel(weaponId: hwandoSlash, level: 6, atSeconds: 299))
+              .snapshot();
+      final run = combatTelemetry(
+        runId: 'mastered-before-next-fire',
+        outcome: RunOutcome.defeat,
+        weaponDamageTotals: const {},
+        combatMetrics: metrics,
+      );
+
+      final report = TelemetryExportService().aggregate([run]);
+
+      expect(report.firstMasterAverageSeconds, {hwandoSlash: 299});
+      expect(report.masteredRunWinRate, 0);
+      expect(report.nonMasteredRunWinRate, 0);
+      expect(report.masterKillsInTenSecondsAverage, isEmpty);
+    },
+  );
 
   test('aggregate handles empty and schema one metrics without NaN', () {
     final legacy = RunTelemetry.fromJson({

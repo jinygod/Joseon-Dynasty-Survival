@@ -20,6 +20,7 @@ import 'components/boss_component.dart';
 import 'components/combat_effect_component.dart';
 import 'components/damage_number_component.dart';
 import 'components/enemy_component.dart';
+import 'components/enemy_combat_overlay_component.dart';
 import 'components/enemy_projectile_component.dart';
 import 'components/enemy_hazard_component.dart';
 import 'components/experience_gem_component.dart';
@@ -28,6 +29,7 @@ import 'components/five_color_ward_component.dart';
 import 'components/player_component.dart';
 import 'components/projectile_component.dart';
 import 'components/spirit_jade_component.dart';
+import 'components/talisman_presentation_component.dart';
 import 'components/ward_aura_component.dart';
 import 'balance/meta_reward_balance.dart';
 import 'content/augment_definitions.dart';
@@ -151,6 +153,8 @@ class PixelSurvivorGame extends FlameGame
   final Map<EnemyComponent, WeaponId> _lastWeaponHitByEnemy = {};
   final Set<EnemyComponent> _recordedEnemyDefeats = {};
   final Map<EnemyComponent, bool> _pendingSpiritJadeDrops = {};
+  final Map<EnemyComponent, TalismanAttachmentComponent>
+  _talismanAttachmentComponents = {};
   int _spiritJadeDropSequence = 0;
   double? _rewardCollectionSecondsRemaining;
   int _pendingBossSpiritJade = 0;
@@ -373,6 +377,7 @@ class PixelSurvivorGame extends FlameGame
     final safeDt = wallFrameDt.clamp(0, 0.05).toDouble();
     final simulationDt = _combatFeedback.tick(safeDt);
     super.update(simulationDt);
+    _cleanupCombatPresentationOwners();
     _trySpawnPendingBoss();
     _updateScreenShake(safeDt);
     _combatNoticeSecondsRemaining = max(
@@ -584,7 +589,7 @@ class PixelSurvivorGame extends FlameGame
     _bossSpawnPending = false;
     _boss = boss;
     _bossSpawnCount += 1;
-    add(boss);
+    _addEnemyWithWarningOverlay(boss);
   }
 
   void _summonBossMinions(List<EnemyId> enemyIds) {
@@ -604,7 +609,9 @@ class PixelSurvivorGame extends FlameGame
 
   void _addEnemy(EnemyId enemyId, int spawnIndex) {
     final offset = _spawnOffsetFor(spawnIndex);
-    add(_createEnemy(enemyId, Vector2(size.x / 2, size.y / 2) + offset));
+    _addEnemyWithWarningOverlay(
+      _createEnemy(enemyId, Vector2(size.x / 2, size.y / 2) + offset),
+    );
   }
 
   EnemyComponent _createEnemy(EnemyId enemyId, Vector2 position) {
@@ -614,6 +621,11 @@ class PixelSurvivorGame extends FlameGame
       targetPositionProvider: _nearestActivePlayerPosition,
       nearbyEnemiesProvider: () => children.whereType<EnemyComponent>(),
     );
+  }
+
+  void _addEnemyWithWarningOverlay(EnemyComponent enemy) {
+    add(enemy);
+    add(EnemyWarningOverlayComponent(enemy: enemy));
   }
 
   void _updateWeapons(double dt) {
@@ -639,6 +651,7 @@ class PixelSurvivorGame extends FlameGame
     if (result.hwandoDirection case final direction?) {
       player.playAttack(direction);
     }
+    _syncTalismanPresentation(result);
     if (result.fiveColorWards.any(
       (ward) => ward.attack.spec.presentation == AttackPresentation.master,
     )) {
@@ -712,6 +725,55 @@ class PixelSurvivorGame extends FlameGame
       for (final ward in matchingRequests.take(cap - retained)) {
         add(ward);
       }
+    }
+  }
+
+  void _syncTalismanPresentation(WeaponTickResult result) {
+    final desired = {
+      for (final seal in result.attachedTalismans) seal.target: seal,
+    };
+    final staleTargets = _talismanAttachmentComponents.keys
+        .where((target) => !desired.containsKey(target))
+        .toList(growable: false);
+    for (final target in staleTargets) {
+      _talismanAttachmentComponents.remove(target)?.removeFromParent();
+    }
+    for (final entry in desired.entries) {
+      if (_talismanAttachmentComponents.containsKey(entry.key)) continue;
+      final component = TalismanAttachmentComponent(seal: entry.value);
+      _talismanAttachmentComponents[entry.key] = component;
+      add(component);
+    }
+    for (final cue in result.talismanTransfers) {
+      if (_combatEffectCount >= performanceBudget.maxCombatEffects) {
+        _rejectPopulation(GamePopulationKind.combatEffect, 1);
+        break;
+      }
+      _combatEffectCount += 1;
+      add(
+        TalismanTransferCueComponent(
+          cue: cue,
+          onExpired: () {
+            _combatEffectCount = max(0, _combatEffectCount - 1);
+          },
+        ),
+      );
+    }
+  }
+
+  void _cleanupCombatPresentationOwners() {
+    for (final overlay
+        in children
+            .whereType<EnemyWarningOverlayComponent>()
+            .where((item) => item.enemy.isDead || item.enemy.isRemoving)
+            .toList(growable: false)) {
+      overlay.removeFromParent();
+    }
+    final staleTargets = _talismanAttachmentComponents.keys
+        .where((target) => target.isDead || target.isRemoving)
+        .toList(growable: false);
+    for (final target in staleTargets) {
+      _talismanAttachmentComponents.remove(target)?.removeFromParent();
     }
   }
 
@@ -1151,6 +1213,7 @@ class PixelSurvivorGame extends FlameGame
       if (event.target.isDead) continue;
       final healthBefore = event.target.currentHealth;
       final resolvedDamage = event.target.resolveIncomingDamage(event);
+      final wasBlocked = event.target.consumeBlockFeedback();
       event.target.takeDamage(resolvedDamage);
       final effectiveDamage = healthBefore - event.target.currentHealth;
       final weaponId = event.weaponId;
@@ -1170,11 +1233,15 @@ class PixelSurvivorGame extends FlameGame
       }
       event.target.registerHit(knockback: event.direction * event.knockback);
       _spawnDamageNumber(event, effectiveDamage);
-      _spawnCombatEffect(
-        event.isCritical ? CombatEffectKind.critical : CombatEffectKind.hit,
-        event.target.position,
-        size: event.isCritical ? 48 : 32,
-      );
+      if (wasBlocked) {
+        _spawnShieldBlockEffect(event.target);
+      } else {
+        _spawnCombatEffect(
+          event.isCritical ? CombatEffectKind.critical : CombatEffectKind.hit,
+          event.target.position,
+          size: event.isCritical ? 48 : 32,
+        );
+      }
       if (event.isCritical) _emitAudio(AudioCue.criticalHit);
     }
   }
@@ -1213,6 +1280,23 @@ class PixelSurvivorGame extends FlameGame
         kind: kind,
         position: position.clone(),
         size: Vector2.all(size),
+        onExpired: () {
+          _combatEffectCount = max(0, _combatEffectCount - 1);
+        },
+      ),
+    );
+  }
+
+  void _spawnShieldBlockEffect(EnemyComponent enemy) {
+    if (_combatEffectCount >= performanceBudget.maxCombatEffects) {
+      _rejectPopulation(GamePopulationKind.combatEffect, 1);
+      return;
+    }
+    _combatEffectCount += 1;
+    add(
+      ShieldBlockEffectComponent(
+        position: enemy.position.clone(),
+        facingDirection: enemy.shieldDirection,
         onExpired: () {
           _combatEffectCount = max(0, _combatEffectCount - 1);
         },
@@ -1631,7 +1715,7 @@ class PixelSurvivorGame extends FlameGame
   @visibleForTesting
   EnemyComponent debugSpawnEnemy(EnemyId enemyId, {required Vector2 position}) {
     final enemy = _createEnemy(enemyId, position);
-    add(enemy);
+    _addEnemyWithWarningOverlay(enemy);
     return enemy;
   }
 

@@ -20,6 +20,22 @@ import 'player_component.dart';
 typedef TargetPositionProvider = Vector2? Function(Vector2 enemyPosition);
 typedef NearbyEnemiesProvider = Iterable<EnemyComponent> Function();
 
+class EnemyWarningSnapshot {
+  EnemyWarningSnapshot({
+    required this.kind,
+    required Vector2 direction,
+    required this.range,
+    required this.progress,
+  }) : _direction = direction.clone();
+
+  final EnemyBehaviorKind kind;
+  final Vector2 _direction;
+  final double range;
+  final double progress;
+
+  Vector2 get direction => _direction.clone();
+}
+
 enum EnemyAnimationState { moving, attacking, hit, death }
 
 class EnemySpriteSpec {
@@ -160,6 +176,7 @@ class EnemyComponent
   double _environmentalSlowFraction = 0;
   double _environmentalHasteFraction = 0;
   bool _deathZonePending = false;
+  bool _blockFeedbackPending = false;
   final Vector2 knockbackVelocity = Vector2.zero();
   final Vector2 facingDirection = Vector2(1, 0);
   EnemyAnimationState visualState = EnemyAnimationState.moving;
@@ -190,6 +207,21 @@ class EnemyComponent
       ? _behaviorProfile.effectMultiplier
       : 0;
   double get slowAuraFraction => enemyId == sorrowfulMaidenGhost ? .25 : 0;
+  bool get hasDirectionalShield => behaviorType == EnemyBehaviorType.tank;
+  Vector2 get shieldDirection => facingDirection.clone();
+  EnemyWarningSnapshot? get warningSnapshot {
+    if (_behaviorController.phase != EnemyBehaviorPhase.warning) return null;
+    return EnemyWarningSnapshot(
+      kind: _behaviorProfile.kind,
+      direction: _behaviorController.lockedDirection,
+      range: _behaviorProfile.range,
+      progress: _behaviorProfile.warningSeconds <= 0
+          ? 1
+          : (_behaviorController.phaseElapsed / _behaviorProfile.warningSeconds)
+                .clamp(0, 1)
+                .toDouble(),
+    );
+  }
 
   void setEnvironmentalSlow(double fraction) {
     if (!fraction.isFinite || fraction < 0 || fraction >= .8) {
@@ -214,6 +246,12 @@ class EnemyComponent
   bool consumeDeathZone() {
     if (!_deathZonePending) return false;
     _deathZonePending = false;
+    return true;
+  }
+
+  bool consumeBlockFeedback() {
+    if (!_blockFeedbackPending) return false;
+    _blockFeedbackPending = false;
     return true;
   }
 
@@ -286,6 +324,7 @@ class EnemyComponent
         facingDirection.dot(-event.direction) >= math.cos(math.pi / 3);
     if (!frontal) return event.damage;
     final reduction = event.traits.contains(AttackTrait.piercing) ? .2 : .5;
+    _blockFeedbackPending = true;
     return event.damage * (1 - reduction);
   }
 
@@ -496,8 +535,6 @@ class EnemyComponent
 
   @override
   void render(Canvas canvas) {
-    _renderWarning(canvas);
-
     canvas.save();
     canvas.translate(size.x / 2, size.y);
     canvas.scale(visualScale);
@@ -544,32 +581,22 @@ class EnemyComponent
       }
     }
     canvas.restore();
-  }
-
-  void _renderWarning(Canvas canvas) {
-    if (_behaviorController.phase != EnemyBehaviorPhase.warning) return;
-    final paint = Paint()
-      ..color = const Color(0xd9ff476f)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
-    final center = Offset(size.x / 2, size.y / 2);
-    if (_behaviorProfile.kind == EnemyBehaviorKind.shockwave ||
-        _behaviorProfile.kind == EnemyBehaviorKind.scream) {
-      canvas.drawCircle(center, _behaviorProfile.range, paint);
-      return;
-    }
-    final direction = _behaviorController.lockedDirection;
-    canvas.drawLine(
-      center,
-      center + Offset(direction.x, direction.y) * _behaviorProfile.range,
-      paint,
-    );
-    if (_behaviorProfile.kind == EnemyBehaviorKind.ranged) {
-      final progress =
-          (_behaviorController.phaseElapsed / _behaviorProfile.warningSeconds)
-              .clamp(0, 1)
-              .toDouble();
-      canvas.drawCircle(center, 4 + progress * 10, paint);
+    if (hasDirectionalShield) {
+      final angle = math.atan2(facingDirection.y, facingDirection.x);
+      canvas.drawArc(
+        Rect.fromCircle(
+          center: Offset(size.x / 2, size.y / 2),
+          radius: size.x * .58,
+        ),
+        angle - math.pi / 3,
+        math.pi * 2 / 3,
+        false,
+        Paint()
+          ..color = const Color(0xffbde0fe)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 4
+          ..strokeCap = StrokeCap.round,
+      );
     }
   }
 }

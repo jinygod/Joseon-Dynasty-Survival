@@ -20,6 +20,7 @@ void main() {
 
     boss.update(1);
     expect(boss.visualState, EnemyAnimationState.attacking);
+    expect(boss.warningSnapshot, isNotNull);
 
     boss.takeDamage(definition.enemy.maxHealth);
     expect(boss.visualState, EnemyAnimationState.death);

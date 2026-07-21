@@ -67,6 +67,9 @@ void main() {
       result.attached.map((seal) => seal.target),
       isNot(contains(alreadyMarked)),
     );
+    expect(result.transfers, hasLength(1));
+    expect(result.transfers.single.source, first.position);
+    expect(result.transfers.single.target, next.position);
   });
 
   test('level five explosion requests a small ward', () {

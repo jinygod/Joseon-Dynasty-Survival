@@ -44,8 +44,29 @@ void main() {
       expect(metrics.weaponLevelTimes, {
         hwandoSlash: {2: 20.0, 6: 190.0},
       });
-      expect(metrics.firstMasterAtSeconds, {hwandoSlash: 191.0});
+      expect(metrics.firstMasterAtSeconds, {hwandoSlash: 190.0});
       expect(metrics.masteredWeaponIds, {hwandoSlash});
+    });
+
+    test('master achievement time does not start the post-use kill window', () {
+      final tracker = CombatPlaytestTracker()
+        ..recordLevel(weaponId: hwandoSlash, level: 6, atSeconds: 190)
+        ..recordKill(
+          atSeconds: 195,
+          sourceId: hwandoSlash,
+          enemyBehaviorId: 'swarm',
+        )
+        ..recordMasterActivation(weaponId: hwandoSlash, atSeconds: 200)
+        ..recordKill(
+          atSeconds: 209,
+          sourceId: hwandoSlash,
+          enemyBehaviorId: 'swarm',
+        );
+
+      final metrics = tracker.snapshot();
+      expect(metrics.firstMasterAtSeconds, {hwandoSlash: 190.0});
+      expect(metrics.masteredWeaponIds, {hwandoSlash});
+      expect(metrics.masterKillsInTenSeconds, {hwandoSlash: 1});
     });
 
     test('records synergy timing and effective damage totals', () {

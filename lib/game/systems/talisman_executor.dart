@@ -60,17 +60,31 @@ class WardSpawnRequest {
   AttackPresentation get presentation => attack.spec.presentation;
 }
 
+class TalismanTransferCue {
+  TalismanTransferCue({required Vector2 source, required Vector2 target})
+    : _source = source.clone(),
+      _target = target.clone();
+
+  final Vector2 _source;
+  final Vector2 _target;
+
+  Vector2 get source => _source.clone();
+  Vector2 get target => _target.clone();
+}
+
 class TalismanTickResult {
   const TalismanTickResult({
     this.attached = const [],
     this.attacks = const [],
     this.wards = const [],
+    this.transfers = const [],
     this.removedTargetIds = const [],
   });
 
   final List<AttachedTalisman> attached;
   final List<AttackInstance> attacks;
   final List<WardSpawnRequest> wards;
+  final List<TalismanTransferCue> transfers;
   final List<String> removedTargetIds;
 }
 
@@ -103,6 +117,7 @@ class TalismanExecutor {
         .toList(growable: false);
     final attacks = <AttackInstance>[];
     final wards = <WardSpawnRequest>[];
+    final transfers = <TalismanTransferCue>[];
     final expired = _attached.entries
         .where((entry) => entry.value.explodeAtSeconds <= input.now)
         .toList(growable: false);
@@ -121,7 +136,13 @@ class TalismanExecutor {
         wards.add(_wardFor(entry.key.position, input, master: false));
       }
       if (input.level >= 4 && entry.value.transferDepth < maxTransferDepth) {
-        _transferFrom(entry.key, entry.value.transferDepth + 1, input, enemies);
+        final transfer = _transferFrom(
+          entry.key,
+          entry.value.transferDepth + 1,
+          input,
+          enemies,
+        );
+        if (transfer != null) transfers.add(transfer);
       }
     }
 
@@ -145,6 +166,7 @@ class TalismanExecutor {
       attached: List.unmodifiable(_attached.values),
       attacks: List.unmodifiable(attacks),
       wards: List.unmodifiable(wards),
+      transfers: List.unmodifiable(transfers),
       removedTargetIds: List.unmodifiable(removedTargetIds),
     );
   }
@@ -187,13 +209,13 @@ class TalismanExecutor {
     }
   }
 
-  void _transferFrom(
+  TalismanTransferCue? _transferFrom(
     EnemyComponent source,
     int depth,
     TalismanTickInput input,
     List<EnemyComponent> enemies,
   ) {
-    if (_attached.length >= maxAttachedSeals) return;
+    if (_attached.length >= maxAttachedSeals) return null;
     final stats = weaponLevelFor(talismanThrow, input.level);
     final maxRangeSquared = pow(stats.range * input.sizeMultiplier, 2);
     final candidates =
@@ -212,8 +234,14 @@ class TalismanExecutor {
                 .compareTo(b.position.distanceToSquared(source.position)),
           );
     if (candidates.isNotEmpty) {
-      _attach(candidates.first, input.now, depth, input.criticalChance);
+      final target = candidates.first;
+      _attach(target, input.now, depth, input.criticalChance);
+      return TalismanTransferCue(
+        source: source.position,
+        target: target.position,
+      );
     }
+    return null;
   }
 
   void _attach(

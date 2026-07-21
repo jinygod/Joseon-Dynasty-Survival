@@ -142,6 +142,8 @@ class WeaponSystem {
         meleeArcs: meleeArcs,
         attackInstances: attackInstances,
         fiveColorWards: fiveColorWards,
+        attachedTalismans: talismanResult.attached,
+        talismanTransfers: talismanResult.transfers,
         firedWeaponIds: firedWeaponIds,
         hwandoDirection: hwandoDirection,
       );
@@ -251,6 +253,8 @@ class WeaponSystem {
       areaAttacks: areaAttacks,
       frostFields: frostFields,
       fiveColorWards: fiveColorWards,
+      attachedTalismans: talismanResult.attached,
+      talismanTransfers: talismanResult.transfers,
       firedWeaponIds: firedWeaponIds,
       attackInstances: attackInstances,
       hwandoDirection: hwandoDirection,
@@ -715,6 +719,8 @@ class WeaponTickResult {
     this.fiveColorWards = const [],
     this.firedWeaponIds = const [],
     this.attackInstances = const [],
+    this.attachedTalismans = const [],
+    this.talismanTransfers = const [],
     this.hwandoDirection,
   });
 
@@ -727,6 +733,8 @@ class WeaponTickResult {
       fiveColorWards = const [],
       firedWeaponIds = const [],
       attackInstances = const [],
+      attachedTalismans = const [],
+      talismanTransfers = const [],
       hwandoDirection = null;
 
   final List<DamageEvent> damageEvents;
@@ -737,5 +745,7 @@ class WeaponTickResult {
   final List<FiveColorWardComponent> fiveColorWards;
   final List<WeaponId> firedWeaponIds;
   final List<AttackInstance> attackInstances;
+  final List<AttachedTalisman> attachedTalismans;
+  final List<TalismanTransferCue> talismanTransfers;
   final Vector2? hwandoDirection;
 }

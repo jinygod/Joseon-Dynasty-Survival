@@ -230,8 +230,22 @@ void main() {
           hwandoFallbackDirection: Vector2(-1, 0),
         );
 
-        expect(first.attackInstances.single.direction, Vector2(0, -1));
-        expect(second.attackInstances.single.direction, Vector2(0, -1));
+        expect(
+          first.attackInstances.single.direction.x,
+          closeTo(-sqrt1_2, 0.000001),
+        );
+        expect(
+          first.attackInstances.single.direction.y,
+          closeTo(-sqrt1_2, 0.000001),
+        );
+        expect(
+          second.attackInstances.single.direction.x,
+          closeTo(sqrt1_2, 0.000001),
+        );
+        expect(
+          second.attackInstances.single.direction.y,
+          closeTo(-sqrt1_2, 0.000001),
+        );
       },
     );
 

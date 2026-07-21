@@ -11,6 +11,7 @@ class CombatPlaytestTracker {
   final Map<String, int> _weaponSelectionCounts = {};
   final Map<String, Map<int, double>> _weaponLevelTimes = {};
   final Map<String, double> _firstMasterAtSeconds = {};
+  final Map<String, double> _firstMasterActivationAtSeconds = {};
   final Map<String, int> _masterKillsInTenSeconds = {};
   final Map<String, double> _firstSynergyAtSeconds = {};
   final Map<String, double> _synergyDamageTotals = {};
@@ -36,6 +37,10 @@ class CombatPlaytestTracker {
     if (level <= 0 || !atSeconds.isFinite || atSeconds < 0) return;
     _increment(_weaponSelectionCounts, weaponId);
     (_weaponLevelTimes[weaponId] ??= {}).putIfAbsent(level, () => atSeconds);
+    if (level == 6) {
+      _masteredWeaponIds.add(weaponId);
+      _firstMasterAtSeconds.putIfAbsent(weaponId, () => atSeconds);
+    }
   }
 
   void recordMasterActivation({
@@ -45,6 +50,7 @@ class CombatPlaytestTracker {
     if (!atSeconds.isFinite || atSeconds < 0) return;
     _masteredWeaponIds.add(weaponId);
     _firstMasterAtSeconds.putIfAbsent(weaponId, () => atSeconds);
+    _firstMasterActivationAtSeconds.putIfAbsent(weaponId, () => atSeconds);
     _masterKillsInTenSeconds.putIfAbsent(weaponId, () => 0);
   }
 
@@ -54,7 +60,7 @@ class CombatPlaytestTracker {
     required String enemyBehaviorId,
   }) {
     if (sourceId == null || !atSeconds.isFinite) return;
-    final activatedAt = _firstMasterAtSeconds[sourceId];
+    final activatedAt = _firstMasterActivationAtSeconds[sourceId];
     if (activatedAt == null ||
         atSeconds < activatedAt ||
         atSeconds > activatedAt + masterKillWindowSeconds) {

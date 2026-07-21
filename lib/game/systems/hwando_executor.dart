@@ -122,6 +122,7 @@ class _ScheduledHwandoStage {
       if (isLine) AttackTrait.piercing,
       if (isMaster) AttackTrait.master,
     };
+    final direction = _stageDirection(input.direction, id);
 
     return AttackInstance(
       spec: AttackSpec(
@@ -151,10 +152,24 @@ class _ScheduledHwandoStage {
             : AttackPresentation.normal,
       ),
       origin: input.origin,
-      direction: input.direction,
+      direction: direction,
       sequenceIndex: sequenceIndex,
     );
   }
+}
+
+Vector2 _stageDirection(Vector2 aim, String id) {
+  final offset = switch (id) {
+    'hwando_slash_left' => -pi / 4,
+    'hwando_slash_right' => pi / 4,
+    'hwando_master_left' => -pi / 2,
+    'hwando_master_right' => pi / 2,
+    _ => 0.0,
+  };
+  if (offset == 0) return aim.clone();
+  final cosine = cos(offset);
+  final sine = sin(offset);
+  return Vector2(aim.x * cosine - aim.y * sine, aim.x * sine + aim.y * cosine);
 }
 
 List<_ScheduledHwandoStage> _scheduleFor(int level) => switch (level) {

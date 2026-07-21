@@ -34,8 +34,8 @@ Every schema 2 field is required, including nullable fields. Unknown versions an
 | `weaponOfferCounts` | object | Weapon ID to number of generated level-up offers. |
 | `weaponSelectionCounts` | object | Weapon ID to number of selected weapon levels. |
 | `weaponLevelTimes` | object | Weapon ID to an object mapping level numbers to first selection time in seconds. |
-| `firstMasterAtSeconds` | object | Weapon ID to first mastery attack activation time. |
-| `masterKillsInTenSeconds` | object | Weapon ID to kills attributed during the ten seconds following a mastery activation. |
+| `firstMasterAtSeconds` | object | Weapon ID to the first time level 6 (`master`) was selected. For legacy/runtime-injected runs that did not record the selection, the first mastery activation is used as a compatibility fallback. |
+| `masterKillsInTenSeconds` | object | Weapon ID to kills attributed during the ten seconds following the first actual mastery attack activation. Selecting level 6 does not start this window. |
 | `firstSynergyAtSeconds` | object | Synergy ID to first effective-damage time. |
 | `synergyDamageTotals` | object | Synergy ID to total effective damage. |
 | `enemyRoleDamageToPlayer` | object | Enemy behavior-profile ID to effective player damage. |
@@ -44,7 +44,7 @@ Every schema 2 field is required, including nullable fields. Unknown versions an
 | `maxEnemyCount` | integer | Maximum sampled live-enemy count. |
 | `lateAverageFps` | number | Mean FPS from raw frame durations at or after 240 seconds. |
 | `lateMinFps` | number | Minimum FPS from raw frame durations at or after 240 seconds. |
-| `masteredWeaponIds` | array | Weapon IDs that activated a mastery attack. |
+| `masteredWeaponIds` | array | Weapon IDs that reached level 6 (`master`). A run ending before the next weapon fire still counts as mastered. Legacy/runtime-injected activation without a recorded selection is also accepted. |
 | `isRepeatRun` | boolean | Whether the playtest session marked the run as a repeat run. Task 10 defaults this to false; session injection is handled separately. |
 
 Frame durations are recorded only while a run is actively simulating and

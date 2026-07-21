@@ -202,7 +202,32 @@ void main() {
       );
 
       expect(enemy.resolveIncomingDamage(frontMeleeEvent), 5);
+      expect(enemy.consumeBlockFeedback(), isTrue);
       expect(enemy.resolveIncomingDamage(rearExplosionEvent), 10);
+      expect(enemy.consumeBlockFeedback(), isFalse);
+    });
+
+    test('dokkaebi exposes a directional shield matching its facing', () {
+      final enemy = EnemyComponent.fromDefinition(enemyDefinitionFor(dokkaebi)!)
+        ..debugFace(Vector2(0, -1));
+
+      expect(enemy.hasDirectionalShield, isTrue);
+      expect(enemy.shieldDirection, Vector2(0, -1));
+    });
+
+    test('synergy bypasses the shield without block feedback', () {
+      final enemy = EnemyComponent.fromDefinition(enemyDefinitionFor(dokkaebi)!)
+        ..debugFace(Vector2(1, 0));
+      final event = DamageEvent(
+        target: enemy,
+        damage: 10,
+        knockback: 0,
+        direction: Vector2(-1, 0),
+        traits: const {AttackTrait.synergy},
+      );
+
+      expect(enemy.resolveIncomingDamage(event), 10);
+      expect(enemy.consumeBlockFeedback(), isFalse);
     });
 
     test('dokkaebi only partly blocks frontal piercing hits', () {
