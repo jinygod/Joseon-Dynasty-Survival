@@ -29,31 +29,51 @@ flutter test test/game/telemetry_export_service_test.dart test/game/run_telemetr
 
 ## 2026-07-22 완료 게이트 증거
 
-모든 Flutter 명령은 비 ASCII 원본 경로를 직접 넘기지 않도록 임시 ASCII 드라이브를
-사용했다. 분석 명령은 Dart 분석 서버의 치환 드라이브 루트 로깅 오류를 피하기 위해
-ASCII 경로 `Q:\repo`에서 실행했고, Android 빌드는 저장소·Flutter SDK·Android SDK를
-각각 ASCII 드라이브에 직접 연결했다. 외부 배포는 수행하지 않았다.
+검증 대상은 `5fbddbc588aa144b77067c1bf6df57bef2f1e573`와 아래의 안정된 사용자 소유
+작업 트리 변경 6개였다. 변경을 버리거나 Task 13 검증자가 임의로 수정하지 않았으며,
+게이트 뒤 별도 커밋 `cc4257ced3ed8b7fff88e5bb68e6eb711c8587b1`에 그대로 포함됐다.
+
+- `lib/game/balance/experience_balance_baseline.dart`
+- `lib/game/content/enemy_definitions.dart`
+- `test/game/enemy_balance_baseline_test.dart`
+- `test/game/enemy_behavior_definitions_test.dart`
+- `test/game/experience_balance_baseline_test.dart`
+- `test/game/multi_seed_run_regression_test.dart`
+
+Flutter SDK는 `C:\Users\전성진\source\flutter`를 가리키는 ASCII `Y:` 드라이브를
+사용했다. `Z:\` 드라이브 루트에서는 Dart 3.12 분석 서버의 세션 로그 정규화가
+`{{workspaceFolder-0}}\`를 잘못 이스케이프해 종료 코드 255가 재현되었으므로, 동일
+체크아웃을 가리키는 비 루트 ASCII junction `C:\codex-task13\repo`에서 명령을
+실행했다. 외부 배포는 수행하지 않았다.
 
 | 게이트 | 실행 시각 (KST) | 종료 코드 | 관측 결과 |
 | --- | --- | ---: | --- |
-| `git diff --check`; `dart format --output=none --set-exit-if-changed lib test` | 02:38:53–02:38:58 | 0 / 0 | 270개 Dart 파일 검사, 변경 0 |
-| `flutter analyze` | 02:33:18–02:34:45 | 0 | `No issues found!` |
-| `flutter test -r compact` | 02:37:32–02:38:33 | 0 | 732/732 통과, `All tests passed!` |
-| `flutter build web` | 02:21:15–02:22:19 | 0 | `build/web` 생성, `build/web/index.html` 1,562 bytes |
-| `flutter build apk --debug` | 02:25:13–02:31:54 | 0 | `build/app/outputs/flutter-apk/app-debug.apk` 생성, 162,758,695 bytes, 수정 시각 02:31:43 |
-| 고정 시드 5분 슬라이스 3개 파일 | 02:37:15–02:37:32 | 0 | 6/6 통과, `All tests passed!` |
+| `git status --short` | 02:23:45.673–02:23:45.784 | 0 | 위의 사용자 소유 변경 6개 확인 |
+| `git diff --check` | 02:23:53.109–02:23:53.213 | 0 | 공백 오류 없음 |
+| `dart format --output=none --set-exit-if-changed lib test` | 02:23:53.109–02:23:54.646 | 0 | 270개 파일 검사, 변경 0 |
+| `flutter analyze` | 02:23:59.373–02:24:28.781 | 0 | `No issues found!` (분석 23.0초) |
+| `flutter test -r compact` | 02:24:37.662–02:25:43.169 | 0 | 정확히 732개 통과, `All tests passed!` |
+| `flutter build web` | 02:26:01.609–02:27:35.000 | 0 | `build/web`, 73개 파일, 합계 43,754,013 bytes |
+| `flutter build apk --debug` | 02:36:57.448–02:38:45.385 | 0 | 아래 APK 생성 및 원본 표준 경로로 복사 |
+| 고정 시드 5분 슬라이스 3개 파일 | 02:34:10.170–02:34:29.981 | 0 | 정확히 6개 통과, `All tests passed!` |
 
-Android 첫 시도(02:22:49–02:24:52)는 junction 경로가 원래 비 ASCII 경로로
-정규화되어 Gradle 경로 검사에서 종료 코드 1로 중단됐다. 직접 `subst`한 저장소
-드라이브로 동일 명령을 다시 실행해 위의 종료 코드 0과 새 APK 수정 시각을 확인했다.
-검출된 기존 APK는 수정 시각이 2026-07-20이어서 성공 증거로 사용하지 않았다.
+Android Gradle은 junction/subst 경로를 원래 비 ASCII 경로로 정규화했고, 사용자 Pub
+캐시와 사라진 외부 `P:` Flutter 매핑도 각각 별도의 실패 원인이 되었다. 성공 게이트는
+현재 작업 트리를 `C:\codex-task13\apk-repo`에 새로 물리 복사한 뒤 Git 추적 파일
+633개의 SHA-256이 원본과 모두 일치함을 확인하고, ASCII Flutter/Android SDK,
+`PUB_CACHE`, `TEMP`, `TMP`로 실행했다. 생성된 APK를 표준 경로에 복사한 뒤 해시가
+동일함을 재확인했다.
 
-전체 테스트의 첫 실행에서는 725개 통과와 7개 실패를 재현했다. 수직 슬라이스에서
-의도적으로 변경된 일반 적 9종, 후반 상한 96과 생성률 5.2에 맞춰 오래된 기준
-검사를 갱신했다. 새 삿갓 적의 영문 표시 이름은 `삿갓 망령`으로 수정했고, 증가한
-생성 경험치 1,178.1654에서도 기존 9·11·12 레벨업 범위를 유지하도록 기본 획득률을
-0.15·0.21·0.25로 조정했다. 관련 5개 파일의 집중 회귀 검사는 15/15 통과했고,
-그 뒤 전체 732개 테스트를 다시 실행해 위 결과를 기록했다.
+- 임시 빌드 경로: `C:\codex-task13\apk-repo\build\app\outputs\flutter-apk\app-debug.apk`
+- 표준 경로: `build/app/outputs/flutter-apk/app-debug.apk`
+- 크기: 162,745,711 bytes
+- SHA-256: `F2F0FCBE0CCB38CA11FFE0CDB72571A7530D55FA09BAA4A71A02749B26929844`
+- 수정 시각: 2026-07-22 02:38:42.733 KST
+
+고정 스냅샷 이전의 전체 테스트 실행(02:18:51–02:19:45)은 실행 중 위 6개 파일이
+변경되어 730개 통과·2개 실패로 끝났다. 실패 내용은 변경 도중 읽힌 삿갓 적 영문명과
+이전 압박 기대값이었다. 파일 수정 시각이 안정된 뒤 게이트 전체를 처음부터 다시
+실행했으며, 이 중간 실행을 제품 회귀나 통과 증거로 사용하지 않았다.
 
 ### 고정 시드 밀도·성능 값
 
@@ -64,11 +84,14 @@ Android 첫 시도(02:22:49–02:24:52)는 junction 경로가 원래 비 ASCII �
 - 후반 평균/최저 시뮬레이션 FPS: 59.998800024 / 59.998800024
 - 적/투사체/피해 숫자/전투 효과 최대치: 43 / 14 / 20 / 21
 - 인구 제한 위반 표본: 0, 메모리 프록시 위반 표본: 0
-- 최대 유지 소유자: 15/128, 최대 메모리 프록시: 224/512
+- 최대 mounted component: 214, 최대 유지 소유자: 15/128, 최대 메모리 프록시: 224/512
 - 고정 시드 런의 보스 요청과 실제 보스 생성: 각각 1회
-- 20개 시드 회귀에서 시드별 보스 요청 1회, 최대 활성 적 96 이하, 프레임당 생성
-  8 이하, 총 생성 400 이상을 검증. 군집형·돌진형·원거리형·방어형 ID의 생성 횟수도
-  모든 시드에서 각각 0보다 큼을 확인
+- 시드 3107의 240–270초 혼합 역할 생성: 쥐떼 33, 원혼 20, 삿갓 망령 21,
+  도깨비 23, 장승령 7, 처녀귀 6으로 모두 0보다 큼
+- 시드 3107 회귀: 보스 요청 1, 총 생성 641, 최대 활성 적 96, 프레임당 최대 생성 3,
+  잘못된 풀 요청 0, cap 위반 0
+- 20개 시드 회귀는 시드별 보스 요청 1회, 최대 활성 적 96 이하, 프레임당 생성 8
+  이하, 총 생성 400 이상, pressure 구간 elite 합계가 0보다 큼을 검증
 
 원본 자동 산출물은 `build/qa/production-high-risk-performance-log.json`과
 `build/qa/production-high-risk-performance-log.md`에 있다. 위 FPS는 고정된 원시
