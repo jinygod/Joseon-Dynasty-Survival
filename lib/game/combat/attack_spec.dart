@@ -49,6 +49,7 @@ class AttackInstance {
     required Vector2 origin,
     required Vector2 direction,
     required this.sequenceIndex,
+    this.isCritical = false,
   }) : _origin = origin.clone(),
        _direction = _unit(direction);
 
@@ -56,6 +57,7 @@ class AttackInstance {
   final Vector2 _origin;
   final Vector2 _direction;
   final int sequenceIndex;
+  final bool isCritical;
 
   Vector2 get origin => _origin.clone();
   Vector2 get direction => _direction.clone();

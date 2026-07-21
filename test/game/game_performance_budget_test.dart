@@ -2,6 +2,8 @@ import 'package:flame/components.dart';
 import 'package:flame_test/flame_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/components/enemy_component.dart';
+import 'package:pixel_survivor/game/components/attack_effect_component.dart';
+import 'package:pixel_survivor/game/components/combat_effect_component.dart';
 import 'package:pixel_survivor/game/components/projectile_component.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
@@ -27,6 +29,26 @@ void main() {
     ),
     gameSize: Vector2(960, 540),
   );
+  final stagePriorityGameTester = FlameTester<PixelSurvivorGame>(() {
+    final game = PixelSurvivorGame(
+      playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
+      onRunEnded: null,
+      performanceBudget: constrainedBudget,
+    );
+    for (var level = 0; level < 6; level += 1) {
+      game.weaponSystem.upgrade(hwandoSlash, game.unlockedWeaponIds);
+    }
+    game.add(
+      EnemyComponent(
+        enemyId: 'stage-priority-target',
+        maxHealth: 10000,
+        moveSpeed: 0,
+        damage: 0,
+        position: Vector2(448, 300),
+      ),
+    );
+    return game;
+  }, gameSize: Vector2(960, 540));
 
   test('standard budget is one positive contract for every population', () {
     expect(GamePerformanceBudget.standard.maxEnemies, 96);
@@ -74,6 +96,25 @@ void main() {
       throwsUnsupportedError,
     );
   });
+
+  stagePriorityGameTester.testGameWidget(
+    'shared stage visual wins the single combat effect slot',
+    verify: (game, _) async {
+      game.update(.05);
+      game.update(0);
+
+      expect(game.children.whereType<AttackEffectComponent>(), hasLength(1));
+      expect(game.children.whereType<CombatEffectComponent>(), isEmpty);
+      expect(
+        game.performanceSnapshot.counts[GamePopulationKind.combatEffect],
+        1,
+      );
+      expect(
+        game.performanceSnapshot.rejected[GamePopulationKind.combatEffect],
+        greaterThanOrEqualTo(1),
+      );
+    },
+  );
 
   constrainedGameTester.testGameWidget(
     'runtime rejects additions at injected limits and reports diagnostics',

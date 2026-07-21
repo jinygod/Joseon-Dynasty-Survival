@@ -5,6 +5,7 @@ import 'package:flame_test/flame_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/components/enemy_component.dart';
 import 'package:pixel_survivor/game/components/attack_effect_component.dart';
+import 'package:pixel_survivor/game/components/combat_effect_component.dart';
 import 'package:pixel_survivor/game/components/enemy_hazard_component.dart';
 import 'package:pixel_survivor/game/components/experience_gem_component.dart';
 import 'package:pixel_survivor/game/components/frost_field_component.dart';
@@ -15,6 +16,7 @@ import 'package:pixel_survivor/game/audio/audio_cue.dart';
 import 'package:pixel_survivor/game/combat/attack_geometry.dart';
 import 'package:pixel_survivor/game/content/augment_definitions.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
+import 'package:pixel_survivor/game/content/combat_effect_atlas.dart';
 import 'package:pixel_survivor/game/content/ids.dart';
 import 'package:pixel_survivor/game/content/enemy_definitions.dart';
 import 'package:pixel_survivor/game/content/playtest_content_policy.dart';
@@ -76,6 +78,25 @@ void main() {
         ),
       );
     }
+    return game;
+  }, gameSize: Vector2(960, 540));
+  final criticalMasterGameTester = FlameTester<PixelSurvivorGame>(() {
+    final game = PixelSurvivorGame(
+      playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
+      onRunEnded: null,
+    )..augmentLevels[hawkEye] = 20;
+    for (var level = 0; level < 6; level += 1) {
+      game.weaponSystem.upgrade(hwandoSlash, game.unlockedWeaponIds);
+    }
+    game.add(
+      EnemyComponent(
+        enemyId: bandit,
+        maxHealth: 10000,
+        moveSpeed: 0,
+        damage: 0,
+        position: Vector2(448, 300),
+      ),
+    );
     return game;
   }, gameSize: Vector2(960, 540));
 
@@ -382,7 +403,7 @@ void main() {
     );
 
     masterGameTester.testGameWidget(
-      'master hwando resolves the shared geometry and cues once per sequence',
+      'critical chance zero preserves shared geometry and one cue per sequence',
       verify: (game, _) async {
         game.update(.05);
         game.update(0);
@@ -402,6 +423,15 @@ void main() {
             .toSet();
 
         expect(damaged, expected);
+        expect(effect.instance.isCritical, isFalse);
+        expect(
+          damaged.single.maxHealth - damaged.single.currentHealth,
+          effect.instance.spec.damage,
+        );
+        expect(
+          game.children.whereType<CombatEffectComponent>().single.kind,
+          CombatEffectKind.hit,
+        );
         var sawSecondStage = false;
         for (var frame = 0; frame < 10 && !sawSecondStage; frame += 1) {
           game.update(.05);
@@ -419,6 +449,26 @@ void main() {
         expect(
           audioCues.where((cue) => cue == AudioCue.hwandoMasterAttack),
           hasLength(1),
+        );
+      },
+    );
+
+    criticalMasterGameTester.testGameWidget(
+      'critical chance one doubles shared hwando damage and feedback',
+      verify: (game, _) async {
+        game.update(.05);
+        game.update(0);
+        final attack = game.children.whereType<AttackEffectComponent>().single;
+        final enemy = game.children.whereType<EnemyComponent>().single;
+
+        expect(attack.instance.isCritical, isTrue);
+        expect(
+          enemy.maxHealth - enemy.currentHealth,
+          attack.instance.spec.damage * 2,
+        );
+        expect(
+          game.children.whereType<CombatEffectComponent>().single.kind,
+          CombatEffectKind.critical,
         );
       },
     );

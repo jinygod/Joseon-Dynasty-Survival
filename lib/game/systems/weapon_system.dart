@@ -255,7 +255,7 @@ class WeaponSystem {
       maxRange: stats.range * sizeMultiplier,
       fallbackDirection: fallbackDirection,
     ).direction;
-    final emitted = _hwandoExecutor.tick(
+    final scheduled = _hwandoExecutor.tick(
       HwandoTickInput(
         dt: dt * _positiveMultiplier(attackSpeedMultiplier),
         level: level,
@@ -265,6 +265,16 @@ class WeaponSystem {
         sizeMultiplier: sizeMultiplier,
       ),
     );
+    final emitted = [
+      for (final attack in scheduled)
+        AttackInstance(
+          spec: attack.spec,
+          origin: attack.origin,
+          direction: attack.direction,
+          sequenceIndex: attack.sequenceIndex,
+          isCritical: _random.nextDouble() < criticalChance.clamp(0, 1),
+        ),
+    ];
     attackInstances.addAll(emitted);
     for (final attack in emitted) {
       final range = attack.spec.shape == AttackShape.circle
@@ -286,13 +296,15 @@ class WeaponSystem {
       meleeArcs.add(arc);
       for (final enemy in enemies.where(arc.containsEnemy)) {
         damageEvents.add(
-          _damageEvent(
+          DamageEvent(
             weaponId: hwandoSlash,
             target: enemy,
-            origin: attack.origin,
-            damage: attack.spec.damage,
+            direction: _direction(attack.origin, enemy.position),
+            damage: attack.spec.damage * (attack.isCritical ? 2 : 1),
             knockback: attack.spec.knockback,
-            criticalChance: criticalChance,
+            isCritical: attack.isCritical,
+            sourceId: attack.spec.id,
+            traits: attack.spec.traits,
           ),
         );
       }

@@ -624,6 +624,7 @@ class PixelSurvivorGame extends FlameGame
   }
 
   void _resolveSharedAttack(AttackInstance attack) {
+    _spawnAttackEffect(attack);
     final enemies = children
         .whereType<EnemyComponent>()
         .where((enemy) => !enemy.isDead && !enemy.isRemoving)
@@ -638,17 +639,17 @@ class PixelSurvivorGame extends FlameGame
       events.add(
         DamageEvent(
           target: enemy,
-          damage: attack.spec.damage,
+          damage: attack.spec.damage * (attack.isCritical ? 2 : 1),
           knockback: attack.spec.knockback,
           direction: direction,
           weaponId: hwandoSlash,
           sourceId: attack.spec.id,
           traits: attack.spec.traits,
+          isCritical: attack.isCritical,
         ),
       );
     }
     _applyDamageEvents(events);
-    _spawnAttackEffect(attack);
     _emitSharedAttackAudio(attack);
 
     if (attack.spec.presentation == AttackPresentation.master) {
