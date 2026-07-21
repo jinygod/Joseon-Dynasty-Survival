@@ -1,6 +1,7 @@
 import 'package:flame/components.dart';
 
 import '../components/enemy_component.dart';
+import '../combat/attack_spec.dart';
 import '../content/ids.dart';
 
 class DamageEvent {
@@ -11,6 +12,8 @@ class DamageEvent {
     required this.direction,
     this.weaponId,
     this.isCritical = false,
+    this.sourceId,
+    this.traits = const {},
   });
 
   final EnemyComponent target;
@@ -19,4 +22,6 @@ class DamageEvent {
   final Vector2 direction;
   final WeaponId? weaponId;
   final bool isCritical;
+  final String? sourceId;
+  final Set<AttackTrait> traits;
 }
