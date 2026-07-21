@@ -3,7 +3,7 @@ import '../models/combat_playtest_metrics.dart';
 class CombatPlaytestTracker {
   CombatPlaytestTracker({this.isRepeatRun = false});
 
-  static const lateRunStartSeconds = 240.0;
+  static const lateRunStartSeconds = 180.0;
   static const masterKillWindowSeconds = 10.0;
 
   final bool isRepeatRun;

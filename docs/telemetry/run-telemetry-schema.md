@@ -42,8 +42,8 @@ Every schema 2 field is required, including nullable fields. Unknown versions an
 | `enemyRoleDeathCauses` | object | Enemy behavior-profile ID to lethal-hit count. |
 | `averageEnemyCount` | number | Mean live-enemy count sampled once per game update. |
 | `maxEnemyCount` | integer | Maximum sampled live-enemy count. |
-| `lateAverageFps` | number | Mean FPS from raw frame durations at or after 240 seconds. |
-| `lateMinFps` | number | Minimum FPS from raw frame durations at or after 240 seconds. |
+| `lateAverageFps` | number | Mean FPS from raw frame durations at or after 180 seconds. |
+| `lateMinFps` | number | Minimum FPS from raw frame durations at or after 180 seconds. |
 | `masteredWeaponIds` | array | Weapon IDs that reached level 6 (`master`). A run ending before the next weapon fire still counts as mastered. Legacy/runtime-injected activation without a recorded selection is also accepted. |
 | `isRepeatRun` | boolean | Whether the playtest session marked the run as a repeat run. Task 10 defaults this to false; session injection is handled separately. |
 

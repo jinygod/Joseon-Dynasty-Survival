@@ -100,9 +100,9 @@ void main() {
 
     test('records density and raw late frame FPS', () {
       final tracker = CombatPlaytestTracker()
-        ..recordFrame(dt: 0.05, enemyCount: 10, atSeconds: 239)
-        ..recordFrame(dt: 0.02, enemyCount: 20, atSeconds: 240)
-        ..recordFrame(dt: 0.04, enemyCount: 30, atSeconds: 250);
+        ..recordFrame(dt: 0.05, enemyCount: 10, atSeconds: 179)
+        ..recordFrame(dt: 0.02, enemyCount: 20, atSeconds: 180)
+        ..recordFrame(dt: 0.04, enemyCount: 30, atSeconds: 190);
 
       final metrics = tracker.snapshot();
       expect(metrics.averageEnemyCount, 20);
