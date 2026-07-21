@@ -22,6 +22,8 @@ class PerformanceDevelopmentReporter {
       'averageActiveEnemies': log.averageActiveEnemies,
       'maximumActiveEnemies': log.maximumActiveEnemies,
       'lateFrameSampleCount': log.lateFrameSampleCount,
+      'lateAverageActiveEnemies': log.lateAverageActiveEnemies,
+      'lateMaximumActiveEnemies': log.lateMaximumActiveEnemies,
       'lateAverageSimulatedFps': log.lateAverageSimulatedFps,
       'lateMinimumSimulatedFps': log.lateMinimumSimulatedFps,
       'peakFrameStepMicros': log.peakFrameStepMicros,
@@ -63,6 +65,7 @@ class PerformanceDevelopmentReporter {
 - Samples: ${_withThousands(log.sampleCount)}
 - Average / maximum active enemies: ${log.averageActiveEnemies.toStringAsFixed(2)} / ${log.maximumActiveEnemies}
 - Late raw-frame samples: ${_withThousands(log.lateFrameSampleCount)} after ${GamePerformanceBudget.latePerformanceWindowStartSeconds.toStringAsFixed(0)} simulated seconds
+- Late average / maximum active enemies: ${log.lateAverageActiveEnemies.toStringAsFixed(2)} / ${log.lateMaximumActiveEnemies}
 - Late average / minimum simulated FPS: ${log.lateAverageSimulatedFps.toStringAsFixed(2)} / ${log.lateMinimumSimulatedFps.toStringAsFixed(2)} (minimum ${GamePerformanceBudget.minimumLateSimulatedFps.toStringAsFixed(0)})
 - Peak host test-loop wall time for `game.update` plus lifecycle processing: ${log.peakHostUpdateLifecycleWallMicros} microseconds
 - Peak mounted Flame components: ${log.peakMountedComponentCount}

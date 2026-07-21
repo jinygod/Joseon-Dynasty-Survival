@@ -1,35 +1,27 @@
-# Five-minute Production Performance Development Log
+# Production High-risk Performance Development Log
 
 - Scenario: `pixel-survivor-production-update-five-minute-window`
 - Seed: `3107`
-- Runtime: actual mounted `PixelSurvivorGame` production update, spawn, combat,
-  collision, and component lifecycle paths
-- Window: 300 simulated seconds / 18,000 updates at 1/60 second
-- Observation interval: every frame (18,000 samples)
-- Visual assets: production-injected fallback; game logic unchanged
-- Average active enemies: 13.48
-- Maximum active enemies: 42 / 96
-- Late raw-frame window: 180-300 seconds (7,200 samples)
+- Window: 300.000 simulated seconds
+- Frames: 18,000 at a peak simulation step of 16667 microseconds
+- Samples: 18,000
+- Average / maximum active enemies: 13.55 / 43
+- Late raw-frame samples: 7,200 after 180 simulated seconds
+- Late average / maximum active enemies: 23.69 / 43
 - Late average / minimum simulated FPS: 60.00 / 60.00 (minimum 55)
-- Peak host test-loop wall time for update plus lifecycle: 6,757 microseconds
-- Peak mounted Flame components: 216
-- Peak retained production owners: 15
-- Peak memory proxy: 229 / 512
-- Retained-owner limit: 128
-- Population, memory-proxy, and late-frame result: PASS (zero violation
-  samples)
+- Peak host test-loop wall time for `game.update` plus lifecycle processing: 7156 microseconds
+- Peak mounted Flame components: 214
+- Peak retained production owners: 15 (limit 128)
+- Peak memory proxy (mounted components + retained owners): 224 (limit 512)
+- Population budget result: PASS
+- Memory-proxy budget result: PASS
+- Late raw-frame budget result: PASS
 
 | Population | Peak | Limit |
 | --- | ---: | ---: |
-| enemy | 42 | 96 |
-| projectile | 12 | 128 |
-| damageNumber | 24 | 24 |
+| enemy | 43 | 96 |
+| projectile | 14 | 128 |
+| damageNumber | 20 | 24 |
 | combatEffect | 21 | 32 |
 
-This deterministic host test does not claim device frame time, RSS, or heap
-measurements. Its wall-clock label is limited to the host test loop, while
-mounted components plus owners retained by production collections are the
-bounded leak/pressure proxy. Simulated FPS is derived from each raw frame
-duration before the game clamps combat `dt`; it is not a device rendering FPS
-claim. The test also caps experience-gem components at 128 and merges excess
-experience into an existing gem without losing rewards.
+Physical memory and device frame time are not measured by this deterministic host test. Mounted components plus owners retained by production game collections form a bounded leak/pressure proxy; profile-mode RSS, heap, and raster timing require the documented manual device procedure.

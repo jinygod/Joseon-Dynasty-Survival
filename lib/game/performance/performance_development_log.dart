@@ -32,6 +32,8 @@ class PerformanceDevelopmentLog {
     required this.averageActiveEnemies,
     required this.maximumActiveEnemies,
     required this.lateFrameSampleCount,
+    required this.lateAverageActiveEnemies,
+    required this.lateMaximumActiveEnemies,
     required this.lateAverageSimulatedFps,
     required this.lateMinimumSimulatedFps,
     required this.budget,
@@ -55,6 +57,8 @@ class PerformanceDevelopmentLog {
   final double averageActiveEnemies;
   final int maximumActiveEnemies;
   final int lateFrameSampleCount;
+  final double lateAverageActiveEnemies;
+  final int lateMaximumActiveEnemies;
   final double lateAverageSimulatedFps;
   final double lateMinimumSimulatedFps;
   final GamePerformanceBudget budget;
@@ -93,6 +97,8 @@ class PerformanceDevelopmentCollector {
   var _activeEnemySum = 0;
   var _maximumActiveEnemies = 0;
   var _lateFrameSampleCount = 0;
+  var _lateActiveEnemySum = 0;
+  var _lateMaximumActiveEnemies = 0;
   var _lateSimulatedFpsSum = 0.0;
   var _lateMinimumSimulatedFps = double.infinity;
   var _peakFrameStepMicros = 0;
@@ -113,6 +119,11 @@ class PerformanceDevelopmentCollector {
         sample.rawFrameDurationMicros > 0) {
       final simulatedFps = 1000000 / sample.rawFrameDurationMicros;
       _lateFrameSampleCount += 1;
+      _lateActiveEnemySum += activeEnemies;
+      _lateMaximumActiveEnemies = _max(
+        _lateMaximumActiveEnemies,
+        activeEnemies,
+      );
       _lateSimulatedFpsSum += simulatedFps;
       if (simulatedFps < _lateMinimumSimulatedFps) {
         _lateMinimumSimulatedFps = simulatedFps;
@@ -165,6 +176,10 @@ class PerformanceDevelopmentCollector {
       averageActiveEnemies: _activeEnemySum / _sampleCount,
       maximumActiveEnemies: _maximumActiveEnemies,
       lateFrameSampleCount: _lateFrameSampleCount,
+      lateAverageActiveEnemies: _lateFrameSampleCount == 0
+          ? 0
+          : _lateActiveEnemySum / _lateFrameSampleCount,
+      lateMaximumActiveEnemies: _lateMaximumActiveEnemies,
       lateAverageSimulatedFps: _lateFrameSampleCount == 0
           ? 0
           : _lateSimulatedFpsSum / _lateFrameSampleCount,

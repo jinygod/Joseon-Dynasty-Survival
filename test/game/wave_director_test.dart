@@ -37,16 +37,23 @@ void main() {
       expect(wavePressureForSecond(329.999).maxActiveEnemies, 64);
     });
 
-    test('180-270 second waves contain all four vertical-slice roles', () {
-      final ids = moonlitAbandonedOfficeWaves
-          .where((wave) => wave.startSecond >= 180 && wave.startSecond < 270)
-          .expand((wave) => wave.enemyWeights.keys)
-          .toSet();
-
-      expect(
-        ids,
-        containsAll({plagueRatSwarm, vengefulSpirit, sakkatSpecter, dokkaebi}),
+    test('each 180-270 second wave contains all four slice roles', () {
+      final lateWaves = moonlitAbandonedOfficeWaves.where(
+        (wave) => wave.startSecond >= 180 && wave.startSecond < 270,
       );
+
+      for (final wave in lateWaves) {
+        expect(
+          wave.enemyWeights.keys,
+          containsAll({
+            plagueRatSwarm,
+            vengefulSpirit,
+            sakkatSpecter,
+            dokkaebi,
+          }),
+          reason: '${wave.startSecond}-${wave.endSecond} seconds',
+        );
+      }
     });
 
     test('late pressure prioritizes count without inflating normal health', () {
