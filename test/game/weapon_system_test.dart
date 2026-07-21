@@ -95,8 +95,9 @@ void main() {
         8,
       );
       expect(
-        result.damageEvents
-            .singleWhere((event) => event.weaponId == talismanThrow)
+        result.attackInstances
+            .singleWhere((attack) => attack.spec.id == 'talisman_explosion')
+            .spec
             .damage,
         closeTo(9.2, 0.0001),
       );
@@ -282,7 +283,7 @@ void main() {
       );
     });
 
-    test('talisman chains to unique nearby targets', () {
+    test('talisman attaches to unique nearby targets before exploding', () {
       final enemies = List.generate(
         3,
         (index) => EnemyComponent(
@@ -294,14 +295,52 @@ void main() {
         ),
       );
 
-      final result = WeaponSystem(
+      final system = WeaponSystem(
         initialLevels: const {talismanThrow: 3},
         random: Random(1),
+      );
+      final attached = system.tick(
+        dt: 2,
+        origin: Vector2.zero(),
+        enemies: enemies,
+      );
+
+      expect(attached.damageEvents, isEmpty);
+      expect(
+        system.attachedTalismans.map((seal) => seal.target).toSet(),
+        hasLength(3),
+      );
+
+      final exploded = system.tick(
+        dt: .6,
+        origin: Vector2.zero(),
+        enemies: enemies,
+      );
+      expect(exploded.attackInstances, hasLength(3));
+    });
+
+    test('talisman mastery exposes at most three five-color wards', () {
+      final enemies = List.generate(
+        12,
+        (index) => EnemyComponent(
+          enemyId: 'enemy_$index',
+          maxHealth: 100,
+          moveSpeed: 0,
+          damage: 1,
+          position: Vector2((index ~/ 3) * 100.0, (index % 3) * 3.0),
+        ),
+      );
+
+      final result = WeaponSystem(
+        initialLevels: const {talismanThrow: 6},
       ).tick(dt: 2, origin: Vector2.zero(), enemies: enemies);
 
+      expect(result.fiveColorWards, hasLength(3));
       expect(
-        result.damageEvents.map((event) => event.target).toSet(),
-        hasLength(3),
+        result.fiveColorWards.every(
+          (ward) => ward.attack.spec.presentation == AttackPresentation.master,
+        ),
+        isTrue,
       );
     });
 

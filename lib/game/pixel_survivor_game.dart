@@ -22,6 +22,7 @@ import 'components/enemy_component.dart';
 import 'components/enemy_hazard_component.dart';
 import 'components/experience_gem_component.dart';
 import 'components/frost_field_component.dart';
+import 'components/five_color_ward_component.dart';
 import 'components/player_component.dart';
 import 'components/projectile_component.dart';
 import 'components/spirit_jade_component.dart';
@@ -589,6 +590,20 @@ class PixelSurvivorGame extends FlameGame
       if (weaponId == hwandoSlash && result.attackInstances.isNotEmpty) {
         continue;
       }
+      if (weaponId == talismanThrow) {
+        final hasTalismanAttack = result.attackInstances.any(
+          (attack) => attack.spec.id.startsWith('talisman_'),
+        );
+        if (hasTalismanAttack) continue;
+        _emitAudio(AudioCue.talismanAttack);
+        if (result.fiveColorWards.any(
+          (ward) =>
+              ward.attack.spec.presentation == AttackPresentation.master,
+        )) {
+          _emitAudio(AudioCue.talismanMasterAttack);
+        }
+        continue;
+      }
       _emitAudio(_attackCueFor(weaponId));
     }
     _applyDamageEvents(
@@ -621,6 +636,22 @@ class PixelSurvivorGame extends FlameGame
       if (activeFields.length >= 3) activeFields.first.removeFromParent();
       add(frostField);
     }
+    for (final ward in result.fiveColorWards) {
+      final activeWards = children
+          .whereType<FiveColorWardComponent>()
+          .where((active) => !active.isRemoving)
+          .where(
+            (active) =>
+                active.attack.spec.presentation ==
+                ward.attack.spec.presentation,
+          )
+          .toList();
+      final cap = ward.attack.spec.presentation == AttackPresentation.master
+          ? 3
+          : 12;
+      if (activeWards.length >= cap) activeWards.first.removeFromParent();
+      add(ward);
+    }
   }
 
   void _resolveSharedAttack(AttackInstance attack) {
@@ -630,6 +661,9 @@ class PixelSurvivorGame extends FlameGame
         .where((enemy) => !enemy.isDead && !enemy.isRemoving)
         .toList(growable: false);
     final events = <DamageEvent>[];
+    final weaponId = attack.spec.id.startsWith('talisman_')
+        ? talismanThrow
+        : hwandoSlash;
     for (final enemy in enemies) {
       if (!AttackGeometry.contains(attack, enemy.position, enemy.size.x / 2)) {
         continue;
@@ -642,7 +676,7 @@ class PixelSurvivorGame extends FlameGame
           damage: attack.spec.damage * (attack.isCritical ? 2 : 1),
           knockback: attack.spec.knockback,
           direction: direction,
-          weaponId: hwandoSlash,
+          weaponId: weaponId,
           sourceId: attack.spec.id,
           traits: attack.spec.traits,
           isCritical: attack.isCritical,
@@ -660,6 +694,15 @@ class PixelSurvivorGame extends FlameGame
   }
 
   void _emitSharedAttackAudio(AttackInstance attack) {
+    if (attack.spec.id.startsWith('talisman_')) {
+      if (attack.sequenceIndex == 0) {
+        _emitAudio(AudioCue.talismanAttack);
+        if (attack.spec.presentation == AttackPresentation.master) {
+          _emitAudio(AudioCue.talismanMasterAttack);
+        }
+      }
+      return;
+    }
     if (attack.sequenceIndex == 0) {
       _emitAudio(AudioCue.hwandoAttack);
       if (attack.spec.presentation == AttackPresentation.master) {
@@ -791,6 +834,10 @@ class PixelSurvivorGame extends FlameGame
         .whereType<FrostFieldComponent>()
         .where((field) => !field.isExpired)
         .toList();
+    final wards = children
+        .whereType<FiveColorWardComponent>()
+        .where((ward) => !ward.isExpired)
+        .toList();
     for (final enemy in enemies) {
       var strongestSlow = 0.0;
       for (final field in fields) {
@@ -798,10 +845,16 @@ class PixelSurvivorGame extends FlameGame
           strongestSlow = field.slowFraction;
         }
       }
+      for (final ward in wards) {
+        strongestSlow = max(strongestSlow, ward.slowFor(enemy));
+      }
       enemy.setEnvironmentalSlow(strongestSlow);
     }
     for (final field in fields) {
       _applyDamageEvents(field.collectDamageEvents(enemies));
+    }
+    for (final ward in wards) {
+      _applyDamageEvents(ward.collectDamageEvents(enemies));
     }
   }
 
