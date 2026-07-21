@@ -175,10 +175,7 @@ void main() {
       expect(game.elapsedSeconds, closeTo(300, 0.001));
       expect(log.sampleCount, frameCount ~/ observationIntervalFrames);
       expect(log.peakFrameStepMicros, frameStepMicros);
-      expect(
-        log.averageActiveEnemies,
-        closeTo(13.552222222222222, 1e-12),
-      );
+      expect(log.averageActiveEnemies, closeTo(13.552222222222222, 1e-12));
       expect(log.maximumActiveEnemies, 43);
       expect(log.lateFrameSampleCount, 7200);
       expect(log.lateAverageActiveEnemies, inInclusiveRange(23, 25));
@@ -219,9 +216,9 @@ void main() {
         'production-high-risk-performance-log.json',
         'production-high-risk-performance-log.md',
       });
-      final json = jsonDecode(
-        artifacts['production-high-risk-performance-log.json']!,
-      ) as Map<String, dynamic>;
+      final json =
+          jsonDecode(artifacts['production-high-risk-performance-log.json']!)
+              as Map<String, dynamic>;
       expect(json['averageActiveEnemies'], 13.552222222222222);
       expect(json['maximumActiveEnemies'], 43);
       expect(json['lateAverageActiveEnemies'], 23.694027777777777);
