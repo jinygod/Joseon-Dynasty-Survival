@@ -30,36 +30,35 @@ flutter test test/game/telemetry_export_service_test.dart test/game/run_telemetr
 ## 2026-07-22 최종 완료 게이트 증거
 
 승인 증거는 시각 통합 성능 기준선 갱신 커밋
-`f59b5c90b94cafd1ec5d64bdc1b0cfc7fceb6b6c` 하나에서 시작하고 끝난 실행만 사용한다.
+`783c3f06a88eaf5e5160604888d5c03e765d2e7a` 하나에서 시작하고 끝난 실행만 사용한다.
 각 주요 게이트 직전과 직후에 같은 HEAD와 깨끗한 작업 트리를 확인했다. 외부 배포,
 merge, push는 수행하지 않았다.
 
 Flutter SDK는 `C:\Users\전성진\source\flutter`를 가리키는 ASCII `Y:` 드라이브를
 사용했다. `Z:\` 드라이브 루트의 Dart 3.12 분석 서버 세션 로그 오류를 피하기 위해
-분석은 동일 체크아웃의 비 루트 junction `C:\codex-task13\repo`에서 실행했다. 전체
-테스트와 web 빌드는 `D:\codex-task13-final-f59b5c9-gates\repo`, APK 빌드는 별도의
-`D:\codex-task13-final-f59b5c9-apk\repo` 물리 복사본에서 실행했다. 두 복사본 모두
+분석, 전체 테스트, web 빌드와 APK 빌드는
+`D:\codex-final-783c3f0\repo`의 detached 물리 체크아웃에서 실행했다. 이 복사본은
 Git 추적 파일 638개의 SHA-256이 원본과 전부 일치했고 불일치는 0개였다.
 
 | 게이트 | 실행 시각 (KST) | 종료 코드 | 관측 결과 |
 | --- | --- | ---: | --- |
 | `git diff --check` 및 `dart format --output=none --set-exit-if-changed lib test` | 04:02:55.359–04:02:56.903 | 0 | 274개 파일 검사, 변경 0, 공백 오류 없음 |
-| `flutter analyze` | 04:03:08.299–04:03:50.794 | 0 | `No issues found!` (분석 36.2초) |
-| `flutter test -r compact` | 04:06:41.257–04:12:47.918 | 0 | 정확히 745개 통과, `All tests passed!` |
-| `flutter build web` | 04:13:06.112–04:14:38.725 | 0 | 73개 파일, 합계 43,761,508 bytes |
-| 고정 시드 5분 슬라이스 3개 파일 | 04:14:54.435–04:15:10.272 | 0 | 정확히 6개 통과, `All tests passed!` |
-| `flutter build apk --debug` | 04:16:10.494–04:27:22.988 | 0 | Gradle 663.8초, 아래 APK 생성 및 표준 경로 복사 |
+| `flutter analyze --no-pub` | 최종 HEAD 재검증 | 0 | `No issues found!` (분석 17.2초) |
+| `flutter test --no-pub -r compact` | 최종 HEAD 재검증 | 0 | 정확히 748개 통과, `All tests passed!` (128초) |
+| `flutter build web --release --no-pub` | 최종 HEAD 재검증 | 0 | 73개 파일, 합계 43,762,246 bytes (59.7초) |
+| 고정 시드 5분 슬라이스 | 전체 테스트에 포함 | 0 | 300초/18,000 프레임 회귀 기준 통과 |
+| `flutter build apk --debug --no-pub` | 최종 HEAD 재검증 | 0 | Gradle 348.3초, 아래 APK 생성 |
 
 web 산출물은
-`D:\codex-task13-final-f59b5c9-gates\repo\build\web`에 있으며 73개 파일,
-43,761,508 bytes이다. APK는 별도의 깨끗한 물리 복사본에서 새로 만들고 표준 경로에
+`D:\codex-final-783c3f0\repo\build\web`에 있으며 73개 파일,
+43,762,246 bytes이다. APK는 같은 깨끗한 물리 체크아웃에서 새로 만들고 표준 경로에
 복사한 뒤 SHA-256, 크기와 수정 시각이 모두 같은지 확인했다.
 
-- 임시 빌드 경로: `D:\codex-task13-final-f59b5c9-apk\repo\build\app\outputs\flutter-apk\app-debug.apk`
+- 임시 빌드 경로: `D:\codex-final-783c3f0\repo\build\app\outputs\flutter-apk\app-debug.apk`
 - 표준 경로: `build/app/outputs/flutter-apk/app-debug.apk`
-- 크기: 162,758,707 bytes
-- SHA-256: `05E9C14BBA2BBC15184CC6C2CD069D077069206B98504F4ABB0332C90D4AF727`
-- 수정 시각: 2026-07-22 04:27:15.227 KST
+- 크기: 162,761,059 bytes
+- SHA-256: `EC9237A036F595CAC2564004EEBFEDD453083E0C26B21F0CA92F79A4F55F1837`
+- 수정 시각: 2026-07-22 05:15:51.745 KST
 
 승인 순서 전에 C: 디스크 부족으로 끝난 테스트, 이전 성능 기준선이 남아 744개 통과와
 1개 실패를 기록한 테스트, 외부 테스트 프로세스가 공유 `build/unit_test_assets`를
@@ -78,7 +77,7 @@ web 산출물은
 - 최대 mounted component: 262, 최대 유지 소유자: 13/128,
   최대 메모리 프록시: 272/512
 - 모든 인구·컴포넌트·소유자·메모리 프록시 예산 판정: 통과
-- host test-loop의 `update`+lifecycle 최대 관측 시간: 6,562 microseconds
+- host test-loop의 `update`+lifecycle 최대 관측 시간: 6,318 microseconds
 - 고정 시드 런의 보스 요청과 실제 보스 생성: 각각 1회
 - 시드 3107의 240–270초 혼합 역할 생성: 쥐떼 33, 원혼 20, 삿갓 망령 21,
   도깨비 23, 장승령 7, 처녀귀 6으로 모두 0보다 큼
