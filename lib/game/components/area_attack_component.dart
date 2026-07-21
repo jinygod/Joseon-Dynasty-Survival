@@ -4,6 +4,7 @@ import 'dart:ui';
 
 import 'package:flame/components.dart';
 
+import '../combat/attack_spec.dart';
 import '../content/combat_effect_atlas.dart';
 import '../content/ids.dart';
 import '../content/weapon_effect_atlas.dart';
@@ -80,6 +81,7 @@ class AreaAttackComponent extends PositionComponent {
             knockback: knockback,
             direction: _directionTo(enemy.position),
             weaponId: weaponId,
+            traits: const {AttackTrait.explosion},
           ),
     ];
   }

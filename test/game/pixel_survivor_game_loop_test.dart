@@ -4,6 +4,8 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 import 'package:flame_test/flame_test.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pixel_survivor/game/components/area_attack_component.dart';
+import 'package:pixel_survivor/game/components/damage_number_component.dart';
 import 'package:pixel_survivor/game/components/enemy_component.dart';
 import 'package:pixel_survivor/game/components/attack_effect_component.dart';
 import 'package:pixel_survivor/game/components/combat_effect_component.dart';
@@ -28,6 +30,7 @@ import 'package:pixel_survivor/game/content/stage_definitions.dart';
 import 'package:pixel_survivor/game/content/wave_definitions.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
 import 'package:pixel_survivor/game/models/player_slot.dart';
+import 'package:pixel_survivor/game/models/damage_event.dart';
 import 'package:pixel_survivor/game/models/run_choice_record.dart';
 import 'package:pixel_survivor/game/models/run_outcome.dart';
 import 'package:pixel_survivor/game/models/run_result.dart';
@@ -1140,6 +1143,89 @@ void main() {
       expect(result.weaponDamageTotals[talismanThrow], 5);
       expect(result.weaponKillCounts[talismanThrow], 1);
       expect(enemy.deathVisualComplete, isFalse);
+    });
+
+    test(
+      'piercing projectile receives the lighter frontal reduction',
+      () async {
+        final game = newGame();
+        game.onGameResize(Vector2(960, 540));
+        await game.onLoad();
+        final enemy = EnemyComponent.fromDefinition(
+          enemyDefinitionFor(dokkaebi)!,
+          position: Vector2(40, 40),
+        )..debugFace(Vector2(1, 0));
+        await game.add(enemy);
+        await game.add(
+          ProjectileComponent(
+            weaponId: gakgungShot,
+            damage: 10,
+            position: enemy.position + Vector2(5, 0),
+            velocity: Vector2.zero(),
+            pierce: 1,
+          ),
+        );
+
+        game.update(0);
+
+        expect(enemy.currentHealth, 30);
+      },
+    );
+
+    test('area attack explosion bypasses frontal tank defense', () async {
+      final game = newGame();
+      game.onGameResize(Vector2(960, 540));
+      await game.onLoad();
+      final enemy = EnemyComponent.fromDefinition(
+        enemyDefinitionFor(dokkaebi)!,
+        position: Vector2(40, 40),
+      )..debugFace(Vector2(1, 0));
+      await game.add(enemy);
+      await game.add(
+        AreaAttackComponent(
+          weaponId: thunderCrashBomb,
+          damage: 10,
+          radius: 20,
+          delaySeconds: 0,
+          knockback: 0,
+          position: enemy.position + Vector2(5, 0),
+        ),
+      );
+
+      game.update(0);
+
+      expect(enemy.currentHealth, 28);
+    });
+
+    test('damage number and telemetry report effective health loss', () async {
+      final game = newGame();
+      game.onGameResize(Vector2(960, 540));
+      await game.onLoad();
+      final enemy = EnemyComponent.fromDefinition(
+        enemyDefinitionFor(dokkaebi)!,
+        position: Vector2(40, 40),
+      )..debugFace(Vector2(1, 0));
+      await game.add(enemy);
+
+      game.debugApplyDamageEvent(
+        DamageEvent(
+          target: enemy,
+          damage: 10,
+          knockback: 0,
+          direction: Vector2(-1, 0),
+          weaponId: gakgungShot,
+          sourceId: 'critical_test',
+          isCritical: true,
+          traits: const {AttackTrait.projectile},
+        ),
+      );
+      game.processLifecycleEvents();
+
+      final number = game.children.whereType<DamageNumberComponent>().single;
+      expect(enemy.currentHealth, 33);
+      expect(number.damage, 5);
+      expect(number.isCritical, isTrue);
+      expect(game.currentRunResult().weaponDamageTotals[gakgungShot], 5);
     });
 
     gameTester.testGameWidget(

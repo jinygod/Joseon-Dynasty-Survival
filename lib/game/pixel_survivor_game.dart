@@ -824,6 +824,10 @@ class PixelSurvivorGame extends FlameGame
               knockback: projectile.knockback,
               direction: direction,
               weaponId: projectile.weaponId,
+              traits: {
+                AttackTrait.projectile,
+                if (projectile.pierce > 0) AttackTrait.piercing,
+              },
             ),
           ]);
           if (projectile.isSpent) {
@@ -1096,7 +1100,8 @@ class PixelSurvivorGame extends FlameGame
     for (final event in events) {
       if (event.target.isDead) continue;
       final healthBefore = event.target.currentHealth;
-      event.target.takeDamage(event.target.resolveIncomingDamage(event));
+      final resolvedDamage = event.target.resolveIncomingDamage(event);
+      event.target.takeDamage(resolvedDamage);
       final effectiveDamage = healthBefore - event.target.currentHealth;
       final weaponId = event.weaponId;
       if (weaponId != null && effectiveDamage > 0) {
@@ -1107,7 +1112,7 @@ class PixelSurvivorGame extends FlameGame
         _lastWeaponHitByEnemy[event.target] = weaponId;
       }
       event.target.registerHit(knockback: event.direction * event.knockback);
-      _spawnDamageNumber(event);
+      _spawnDamageNumber(event, effectiveDamage);
       _spawnCombatEffect(
         event.isCritical ? CombatEffectKind.critical : CombatEffectKind.hit,
         event.target.position,
@@ -1117,7 +1122,7 @@ class PixelSurvivorGame extends FlameGame
     }
   }
 
-  void _spawnDamageNumber(DamageEvent event) {
+  void _spawnDamageNumber(DamageEvent event, double effectiveDamage) {
     if (!damageNumbersEnabled) return;
     if (_damageNumberCount >= performanceBudget.maxDamageNumbers) {
       _rejectPopulation(GamePopulationKind.damageNumber, 1);
@@ -1126,7 +1131,7 @@ class PixelSurvivorGame extends FlameGame
     _damageNumberCount += 1;
     add(
       DamageNumberComponent(
-        damage: event.damage,
+        damage: effectiveDamage,
         isCritical: event.isCritical,
         position: event.target.position.clone(),
         onExpired: () {
