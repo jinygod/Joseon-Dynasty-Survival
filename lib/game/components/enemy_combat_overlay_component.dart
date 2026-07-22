@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:flame/components.dart';
 
+import '../combat/combat_vfx_primitives.dart';
 import '../content/ids.dart';
 import 'enemy_component.dart';
 import 'talisman_presentation_component.dart';
@@ -11,8 +12,19 @@ abstract final class EnemyCombatOverlayStyle {
   static const warningAlpha = .32;
   static const warningStrokeWidth = 2.0;
   static const shieldSweepRadians = math.pi / 2;
+  static const laneHalfWidth = 10.0;
+  static const laneChevronCount = 6;
+  static const reticleRingCount = 3;
+  static const shieldPlateCount = 3;
   static const usesFullBodyRectangle = false;
 }
+
+const _warningPalette = CombatVfxPalette(
+  core: Color(0xfffff4d6),
+  edge: Color(0xffff476f),
+  accent: Color(0xffffc857),
+  smoke: Color(0xff5a2230),
+);
 
 class EnemyWarningOverlayComponent extends PositionComponent {
   EnemyWarningOverlayComponent({required this.enemy, int? stableOrder})
@@ -66,13 +78,14 @@ class EnemyWarningOverlayComponent extends PositionComponent {
   void render(Canvas canvas) {
     final warning = enemy.warningSnapshot;
     final paint = Paint()
-      ..color = const Color(0xffff476f).withValues(alpha: _warningAlpha)
+      ..color = _warningPalette.edge.withValues(alpha: _warningAlpha)
       ..style = PaintingStyle.stroke
       ..strokeWidth = EnemyCombatOverlayStyle.warningStrokeWidth
       ..strokeCap = StrokeCap.round;
     final center = Offset(size.x / 2, size.y / 2);
     if (enemy.hasDirectionalShield) {
       _drawShieldArc(canvas, center, enemy.shieldDirection, paint);
+      _drawShieldPlates(canvas, center, enemy.shieldDirection);
     }
     if (warning == null) return;
     if (warning.kind == EnemyBehaviorKind.shockwave ||
@@ -88,25 +101,44 @@ class EnemyWarningOverlayComponent extends PositionComponent {
       case EnemyBehaviorKind.dive:
       case EnemyBehaviorKind.doubleDash:
       case EnemyBehaviorKind.thrust:
-        _drawDirectionStrip(canvas, center, endpoint, paint);
+        _drawDirectionStrip(canvas, center, endpoint);
       case EnemyBehaviorKind.ranged:
         _drawRangedTarget(canvas, center, endpoint, warning.progress, paint);
       default:
-        _drawDirectionStrip(canvas, center, endpoint, paint);
+        _drawDirectionStrip(canvas, center, endpoint);
     }
   }
 
-  void _drawDirectionStrip(
-    Canvas canvas,
-    Offset center,
-    Vector2 endpoint,
-    Paint paint,
-  ) {
+  void _drawDirectionStrip(Canvas canvas, Offset center, Vector2 endpoint) {
     final endpointOffset = endpoint - enemy.position;
+    final target = center + Offset(endpointOffset.x, endpointOffset.y);
+    CombatVfxPrimitives.drawChevronLane(
+      canvas,
+      start: center,
+      end: target,
+      halfWidth: EnemyCombatOverlayStyle.laneHalfWidth,
+      palette: _warningPalette,
+      progress: 1 - _warningAlpha / EnemyCombatOverlayStyle.warningAlpha,
+      count: EnemyCombatOverlayStyle.laneChevronCount,
+    );
+    final delta = target - center;
+    final length = delta.distance;
+    if (length <= .001) return;
+    final normal = Offset(-delta.dy / length, delta.dx / length);
+    final border = Paint()
+      ..color = _warningPalette.core.withValues(alpha: _warningAlpha * .86)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = EnemyCombatOverlayStyle.warningStrokeWidth
+      ..strokeCap = StrokeCap.round;
     canvas.drawLine(
-      center,
-      center + Offset(endpointOffset.x, endpointOffset.y),
-      paint,
+      center + normal * EnemyCombatOverlayStyle.laneHalfWidth,
+      target + normal * EnemyCombatOverlayStyle.laneHalfWidth,
+      border,
+    );
+    canvas.drawLine(
+      center - normal * EnemyCombatOverlayStyle.laneHalfWidth,
+      target - normal * EnemyCombatOverlayStyle.laneHalfWidth,
+      border,
     );
   }
 
@@ -119,7 +151,37 @@ class EnemyWarningOverlayComponent extends PositionComponent {
   ) {
     final endpointOffset = endpoint - enemy.position;
     final target = center + Offset(endpointOffset.x, endpointOffset.y);
-    canvas.drawCircle(target, 5 + progress * 3, paint);
+    final pulse = 1 + progress * .22;
+    for (
+      var index = 0;
+      index < EnemyCombatOverlayStyle.reticleRingCount;
+      index += 1
+    ) {
+      canvas.drawCircle(
+        target,
+        (5 + index * 4) * pulse,
+        Paint()
+          ..color = (index == 1 ? _warningPalette.accent : _warningPalette.core)
+              .withValues(alpha: _warningAlpha * (1 - index * .16))
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = index == 1 ? 2.2 : 1.4,
+      );
+    }
+    final reticleSize = 12 * pulse;
+    final reticlePaint = Paint()
+      ..color = _warningPalette.edge.withValues(alpha: _warningAlpha)
+      ..strokeWidth = 1.5
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(
+      Offset(target.dx - reticleSize, target.dy),
+      Offset(target.dx + reticleSize, target.dy),
+      reticlePaint,
+    );
+    canvas.drawLine(
+      Offset(target.dx, target.dy - reticleSize),
+      Offset(target.dx, target.dy + reticleSize),
+      reticlePaint,
+    );
   }
 
   void _drawShieldArc(
@@ -136,6 +198,42 @@ class EnemyWarningOverlayComponent extends PositionComponent {
       false,
       paint,
     );
+  }
+
+  void _drawShieldPlates(Canvas canvas, Offset center, Vector2 direction) {
+    final angle = math.atan2(direction.y, direction.x);
+    final radius = size.x * .72;
+    for (
+      var index = 0;
+      index < EnemyCombatOverlayStyle.shieldPlateCount;
+      index += 1
+    ) {
+      final fraction = EnemyCombatOverlayStyle.shieldPlateCount == 1
+          ? .5
+          : index / (EnemyCombatOverlayStyle.shieldPlateCount - 1);
+      final plateAngle =
+          angle -
+          EnemyCombatOverlayStyle.shieldSweepRadians / 2 +
+          EnemyCombatOverlayStyle.shieldSweepRadians * fraction;
+      final facing = Offset(math.cos(plateAngle), math.sin(plateAngle));
+      final tangent = Offset(-facing.dy, facing.dx);
+      final point = center + facing * radius;
+      final plate = Path()
+        ..moveTo(
+          point.dx + tangent.dx * 5 - facing.dx * 4,
+          point.dy + tangent.dy * 5 - facing.dy * 4,
+        )
+        ..lineTo(point.dx + facing.dx * 6, point.dy + facing.dy * 6)
+        ..lineTo(
+          point.dx - tangent.dx * 5 - facing.dx * 4,
+          point.dy - tangent.dy * 5 - facing.dy * 4,
+        )
+        ..close();
+      canvas.drawPath(
+        plate,
+        Paint()..color = const Color(0xffbde0fe).withValues(alpha: .52),
+      );
+    }
   }
 }
 

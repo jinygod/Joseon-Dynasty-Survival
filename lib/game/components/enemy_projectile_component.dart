@@ -1,7 +1,9 @@
+import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flame/components.dart';
 
+import '../combat/combat_vfx_primitives.dart';
 import 'player_component.dart';
 
 class EnemyProjectileComponent extends PositionComponent {
@@ -52,14 +54,43 @@ class EnemyProjectileComponent extends PositionComponent {
   @override
   void render(Canvas canvas) {
     super.render(canvas);
-    final rect = Offset.zero & Size(size.x, size.y);
-    canvas.drawOval(rect, Paint()..color = const Color(0xff9f2b68));
-    canvas.drawOval(
-      rect,
+    const palette = CombatVfxPalette(
+      core: Color(0xfffff3fb),
+      edge: Color(0xffff5ca8),
+      accent: Color(0xffffc2df),
+      smoke: Color(0xff5f2346),
+    );
+    final center = Offset(size.x / 2, size.y / 2);
+    final velocityLength = velocity.length;
+    final direction = velocityLength <= .001
+        ? const Offset(1, 0)
+        : Offset(velocity.x / velocityLength, velocity.y / velocityLength);
+    final tailEnd =
+        center - direction * math.min(22, 10 + velocityLength * .04);
+    CombatVfxPrimitives.drawTaperedTrail(
+      canvas,
+      start: center,
+      end: tailEnd,
+      startWidth: size.x * .52,
+      endWidth: size.x * .14,
+      palette: palette,
+      progress: _age / lifetime,
+      count: 2,
+    );
+    canvas.drawCircle(
+      center,
+      size.x * .5,
+      Paint()..color = palette.smoke.withValues(alpha: .92),
+    );
+    canvas.drawCircle(center, size.x * .37, Paint()..color = palette.edge);
+    canvas.drawCircle(center, size.x * .19, Paint()..color = palette.core);
+    canvas.drawCircle(
+      center,
+      size.x * .5,
       Paint()
-        ..color = const Color(0xffff5ca8)
+        ..color = palette.accent
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2,
+        ..strokeWidth = 1.4,
     );
   }
 }

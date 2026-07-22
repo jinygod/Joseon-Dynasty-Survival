@@ -35,6 +35,12 @@ void main() {
     expect(first.decorations, second.decorations);
   });
 
+  test('decorative stone lines remain quieter than combat warning lanes', () {
+    final backdrop = StageBackdropComponent();
+
+    expect(_stoneLineOpacity(backdrop), lessThanOrEqualTo(.2));
+  });
+
   test('game fallback and stage share the warm hanji palette color', () {
     final backdrop = StageBackdropComponent();
     final game = PixelSurvivorGame(
@@ -63,4 +69,12 @@ void main() {
     expect(shadow.position.x, 60);
     expect(shadow.position.y, 92);
   });
+}
+
+double _stoneLineOpacity(Object backdrop) {
+  try {
+    return (backdrop as dynamic).stoneLineOpacity as double;
+  } on NoSuchMethodError {
+    return 1;
+  }
 }

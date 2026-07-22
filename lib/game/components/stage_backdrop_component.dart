@@ -26,14 +26,15 @@ class StageBackdropComponent extends PositionComponent {
   static const _decorationSeed = 0x0BA7D0C;
   static const Color _baseColor = warmHanjiBeige;
   static const Color _jadePatchColor = Color(0xffb6d4b4);
-  static const Color _stoneLineColor = Color(0xff92a99d);
+  static const Color _stoneLineColor = Color(0xff9f927f);
+  static const _stoneLineOpacity = .18;
   static const Color _tileColor = Color(0xffb97c65);
 
   final Paint _basePaint = Paint()..color = _baseColor;
   final Paint _jadePatchPaint = Paint()
     ..color = _jadePatchColor.withValues(alpha: .32);
   final Paint _stoneLinePaint = Paint()
-    ..color = _stoneLineColor.withValues(alpha: .32);
+    ..color = _stoneLineColor.withValues(alpha: _stoneLineOpacity);
   final Paint _tilePaint = Paint()..color = _tileColor.withValues(alpha: .42);
 
   /// Documents that the stage is presentation-only; it never owns hitboxes.
@@ -42,6 +43,8 @@ class StageBackdropComponent extends PositionComponent {
   Color get baseColor => _baseColor;
 
   Color get jadePatchColor => _jadePatchColor;
+
+  double get stoneLineOpacity => _stoneLineOpacity;
 
   /// The full render-time paint cache; no decoration allocates a [Paint].
   int get cachedPaintCount => 4;
@@ -75,7 +78,7 @@ class StageBackdropComponent extends PositionComponent {
             _jadePatchPaint,
           );
         case StageDecorationKind.stoneLine:
-          _stoneLinePaint.strokeWidth = math.max(1, math.min(2.5, height));
+          _stoneLinePaint.strokeWidth = math.max(1, math.min(1.35, height));
           canvas.drawLine(
             Offset(center.dx - width / 2, center.dy - height / 2),
             Offset(center.dx + width / 2, center.dy + height / 2),

@@ -8,6 +8,7 @@ import 'package:pixel_survivor/game/combat/attack_spec.dart';
 import 'package:pixel_survivor/game/components/attack_effect_component.dart';
 import 'package:pixel_survivor/game/components/enemy_combat_overlay_component.dart';
 import 'package:pixel_survivor/game/components/enemy_component.dart';
+import 'package:pixel_survivor/game/content/enemy_behavior_definitions.dart';
 import 'package:pixel_survivor/game/content/enemy_definitions.dart';
 import 'package:pixel_survivor/game/content/ids.dart';
 
@@ -160,6 +161,75 @@ void main() {
     effect.update(1);
     expect(expirations, 1);
   });
+
+  test('dash warning renders a filled lane with readable chevrons', () async {
+    final enemy = EnemyComponent(
+      enemyId: 'telegraph-dash',
+      maxHealth: 1,
+      moveSpeed: 400,
+      damage: 0,
+      behaviorProfile: const EnemyBehaviorProfile(
+        id: 'telegraph-dash',
+        kind: EnemyBehaviorKind.dash,
+        warningSeconds: 1,
+        activeSeconds: .5,
+      ),
+      targetPositionProvider: (_) => Vector2(800, 0),
+    );
+    enemy.update(.05);
+    final overlay = EnemyWarningOverlayComponent(enemy: enemy);
+
+    final image = await _renderComponent(overlay, width: 720, height: 96);
+    addTearDown(image.dispose);
+    final data = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+
+    expect(_countVisiblePixels(data!), greaterThan(3000));
+  });
+
+  test(
+    'ranged warning renders a multi-ring reticle at its locked endpoint',
+    () async {
+      final enemy = EnemyComponent(
+        enemyId: 'telegraph-ranged',
+        maxHealth: 1,
+        moveSpeed: 0,
+        damage: 0,
+        behaviorProfile: const EnemyBehaviorProfile(
+          id: 'telegraph-ranged',
+          kind: EnemyBehaviorKind.ranged,
+          warningSeconds: 1,
+          range: 120,
+        ),
+        targetPositionProvider: (_) => Vector2(120, 0),
+      );
+      enemy.update(.05);
+      final overlay = EnemyWarningOverlayComponent(enemy: enemy);
+
+      final image = await _renderComponent(overlay, width: 200, height: 96);
+      addTearDown(image.dispose);
+      final data = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+
+      expect(_countVisiblePixels(data!), greaterThan(150));
+    },
+  );
+}
+
+Future<ui.Image> _renderComponent(
+  EnemyWarningOverlayComponent component, {
+  required int width,
+  required int height,
+}) {
+  final recorder = ui.PictureRecorder();
+  component.render(ui.Canvas(recorder));
+  return recorder.endRecording().toImage(width, height);
+}
+
+int _countVisiblePixels(ByteData data) {
+  var count = 0;
+  for (var offset = 3; offset < data.lengthInBytes; offset += 4) {
+    if (data.getUint8(offset) > 0) count += 1;
+  }
+  return count;
 }
 
 int _countExactColor(ByteData data, ui.Color color) {
