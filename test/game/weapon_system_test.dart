@@ -158,6 +158,54 @@ void main() {
       );
     });
 
+    test('five legacy weapon masters emit distinct expanded patterns', () {
+      final enemies = [
+        EnemyComponent(
+          enemyId: 'north',
+          maxHealth: 200,
+          moveSpeed: 0,
+          damage: 1,
+          position: Vector2(0, -50),
+        ),
+        EnemyComponent(
+          enemyId: 'east',
+          maxHealth: 200,
+          moveSpeed: 0,
+          damage: 1,
+          position: Vector2(50, 0),
+        ),
+      ];
+      WeaponTickResult tick(WeaponId id) => WeaponSystem(
+        initialLevels: {id: 6},
+        random: Random(4),
+      ).tick(dt: 2, origin: Vector2.zero(), enemies: enemies);
+
+      final bomb = tick(thunderCrashBomb);
+      final ward = tick(jangseungWard);
+      final singijeon = tick(singijeonVolley);
+      final frost = tick(frostFlask);
+      final fan = tick(windThunderFan);
+
+      expect(bomb.areaAttacks, hasLength(5));
+      expect(
+        bomb.areaAttacks.map((attack) => attack.position.toString()).toSet(),
+        hasLength(5),
+      );
+      expect(
+        ward.meleeArcs.where((arc) => arc.weaponId == jangseungWard),
+        hasLength(4),
+      );
+      expect(
+        singijeon.projectiles.map((projectile) => projectile.laneIndex).toSet(),
+        {0, 1, 2},
+      );
+      expect(frost.frostFields, hasLength(3));
+      expect(
+        fan.meleeArcs.map((arc) => arc.direction.toString()).toSet(),
+        hasLength(6),
+      );
+    });
+
     test('level five hwando creates timed arc attacks with knockback', () {
       final enemy = EnemyComponent(
         enemyId: 'bandit',

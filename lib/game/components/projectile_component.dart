@@ -19,6 +19,7 @@ class ProjectileComponent extends PositionComponent {
     this.knockback = 0,
     this.followUpIndex = 0,
     this.isMasterLead = false,
+    this.laneIndex = 0,
     Vector2? size,
   }) : _remainingHits = pierce + 1,
        super(
@@ -35,6 +36,7 @@ class ProjectileComponent extends PositionComponent {
   final double knockback;
   final int followUpIndex;
   final bool isMasterLead;
+  final int laneIndex;
   final Set<EnemyComponent> _hitEnemies = {};
   int _remainingHits;
   double _age = 0;

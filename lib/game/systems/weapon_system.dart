@@ -202,6 +202,7 @@ class WeaponSystem {
       criticalChance: criticalChance,
       sizeMultiplier: sizeMultiplier,
       damageEvents: damageEvents,
+      meleeArcs: meleeArcs,
     );
     if (damageEvents.length > wardDamageCount) {
       firedWeaponIds.add(jangseungWard);
@@ -419,8 +420,13 @@ class WeaponSystem {
       return;
     }
 
+    final targetCenter = _bombCenter(origin, enemies);
     for (var index = 0; index < stats.projectileCount; index += 1) {
-      final center = _bombCenter(origin, enemies);
+      final center = level >= 6 && index > 0
+          ? targetCenter +
+                Vector2(cos((index - 1) * pi / 2), sin((index - 1) * pi / 2)) *
+                    72
+          : targetCenter.clone();
       areaAttacks.add(
         AreaAttackComponent(
           weaponId: thunderCrashBomb,
@@ -429,7 +435,7 @@ class WeaponSystem {
             criticalChance,
           ),
           radius: stats.range * sizeMultiplier,
-          delaySeconds: 0.65,
+          delaySeconds: level >= 6 ? .35 + index * .08 : 0.65,
           knockback: stats.knockback,
           position: center,
           direction: _direction(origin, center),
@@ -447,6 +453,7 @@ class WeaponSystem {
     required double criticalChance,
     required double sizeMultiplier,
     required List<DamageEvent> damageEvents,
+    required List<MeleeArcComponent> meleeArcs,
   }) {
     final level = levelOf(jangseungWard);
     if (level == 0) return;
@@ -458,6 +465,38 @@ class WeaponSystem {
     )) {
       return;
     }
+    if (level >= 6) {
+      final orbitRadius = stats.range * sizeMultiplier * .58;
+      final guardRange = stats.range * sizeMultiplier * .34;
+      for (var index = 0; index < 4; index += 1) {
+        final direction = Vector2(cos(index * pi / 2), sin(index * pi / 2));
+        final guardOrigin = origin + direction * orbitRadius;
+        final arc = MeleeArcComponent(
+          weaponId: jangseungWard,
+          damage: stats.damage * damageMultiplier,
+          knockback: stats.knockback,
+          position: guardOrigin,
+          direction: direction,
+          range: guardRange,
+          angleRadians: pi * 2,
+        );
+        meleeArcs.add(arc);
+        for (final enemy in enemies.where(arc.containsEnemy)) {
+          damageEvents.add(
+            _damageEvent(
+              weaponId: jangseungWard,
+              target: enemy,
+              origin: guardOrigin,
+              damage: stats.damage * damageMultiplier,
+              knockback: stats.knockback,
+              criticalChance: criticalChance,
+            ),
+          );
+        }
+      }
+      return;
+    }
+
     final rangeSquared = pow(stats.range * sizeMultiplier, 2);
     for (final enemy in enemies) {
       if (enemy.position.distanceToSquared(origin) > rangeSquared) continue;
@@ -496,8 +535,17 @@ class WeaponSystem {
     }
     final baseDirection = _densestDirection(origin, enemies);
     for (var index = 0; index < stats.projectileCount; index += 1) {
-      final spread = (index - (stats.projectileCount - 1) / 2) * .11;
-      final direction = baseDirection.clone()..rotate(spread);
+      final laneIndex = level >= 6 ? index % 3 : 0;
+      final direction = baseDirection.clone();
+      if (level >= 6) {
+        final withinLaneIndex = index ~/ 3;
+        direction.rotate(
+          (laneIndex - 1) * .42 +
+              (withinLaneIndex - (stats.projectileCount / 3 - 1) / 2) * .04,
+        );
+      } else {
+        direction.rotate((index - (stats.projectileCount - 1) / 2) * .11);
+      }
       projectiles.add(
         ProjectileComponent(
           weaponId: singijeonVolley,
@@ -509,6 +557,7 @@ class WeaponSystem {
           velocity: direction * 300,
           pierce: stats.pierce,
           knockback: stats.knockback,
+          laneIndex: laneIndex,
           size: Vector2.all(7 * sizeMultiplier),
         ),
       );
@@ -536,17 +585,26 @@ class WeaponSystem {
       return;
     }
     final center = _densestCenter(enemies, stats.range * sizeMultiplier);
-    frostFields.add(
-      FrostFieldComponent(
-        weaponId: frostFlask,
-        damage: _rolledDamage(stats.damage * damageMultiplier, criticalChance),
-        radius: stats.range * sizeMultiplier,
-        durationSeconds: stats.durationSeconds,
-        slowFraction: stats.slowFraction,
-        knockback: stats.knockback,
-        position: center,
-      ),
-    );
+    final fieldCount = level >= 6 ? 3 : 1;
+    for (var index = 0; index < fieldCount; index += 1) {
+      final position = index == 0
+          ? center.clone()
+          : center + Vector2(index == 1 ? -1 : 1, .35) * stats.range * .72;
+      frostFields.add(
+        FrostFieldComponent(
+          weaponId: frostFlask,
+          damage: _rolledDamage(
+            stats.damage * damageMultiplier,
+            criticalChance,
+          ),
+          radius: stats.range * sizeMultiplier * (index == 0 ? 1 : .72),
+          durationSeconds: stats.durationSeconds,
+          slowFraction: stats.slowFraction,
+          knockback: stats.knockback,
+          position: position,
+        ),
+      );
+    }
   }
 
   void _fireFan({
@@ -576,7 +634,11 @@ class WeaponSystem {
     );
     for (var index = 0; index < stats.projectileCount; index += 1) {
       final direction = baseDirection.clone();
-      if (index.isOdd) direction.negate();
+      if (level >= 6) {
+        direction.rotate(index * pi * 2 / stats.projectileCount);
+      } else if (index.isOdd) {
+        direction.negate();
+      }
       final arc = MeleeArcComponent(
         weaponId: windThunderFan,
         damage: stats.damage * damageMultiplier,
