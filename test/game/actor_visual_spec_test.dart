@@ -24,4 +24,27 @@ void main() {
     expect(player.groundOffsetY, greaterThan(0));
     expect(enemy.shadowWidth, greaterThan(0));
   });
+
+  test('unrepresented and unknown actors use documented safe fallbacks', () {
+    expect(
+      playerVisualSpecFor(mountainHunter).visualSize,
+      ActorRenderSizes.playerVisual,
+    );
+    expect(
+      playerVisualSpecFor('unknown_character').visualSize,
+      ActorRenderSizes.playerVisual,
+    );
+    expect(
+      enemyVisualSpecFor(blackHatAssassin).visualSize,
+      ActorRenderSizes.eliteEnemyVisual,
+    );
+    expect(
+      enemyVisualSpecFor(fallenGeneral).visualSize,
+      ActorRenderSizes.bossVisual,
+    );
+    expect(
+      enemyVisualSpecFor('unknown_enemy').visualSize,
+      ActorRenderSizes.normalEnemyVisual,
+    );
+  });
 }

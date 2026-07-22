@@ -7,13 +7,19 @@ import 'package:pixel_survivor/game/content/sprite_atlas_contract.dart';
 
 void main() {
   test(
-    'bundled replaceable atlases are temporary and registered in AssetCatalog',
+    'legacy replaceable atlases are temporary and registered in AssetCatalog',
     () {
-      final bundledContracts = ReplaceableArtCatalog.atlases.where(
-        (contract) => File(contract.runtimePath).existsSync(),
+      final legacyContracts = ReplaceableArtCatalog.atlases.where(
+        (contract) =>
+            !ReplaceableArtCatalog.representativeAtlasIds.contains(contract.id),
       );
 
-      for (final contract in bundledContracts) {
+      for (final contract in legacyContracts) {
+        expect(
+          File(contract.runtimePath).existsSync(),
+          isTrue,
+          reason: contract.id,
+        );
         expect(contract.status, ArtAssetStatus.temporary, reason: contract.id);
         expect(
           AssetCatalog.allPaths,
@@ -59,6 +65,19 @@ void main() {
       expect(atlas.requiresTransparency, isTrue, reason: id);
       expect(atlas.status, ArtAssetStatus.temporary, reason: id);
     }
+
+    final temporarilyUnbundledIds = ReplaceableArtCatalog.atlases
+        .where(
+          (atlas) =>
+              atlas.status == ArtAssetStatus.temporary &&
+              !File(atlas.runtimePath).existsSync(),
+        )
+        .map((atlas) => atlas.id)
+        .toSet();
+    expect(
+      temporarilyUnbundledIds,
+      ReplaceableArtCatalog.representativeAtlasIds,
+    );
   });
 
   test('frame lookup rejects coordinates outside the atlas contract', () {
@@ -71,11 +90,13 @@ void main() {
     expect(() => contract.frameIndex(column: 0, row: -1), throwsRangeError);
   });
 
-  test('every bundled replaceable atlas matches its PNG contract', () {
+  test('every legacy replaceable atlas matches its PNG contract', () {
     for (final contract in ReplaceableArtCatalog.atlases.where(
-      (contract) => File(contract.runtimePath).existsSync(),
+      (contract) =>
+          !ReplaceableArtCatalog.representativeAtlasIds.contains(contract.id),
     )) {
       final file = File(contract.runtimePath);
+      expect(file.existsSync(), isTrue, reason: contract.id);
       expect(
         contract.validatePngHeader(file.readAsBytesSync()),
         isEmpty,
