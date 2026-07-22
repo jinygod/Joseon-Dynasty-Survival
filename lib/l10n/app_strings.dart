@@ -30,6 +30,12 @@ abstract final class AppStrings {
   static const retry = '다시 시작';
   static const mainMenu = '메인 메뉴';
 
+  static const pauseGame = '일시 정지';
+  static const combatNotice = '전투 알림';
+  static const killStreak = '연속 처치';
+  static const savingRewardAgain = '보상 저장 재시도 중';
+  static String collectingReward(int seconds) => '보상 수집 $seconds초';
+
   static String levelRange({required int current, required int next}) =>
       '레벨 $current → $next';
 

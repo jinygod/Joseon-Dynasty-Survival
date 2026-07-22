@@ -78,6 +78,81 @@ void main() {
     );
   });
 
+  testWidgets('HUD derives visible health fill and weapon badge level', (
+    tester,
+  ) async {
+    final source = FakeGameHudSource(
+      bossName: null,
+      bossHealthFraction: null,
+      weaponLevelLabels: const ['Hwando Slash Lv. 6'],
+    );
+    await tester.pumpWidget(MaterialApp(home: GameHud(source: source)));
+
+    final bar = tester.getRect(find.byKey(const Key('hud-health-bar')));
+    final fill = tester.getRect(find.byKey(const Key('hud-health-fill')));
+    expect(fill.width, closeTo(bar.width * 0.8, 0.5));
+    expect(
+      tester.widget<Text>(find.byKey(const Key('hud-weapon-level-0'))).data,
+      '6',
+    );
+  });
+
+  testWidgets('top status shows kills without a competing enemy count', (
+    tester,
+  ) async {
+    final source = FakeGameHudSource(
+      bossName: null,
+      bossHealthFraction: null,
+      weaponLevelLabels: const [],
+    );
+    await tester.pumpWidget(MaterialApp(home: GameHud(source: source)));
+
+    expect(
+      tester.widget<Text>(find.byKey(const Key('hud-kills-value'))).data,
+      '88',
+    );
+    expect(find.textContaining('20'), findsNothing);
+  });
+
+  testWidgets('pause uses one localized semantic button and painted glyph', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GameHud(
+          source: FakeGameHudSource(
+            bossName: null,
+            bossHealthFraction: null,
+            weaponLevelLabels: const [],
+          ),
+          onPause: () {},
+        ),
+      ),
+    );
+
+    expect(find.bySemanticsLabel('일시 정지'), findsOneWidget);
+    expect(find.byKey(const Key('hud-pause-glyph')), findsOneWidget);
+    expect(find.byIcon(Icons.pause), findsNothing);
+  });
+
+  testWidgets('streak uses the centered Korean presentation', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final source = FakeGameHudSource(
+      bossName: null,
+      bossHealthFraction: null,
+      weaponLevelLabels: const [],
+      killStreak: 7,
+    );
+    await tester.pumpWidget(MaterialApp(home: GameHud(source: source)));
+
+    expect(find.text('7 연속 처치'), findsOneWidget);
+    final streak = tester.getRect(find.byKey(const Key('kill-streak')));
+    expect(streak.center.dx, closeTo(195, 1));
+  });
+
   testWidgets('level-up card shows effect description', (tester) async {
     const choice = LevelUpChoice(
       id: 'inner_breath',

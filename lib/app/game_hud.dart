@@ -65,8 +65,8 @@ class _GameHudState extends State<GameHud> {
               ),
             Positioned(
               top: widget.source.bossHealthFraction == null ? 8 : 6,
-              left: 64,
-              right: 12,
+              left: 0,
+              right: 0,
               child: _TopHud(source: widget.source, uiScale: widget.uiScale),
             ),
             Positioned(
@@ -84,27 +84,84 @@ class _GameHudState extends State<GameHud> {
               Positioned(
                 top: 8,
                 left: 8,
-                child: Semantics(
-                  button: true,
-                  label: 'Pause game',
-                  child: SizedBox.square(
-                    key: const Key('hud-pause'),
-                    dimension: 48,
-                    child: IconButton.filledTonal(
-                      tooltip: 'Pause game',
-                      onPressed: onPause,
-                      iconSize: 22,
-                      padding: EdgeInsets.zero,
-                      icon: const Icon(Icons.pause),
-                    ),
-                  ),
-                ),
+                child: _PauseButton(onPressed: onPause),
               ),
           ],
         ),
       ),
     );
   }
+}
+
+class _PauseButton extends StatelessWidget {
+  const _PauseButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      container: true,
+      button: true,
+      label: AppStrings.pauseGame,
+      child: ExcludeSemantics(
+        child: SizedBox.square(
+          key: const Key('hud-pause'),
+          dimension: 48,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onPressed,
+              borderRadius: BorderRadius.circular(12),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: const Color(0xe8101820),
+                  border: Border.all(
+                    color: const Color(0xfff4ead2),
+                    width: 1.5,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const CustomPaint(
+                  key: Key('hud-pause-glyph'),
+                  painter: _PauseGlyphPainter(),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PauseGlyphPainter extends CustomPainter {
+  const _PauseGlyphPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = const Color(0xfffff1b8);
+    final height = size.height * 0.42;
+    final top = (size.height - height) / 2;
+    final width = size.width * 0.12;
+    final gap = size.width * 0.12;
+    final left = (size.width - width * 2 - gap) / 2;
+    final radius = Radius.circular(width / 2);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(Rect.fromLTWH(left, top, width, height), radius),
+      paint,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(left + width + gap, top, width, height),
+        radius,
+      ),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _PauseGlyphPainter oldDelegate) => false;
 }
 
 class _TopHud extends StatelessWidget {
@@ -147,7 +204,7 @@ class _TopHud extends StatelessWidget {
           Semantics(
             key: const Key('combat-notice'),
             liveRegion: true,
-            label: 'Combat notice $notice',
+            label: '${AppStrings.combatNotice} $notice',
             excludeSemantics: true,
             child: _CombatNotice(label: notice),
           ),
@@ -157,17 +214,19 @@ class _TopHud extends StatelessWidget {
           Semantics(
             key: const Key('kill-streak'),
             liveRegion: true,
-            label: '${source.killStreak} ${AppStrings.hudKills}',
+            label: '${source.killStreak} ${AppStrings.killStreak}',
             excludeSemantics: true,
-            child: Text(
-              '${source.killStreak} ${AppStrings.hudKills}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Color(0xffffd166),
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-                shadows: [Shadow(color: Color(0xff101820), blurRadius: 3)],
+            child: Center(
+              child: Text(
+                '${source.killStreak} ${AppStrings.killStreak}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Color(0xffffd166),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  shadows: [Shadow(color: Color(0xff101820), blurRadius: 3)],
+                ),
               ),
             ),
           ),
@@ -200,7 +259,6 @@ class _StatusBar extends StatelessWidget {
         '${AppStrings.hudLevel} ${source.playerLevel}, '
         '${AppStrings.hudExperience} '
         '${source.currentExperience}/${source.experienceToNextLevel}, '
-        '${AppStrings.hudEnemies} ${source.enemyCount}, '
         '${AppStrings.hudKills} ${source.kills}';
 
     return Semantics(
@@ -234,11 +292,20 @@ class _StatusBar extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 6),
-                          Flexible(
-                            child: _FittedHudText(
-                              '${source.enemyCount} / ${source.kills}',
-                              color: const Color(0xff9fb3c8),
-                              textAlign: TextAlign.end,
+                          SizedBox(
+                            width: 42,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerRight,
+                              child: Text(
+                                '${source.kills}',
+                                key: const Key('hud-kills-value'),
+                                style: const TextStyle(
+                                  color: Color(0xff9fb3c8),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
                             ),
                           ),
                         ],
@@ -250,6 +317,7 @@ class _StatusBar extends StatelessWidget {
                       value: healthFraction,
                       color: const Color(0xffef5b5b),
                       trackColor: const Color(0xff48242d),
+                      fillKey: const Key('hud-health-fill'),
                     ),
                     const SizedBox(height: 4),
                     SizedBox(
@@ -293,6 +361,7 @@ class _MeterBar extends StatelessWidget {
     required this.color,
     required this.trackColor,
     this.label,
+    this.fillKey,
     super.key,
   });
 
@@ -300,6 +369,7 @@ class _MeterBar extends StatelessWidget {
   final Color color;
   final Color trackColor;
   final String? label;
+  final Key? fillKey;
 
   @override
   Widget build(BuildContext context) {
@@ -316,6 +386,7 @@ class _MeterBar extends StatelessWidget {
               child: FractionallySizedBox(
                 widthFactor: value.clamp(0, 1),
                 child: DecoratedBox(
+                  key: fillKey,
                   decoration: BoxDecoration(
                     color: color,
                     borderRadius: BorderRadius.circular(4.5),
@@ -373,14 +444,13 @@ class _WeaponSlot extends StatelessWidget {
           child: Stack(
             children: [
               Center(
-                child: Icon(
-                  [
-                    Icons.gesture,
-                    Icons.auto_awesome,
-                    Icons.track_changes,
-                  ][index % 3],
-                  size: 17,
-                  color: colors[index % colors.length],
+                child: CustomPaint(
+                  key: Key('hud-weapon-mark-$index'),
+                  size: const Size.square(17),
+                  painter: _WeaponMarkPainter(
+                    variant: index % 3,
+                    color: colors[index % colors.length],
+                  ),
                 ),
               ),
               Align(
@@ -396,6 +466,7 @@ class _WeaponSlot extends StatelessWidget {
                   child: FittedBox(
                     child: Text(
                       '$level',
+                      key: Key('hud-weapon-level-$index'),
                       style: const TextStyle(
                         color: Color(0xfffff1b8),
                         fontSize: 10,
@@ -413,30 +484,91 @@ class _WeaponSlot extends StatelessWidget {
   }
 }
 
+class _WeaponMarkPainter extends CustomPainter {
+  const _WeaponMarkPainter({required this.variant, required this.color});
+
+  final int variant;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.4
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    switch (variant) {
+      case 0:
+        canvas.drawLine(
+          Offset(size.width * .22, size.height * .78),
+          Offset(size.width * .78, size.height * .22),
+          paint,
+        );
+        canvas.drawLine(
+          Offset(size.width * .52, size.height * .78),
+          Offset(size.width * .78, size.height * .52),
+          paint..strokeWidth = 1.4,
+        );
+        return;
+      case 1:
+        paint.style = PaintingStyle.fill;
+        final talisman = RRect.fromRectAndRadius(
+          Rect.fromCenter(
+            center: Offset(size.width / 2, size.height / 2),
+            width: size.width * .5,
+            height: size.height * .7,
+          ),
+          const Radius.circular(2),
+        );
+        canvas.drawRRect(talisman, paint);
+        paint.color = const Color(0xff172633);
+        paint.strokeWidth = 1.3;
+        canvas.drawLine(
+          Offset(size.width * .37, size.height * .38),
+          Offset(size.width * .63, size.height * .62),
+          paint,
+        );
+        return;
+      default:
+        paint.style = PaintingStyle.fill;
+        final path = Path()
+          ..moveTo(size.width * .57, size.height * .08)
+          ..lineTo(size.width * .18, size.height * .56)
+          ..lineTo(size.width * .47, size.height * .56)
+          ..lineTo(size.width * .38, size.height * .92)
+          ..lineTo(size.width * .82, size.height * .38)
+          ..lineTo(size.width * .55, size.height * .38)
+          ..close();
+        canvas.drawPath(path, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _WeaponMarkPainter oldDelegate) =>
+      oldDelegate.variant != variant || oldDelegate.color != color;
+}
+
 class _FittedHudText extends StatelessWidget {
   const _FittedHudText(
     this.text, {
     required this.color,
     this.fontWeight = FontWeight.w700,
-    this.textAlign = TextAlign.start,
   });
 
   final String text;
   final Color color;
   final FontWeight fontWeight;
-  final TextAlign textAlign;
 
   @override
   Widget build(BuildContext context) {
     return FittedBox(
       fit: BoxFit.scaleDown,
-      alignment: textAlign == TextAlign.end
-          ? Alignment.centerRight
-          : Alignment.centerLeft,
+      alignment: Alignment.centerLeft,
       child: Text(
         text,
         maxLines: 1,
-        textAlign: textAlign,
+        textAlign: TextAlign.start,
         style: TextStyle(color: color, fontSize: 12, fontWeight: fontWeight),
       ),
     );
@@ -491,8 +623,8 @@ class _RewardCollectionNotice extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final label = retrying
-        ? 'Saving reward again'
-        : 'Collecting reward ${seconds.ceil().clamp(0, 3)}s';
+        ? AppStrings.savingRewardAgain
+        : AppStrings.collectingReward(seconds.ceil().clamp(0, 3));
     return DecoratedBox(
       decoration: BoxDecoration(
         color: const Color(0xff2f1b25).withValues(alpha: 0.9),
@@ -559,7 +691,7 @@ class BossHealthBar extends StatelessWidget {
 }
 
 double _fractionFromLabel(String label) {
-  final match = RegExp(r'(\\d+)\\s*/\\s*(\\d+)').firstMatch(label);
+  final match = RegExp(r'(\d+)\s*/\s*(\d+)').firstMatch(label);
   if (match == null) return 1;
   final current = double.tryParse(match.group(1)!) ?? 0;
   final maximum = double.tryParse(match.group(2)!) ?? 0;
@@ -568,7 +700,7 @@ double _fractionFromLabel(String label) {
 }
 
 int _levelFromLabel(String label) {
-  final matches = RegExp(r'\\d+').allMatches(label);
+  final matches = RegExp(r'\d+').allMatches(label);
   if (matches.isEmpty) return 1;
   return int.tryParse(matches.last.group(0)!) ?? 1;
 }

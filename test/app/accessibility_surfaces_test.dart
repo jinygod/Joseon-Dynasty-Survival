@@ -153,6 +153,35 @@ void main() {
     expect(find.byKey(const Key('hud-xp-bar')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'landscape HUD stays compact without overlapping pause at text scale two',
+    (tester) async {
+      tester.view.physicalSize = const Size(844, 390);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MediaQuery(
+            data: const MediaQueryData(
+              size: Size(844, 390),
+              textScaler: TextScaler.linear(2),
+            ),
+            child: GameHud(source: _HudSource(), onPause: () {}),
+          ),
+        ),
+      );
+
+      final pause = tester.getRect(find.byKey(const Key('hud-pause')));
+      final status = tester.getRect(find.byKey(const Key('hud-status')));
+      expect(status.height, lessThanOrEqualTo(92));
+      expect(status.left, greaterThanOrEqualTo(pause.right));
+      expect(status.bottom, lessThanOrEqualTo(390));
+      expect(tester.takeException(), isNull);
+    },
+  );
 }
 
 class _HudSource implements GameHudSource {
