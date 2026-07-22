@@ -122,6 +122,7 @@ class PlayerComponent
       ? PlayerSpriteSheet.authoredAssetKey
       : PlayerSpriteSheet.assetKey;
   bool get isFacingLeft => _desiredFacingX < 0;
+  double get displayedFacingX => _displayedFacingX;
   double get motionBlend => _motionBlend;
   double get environmentalSlowFraction => _environmentalSlowFraction;
   Vector2? get lastMovementDirection => _lastMovementDirection?.clone();
@@ -130,6 +131,11 @@ class PlayerComponent
       Vector2.all(playerVisualSpecFor(characterId).visualSize);
   Vector2 get preferredAttackDirection =>
       (_lastMovementDirection ?? _lastAttackDirection ?? Vector2(1, 0)).clone();
+  Color get worldHealthBarColor => healthFraction <= .2
+      ? const Color(0xffef5b5b)
+      : healthFraction <= .35
+      ? const Color(0xffffc857)
+      : const Color(0xff39d98a);
 
   void setEnvironmentalSlow(double fraction) {
     if (!fraction.isFinite || fraction < 0 || fraction >= .8) {
@@ -308,11 +314,7 @@ class PlayerComponent
       _motionPhase = (_motionPhase + safeDt * 10) % (math.pi * 2);
     }
 
-    final facingFactor = 1 - math.exp(-18 * safeDt);
-    _displayedFacingX += (_desiredFacingX - _displayedFacingX) * facingFactor;
-    if ((_desiredFacingX - _displayedFacingX).abs() < 0.001) {
-      _displayedFacingX = _desiredFacingX;
-    }
+    _displayedFacingX = _desiredFacingX;
     final timerDt = dt.isFinite && dt > 0 ? dt : 0.0;
     _attackPoseRemaining = math.max(0, _attackPoseRemaining - timerDt);
   }
@@ -355,6 +357,37 @@ class PlayerComponent
       canvas.drawCircle(center, radius, outlinePaint);
     }
     canvas.restore();
+    if (isAlive) _renderWorldHealthBar(canvas);
+  }
+
+  void _renderWorldHealthBar(Canvas canvas) {
+    const width = 30.0;
+    const height = 5.0;
+    const inset = 1.0;
+    final left = (size.x - width) / 2;
+    final top = size.y + 3;
+    final outer = RRect.fromRectAndRadius(
+      const Rect.fromLTWH(0, 0, width, height).shift(Offset(left, top)),
+      const Radius.circular(2.5),
+    );
+    canvas.drawRRect(outer, Paint()..color = const Color(0xdd101820));
+    final track = RRect.fromRectAndRadius(
+      Rect.fromLTWH(
+        left + inset,
+        top + inset,
+        width - inset * 2,
+        height - inset * 2,
+      ),
+      const Radius.circular(1.5),
+    );
+    canvas.drawRRect(track, Paint()..color = const Color(0xff3a2830));
+    final fillWidth = (width - inset * 2) * healthFraction;
+    if (fillWidth <= 0) return;
+    final fill = RRect.fromRectAndRadius(
+      Rect.fromLTWH(left + inset, top + inset, fillWidth, height - inset * 2),
+      const Radius.circular(1.5),
+    );
+    canvas.drawRRect(fill, Paint()..color = worldHealthBarColor);
   }
 
   void _applyProceduralPose(Canvas canvas) {

@@ -318,6 +318,37 @@ void main() {
       expect(player.isFacingLeft, isTrue);
     });
 
+    test('horizontal facing changes as an instant 2d flip', () {
+      final player = PlayerComponent(
+        slotIndex: 0,
+        maxHealth: 100,
+        moveSpeed: 100,
+      );
+
+      player.applyInput(const VectorInput(1, 0), 0);
+      player.update(0.016);
+      expect(player.displayedFacingX, 1);
+
+      player.applyInput(const VectorInput(-1, 0), 0);
+      player.update(0.016);
+
+      expect(player.displayedFacingX, -1);
+    });
+
+    test('world health bar color communicates health danger bands', () {
+      final player = PlayerComponent(
+        slotIndex: 0,
+        maxHealth: 100,
+        moveSpeed: 100,
+      );
+
+      expect(player.worldHealthBarColor, const Color(0xff39d98a));
+      player.takeDamage(70);
+      expect(player.worldHealthBarColor, const Color(0xffffc857));
+      player.takeDamage(20);
+      expect(player.worldHealthBarColor, const Color(0xffef5b5b));
+    });
+
     test('movement pose eases out instead of snapping to rest', () {
       final player = PlayerComponent(
         slotIndex: 0,
