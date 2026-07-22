@@ -70,8 +70,20 @@ flutter:
     - assets/audio/music/
     - assets/audio/sfx/
     - assets/audio/ui/
+    - assets/fonts/licenses/
     - docs/assets/asset-rights-ledger.csv
     - docs/assets/audio-rights-ledger.csv
+
+  fonts:
+    - family: SongMyung
+      fonts:
+        - asset: assets/fonts/SongMyung-Regular.ttf
+    - family: GowunBatang
+      fonts:
+        - asset: assets/fonts/GowunBatang-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/GowunBatang-Bold.ttf
+          weight: 700
 
   # To add assets to your application, add an assets section, like this:
   # assets:

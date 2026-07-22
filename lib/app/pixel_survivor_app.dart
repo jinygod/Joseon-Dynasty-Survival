@@ -24,6 +24,7 @@ import '../game/systems/save_system.dart';
 import '../game/systems/playtest_session_repository.dart';
 import '../l10n/app_strings.dart';
 import 'audio_settings_audio_binding.dart';
+import 'joseon_ui_theme.dart';
 import 'lobby_controller.dart';
 import 'lobby_screen.dart';
 import 'mobile_preview.dart';
@@ -201,11 +202,7 @@ class _PixelSurvivorAppState extends State<PixelSurvivorApp> {
         enabled: MobilePreviewPolicy.enabled,
         child: child ?? const SizedBox.shrink(),
       ),
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xff3fbf7f)),
-        splashFactory: NoSplash.splashFactory,
-        useMaterial3: false,
-      ),
+      theme: JoseonUiTheme.create(),
       home: LobbyScreen(
         controller: _lobbyController,
         audioService: _audioService,
