@@ -36,7 +36,7 @@ void main() {
     expect(game.damageNumbersEnabled, isFalse);
     expect(find.byKey(const Key('hud-ui-scale')), findsNothing);
     expect(
-      tester.getSize(find.byKey(const Key('virtual-joystick'))),
+      tester.getSize(find.byKey(const Key('virtual-joystick-base'))),
       const Size.square(104),
     );
   });

@@ -23,8 +23,10 @@ void main() {
 
       expect(find.byKey(const Key('hud-ui-scale')), findsNothing);
       final joystick = find.byKey(const Key('virtual-joystick'));
-      expect(tester.getSize(joystick), const Size.square(104));
-      expect(tester.getTopLeft(joystick), const Offset(48, 458));
+      final joystickBase = find.byKey(const Key('virtual-joystick-base'));
+      expect(tester.getSize(joystick), const Size(770, 580));
+      expect(tester.getSize(joystickBase), const Size.square(104));
+      expect(tester.getTopLeft(joystickBase), const Offset(363, 458));
       final gesture = await tester.startGesture(tester.getCenter(joystick));
       await gesture.moveBy(const Offset(55, 0));
       await gesture.up();

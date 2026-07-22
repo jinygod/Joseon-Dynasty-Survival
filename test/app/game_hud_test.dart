@@ -66,6 +66,10 @@ void main() {
     );
     expect(
       tester.getSize(find.byKey(const Key('virtual-joystick'))),
+      const Size(390, 844),
+    );
+    expect(
+      tester.getSize(find.byKey(const Key('virtual-joystick-base'))),
       const Size.square(104),
     );
     expect(find.byKey(const Key('hud-weapon-slot-0')), findsOneWidget);

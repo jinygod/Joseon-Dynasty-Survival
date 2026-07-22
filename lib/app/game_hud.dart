@@ -70,9 +70,7 @@ class _GameHudState extends State<GameHud> {
               right: 0,
               child: _TopHud(source: widget.source, uiScale: widget.uiScale),
             ),
-            Positioned(
-              left: 18,
-              bottom: 18,
+            Positioned.fill(
               child: VirtualJoystick(
                 onInputChanged: widget.source.updateMovementInput,
                 size: 104,
