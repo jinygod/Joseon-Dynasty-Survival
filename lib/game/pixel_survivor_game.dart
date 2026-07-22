@@ -78,7 +78,6 @@ class PixelSurvivorGame extends FlameGame
     implements GameHudSource, RewardCollectionHudSource, VisualAssetLoadPolicy {
   static const levelUpOverlayId = 'levelUp';
   static const maxExperienceGemComponents = 128;
-  static const maxPendingLevelChoiceCount = 100;
 
   PixelSurvivorGame({
     required this.playerSlot,
@@ -456,10 +455,7 @@ class PixelSurvivorGame extends FlameGame
     );
     if (result.leveledUp) {
       final shouldOpenChoices = !isLevelUpPending;
-      _pendingLevelChoiceCount = min(
-        maxPendingLevelChoiceCount,
-        _pendingLevelChoiceCount + result.levelsGained,
-      );
+      _pendingLevelChoiceCount += result.levelsGained;
       if (shouldOpenChoices) {
         _queueLevelUpChoices();
       }

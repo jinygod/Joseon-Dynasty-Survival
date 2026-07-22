@@ -706,15 +706,19 @@ void main() {
       expect(game.isLevelUpPending, isTrue);
     });
 
-    test('bounds accumulated level choices from oversized experience', () {
+    test('retains every level choice from oversized experience', () {
       final game = newGame();
 
       game.gainExperience(20000);
 
-      expect(
-        game.pendingLevelChoiceCount,
-        PixelSurvivorGame.maxPendingLevelChoiceCount,
-      );
+      expect(game.playerLevel, 137);
+      expect(game.pendingLevelChoiceCount, 136);
+
+      game.applyLevelUpChoice(game.pendingLevelUpChoices.first);
+
+      expect(game.pendingLevelChoiceCount, 135);
+      expect(game.isLevelUpPending, isTrue);
+      expect(game.pendingLevelUpChoices, isNotEmpty);
     });
 
     test('applyLevelUpChoice upgrades a weapon and clears pending state', () {

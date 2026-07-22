@@ -191,6 +191,45 @@ void main() {
     expect(find.textContaining('20'), findsNothing);
   });
 
+  testWidgets('large kill value stays above health at text scale two', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final source = FakeGameHudSource(
+      bossName: null,
+      bossHealthFraction: null,
+      weaponLevelLabels: const [
+        'Hwando Slash Lv. 6',
+        'Talisman Lv. 6',
+        'Bow Shot Lv. 5',
+      ],
+      kills: 9223372036854775807,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(
+            size: Size(390, 844),
+            textScaler: TextScaler.linear(2),
+          ),
+          child: GameHud(source: source, onPause: () {}),
+        ),
+      ),
+    );
+
+    final status = tester.getRect(find.byKey(const Key('hud-status')));
+    final kills = tester.getRect(find.byKey(const Key('hud-kills-value')));
+    final health = tester.getRect(find.byKey(const Key('hud-health-bar')));
+    expect(kills.left, greaterThanOrEqualTo(status.left));
+    expect(kills.right, lessThanOrEqualTo(status.right));
+    expect(kills.bottom, lessThanOrEqualTo(health.top));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('pause uses one localized semantic button and painted glyph', (
     tester,
   ) async {
@@ -305,6 +344,7 @@ class FakeGameHudSource implements GameHudSource {
     this.playerLevel = 9,
     this.currentExperience = 4,
     this.experienceToNextLevel = 12,
+    this.kills = 88,
     this.combatNotice,
     this.combatNoticeSecondsRemaining = 0,
     this.killStreak = 0,
@@ -335,7 +375,7 @@ class FakeGameHudSource implements GameHudSource {
   @override
   int get enemyCount => 20;
   @override
-  int get kills => 88;
+  final int kills;
   @override
   void updateMovementInput(VectorInput input) {}
 }

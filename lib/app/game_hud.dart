@@ -399,13 +399,21 @@ class _StatusBar extends StatelessWidget {
                                       ),
                                     ),
                                     const SizedBox(width: 6),
-                                    Text(
-                                      '${source.kills}',
-                                      key: const Key('hud-kills-value'),
-                                      style: const TextStyle(
-                                        color: Color(0xff9fb3c8),
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w700,
+                                    SizedBox(
+                                      width: 64,
+                                      height: 17,
+                                      child: FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        alignment: Alignment.centerRight,
+                                        child: Text(
+                                          '${source.kills}',
+                                          key: const Key('hud-kills-value'),
+                                          style: const TextStyle(
+                                            color: Color(0xff9fb3c8),
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ],
