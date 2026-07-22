@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:ui';
 
 import 'package:flame/components.dart';
@@ -51,6 +52,99 @@ void main() {
       expect(PlayerSpriteSheet.hitFrames, [8, 9]);
       expect(PlayerSpriteSheet.deathFrames, [10, 11, 12, 13, 14, 15]);
     });
+
+    test(
+      'real authored animation map keeps idle on one stable frame',
+      () async {
+        final image = await _loadAuthoredAtlas();
+        addTearDown(image.dispose);
+        final player = PlayerComponent(
+          slotIndex: 0,
+          characterId: exorcistDosa,
+          maxHealth: 100,
+          moveSpeed: 120,
+        )..animations = PlayerSpriteSheet.animations(image);
+        player.current = PlayerAnimationState.idle;
+
+        expect(
+          player.animations![PlayerAnimationState.idle]!.frames,
+          hasLength(1),
+        );
+        player.update(1);
+
+        expect(player.animationTicker!.currentIndex, 0);
+        expect(player.visualState, PlayerAnimationState.idle);
+      },
+    );
+
+    test('repeated authored attack explicitly restarts its ticker', () async {
+      final image = await _loadAuthoredAtlas();
+      addTearDown(image.dispose);
+      final player = PlayerComponent(
+        slotIndex: 0,
+        characterId: exorcistDosa,
+        maxHealth: 100,
+        moveSpeed: 120,
+      )..animations = PlayerSpriteSheet.animations(image);
+      player.current = PlayerAnimationState.idle;
+
+      player.playAttack(Vector2(1, 0));
+      player.update(0.15);
+      expect(player.animationTicker!.currentIndex, greaterThan(0));
+
+      player.playAttack(Vector2(1, 0));
+
+      expect(player.visualState, PlayerAnimationState.attacking);
+      expect(player.animationTicker!.currentIndex, 0);
+    });
+
+    test('hit and death outrank attack while lethal damage clears pose', () {
+      final player = PlayerComponent(
+        slotIndex: 0,
+        characterId: exorcistDosa,
+        maxHealth: 100,
+        moveSpeed: 120,
+      );
+
+      expect(player.playAttack(Vector2(1, 0)), isTrue);
+      player.takeDamage(10);
+      expect(player.visualState, PlayerAnimationState.hit);
+      expect(player.isAttacking, isFalse);
+
+      expect(player.playAttack(Vector2(1, 0)), isFalse);
+      expect(player.visualState, PlayerAnimationState.hit);
+
+      player.takeDamage(90);
+      expect(player.visualState, PlayerAnimationState.death);
+      expect(player.isAttacking, isFalse);
+
+      expect(player.playAttack(Vector2(1, 0)), isFalse);
+      expect(player.visualState, PlayerAnimationState.death);
+      expect(player.isAttacking, isFalse);
+    });
+
+    test(
+      'exorcist selects authored atlas and legacy character stays static',
+      () {
+        final exorcist = PlayerComponent(
+          slotIndex: 0,
+          characterId: exorcistDosa,
+          maxHealth: 100,
+          moveSpeed: 120,
+        );
+        final legacy = PlayerComponent(
+          slotIndex: 0,
+          characterId: rookieConstable,
+          maxHealth: 100,
+          moveSpeed: 120,
+        );
+
+        expect(exorcist.usesAuthoredAtlas, isTrue);
+        expect(exorcist.visualAssetKey, PlayerSpriteSheet.authoredAssetKey);
+        expect(legacy.usesAuthoredAtlas, isFalse);
+        expect(legacy.visualAssetKey, PlayerSpriteSheet.assetKey);
+      },
+    );
 
     test('normalizes diagonal movement so it does not exceed move speed', () {
       final player = PlayerComponent(
@@ -266,4 +360,14 @@ void main() {
       expect(player.isMoving, isTrue);
     });
   });
+}
+
+Future<Image> _loadAuthoredAtlas() async {
+  final bytes = File(
+    'assets/images/player/exorcist_dosa_128.png',
+  ).readAsBytesSync();
+  final codec = await instantiateImageCodec(bytes);
+  final frame = await codec.getNextFrame();
+  codec.dispose();
+  return frame.image;
 }

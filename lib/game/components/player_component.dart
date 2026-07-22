@@ -25,6 +25,7 @@ abstract final class PlayerSpriteSheet {
   static const frameCount = 1;
   static const authoredAssetKey = 'player/exorcist_dosa_128.png';
   static final authoredFrameSize = Vector2.all(128);
+  static const idleFrames = [0];
   static const moveFrames = [0, 1, 2, 3];
   static const attackFrames = [4, 5, 6, 7];
   static const hitFrames = [8, 9];
@@ -53,7 +54,7 @@ abstract final class PlayerSpriteSheet {
     );
 
     return {
-      PlayerAnimationState.idle: animation(moveFrames, 0.14),
+      PlayerAnimationState.idle: animation(idleFrames, 1),
       PlayerAnimationState.walking: animation(moveFrames, 0.11),
       PlayerAnimationState.attacking: animation(
         attackFrames,
@@ -112,6 +113,10 @@ class PlayerComponent
   bool get isAlive => currentHealth > 0;
   bool get isMoving => _isMoving;
   bool get isAttacking => _attackPoseRemaining > 0;
+  bool get usesAuthoredAtlas => characterId == exorcistDosa;
+  String get visualAssetKey => usesAuthoredAtlas
+      ? PlayerSpriteSheet.authoredAssetKey
+      : PlayerSpriteSheet.assetKey;
   bool get isFacingLeft => _desiredFacingX < 0;
   double get motionBlend => _motionBlend;
   double get environmentalSlowFraction => _environmentalSlowFraction;
@@ -149,6 +154,7 @@ class PlayerComponent
     if (now != null) {
       _nextDamageAt = now + CombatFeedbackTuning.playerInvulnerabilitySeconds;
     }
+    _attackPoseRemaining = 0;
     if (isAlive) {
       _hitAnimationRemaining = PlayerSpriteSheet.hitDurationSeconds;
       _setVisualState(PlayerAnimationState.hit);
@@ -217,7 +223,12 @@ class PlayerComponent
     }
   }
 
-  void playAttack(Vector2 direction) {
+  bool playAttack(Vector2 direction) {
+    if (!isAlive ||
+        visualState == PlayerAnimationState.hit ||
+        visualState == PlayerAnimationState.death) {
+      return false;
+    }
     final normalizedDirection = direction.length2 == 0
         ? Vector2(1, 0)
         : direction.normalized();
@@ -227,6 +238,11 @@ class PlayerComponent
     }
     _attackPoseRemaining = attackPoseDurationSeconds;
     _setVisualState(PlayerAnimationState.attacking);
+    // Assigning the same group state does not reset Flame's ticker. Multi-hit
+    // hwando sequences can request another slash before the prior pose ends,
+    // so restart explicitly even when `attacking` is already current.
+    animationTicker?.reset();
+    return true;
   }
 
   @override
@@ -242,14 +258,10 @@ class PlayerComponent
       // Pure game-loop tests intentionally run without a Flutter binding.
       return;
     }
-    final usesAuthoredAtlas = characterId == exorcistDosa;
-    final assetKey = usesAuthoredAtlas
-        ? PlayerSpriteSheet.authoredAssetKey
-        : PlayerSpriteSheet.assetKey;
     final image = await SafeAssetLoader.load(
-      load: () => findGame()!.images.load(assetKey),
+      load: () => findGame()!.images.load(visualAssetKey),
       library: 'pixel_survivor player sprites',
-      assetKey: assetKey,
+      assetKey: visualAssetKey,
     );
     if (image == null) return;
     if (usesAuthoredAtlas) {

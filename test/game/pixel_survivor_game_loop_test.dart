@@ -16,6 +16,7 @@ import 'package:pixel_survivor/game/components/experience_gem_component.dart';
 import 'package:pixel_survivor/game/components/frost_field_component.dart';
 import 'package:pixel_survivor/game/components/five_color_ward_component.dart';
 import 'package:pixel_survivor/game/components/projectile_component.dart';
+import 'package:pixel_survivor/game/components/player_component.dart';
 import 'package:pixel_survivor/game/components/spirit_jade_component.dart';
 import 'package:pixel_survivor/game/components/talisman_presentation_component.dart';
 import 'package:pixel_survivor/game/components/ward_aura_component.dart';
@@ -183,6 +184,53 @@ void main() {
   );
 
   group('PixelSurvivorGame run loop progression', () {
+    test(
+      'selected character keeps authored versus legacy player art',
+      () async {
+        final exorcistGame = PixelSurvivorGame(
+          playerSlot: const PlayerSlot(index: 0, characterId: exorcistDosa),
+          onRunEnded: null,
+          loadVisualAssets: false,
+        );
+        exorcistGame.onGameResize(Vector2(960, 540));
+        await exorcistGame.onLoad();
+
+        expect(exorcistGame.activePlayers.single.characterId, exorcistDosa);
+        expect(exorcistGame.activePlayers.single.usesAuthoredAtlas, isTrue);
+
+        final legacyGame = PixelSurvivorGame(
+          playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
+          onRunEnded: null,
+          loadVisualAssets: false,
+        );
+        legacyGame.onGameResize(Vector2(960, 540));
+        await legacyGame.onLoad();
+
+        expect(legacyGame.activePlayers.single.characterId, rookieConstable);
+        expect(legacyGame.activePlayers.single.usesAuthoredAtlas, isFalse);
+      },
+    );
+
+    test(
+      'dead player never re-enters attack state from weapon updates',
+      () async {
+        final game = PixelSurvivorGame(
+          playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
+          onRunEnded: null,
+          loadVisualAssets: false,
+        );
+        game.onGameResize(Vector2(960, 540));
+        await game.onLoad();
+        final player = game.activePlayers.single;
+
+        player.takeDamage(player.currentHealth);
+        game.update(0.05);
+
+        expect(player.visualState, PlayerAnimationState.death);
+        expect(player.isAttacking, isFalse);
+      },
+    );
+
     test('synergy presentation uses a golden slash and five O-bang colors', () {
       expect(AttackEffectComponent.synergySlashColor, const Color(0xffffd166));
       expect(AttackEffectComponent.synergyFragmentColors, hasLength(5));

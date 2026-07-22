@@ -635,7 +635,7 @@ class PixelSurvivorGame extends FlameGame
 
   void _updateWeapons(double dt) {
     final player = _activePlayers
-        .where((player) => player.isMounted)
+        .where((player) => player.isMounted && player.isAlive)
         .firstOrNull;
     if (player == null) {
       return;
