@@ -48,8 +48,8 @@ void main() {
         closeTo(1.4, 0.001),
         closeTo(1.9, 0.001),
         closeTo(2.5, 0.001),
-        closeTo(3.6, 0.001),
-        closeTo(5.2, 0.001),
+        closeTo(4.6, 0.001),
+        closeTo(6.8, 0.001),
       ]);
       expect(report.bossActiveCap, 48);
       expect(report.hasMonotonicPreBossPressure, isTrue);

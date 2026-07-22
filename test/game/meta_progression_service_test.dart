@@ -103,19 +103,22 @@ void main() {
     },
   );
 
-  test('settlement reports a stage reward once and persists it', () async {
-    final store = _MemorySaveStore(SaveState.defaults());
-    final service = MetaProgressionService(saveStore: store);
-    final victory = _runResult(outcome: RunOutcome.victory);
+  test(
+    'settlement keeps base stages accessible without a reward popup',
+    () async {
+      final store = _MemorySaveStore(SaveState.defaults());
+      final service = MetaProgressionService(saveStore: store);
+      final victory = _runResult(outcome: RunOutcome.victory);
 
-    final first = await service.settleRun(victory);
-    final second = await service.settleRun(victory);
+      final first = await service.settleRun(victory);
+      final second = await service.settleRun(victory);
 
-    expect(first.unlocks.stageIds, [plagueMarket]);
-    expect(first.after.unlockedStageIds, contains(plagueMarket));
-    expect(second.unlocks.stageIds, isEmpty);
-    expect((await store.load()).unlockedStageIds, contains(plagueMarket));
-  });
+      expect(first.unlocks.stageIds, isEmpty);
+      expect(first.after.unlockedStageIds, contains(plagueMarket));
+      expect(second.unlocks.stageIds, isEmpty);
+      expect((await store.load()).unlockedStageIds, contains(plagueMarket));
+    },
+  );
 
   test(
     'settlement records victories for the selected character only',

@@ -92,7 +92,7 @@ void main() {
     expect(updated.unlockedAugmentIds, contains(lastStand));
   });
 
-  test('diff contains only newly unlocked content ids', () {
+  test('diff reports only content absent from the before snapshot', () {
     final before = SaveState.defaults().copyWith(
       unlockedWeaponIds: {hwandoSlash, gakgungShot, talismanThrow},
     );
@@ -109,7 +109,7 @@ void main() {
 
     final unlocks = ProgressionUnlocks.diff(before, after);
 
-    expect(unlocks.characterIds, [exorcistDosa]);
+    expect(unlocks.characterIds, isEmpty);
     expect(unlocks.weaponIds, [thunderCrashBomb]);
     expect(unlocks.augmentIds, [lastStand, rapidReload]);
     expect(unlocks.isEmpty, isFalse);

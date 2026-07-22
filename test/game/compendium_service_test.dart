@@ -41,19 +41,22 @@ void main() {
     expect(sword.progressFraction, 1);
   });
 
-  test('locked reward exposes localized condition and live progress', () {
-    final state = SaveState.defaults().copyWith(totalKills: 120);
-    final entries = service.entries(state);
-    final bomb = entries.singleWhere(
-      (item) => item.key == 'weapon:$thunderCrashBomb',
-    );
+  test(
+    'base weapon stays available while legacy goal metadata is retained',
+    () {
+      final state = SaveState.defaults().copyWith(totalKills: 120);
+      final entries = service.entries(state);
+      final bomb = entries.singleWhere(
+        (item) => item.key == 'weapon:$thunderCrashBomb',
+      );
 
-    expect(bomb.isUnlocked, isFalse);
-    expect(bomb.unlockCondition, '누적 적 300명 처치');
-    expect(bomb.currentProgress, 120);
-    expect(bomb.targetProgress, 300);
-    expect(bomb.progressFraction, 0.4);
-  });
+      expect(bomb.isUnlocked, isTrue);
+      expect(bomb.unlockCondition, '누적 적 300명 처치');
+      expect(bomb.currentProgress, 120);
+      expect(bomb.targetProgress, 300);
+    expect(bomb.progressFraction, 1);
+    },
+  );
 
   test('unseen keys include only unlocked entries not viewed before', () {
     final state = SaveState.defaults().copyWith(
@@ -64,6 +67,6 @@ void main() {
 
     expect(unseen, isNot(contains('character:$rookieConstable')));
     expect(unseen, contains('weapon:$hwandoSlash'));
-    expect(unseen, isNot(contains('weapon:$thunderCrashBomb')));
+    expect(unseen, contains('weapon:$thunderCrashBomb'));
   });
 }
