@@ -65,7 +65,69 @@ class SpriteAtlasContract {
 }
 
 abstract final class ReplaceableArtCatalog {
+  /// The reviewed runtime slots for the first balanced-casual combat set.
+  ///
+  /// Their contracts are declared before the PNGs land so loaders can keep
+  /// using the established fallback artwork until each replacement is bundled.
+  static const representativeAtlasIds = <String>{
+    'exorcist_dosa_balanced_casual',
+    'plague_rat_swarm_balanced_casual',
+    'vengeful_spirit_balanced_casual',
+    'sakkat_specter_balanced_casual',
+    'dokkaebi_balanced_casual',
+  };
+
   static const atlases = <SpriteAtlasContract>[
+    SpriteAtlasContract(
+      id: 'exorcist_dosa_balanced_casual',
+      runtimePath: 'assets/images/player/exorcist_dosa_128.png',
+      frameWidth: 128,
+      frameHeight: 128,
+      columns: 4,
+      rows: 4,
+      requiresTransparency: true,
+      status: ArtAssetStatus.temporary,
+    ),
+    SpriteAtlasContract(
+      id: 'plague_rat_swarm_balanced_casual',
+      runtimePath: 'assets/images/monsters/plague_rat_swarm_128.png',
+      frameWidth: 128,
+      frameHeight: 128,
+      columns: 4,
+      rows: 4,
+      requiresTransparency: true,
+      status: ArtAssetStatus.temporary,
+    ),
+    SpriteAtlasContract(
+      id: 'vengeful_spirit_balanced_casual',
+      runtimePath: 'assets/images/monsters/vengeful_spirit_128.png',
+      frameWidth: 128,
+      frameHeight: 128,
+      columns: 4,
+      rows: 4,
+      requiresTransparency: true,
+      status: ArtAssetStatus.temporary,
+    ),
+    SpriteAtlasContract(
+      id: 'sakkat_specter_balanced_casual',
+      runtimePath: 'assets/images/monsters/sakkat_specter_128.png',
+      frameWidth: 128,
+      frameHeight: 128,
+      columns: 4,
+      rows: 4,
+      requiresTransparency: true,
+      status: ArtAssetStatus.temporary,
+    ),
+    SpriteAtlasContract(
+      id: 'dokkaebi_balanced_casual',
+      runtimePath: 'assets/images/monsters/dokkaebi_128.png',
+      frameWidth: 128,
+      frameHeight: 128,
+      columns: 4,
+      rows: 4,
+      requiresTransparency: true,
+      status: ArtAssetStatus.temporary,
+    ),
     SpriteAtlasContract(
       id: 'exorcist_swordswoman_player',
       runtimePath: 'assets/images/player/exorcist_swordswoman_static_64.png',

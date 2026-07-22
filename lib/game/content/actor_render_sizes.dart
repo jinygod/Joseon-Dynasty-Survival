@@ -1,6 +1,10 @@
 import 'ids.dart';
 
 abstract final class ActorRenderSizes {
+  /// Shared presentation ratios for a sprite's foot anchor and its shadow.
+  /// Collision values below remain the gameplay authority.
+  static const actorGroundOffsetRatio = 0.28;
+  static const actorShadowWidthRatio = 0.64;
   static const playerCollision = 24.0;
   static const playerVisual = 108.0;
   static const normalEnemyCollision = 18.0;
