@@ -3,7 +3,9 @@ import 'package:flame_test/flame_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/components/enemy_component.dart';
 import 'package:pixel_survivor/game/components/attack_effect_component.dart';
+import 'package:pixel_survivor/game/combat/attack_spec.dart';
 import 'package:pixel_survivor/game/components/combat_effect_component.dart';
+import 'package:pixel_survivor/game/components/damage_number_component.dart';
 import 'package:pixel_survivor/game/components/projectile_component.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
@@ -69,6 +71,59 @@ void main() {
       );
     }
   });
+
+  test(
+    'master damage requests an emphasized number while normal damage stays compact',
+    () async {
+      final game = PixelSurvivorGame(
+        playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
+        onRunEnded: null,
+      );
+      game.onGameResize(Vector2(960, 540));
+      await game.onLoad();
+      final target = EnemyComponent(
+        enemyId: 'damage-style-target',
+        maxHealth: 100,
+        moveSpeed: 0,
+        damage: 0,
+        position: Vector2(480, 270),
+      );
+      await game.ensureAdd(target);
+
+      game.debugApplyDamageEvent(
+        DamageEvent(
+          target: target,
+          damage: 1,
+          knockback: 0,
+          direction: Vector2(1, 0),
+        ),
+      );
+      game.update(0);
+      expect(
+        game.children.whereType<DamageNumberComponent>().single.isEmphasized,
+        isFalse,
+      );
+
+      game.update(.13);
+      game.debugApplyDamageEvent(
+        DamageEvent(
+          target: target,
+          damage: 1,
+          knockback: 0,
+          direction: Vector2(1, 0),
+          traits: const {AttackTrait.master},
+        ),
+      );
+      game.update(0);
+      expect(
+        game.children.whereType<DamageNumberComponent>().where(
+          (number) => number.isEmphasized,
+        ),
+        hasLength(1),
+      );
+      game.onDispose();
+    },
+  );
 
   test('snapshot reports overages without exposing mutable counts', () {
     const budget = GamePerformanceBudget(
@@ -185,17 +240,26 @@ void main() {
       final snapshot = game.performanceSnapshot;
       expect(snapshot.isWithinBudget, isTrue);
       expect(snapshot.counts[GamePopulationKind.damageNumber], 1);
+      expect(
+        game.children.whereType<DamageNumberComponent>().single.damage,
+        3,
+        reason: 'same-target hits inside the 0.12 second window combine',
+      );
       expect(snapshot.counts[GamePopulationKind.combatEffect], 1);
       expect(snapshot.rejected[GamePopulationKind.enemy], greaterThan(0));
       expect(snapshot.rejected[GamePopulationKind.projectile], greaterThan(0));
-      expect(snapshot.rejected[GamePopulationKind.damageNumber], 2);
+      expect(snapshot.rejected[GamePopulationKind.damageNumber] ?? 0, 0);
       expect(
         snapshot.rejected[GamePopulationKind.combatEffect],
         greaterThanOrEqualTo(2),
       );
       expect(
         runtimeDiagnostics.map((diagnostic) => diagnostic.kind).toSet(),
-        GamePopulationKind.values.toSet(),
+        containsAll({
+          GamePopulationKind.enemy,
+          GamePopulationKind.projectile,
+          GamePopulationKind.combatEffect,
+        }),
       );
 
       final dyingEnemy = game.children.whereType<EnemyComponent>().first;

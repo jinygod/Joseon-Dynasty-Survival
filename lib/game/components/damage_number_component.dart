@@ -8,6 +8,7 @@ class DamageNumberComponent extends PositionComponent {
     required this.damage,
     required Vector2 position,
     this.isCritical = false,
+    this.isEmphasized = false,
     this.lifetime = 0.55,
     this.onExpired,
   }) : super(
@@ -17,8 +18,9 @@ class DamageNumberComponent extends PositionComponent {
          priority: 100,
        );
 
-  final double damage;
+  double damage;
   final bool isCritical;
+  bool isEmphasized;
   final double lifetime;
   final void Function()? onExpired;
 
@@ -26,6 +28,11 @@ class DamageNumberComponent extends PositionComponent {
   bool _didExpire = false;
 
   bool get isExpired => _age >= lifetime;
+
+  void absorbDamage(double amount, {bool emphasize = false}) {
+    if (amount > 0) damage += amount;
+    isEmphasized = isEmphasized || emphasize;
+  }
 
   @override
   void update(double dt) {
@@ -48,11 +55,11 @@ class DamageNumberComponent extends PositionComponent {
         text: damage.round().toString(),
         style: TextStyle(
           color:
-              (isCritical
+              ((isCritical || isEmphasized)
                       ? const ui.Color(0xffffd166)
                       : const ui.Color(0xffffffff))
                   .withValues(alpha: opacity),
-          fontSize: isCritical ? 19 : 16,
+          fontSize: (isCritical || isEmphasized) ? 19 : 16,
           fontWeight: FontWeight.w800,
           letterSpacing: 0,
           shadows: const [

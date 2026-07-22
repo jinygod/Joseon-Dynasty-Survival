@@ -338,8 +338,7 @@ class EnemyComponent
 
   double resolveIncomingDamage(DamageEvent event) {
     if (behaviorType != EnemyBehaviorType.tank) return event.damage;
-    if (event.traits.contains(AttackTrait.explosion) ||
-        event.traits.contains(AttackTrait.synergy)) {
+    if (isShieldBypassedBy(event)) {
       return event.damage;
     }
     final frontal =
@@ -349,6 +348,11 @@ class EnemyComponent
     _blockFeedbackPending = true;
     return event.damage * (1 - reduction);
   }
+
+  bool isShieldBypassedBy(DamageEvent event) =>
+      hasDirectionalShield &&
+      (event.traits.contains(AttackTrait.explosion) ||
+          event.traits.contains(AttackTrait.synergy));
 
   void debugFace(Vector2 direction) => _face(direction);
 

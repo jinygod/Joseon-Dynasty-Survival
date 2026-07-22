@@ -271,6 +271,7 @@ void main() {
       );
 
       expect(enemy.resolveIncomingDamage(event), 10);
+      expect(enemy.isShieldBypassedBy(event), isTrue);
       expect(enemy.consumeBlockFeedback(), isFalse);
     });
 

@@ -173,6 +173,8 @@ class PixelSurvivorGame extends FlameGame
   RunOutcome _runOutcome = RunOutcome.inProgress;
   BossComponent? _boss;
   int _damageNumberCount = 0;
+  final Map<EnemyComponent, _DamageNumberAggregate> _damageNumberAggregates =
+      {};
   int _combatEffectCount = 0;
   final Map<GamePopulationKind, int> _rejectedPopulations = {};
   double _screenShakeRemaining = 0;
@@ -384,6 +386,7 @@ class PixelSurvivorGame extends FlameGame
     final simulationDt = _combatFeedback.tick(safeDt);
     super.update(simulationDt);
     _cleanupCombatPresentationOwners();
+    _refreshWarningEmphasis();
     _trySpawnPendingBoss();
     _updateScreenShake(safeDt);
     _combatNoticeSecondsRemaining = max(
@@ -804,6 +807,17 @@ class PixelSurvivorGame extends FlameGame
     for (final target in staleTargets) {
       _talismanAttachmentComponents.remove(target)?.removeFromParent();
     }
+  }
+
+  void _refreshWarningEmphasis() {
+    final player = _activePlayers.where((item) => item.isAlive).firstOrNull;
+    if (player == null) return;
+    EnemyWarningOverlayComponent.rankByDistance(
+      children.whereType<EnemyWarningOverlayComponent>().where(
+        (overlay) => overlay.enemy.warningSnapshot != null,
+      ),
+      playerPosition: player.position,
+    );
   }
 
   void _resolveSharedAttack(AttackInstance attack) {
@@ -1248,6 +1262,7 @@ class PixelSurvivorGame extends FlameGame
     for (final event in events) {
       if (event.target.isDead) continue;
       final healthBefore = event.target.currentHealth;
+      final isGuardBreak = event.target.isShieldBypassedBy(event);
       final resolvedDamage = event.target.resolveIncomingDamage(event);
       final wasBlocked = event.target.consumeBlockFeedback();
       event.target.takeDamage(resolvedDamage);
@@ -1268,7 +1283,14 @@ class PixelSurvivorGame extends FlameGame
         }
       }
       event.target.registerHit(knockback: event.direction * event.knockback);
-      _spawnDamageNumber(event, effectiveDamage);
+      _spawnDamageNumber(
+        event,
+        effectiveDamage,
+        emphasize:
+            event.isCritical ||
+            isGuardBreak ||
+            event.traits.contains(AttackTrait.master),
+      );
       if (wasBlocked) {
         _spawnShieldBlockEffect(event.target);
       } else {
@@ -1282,23 +1304,45 @@ class PixelSurvivorGame extends FlameGame
     }
   }
 
-  void _spawnDamageNumber(DamageEvent event, double effectiveDamage) {
+  void _spawnDamageNumber(
+    DamageEvent event,
+    double effectiveDamage, {
+    required bool emphasize,
+  }) {
     if (!damageNumbersEnabled) return;
+    final existing = _damageNumberAggregates[event.target];
+    if (existing != null &&
+        _elapsedSeconds - existing.startedAtSeconds <= .12 &&
+        !existing.component.isExpired) {
+      existing.component.absorbDamage(effectiveDamage, emphasize: emphasize);
+      return;
+    }
     if (_damageNumberCount >= performanceBudget.maxDamageNumbers) {
       _rejectPopulation(GamePopulationKind.damageNumber, 1);
       return;
     }
     _damageNumberCount += 1;
-    add(
-      DamageNumberComponent(
-        damage: effectiveDamage,
-        isCritical: event.isCritical,
-        position: event.target.position.clone(),
-        onExpired: () {
-          _damageNumberCount = max(0, _damageNumberCount - 1);
-        },
-      ),
+    late final DamageNumberComponent component;
+    component = DamageNumberComponent(
+      damage: effectiveDamage,
+      isCritical: event.isCritical,
+      isEmphasized: emphasize,
+      position: event.target.position.clone(),
+      onExpired: () {
+        _damageNumberCount = max(0, _damageNumberCount - 1);
+        if (identical(
+          _damageNumberAggregates[event.target]?.component,
+          component,
+        )) {
+          _damageNumberAggregates.remove(event.target);
+        }
+      },
     );
+    _damageNumberAggregates[event.target] = _DamageNumberAggregate(
+      component: component,
+      startedAtSeconds: _elapsedSeconds,
+    );
+    add(component);
   }
 
   void _spawnCombatEffect(
@@ -1960,4 +2004,14 @@ class PixelSurvivorGame extends FlameGame
 
     return VectorInput(x, y);
   }
+}
+
+class _DamageNumberAggregate {
+  const _DamageNumberAggregate({
+    required this.component,
+    required this.startedAtSeconds,
+  });
+
+  final DamageNumberComponent component;
+  final double startedAtSeconds;
 }
