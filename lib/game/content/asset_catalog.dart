@@ -47,6 +47,10 @@ class AssetCatalog {
     'singijeon_volley': 'assets/images/effects/weapon_effects_atlas_64.png',
     'frost_flask': 'assets/images/effects/weapon_effects_atlas_64.png',
     'wind_thunder_fan': 'assets/images/effects/weapon_effects_atlas_64.png',
+    'matchlock_cannon': 'assets/images/effects/weapon_effects_atlas_64.png',
+    'shaman_bells': 'assets/images/effects/weapon_effects_atlas_64.png',
+    'dokkaebi_chain': 'assets/images/effects/weapon_effects_atlas_64.png',
+    'hawk_summon': 'assets/images/effects/weapon_effects_atlas_64.png',
   };
 
   static const augments = <String, String>{

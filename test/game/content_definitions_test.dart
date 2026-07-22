@@ -46,8 +46,8 @@ void main() {
     );
 
     expect(report.counts.characters, 3);
-    expect(report.counts.weapons, 8);
-    expect(report.counts.weaponLevels, 42);
+    expect(report.counts.weapons, 12);
+    expect(report.counts.weaponLevels, 72);
     expect(report.counts.augments, 16);
     expect(report.counts.normalEnemies, 9);
     expect(report.counts.eliteEnemies, 3);
@@ -86,7 +86,7 @@ void main() {
     });
   });
 
-  test('roster exposes eight weapons with slice mastery levels', () {
+  test('roster exposes twelve weapons with six mastery levels each', () {
     expect(
       weaponDefinitions.map((definition) => definition.id),
       orderedEquals([
@@ -98,43 +98,27 @@ void main() {
         singijeonVolley,
         frostFlask,
         windThunderFan,
+        matchlockCannon,
+        shamanBells,
+        dokkaebiChain,
+        hawkSummon,
       ]),
     );
     expect(
       weaponLevels.keys,
       containsAll(weaponDefinitions.map((item) => item.id)),
     );
-    expect(weaponLevels[hwandoSlash], hasLength(6));
-    expect(weaponLevels[talismanThrow], hasLength(6));
-    expect(
-      weaponLevels.entries
-          .where(
-            (entry) => entry.key != hwandoSlash && entry.key != talismanThrow,
-          )
-          .every((entry) => entry.value.length == 5),
-      isTrue,
-    );
-    expect(weaponLevels.values.expand((levels) => levels), hasLength(42));
+    expect(weaponLevels.values, everyElement(hasLength(6)));
+    expect(weaponLevels.values.expand((levels) => levels), hasLength(72));
   });
 
-  test('slice weapons have a distinct sixth master level', () {
-    expect(
-      weaponDefinitions.singleWhere((w) => w.id == hwandoSlash).maxLevel,
-      6,
-    );
-    expect(
-      weaponDefinitions.singleWhere((w) => w.id == talismanThrow).maxLevel,
-      6,
-    );
-    expect(weaponLevelFor(hwandoSlash, 5).isMaster, isFalse);
-    expect(weaponLevelFor(hwandoSlash, 6).isMaster, isTrue);
-    expect(weaponLevelFor(talismanThrow, 6).isMaster, isTrue);
-    expect(
-      weaponDefinitions
-          .where((w) => w.id != hwandoSlash && w.id != talismanThrow)
-          .every((w) => w.maxLevel == 5),
-      isTrue,
-    );
+  test('every weapon has a distinct named sixth master level', () {
+    expect(weaponDefinitions.every((weapon) => weapon.maxLevel == 6), isTrue);
+    for (final weapon in weaponDefinitions) {
+      expect(weaponLevelFor(weapon.id, 5).isMaster, isFalse);
+      expect(weaponLevelFor(weapon.id, 6).isMaster, isTrue);
+      expect(weaponLevelFor(weapon.id, 6).masterName, isNotEmpty);
+    }
     expect(
       weaponLevels.values
           .expand((levels) => levels)
@@ -153,7 +137,7 @@ void main() {
     expect(frost.slowFraction, 0.45);
   });
 
-  test('first stage defines every field for all twenty weapon levels', () {
+  test('vertical-slice weapons define every field through level six', () {
     const expectedLevels = <WeaponId, List<ExpectedWeaponLevel>>{
       hwandoSlash: [
         (
@@ -268,6 +252,16 @@ void main() {
           knockback: 15,
           displayEffect: '관통 +1, 첫 대상 추가 피해',
         ),
+        (
+          damage: 26,
+          cooldownSeconds: 0.95,
+          range: 560,
+          projectileCount: 3,
+          pierce: 4,
+          chainCount: 2,
+          knockback: 24,
+          displayEffect: '관월추성 · 관통 대시위 1발 + 추격 화살 2발',
+        ),
       ],
       talismanThrow: [
         (
@@ -381,6 +375,16 @@ void main() {
           chainCount: 0,
           knockback: 80,
           displayEffect: '피해 32, 폭발 범위 120',
+        ),
+        (
+          damage: 38,
+          cooldownSeconds: 1.65,
+          range: 138,
+          projectileCount: 5,
+          pierce: 0,
+          chainCount: 4,
+          knockback: 96,
+          displayEffect: '중앙 폭발 뒤 연쇄 폭발 4회',
         ),
       ],
     };
@@ -856,7 +860,7 @@ void main() {
         ),
       );
     }
-    expect(() => weaponLevelFor(gakgungShot, 6), throwsRangeError);
+    expect(() => weaponLevelFor(gakgungShot, 7), throwsRangeError);
   });
 }
 

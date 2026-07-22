@@ -30,8 +30,8 @@ class ContentRosterCounts {
 
   static const production = ContentRosterCounts(
     characters: 3,
-    weapons: 8,
-    weaponLevels: 42,
+    weapons: 12,
+    weaponLevels: 72,
     augments: 16,
     normalEnemies: 9,
     eliteEnemies: 3,
@@ -341,8 +341,7 @@ void _validateWeapons(
   final weaponIds = weapons.map((item) => item.id).toSet();
   for (final weapon in weapons) {
     final entries = levels[weapon.id];
-    final expectedMaxLevel =
-        weapon.id == hwandoSlash || weapon.id == talismanThrow ? 6 : 5;
+    const expectedMaxLevel = 6;
     if (weapon.maxLevel != expectedMaxLevel ||
         entries?.length != weapon.maxLevel) {
       issues.add('Invalid weapon level coverage: ${weapon.id}');
@@ -367,7 +366,8 @@ void _validateWeapons(
           level.slowFraction < 0 ||
           level.slowFraction > 1 ||
           level.behaviorDescription.trim().isEmpty ||
-          level.isMaster != (expectedMaxLevel == 6 && index == 5)) {
+          level.isMaster != (index == entries.length - 1) ||
+          (level.isMaster && level.masterName.trim().isEmpty)) {
         issues.add('Invalid weapon tuning: ${weapon.id}/${index + 1}');
       }
     }
@@ -444,6 +444,12 @@ void _validateUnlocks(
 ) {
   _validateUniqueIds(issues, 'unlock goal', goals.map((item) => item.id));
   final defaults = SaveState.defaults();
+  final valid = <String>{
+    ...characters.map((item) => 'character:${item.id}'),
+    ...weapons.map((item) => 'weapon:${item.id}'),
+    ...augments.map((item) => 'augment:${item.id}'),
+    ...stages.map((item) => 'stage:${item.id}'),
+  };
   final expected = <String>{
     ...characters
         .where((item) => !defaults.unlockedCharacterIds.contains(item.id))
@@ -480,7 +486,7 @@ void _validateUnlocks(
   for (final reward in expected.where((item) => !rewardSet.contains(item))) {
     issues.add('Missing unlock reward: $reward');
   }
-  for (final reward in rewardSet.where((item) => !expected.contains(item))) {
+  for (final reward in rewardSet.where((item) => !valid.contains(item))) {
     issues.add('Unknown unlock reward: $reward');
   }
   final seen = <String>{};

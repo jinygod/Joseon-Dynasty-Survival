@@ -14,6 +14,10 @@ abstract final class ContentRosterContract {
     'singijeon_volley',
     'frost_flask',
     'wind_thunder_fan',
+    'matchlock_cannon',
+    'shaman_bells',
+    'dokkaebi_chain',
+    'hawk_summon',
   };
 
   static const augmentIds = {

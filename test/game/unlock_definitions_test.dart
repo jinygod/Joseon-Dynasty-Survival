@@ -23,15 +23,16 @@ void main() {
     }
   });
 
-  test('existing reward fields cover every non-starting roster item once', () {
-    final expectedCharacters = characterDefinitions
-        .map((definition) => definition.id)
-        .where((id) => id != rookieConstable)
-        .toSet();
-    final expectedWeapons = weaponDefinitions
-        .where((definition) => !definition.startsUnlocked)
-        .map((definition) => definition.id)
-        .toSet();
+  test('legacy base rewards remain recorded without gating base access', () {
+    final expectedCharacters = {exorcistDosa, mountainHunter};
+    final expectedWeapons = {
+      talismanThrow,
+      thunderCrashBomb,
+      jangseungWard,
+      singijeonVolley,
+      frostFlask,
+      windThunderFan,
+    };
     final expectedAugments = augmentDefinitions
         .where((definition) => !definition.startsUnlocked)
         .map((definition) => definition.id)
@@ -53,6 +54,14 @@ void main() {
       unlockGoals.map((goal) => goal.unlocksStageId).whereType<String>(),
       unorderedEquals([plagueMarket]),
     );
+    expect(
+      characterDefinitions.every(
+        (item) =>
+            item.id == rookieConstable || expectedCharacters.contains(item.id),
+      ),
+      isTrue,
+    );
+    expect(weaponDefinitions.every((item) => item.startsUnlocked), isTrue);
   });
 
   test('definition requires exactly one reward', () {

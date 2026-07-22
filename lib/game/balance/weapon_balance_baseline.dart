@@ -13,6 +13,10 @@ const _runtimeWeaponIds = <WeaponId>{
   singijeonVolley,
   frostFlask,
   windThunderFan,
+  matchlockCannon,
+  shamanBells,
+  dokkaebiChain,
+  hawkSummon,
 };
 
 class WeaponBaselineSimulator {
@@ -86,6 +90,12 @@ class WeaponBaselineSimulator {
         frostFlask =>
           crowdTargetsPerArea * (stats.durationSeconds / .5).floor(),
         windThunderFan => stats.projectileCount * 2,
+        matchlockCannon =>
+          stats.projectileCount * (stats.pierce + 1) +
+              stats.chainCount * crowdTargetsPerArea,
+        shamanBells => stats.projectileCount * (stats.chainCount + 1),
+        dokkaebiChain => stats.projectileCount * crowdTargetsPerArea,
+        hawkSummon => stats.projectileCount * (stats.pierce + 1),
         _ => throw ArgumentError.value(weaponId, 'weaponId'),
       };
 }
