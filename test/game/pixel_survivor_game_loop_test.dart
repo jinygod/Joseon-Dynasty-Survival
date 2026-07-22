@@ -5,6 +5,7 @@ import 'package:flame/components.dart';
 import 'package:flame_test/flame_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/components/area_attack_component.dart';
+import 'package:pixel_survivor/game/components/actor_shadow_component.dart';
 import 'package:pixel_survivor/game/components/damage_number_component.dart';
 import 'package:pixel_survivor/game/components/enemy_component.dart';
 import 'package:pixel_survivor/game/components/enemy_combat_overlay_component.dart';
@@ -18,6 +19,7 @@ import 'package:pixel_survivor/game/components/five_color_ward_component.dart';
 import 'package:pixel_survivor/game/components/projectile_component.dart';
 import 'package:pixel_survivor/game/components/player_component.dart';
 import 'package:pixel_survivor/game/components/spirit_jade_component.dart';
+import 'package:pixel_survivor/game/components/stage_backdrop_component.dart';
 import 'package:pixel_survivor/game/components/talisman_presentation_component.dart';
 import 'package:pixel_survivor/game/components/ward_aura_component.dart';
 import 'package:pixel_survivor/game/audio/audio_cue.dart';
@@ -184,6 +186,31 @@ void main() {
   );
 
   group('PixelSurvivorGame run loop progression', () {
+    gameTester.testGameWidget(
+      'bright stage and actor shadows mount before representative combat',
+      setUp: (game, _) async {
+        final origin = game.activePlayers.single.position;
+        for (final enemyId in [
+          plagueRatSwarm,
+          vengefulSpirit,
+          sakkatSpecter,
+          dokkaebi,
+        ]) {
+          game.debugSpawnEnemy(enemyId, position: origin + Vector2(80, 0));
+        }
+      },
+      verify: (game, _) async {
+        game.update(0);
+
+        expect(game.children.whereType<StageBackdropComponent>(), hasLength(1));
+        final shadows = game.children.whereType<ActorShadowComponent>().toList();
+        expect(shadows, hasLength(5));
+        expect(
+          shadows.every((shadow) => shadow.priority < 0),
+          isTrue,
+        );
+      },
+    );
     test(
       'selected character keeps authored versus legacy player art',
       () async {

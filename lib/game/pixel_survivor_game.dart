@@ -11,6 +11,7 @@ import 'package:flutter/widgets.dart' show KeyEventResult;
 
 import '../app/game_hud_source.dart';
 import 'components/area_attack_component.dart';
+import 'components/actor_shadow_component.dart';
 import 'audio/audio_cue.dart';
 import 'combat/attack_geometry.dart';
 import 'combat/attack_spec.dart';
@@ -31,8 +32,10 @@ import 'components/projectile_component.dart';
 import 'components/spirit_jade_component.dart';
 import 'components/talisman_presentation_component.dart';
 import 'components/ward_aura_component.dart';
+import 'components/stage_backdrop_component.dart';
 import 'balance/meta_reward_balance.dart';
 import 'content/augment_definitions.dart';
+import 'content/actor_visual_spec.dart';
 import 'content/boss_definitions.dart';
 import 'content/character_definitions.dart';
 import 'content/combat_effect_atlas.dart';
@@ -335,7 +338,7 @@ class PixelSurvivorGame extends FlameGame
   ];
 
   @override
-  Color backgroundColor() => const Color(0xff101820);
+  Color backgroundColor() => const Color(0xffdce8ce);
 
   @override
   KeyEventResult onKeyEvent(
@@ -352,6 +355,7 @@ class PixelSurvivorGame extends FlameGame
 
     camera.viewfinder.anchor = Anchor.center;
 
+    add(StageBackdropComponent(viewportSize: size));
     await _addActivePlayers();
     _addStartingAugments();
   }
@@ -531,6 +535,12 @@ class PixelSurvivorGame extends FlameGame
     }
 
     _activePlayers.add(player);
+    add(
+      ActorShadowComponent(
+        target: player,
+        width: playerVisualSpecFor(player.characterId).shadowWidth,
+      ),
+    );
     await add(player);
     _applyAugmentEffects();
   }
@@ -629,9 +639,25 @@ class PixelSurvivorGame extends FlameGame
   }
 
   void _addEnemyWithWarningOverlay(EnemyComponent enemy) {
+    if (_usesRepresentativeEnemyShadow(enemy.enemyId)) {
+      add(
+        ActorShadowComponent(
+          target: enemy,
+          width: enemyVisualSpecFor(
+            enemy.enemyId,
+            fallbackRank: enemy.rank,
+          ).shadowWidth,
+        ),
+      );
+    }
     add(enemy);
     add(EnemyWarningOverlayComponent(enemy: enemy));
   }
+
+  bool _usesRepresentativeEnemyShadow(EnemyId enemyId) => switch (enemyId) {
+    plagueRatSwarm || vengefulSpirit || sakkatSpecter || dokkaebi => true,
+    _ => false,
+  };
 
   void _updateWeapons(double dt) {
     final player = _activePlayers
