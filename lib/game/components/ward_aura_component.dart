@@ -19,6 +19,14 @@ class WardAuraComponent extends PositionComponent {
   final double Function() radiusProvider;
   final CombatVfxTier Function() _tierProvider;
   CombatVfxTier get visualTier => _tierProvider();
+  List<double> get guardianAngles {
+    final count = visualTier == CombatVfxTier.master ? 8 : 4;
+    return List<double>.generate(
+      count,
+      (index) => index * 2 * math.pi / count,
+      growable: false,
+    );
+  }
 
   @override
   void update(double dt) {
@@ -52,9 +60,7 @@ class WardAuraComponent extends PositionComponent {
       progress: .28,
       count: tier == CombatVfxTier.master ? 8 : 4,
     );
-    final guardians = tier == CombatVfxTier.master ? 8 : 4;
-    for (var index = 0; index < guardians; index += 1) {
-      final angle = index * .7853981634;
+    for (final angle in guardianAngles) {
       final point = Offset(
         center.dx + radius * .82 * math.cos(angle),
         center.dy + radius * .82 * math.sin(angle),

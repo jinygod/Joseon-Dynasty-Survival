@@ -8,6 +8,7 @@ import 'package:pixel_survivor/game/components/attack_effect_component.dart';
 import 'package:pixel_survivor/game/components/area_attack_component.dart';
 import 'package:pixel_survivor/game/components/melee_arc_component.dart';
 import 'package:pixel_survivor/game/components/projectile_component.dart';
+import 'package:pixel_survivor/game/components/ward_aura_component.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
 import 'package:pixel_survivor/game/content/weapon_visual_theme.dart';
 
@@ -82,6 +83,22 @@ void main() {
     expect(masterProjectile.visualTier, CombatVfxTier.master);
     expect(masterArea.vfxFamily, WeaponVfxFamily.thunderBomb);
     expect(masterArea.visualTier, CombatVfxTier.master);
+  });
+
+  test('ward guardians are evenly distributed around the full aura', () {
+    final normal = WardAuraComponent(
+      positionProvider: Vector2.zero,
+      radiusProvider: () => 80,
+    );
+    final master = WardAuraComponent(
+      positionProvider: Vector2.zero,
+      radiusProvider: () => 80,
+      tierProvider: () => CombatVfxTier.master,
+    );
+
+    expect(normal.guardianAngles, [0, math.pi / 2, math.pi, math.pi * 1.5]);
+    expect(master.guardianAngles, hasLength(8));
+    expect(master.guardianAngles.last, closeTo(math.pi * 1.75, 1e-10));
   });
 }
 
