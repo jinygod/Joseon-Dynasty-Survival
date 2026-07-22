@@ -74,14 +74,7 @@ void main() {
       expect(firstGame.gainExperience(11), isTrue);
       await tester.pump();
       expect(find.byType(LevelUpOverlay), findsOneWidget);
-      await tester.tap(
-        find
-            .descendant(
-              of: find.byType(LevelUpOverlay),
-              matching: find.byType(FilledButton),
-            )
-            .first,
-      );
+      await tester.tap(find.byKey(const Key('level-up-choice-0')));
       await tester.pump();
       expect(firstGame.playerLevel, 2);
       expect(firstGame.isLevelUpPending, isFalse);
