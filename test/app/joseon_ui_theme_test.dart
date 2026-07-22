@@ -17,6 +17,25 @@ void main() {
     );
   });
 
+  test('theme preserves Material text metrics across Joseon families', () {
+    final textTheme = JoseonUiTheme.create().textTheme;
+
+    expect(textTheme.displayLarge?.fontFamily, JoseonUiTheme.displayFontFamily);
+    expect(
+      textTheme.headlineMedium?.fontFamily,
+      JoseonUiTheme.displayFontFamily,
+    );
+    expect(textTheme.titleMedium?.fontFamily, JoseonUiTheme.bodyFontFamily);
+    expect(textTheme.bodyMedium?.fontFamily, JoseonUiTheme.bodyFontFamily);
+    expect(textTheme.labelLarge?.fontFamily, JoseonUiTheme.bodyFontFamily);
+
+    expect(textTheme.displayLarge?.fontSize, isNotNull);
+    expect(textTheme.headlineMedium?.fontSize, isNotNull);
+    expect(textTheme.titleMedium?.fontSize, isNotNull);
+    expect(textTheme.bodyMedium?.fontSize, isNotNull);
+    expect(textTheme.labelLarge?.fontSize, isNotNull);
+  });
+
   test('pubspec registers every offline font and license', () {
     final pubspec = File('pubspec.yaml').readAsStringSync();
 

@@ -18,7 +18,14 @@ abstract final class JoseonUiTheme {
   );
 
   static ThemeData create() {
-    const bodyStyle = TextStyle(fontFamily: bodyFontFamily, color: ink);
+    final typography = Typography.material2021(
+      platform: TargetPlatform.android,
+    );
+    final bodyTextTheme = typography.englishLike.apply(
+      bodyColor: ink,
+      displayColor: ink,
+      fontFamily: bodyFontFamily,
+    );
 
     return ThemeData(
       colorScheme: const ColorScheme(
@@ -36,22 +43,38 @@ abstract final class JoseonUiTheme {
       splashFactory: NoSplash.splashFactory,
       useMaterial3: false,
       fontFamily: bodyFontFamily,
-      textTheme: const TextTheme(
-        displayLarge: displayStyle,
-        displayMedium: displayStyle,
-        displaySmall: displayStyle,
-        headlineLarge: displayStyle,
-        headlineMedium: displayStyle,
-        headlineSmall: displayStyle,
-        titleLarge: bodyStyle,
-        titleMedium: bodyStyle,
-        titleSmall: bodyStyle,
-        bodyLarge: bodyStyle,
-        bodyMedium: bodyStyle,
-        bodySmall: bodyStyle,
-        labelLarge: bodyStyle,
-        labelMedium: bodyStyle,
-        labelSmall: bodyStyle,
+      typography: typography,
+      textTheme: bodyTextTheme.copyWith(
+        displayLarge: bodyTextTheme.displayLarge?.copyWith(
+          fontFamily: displayFontFamily,
+          fontWeight: displayStyle.fontWeight,
+          letterSpacing: displayStyle.letterSpacing,
+        ),
+        displayMedium: bodyTextTheme.displayMedium?.copyWith(
+          fontFamily: displayFontFamily,
+          fontWeight: displayStyle.fontWeight,
+          letterSpacing: displayStyle.letterSpacing,
+        ),
+        displaySmall: bodyTextTheme.displaySmall?.copyWith(
+          fontFamily: displayFontFamily,
+          fontWeight: displayStyle.fontWeight,
+          letterSpacing: displayStyle.letterSpacing,
+        ),
+        headlineLarge: bodyTextTheme.headlineLarge?.copyWith(
+          fontFamily: displayFontFamily,
+          fontWeight: displayStyle.fontWeight,
+          letterSpacing: displayStyle.letterSpacing,
+        ),
+        headlineMedium: bodyTextTheme.headlineMedium?.copyWith(
+          fontFamily: displayFontFamily,
+          fontWeight: displayStyle.fontWeight,
+          letterSpacing: displayStyle.letterSpacing,
+        ),
+        headlineSmall: bodyTextTheme.headlineSmall?.copyWith(
+          fontFamily: displayFontFamily,
+          fontWeight: displayStyle.fontWeight,
+          letterSpacing: displayStyle.letterSpacing,
+        ),
       ),
     );
   }
