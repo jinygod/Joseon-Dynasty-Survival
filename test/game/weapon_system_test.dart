@@ -206,6 +206,66 @@ void main() {
       );
     });
 
+    test('four new weapon masters execute their authored combat rules', () {
+      final enemies = [
+        EnemyComponent(
+          enemyId: 'close',
+          maxHealth: 200,
+          moveSpeed: 0,
+          damage: 1,
+          position: Vector2(44, 0),
+        ),
+        EnemyComponent(
+          enemyId: 'line',
+          maxHealth: 200,
+          moveSpeed: 0,
+          damage: 1,
+          position: Vector2(120, 8),
+        ),
+      ];
+      WeaponTickResult tick(WeaponId id) => WeaponSystem(
+        initialLevels: {id: 6},
+        random: Random(7),
+      ).tick(dt: 2, origin: Vector2.zero(), enemies: enemies);
+
+      final cannon = tick(matchlockCannon);
+      final bells = tick(shamanBells);
+      final chain = tick(dokkaebiChain);
+      final hawk = tick(hawkSummon);
+
+      expect(cannon.projectiles.single.weaponId, matchlockCannon);
+      expect(cannon.projectiles.single.isMasterLead, isTrue);
+      expect(cannon.areaAttacks.single.weaponId, matchlockCannon);
+      expect(
+        bells.meleeArcs.where((arc) => arc.weaponId == shamanBells),
+        hasLength(3),
+      );
+      expect(
+        chain.meleeArcs.where((arc) => arc.weaponId == dokkaebiChain),
+        hasLength(6),
+      );
+      expect(
+        chain.damageEvents
+            .where((event) => event.weaponId == dokkaebiChain)
+            .every((event) => event.direction.x < 0),
+        isTrue,
+      );
+      expect(
+        hawk.projectiles.where(
+          (projectile) => projectile.weaponId == hawkSummon,
+        ),
+        hasLength(5),
+      );
+      expect(
+        hawk.projectiles.map((projectile) => projectile.laneIndex).toSet(),
+        {0, 1, 2, 3, 4},
+      );
+      expect(cannon.firedWeaponIds, contains(matchlockCannon));
+      expect(bells.firedWeaponIds, contains(shamanBells));
+      expect(chain.firedWeaponIds, contains(dokkaebiChain));
+      expect(hawk.firedWeaponIds, contains(hawkSummon));
+    });
+
     test('level five hwando creates timed arc attacks with knockback', () {
       final enemy = EnemyComponent(
         enemyId: 'bandit',

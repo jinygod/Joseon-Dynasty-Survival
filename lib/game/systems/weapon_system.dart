@@ -256,6 +256,73 @@ class WeaponSystem {
     );
     if (meleeArcs.length > fanArcCount) firedWeaponIds.add(windThunderFan);
 
+    final cannonAttackCount = projectiles.length + areaAttacks.length;
+    _fireMatchlockCannon(
+      dt: dt,
+      origin: origin,
+      enemies: aliveEnemies,
+      damageMultiplier:
+          damageMultiplier *
+          _elementDamageMultiplier(matchlockCannon, elementDamageMultipliers),
+      attackSpeedMultiplier: attackSpeedMultiplier,
+      criticalChance: criticalChance,
+      sizeMultiplier: sizeMultiplier,
+      projectiles: projectiles,
+      areaAttacks: areaAttacks,
+    );
+    if (projectiles.length + areaAttacks.length > cannonAttackCount) {
+      firedWeaponIds.add(matchlockCannon);
+    }
+
+    final bellArcCount = meleeArcs.length;
+    _fireShamanBells(
+      dt: dt,
+      origin: origin,
+      enemies: aliveEnemies,
+      damageMultiplier:
+          damageMultiplier *
+          _elementDamageMultiplier(shamanBells, elementDamageMultipliers),
+      attackSpeedMultiplier: attackSpeedMultiplier,
+      criticalChance: criticalChance,
+      sizeMultiplier: sizeMultiplier,
+      damageEvents: damageEvents,
+      meleeArcs: meleeArcs,
+    );
+    if (meleeArcs.length > bellArcCount) firedWeaponIds.add(shamanBells);
+
+    final chainArcCount = meleeArcs.length;
+    _fireDokkaebiChain(
+      dt: dt,
+      origin: origin,
+      enemies: aliveEnemies,
+      damageMultiplier:
+          damageMultiplier *
+          _elementDamageMultiplier(dokkaebiChain, elementDamageMultipliers),
+      attackSpeedMultiplier: attackSpeedMultiplier,
+      criticalChance: criticalChance,
+      sizeMultiplier: sizeMultiplier,
+      damageEvents: damageEvents,
+      meleeArcs: meleeArcs,
+    );
+    if (meleeArcs.length > chainArcCount) firedWeaponIds.add(dokkaebiChain);
+
+    final hawkProjectileCount = projectiles.length;
+    _fireHawkSummon(
+      dt: dt,
+      origin: origin,
+      enemies: aliveEnemies,
+      damageMultiplier:
+          damageMultiplier *
+          _elementDamageMultiplier(hawkSummon, elementDamageMultipliers),
+      attackSpeedMultiplier: attackSpeedMultiplier,
+      criticalChance: criticalChance,
+      sizeMultiplier: sizeMultiplier,
+      projectiles: projectiles,
+    );
+    if (projectiles.length > hawkProjectileCount) {
+      firedWeaponIds.add(hawkSummon);
+    }
+
     return WeaponTickResult(
       damageEvents: damageEvents,
       projectiles: projectiles,
@@ -661,6 +728,222 @@ class WeaponSystem {
           ),
         );
       }
+    }
+  }
+
+  void _fireMatchlockCannon({
+    required double dt,
+    required Vector2 origin,
+    required List<EnemyComponent> enemies,
+    required double damageMultiplier,
+    required double attackSpeedMultiplier,
+    required double criticalChance,
+    required double sizeMultiplier,
+    required List<ProjectileComponent> projectiles,
+    required List<AreaAttackComponent> areaAttacks,
+  }) {
+    final level = levelOf(matchlockCannon);
+    if (level == 0) return;
+    final stats = weaponLevelFor(matchlockCannon, level);
+    if (!_consumeCooldown(
+      matchlockCannon,
+      dt,
+      stats.cooldownSeconds / _positiveMultiplier(attackSpeedMultiplier),
+    )) {
+      return;
+    }
+    final baseDirection = _densestDirection(origin, enemies);
+    for (var index = 0; index < stats.projectileCount; index += 1) {
+      final direction = baseDirection.clone()
+        ..rotate((index - (stats.projectileCount - 1) / 2) * .16);
+      projectiles.add(
+        ProjectileComponent(
+          weaponId: matchlockCannon,
+          damage: _rolledDamage(
+            stats.damage * damageMultiplier,
+            criticalChance,
+          ),
+          position: origin.clone(),
+          velocity: direction * (level >= 6 ? 430 : 360),
+          pierce: stats.pierce,
+          knockback: stats.knockback,
+          isMasterLead: level >= 6,
+          size: Vector2.all((level >= 6 ? 18 : 10) * sizeMultiplier),
+        ),
+      );
+    }
+    if (level < 5) return;
+    final blastCenter = origin + baseDirection * stats.range * .82;
+    areaAttacks.add(
+      AreaAttackComponent(
+        weaponId: matchlockCannon,
+        damage: _rolledDamage(
+          stats.damage * damageMultiplier * (level >= 6 ? 1.35 : .8),
+          criticalChance,
+        ),
+        radius: (level >= 6 ? 112 : 62) * sizeMultiplier,
+        delaySeconds: level >= 6 ? .22 : .42,
+        knockback: stats.knockback,
+        position: blastCenter,
+        direction: baseDirection,
+      ),
+    );
+  }
+
+  void _fireShamanBells({
+    required double dt,
+    required Vector2 origin,
+    required List<EnemyComponent> enemies,
+    required double damageMultiplier,
+    required double attackSpeedMultiplier,
+    required double criticalChance,
+    required double sizeMultiplier,
+    required List<DamageEvent> damageEvents,
+    required List<MeleeArcComponent> meleeArcs,
+  }) {
+    final level = levelOf(shamanBells);
+    if (level == 0) return;
+    final stats = weaponLevelFor(shamanBells, level);
+    if (!_consumeCooldown(
+      shamanBells,
+      dt,
+      stats.cooldownSeconds / _positiveMultiplier(attackSpeedMultiplier),
+    )) {
+      return;
+    }
+    final pulseCount = level >= 6 ? 3 : 1;
+    for (var index = 0; index < pulseCount; index += 1) {
+      final range = stats.range * sizeMultiplier * (.58 + index * .21);
+      final arc = MeleeArcComponent(
+        weaponId: shamanBells,
+        damage: stats.damage * damageMultiplier,
+        knockback: stats.knockback,
+        position: origin.clone(),
+        direction: Vector2(1, 0),
+        range: range,
+        angleRadians: pi * 2,
+        lifetime: .16 + index * .06,
+      );
+      meleeArcs.add(arc);
+      for (final enemy in enemies.where(arc.containsEnemy)) {
+        damageEvents.add(
+          _damageEvent(
+            weaponId: shamanBells,
+            target: enemy,
+            origin: origin,
+            damage: stats.damage * damageMultiplier,
+            knockback: stats.knockback,
+            criticalChance: criticalChance,
+          ),
+        );
+      }
+    }
+  }
+
+  void _fireDokkaebiChain({
+    required double dt,
+    required Vector2 origin,
+    required List<EnemyComponent> enemies,
+    required double damageMultiplier,
+    required double attackSpeedMultiplier,
+    required double criticalChance,
+    required double sizeMultiplier,
+    required List<DamageEvent> damageEvents,
+    required List<MeleeArcComponent> meleeArcs,
+  }) {
+    final level = levelOf(dokkaebiChain);
+    if (level == 0) return;
+    final stats = weaponLevelFor(dokkaebiChain, level);
+    if (!_consumeCooldown(
+      dokkaebiChain,
+      dt,
+      stats.cooldownSeconds / _positiveMultiplier(attackSpeedMultiplier),
+    )) {
+      return;
+    }
+    final baseDirection = _direction(
+      origin,
+      _nearestEnemy(origin, enemies)!.position,
+    );
+    for (var index = 0; index < stats.projectileCount; index += 1) {
+      final direction = baseDirection.clone()
+        ..rotate(index * pi * 2 / stats.projectileCount);
+      final arc = MeleeArcComponent(
+        weaponId: dokkaebiChain,
+        damage: stats.damage * damageMultiplier,
+        knockback: stats.knockback,
+        position: origin.clone(),
+        direction: direction,
+        range: stats.range * sizeMultiplier,
+        angleRadians: level >= 6 ? pi / 2 : pi * .7,
+        lifetime: level >= 6 ? .24 : .14,
+      );
+      meleeArcs.add(arc);
+      for (final enemy in enemies.where(arc.containsEnemy)) {
+        final isCritical = _random.nextDouble() < criticalChance.clamp(0, 1);
+        damageEvents.add(
+          DamageEvent(
+            target: enemy,
+            damage: stats.damage * damageMultiplier * (isCritical ? 2 : 1),
+            knockback: stats.knockback,
+            direction: _direction(enemy.position, origin),
+            weaponId: dokkaebiChain,
+            isCritical: isCritical,
+            sourceId: level >= 6
+                ? 'dokkaebi_chain_master_pull'
+                : 'dokkaebi_chain_pull',
+          ),
+        );
+      }
+    }
+  }
+
+  void _fireHawkSummon({
+    required double dt,
+    required Vector2 origin,
+    required List<EnemyComponent> enemies,
+    required double damageMultiplier,
+    required double attackSpeedMultiplier,
+    required double criticalChance,
+    required double sizeMultiplier,
+    required List<ProjectileComponent> projectiles,
+  }) {
+    final level = levelOf(hawkSummon);
+    if (level == 0) return;
+    final stats = weaponLevelFor(hawkSummon, level);
+    if (!_consumeCooldown(
+      hawkSummon,
+      dt,
+      stats.cooldownSeconds / _positiveMultiplier(attackSpeedMultiplier),
+    )) {
+      return;
+    }
+    final baseDirection = _densestDirection(origin, enemies);
+    for (var index = 0; index < stats.projectileCount; index += 1) {
+      final direction = baseDirection.clone()
+        ..rotate((index - (stats.projectileCount - 1) / 2) * .18);
+      final perpendicular = Vector2(-baseDirection.y, baseDirection.x);
+      final laneOffset =
+          perpendicular *
+          (index - (stats.projectileCount - 1) / 2) *
+          18 *
+          sizeMultiplier;
+      projectiles.add(
+        ProjectileComponent(
+          weaponId: hawkSummon,
+          damage: _rolledDamage(
+            stats.damage * damageMultiplier,
+            criticalChance,
+          ),
+          position: origin + laneOffset,
+          velocity: direction * (level >= 6 ? 410 : 340),
+          pierce: stats.pierce,
+          knockback: stats.knockback,
+          laneIndex: index,
+          isMasterLead: level >= 6 && index == stats.projectileCount ~/ 2,
+          size: Vector2.all((level >= 6 ? 16 : 11) * sizeMultiplier),
+        ),
+      );
     }
   }
 
