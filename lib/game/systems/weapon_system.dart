@@ -8,11 +8,11 @@ import '../components/frost_field_component.dart';
 import '../components/five_color_ward_component.dart';
 import '../components/melee_arc_component.dart';
 import '../components/projectile_component.dart';
-import '../combat/combat_vfx_primitives.dart';
 import '../combat/attack_spec.dart';
 import '../content/ids.dart';
 import '../content/weapon_definitions.dart';
 import '../content/weapon_level_definitions.dart';
+import '../content/weapon_visual_theme.dart';
 import '../models/damage_event.dart';
 import 'hwando_aim_resolver.dart';
 import 'hwando_executor.dart';
@@ -398,6 +398,7 @@ class WeaponSystem {
             : attack.spec.angleRadians == 0
             ? pi / 2
             : attack.spec.angleRadians,
+        tier: combatVfxTierForPresentation(attack.spec.presentation),
       );
       meleeArcs.add(arc);
       for (final enemy in enemies.where(arc.containsEnemy)) {
@@ -461,6 +462,7 @@ class WeaponSystem {
           knockback: stats.knockback,
           followUpIndex: shot.followUpIndex,
           isMasterLead: shot.isMasterLead,
+          tier: combatVfxTierForLevel(level),
           size: Vector2.all(8 * sizeMultiplier * shot.visualScale),
         ),
       );
@@ -507,6 +509,7 @@ class WeaponSystem {
           knockback: stats.knockback,
           position: center,
           direction: _direction(origin, center),
+          tier: combatVfxTierForLevel(level),
         ),
       );
     }
@@ -547,6 +550,7 @@ class WeaponSystem {
           direction: direction,
           range: guardRange,
           angleRadians: pi * 2,
+          tier: combatVfxTierForLevel(level),
         );
         meleeArcs.add(arc);
         for (final enemy in enemies.where(arc.containsEnemy)) {
@@ -626,6 +630,7 @@ class WeaponSystem {
           pierce: stats.pierce,
           knockback: stats.knockback,
           laneIndex: laneIndex,
+          tier: combatVfxTierForLevel(level),
           size: Vector2.all(7 * sizeMultiplier),
         ),
       );
@@ -670,11 +675,7 @@ class WeaponSystem {
           slowFraction: stats.slowFraction,
           knockback: stats.knockback,
           position: position,
-          tier: switch (level) {
-            >= 6 => CombatVfxTier.master,
-            >= 4 => CombatVfxTier.strong,
-            _ => CombatVfxTier.normal,
-          },
+          tier: combatVfxTierForLevel(level),
         ),
       );
     }
@@ -720,6 +721,7 @@ class WeaponSystem {
         direction: direction,
         range: stats.range * sizeMultiplier,
         angleRadians: pi * .75,
+        tier: combatVfxTierForLevel(level),
       );
       meleeArcs.add(arc);
       for (final enemy in enemies.where(arc.containsEnemy)) {
@@ -774,6 +776,7 @@ class WeaponSystem {
           pierce: stats.pierce,
           knockback: stats.knockback,
           isMasterLead: level >= 6,
+          tier: combatVfxTierForLevel(level),
           size: Vector2.all((level >= 6 ? 18 : 10) * sizeMultiplier),
         ),
       );
@@ -792,6 +795,7 @@ class WeaponSystem {
         knockback: stats.knockback,
         position: blastCenter,
         direction: baseDirection,
+        tier: combatVfxTierForLevel(level),
       ),
     );
   }
@@ -829,6 +833,7 @@ class WeaponSystem {
         range: range,
         angleRadians: pi * 2,
         lifetime: .16 + index * .06,
+        tier: combatVfxTierForLevel(level),
       );
       meleeArcs.add(arc);
       for (final enemy in enemies.where(arc.containsEnemy)) {
@@ -883,6 +888,7 @@ class WeaponSystem {
         range: stats.range * sizeMultiplier,
         angleRadians: level >= 6 ? pi / 2 : pi * .7,
         lifetime: level >= 6 ? .24 : .14,
+        tier: combatVfxTierForLevel(level),
       );
       meleeArcs.add(arc);
       for (final enemy in enemies.where(arc.containsEnemy)) {
@@ -947,6 +953,7 @@ class WeaponSystem {
           knockback: stats.knockback,
           laneIndex: index,
           isMasterLead: level >= 6 && index == stats.projectileCount ~/ 2,
+          tier: combatVfxTierForLevel(level),
           size: Vector2.all((level >= 6 ? 16 : 11) * sizeMultiplier),
         ),
       );

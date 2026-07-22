@@ -4,9 +4,11 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 
 import '../combat/attack_spec.dart';
+import '../combat/combat_vfx_primitives.dart';
 import '../combat/combat_visual_theme.dart';
 import '../combat/talisman_damage.dart';
 import '../content/weapon_definitions.dart';
+import '../content/weapon_visual_theme.dart';
 import '../models/damage_event.dart';
 import 'enemy_component.dart';
 
@@ -26,6 +28,9 @@ class FiveColorWardComponent extends PositionComponent {
   final double tickSeconds;
 
   CombatVisualTheme get visualTheme => CombatVisualTheme.forAttack(attack);
+  CombatVfxTier get visualTier =>
+      combatVfxTierForPresentation(attack.spec.presentation);
+  WeaponVfxFamily get vfxFamily => WeaponVfxFamily.talismanSeal;
 
   double _elapsed = 0;
   double _nextTick = 0;
@@ -87,6 +92,8 @@ class FiveColorWardComponent extends PositionComponent {
   @override
   void render(Canvas canvas) {
     final center = Offset(radius, radius);
+    final weaponTheme = weaponVisualThemeFor(talismanThrow);
+    final progress = (_elapsed / durationSeconds).clamp(0, 1).toDouble();
     final colors = <Color>[
       const Color(0xff3155a6),
       const Color(0xffc63b32),
@@ -102,6 +109,14 @@ class FiveColorWardComponent extends PositionComponent {
         ..color = visualTheme.coreColor.withValues(
           alpha: visualTheme.maxAlpha * .12,
         ),
+    );
+    CombatVfxPrimitives.drawRuneRing(
+      canvas,
+      center: center,
+      radius: radius * .94,
+      palette: weaponTheme.palette,
+      progress: progress * .42,
+      count: visualTier == CombatVfxTier.master ? 12 : 7,
     );
     for (var index = 0; index < colors.length; index += 1) {
       canvas.drawArc(
@@ -130,6 +145,15 @@ class FiveColorWardComponent extends PositionComponent {
         ..color = visualTheme.edgeColor.withValues(alpha: visualTheme.maxAlpha)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2,
+    );
+    CombatVfxPrimitives.drawRadialBurst(
+      canvas,
+      center: center,
+      radius: radius * .86,
+      palette: weaponTheme.palette,
+      progress: progress,
+      count: visualTier == CombatVfxTier.master ? 10 : 5,
+      tier: visualTier,
     );
   }
 

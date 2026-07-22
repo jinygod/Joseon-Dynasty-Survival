@@ -3,6 +3,9 @@ import 'dart:ui';
 
 import 'package:flame/components.dart';
 
+import '../combat/combat_vfx_primitives.dart';
+import '../content/weapon_definitions.dart';
+import '../content/weapon_visual_theme.dart';
 import '../systems/talisman_executor.dart';
 
 abstract final class AttackPresentationPriority {
@@ -20,6 +23,8 @@ class TalismanAttachmentComponent extends PositionComponent {
       );
 
   final AttachedTalisman seal;
+  CombatVfxTier get visualTier =>
+      seal.isCritical ? CombatVfxTier.strong : CombatVfxTier.normal;
 
   @override
   void update(double dt) {
@@ -33,6 +38,15 @@ class TalismanAttachmentComponent extends PositionComponent {
 
   @override
   void render(Canvas canvas) {
+    final theme = weaponVisualThemeFor(talismanThrow);
+    CombatVfxPrimitives.drawRuneRing(
+      canvas,
+      center: Offset(size.x / 2, size.y / 2),
+      radius: size.x * .58,
+      palette: theme.palette,
+      progress: .18,
+      count: seal.isCritical ? 4 : 2,
+    );
     final paper = RRect.fromRectAndRadius(
       Offset.zero & Size(size.x, size.y),
       const Radius.circular(1),
@@ -99,15 +113,17 @@ class TalismanTransferCueComponent extends PositionComponent {
   void render(Canvas canvas) {
     final progress = (_age / _lifetime).clamp(0, 1).toDouble();
     final delta = _target - _source;
-    canvas.drawLine(
-      Offset.zero,
-      Offset(delta.x, delta.y),
-      Paint()
-        ..color = const Color(
-          0xffffd166,
-        ).withValues(alpha: .45 * (1 - progress))
-        ..strokeWidth = 2.5
-        ..strokeCap = StrokeCap.round,
+    final theme = weaponVisualThemeFor(talismanThrow);
+    CombatVfxPrimitives.drawTaperedTrail(
+      canvas,
+      start: Offset.zero,
+      end: Offset(delta.x, delta.y),
+      startWidth: 3,
+      endWidth: 1,
+      palette: theme.palette,
+      progress: progress,
+      count: 2,
+      tier: CombatVfxTier.strong,
     );
     final paperCenter = Offset(delta.x, delta.y) * progress;
     canvas.save();
@@ -134,13 +150,14 @@ class TalismanTransferCueComponent extends PositionComponent {
         ..strokeWidth = 1.4,
     );
     canvas.restore();
-    canvas.drawCircle(
-      Offset(delta.x, delta.y),
-      3 + progress * 2,
-      Paint()
-        ..color = const Color(0xffd1495b).withValues(alpha: .8 * (1 - progress))
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.5,
+    CombatVfxPrimitives.drawRadialBurst(
+      canvas,
+      center: Offset(delta.x, delta.y),
+      radius: 7,
+      palette: theme.palette,
+      progress: progress,
+      count: 5,
+      tier: CombatVfxTier.strong,
     );
   }
 }

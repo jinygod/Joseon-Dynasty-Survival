@@ -47,6 +47,7 @@ import 'content/stage_definitions.dart';
 import 'content/wave_definitions.dart';
 import 'content/weapon_definitions.dart';
 import 'content/weapon_level_definitions.dart';
+import 'content/weapon_visual_theme.dart';
 import 'content/visual_asset_load_policy.dart';
 import 'game_performance_budget.dart';
 import 'models/player_slot.dart';
@@ -968,6 +969,8 @@ class PixelSurvivorGame extends FlameGame
           return weaponLevelFor(jangseungWard, currentLevel).range *
               weaponSizeMultiplier;
         },
+        tierProvider: () =>
+            combatVfxTierForLevel(weaponSystem.levelOf(jangseungWard)),
       ),
     );
   }

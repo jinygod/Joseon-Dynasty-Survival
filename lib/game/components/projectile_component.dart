@@ -4,6 +4,7 @@ import 'dart:ui';
 
 import 'package:flame/components.dart';
 
+import '../combat/combat_vfx_primitives.dart';
 import 'enemy_component.dart';
 import '../content/ids.dart';
 import '../content/weapon_effect_atlas.dart';
@@ -21,6 +22,7 @@ class ProjectileComponent extends PositionComponent {
     this.followUpIndex = 0,
     this.isMasterLead = false,
     this.laneIndex = 0,
+    this.tier = CombatVfxTier.normal,
     Vector2? size,
   }) : _remainingHits = pierce + 1,
        super(
@@ -38,6 +40,7 @@ class ProjectileComponent extends PositionComponent {
   final int followUpIndex;
   final bool isMasterLead;
   final int laneIndex;
+  final CombatVfxTier tier;
   final Set<EnemyComponent> _hitEnemies = {};
   int _remainingHits;
   double _age = 0;
@@ -46,6 +49,8 @@ class ProjectileComponent extends PositionComponent {
   bool get isExpired => _age >= lifetime;
   bool get isSpent => _remainingHits <= 0;
   int get remainingPierces => (_remainingHits - 1).clamp(0, pierce).toInt();
+  CombatVfxTier get visualTier => tier;
+  WeaponVfxFamily get vfxFamily => weaponVisualThemeFor(weaponId).family;
 
   bool registerHit(EnemyComponent enemy) {
     if (isSpent || !_hitEnemies.add(enemy)) {
@@ -86,6 +91,38 @@ class ProjectileComponent extends PositionComponent {
   void render(Canvas canvas) {
     super.render(canvas);
 
+    final theme = weaponVisualThemeFor(weaponId);
+    final center = Offset(size.x / 2, size.y / 2);
+    final direction = velocity.length2 == 0
+        ? Vector2(1, 0)
+        : velocity.normalized();
+    final heading = math.atan2(direction.y, direction.x);
+    final scale = theme.scaleFor(tier);
+    final trailLength = size.x * (isMasterLead ? theme.masterScale : 1.5);
+    final trailEnd = center - Offset(direction.x, direction.y) * trailLength;
+    CombatVfxPrimitives.drawTaperedTrail(
+      canvas,
+      start: trailEnd,
+      end: center,
+      startWidth: math.max(1, theme.trailWidth * .18),
+      endWidth: math.max(2, theme.trailWidth * .72),
+      palette: theme.palette,
+      progress: (_age / lifetime).clamp(0, 1).toDouble(),
+      count: theme.trailCountFor(tier),
+      tier: tier,
+    );
+    if (theme.family == WeaponVfxFamily.singijeonRocket ||
+        theme.family == WeaponVfxFamily.matchlockShot) {
+      CombatVfxPrimitives.drawSmokePuff(
+        canvas,
+        center: trailEnd,
+        radius: math.max(4, size.x * .7),
+        palette: theme.palette,
+        progress: (_age / lifetime).clamp(0, 1).toDouble(),
+        count: tier == CombatVfxTier.master ? 5 : 3,
+      );
+    }
+
     final image = _effectImage;
     final row = WeaponEffectAtlas.rowForWeapon(weaponId);
     if (image != null && row != null) {
@@ -95,8 +132,6 @@ class ProjectileComponent extends PositionComponent {
           ? 36.0
           : 28.0;
       final visualSize = Vector2.all(visualExtent);
-      final center = Offset(size.x / 2, size.y / 2);
-      final facingAngle = math.atan2(velocity.y, velocity.x);
       final sprite = WeaponEffectAtlas.sprite(
         image,
         row: row,
@@ -105,30 +140,15 @@ class ProjectileComponent extends PositionComponent {
       canvas
         ..save()
         ..translate(center.dx, center.dy)
-        ..rotate(facingAngle);
+        ..rotate(heading);
       sprite.render(
         canvas,
         position: Vector2(-visualSize.x / 2, -visualSize.y / 2),
         size: visualSize,
       );
       canvas.restore();
-      return;
     }
 
-    final theme = weaponVisualThemeFor(weaponId);
-    final center = Offset(size.x / 2, size.y / 2);
-    final direction = velocity.length2 == 0
-        ? Vector2(1, 0)
-        : velocity.normalized();
-    final trailLength = size.x * (isMasterLead ? theme.masterScale : 1.25);
-    canvas.drawLine(
-      center,
-      center - Offset(direction.x, direction.y) * trailLength,
-      Paint()
-        ..color = theme.accent.withValues(alpha: .72)
-        ..strokeWidth = theme.trailWidth
-        ..strokeCap = StrokeCap.round,
-    );
     if (isMasterLead) {
       canvas.drawCircle(
         center,
@@ -136,35 +156,62 @@ class ProjectileComponent extends PositionComponent {
         Paint()..color = theme.primary.withValues(alpha: .22),
       );
     }
-    final paint = Paint()..color = theme.primary;
+    canvas.save();
+    canvas.translate(center.dx, center.dy);
+    canvas.rotate(heading);
+    final halfWidth = size.x * .5 * scale;
+    final halfHeight = size.y * .5 * scale;
+    final paint = Paint()..color = theme.primary.withValues(alpha: .92);
     final outlinePaint = Paint()
-      ..color = const Color(0xff2f1b25)
+      ..color = theme.accent.withValues(alpha: .95)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5;
-    final rect = Offset.zero & Size(size.x, size.y);
-    if (weaponId == 'hawk_summon') {
-      final path = Path()
-        ..moveTo(size.x, size.y / 2)
-        ..lineTo(0, 0)
-        ..lineTo(size.x * .28, size.y / 2)
-        ..lineTo(0, size.y)
-        ..close();
-      canvas.drawPath(path, paint);
-      canvas.drawPath(path, outlinePaint);
-      return;
-    }
-    if (weaponId == 'matchlock_cannon') {
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(rect, Radius.circular(size.y / 2)),
-        paint,
+    final silhouette = switch (theme.family) {
+      WeaponVfxFamily.hawkFlight =>
+        Path()
+          ..moveTo(halfWidth, 0)
+          ..lineTo(-halfWidth, -halfHeight)
+          ..lineTo(-halfWidth * .35, 0)
+          ..lineTo(-halfWidth, halfHeight)
+          ..lineTo(0, halfHeight * .35)
+          ..close(),
+      WeaponVfxFamily.singijeonRocket =>
+        Path()
+          ..moveTo(halfWidth, 0)
+          ..lineTo(-halfWidth * .42, -halfHeight * .72)
+          ..lineTo(-halfWidth, -halfHeight)
+          ..lineTo(-halfWidth * .72, 0)
+          ..lineTo(-halfWidth, halfHeight)
+          ..lineTo(-halfWidth * .42, halfHeight * .72)
+          ..close(),
+      WeaponVfxFamily.matchlockShot =>
+        Path()
+          ..moveTo(halfWidth, 0)
+          ..quadraticBezierTo(halfWidth * .72, -halfHeight, 0, -halfHeight)
+          ..lineTo(-halfWidth, -halfHeight * .5)
+          ..lineTo(-halfWidth, halfHeight * .5)
+          ..lineTo(0, halfHeight)
+          ..quadraticBezierTo(halfWidth * .72, halfHeight, halfWidth, 0)
+          ..close(),
+      _ =>
+        Path()
+          ..moveTo(halfWidth, 0)
+          ..lineTo(0, -halfHeight)
+          ..lineTo(-halfWidth, 0)
+          ..lineTo(0, halfHeight)
+          ..close(),
+    };
+    canvas.drawPath(silhouette, paint);
+    canvas.drawPath(silhouette, outlinePaint);
+    if (theme.family == WeaponVfxFamily.gakgungArrow) {
+      canvas.drawLine(
+        Offset(-halfWidth, 0),
+        Offset(halfWidth, 0),
+        Paint()
+          ..color = theme.accent
+          ..strokeWidth = math.max(1, theme.trailWidth * .35),
       );
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(rect, Radius.circular(size.y / 2)),
-        outlinePaint,
-      );
-      return;
     }
-    canvas.drawOval(rect, paint);
-    canvas.drawOval(rect, outlinePaint);
+    canvas.restore();
   }
 }

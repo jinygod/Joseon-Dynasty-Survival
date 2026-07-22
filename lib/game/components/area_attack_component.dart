@@ -5,6 +5,7 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 
 import '../combat/attack_spec.dart';
+import '../combat/combat_vfx_primitives.dart';
 import '../content/combat_effect_atlas.dart';
 import '../content/ids.dart';
 import '../content/weapon_effect_atlas.dart';
@@ -25,6 +26,7 @@ class AreaAttackComponent extends PositionComponent {
     Vector2? direction,
     this.angleRadians = math.pi * 2,
     this.isBossAttack = false,
+    this.tier = CombatVfxTier.normal,
   }) : direction = _normalizedDirection(direction ?? Vector2(1, 0)),
        super(
          position: position,
@@ -41,6 +43,7 @@ class AreaAttackComponent extends PositionComponent {
   final Vector2 direction;
   final double angleRadians;
   final bool isBossAttack;
+  final CombatVfxTier tier;
 
   double _elapsed = 0;
   bool _hasTriggered = false;
@@ -49,6 +52,8 @@ class AreaAttackComponent extends PositionComponent {
 
   bool get isReady => _elapsed >= delaySeconds;
   bool get hasTriggered => _hasTriggered;
+  CombatVfxTier get visualTier => tier;
+  WeaponVfxFamily get vfxFamily => weaponVisualThemeFor(weaponId).family;
 
   @override
   void onLoad() {
@@ -153,17 +158,85 @@ class AreaAttackComponent extends PositionComponent {
         ),
         size: Vector2.all(visualExtent),
       );
-      return;
     }
     final theme = weaponVisualThemeFor(weaponId);
+    if (isBossAttack) {
+      final warningPaint = Paint()
+        ..color = theme.accent.withValues(alpha: .42)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2;
+      if (angleRadians >= math.pi * 2) {
+        canvas.drawCircle(center, radius, warningPaint);
+      } else {
+        final facingAngle = math.atan2(direction.y, direction.x);
+        canvas.drawArc(
+          Rect.fromCircle(center: center, radius: radius),
+          facingAngle - angleRadians / 2,
+          angleRadians,
+          true,
+          warningPaint,
+        );
+      }
+      return;
+    }
+    final chargeProgress = delaySeconds <= 0
+        ? 1.0
+        : (_elapsed / delaySeconds).clamp(0, 1).toDouble();
+    final burstProgress = _hasTriggered
+        ? ((_elapsed - delaySeconds) / .12).clamp(0, 1).toDouble()
+        : 0.0;
     final paint = Paint()
       ..color = (_hasTriggered
-          ? theme.primary.withValues(alpha: .82)
-          : theme.accent.withValues(alpha: 0.42))
-      ..style = _hasTriggered ? PaintingStyle.fill : PaintingStyle.stroke
-      ..strokeWidth = 2;
+          ? theme.primary.withValues(alpha: .18 * (1 - burstProgress))
+          : theme.primary.withValues(alpha: .1 + chargeProgress * .08));
     if (angleRadians >= math.pi * 2) {
       canvas.drawCircle(center, radius, paint);
+      CombatVfxPrimitives.drawRuneRing(
+        canvas,
+        center: center,
+        radius: radius * (.78 + chargeProgress * .14),
+        palette: theme.palette,
+        progress: _hasTriggered ? burstProgress : 1 - chargeProgress,
+        count: tier == CombatVfxTier.master ? 12 : 6,
+      );
+      if (_hasTriggered) {
+        CombatVfxPrimitives.drawRadialBurst(
+          canvas,
+          center: center,
+          radius: radius,
+          palette: theme.palette,
+          progress: burstProgress,
+          count: tier == CombatVfxTier.master ? 16 : 9,
+          tier: tier,
+        );
+        if (theme.family == WeaponVfxFamily.thunderBomb ||
+            theme.family == WeaponVfxFamily.matchlockShot) {
+          CombatVfxPrimitives.drawSmokePuff(
+            canvas,
+            center: center,
+            radius: radius * .72,
+            palette: theme.palette,
+            progress: burstProgress,
+            count: tier == CombatVfxTier.master ? 10 : 6,
+          );
+        }
+        for (
+          var index = 0;
+          index < (tier == CombatVfxTier.master ? 3 : 2);
+          index += 1
+        ) {
+          canvas.drawCircle(
+            center,
+            radius * (.38 + index * .22 + burstProgress * .12),
+            Paint()
+              ..color = theme.accent.withValues(
+                alpha: (1 - burstProgress) * (.7 - index * .16),
+              )
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = math.max(1.5, theme.trailWidth * .42),
+          );
+        }
+      }
       return;
     }
 
@@ -173,7 +246,18 @@ class AreaAttackComponent extends PositionComponent {
       facingAngle - angleRadians / 2,
       angleRadians,
       true,
-      paint,
+      Paint()
+        ..color = theme.primary.withValues(alpha: .18)
+        ..style = PaintingStyle.fill,
+    );
+    CombatVfxPrimitives.drawChevronLane(
+      canvas,
+      start: center,
+      end: center + Offset(direction.x, direction.y) * radius,
+      halfWidth: radius * math.sin(angleRadians / 2).abs(),
+      palette: theme.palette,
+      progress: _hasTriggered ? burstProgress : 1 - chargeProgress,
+      count: tier == CombatVfxTier.master ? 8 : 5,
     );
   }
 

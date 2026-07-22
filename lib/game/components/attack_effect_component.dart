@@ -4,7 +4,9 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 
 import '../combat/attack_spec.dart';
+import '../combat/combat_vfx_primitives.dart';
 import '../combat/combat_visual_theme.dart';
+import '../content/weapon_visual_theme.dart';
 import 'talisman_presentation_component.dart';
 
 class AttackEffectComponent extends PositionComponent {
@@ -20,6 +22,9 @@ class AttackEffectComponent extends PositionComponent {
   final AttackVisualGeometry visualGeometry;
   final CombatVisualTheme visualTheme;
   final void Function()? onExpired;
+  CombatVfxTier get visualTier =>
+      combatVfxTierForPresentation(instance.spec.presentation);
+  WeaponVfxFamily get vfxFamily => weaponVfxFamilyForAttackId(instance.spec.id);
   static const synergySlashColor = Color(0xffffd166);
   static const synergyFragmentColors = <Color>[
     Color(0xff3b82f6),
@@ -69,6 +74,14 @@ class AttackEffectComponent extends PositionComponent {
       ..style = PaintingStyle.stroke
       ..strokeWidth = math.max(2, visualTheme.strokeWidth * .42)
       ..strokeCap = StrokeCap.round;
+    final palette = CombatVfxPalette(
+      core: visualTheme.coreColor,
+      edge: visualTheme.edgeColor,
+      accent: instance.spec.presentation == AttackPresentation.master
+          ? const Color(0xffffd166)
+          : visualTheme.coreColor,
+      smoke: const Color(0xff53606c),
+    );
 
     switch (visualGeometry.shape) {
       case AttackShape.sector:
@@ -91,25 +104,35 @@ class AttackEffectComponent extends PositionComponent {
           direction.x * visualGeometry.range,
           direction.y * visualGeometry.range,
         );
-        canvas
-          ..drawLine(
-            Offset.zero,
-            end,
-            edgePaint
-              ..strokeWidth = math.max(
-                visualGeometry.width,
-                edgePaint.strokeWidth,
-              ),
-          )
-          ..drawLine(
-            Offset.zero,
-            end,
-            corePaint
-              ..strokeWidth = math.max(
-                visualGeometry.width * .38,
-                corePaint.strokeWidth,
-              ),
-          );
+        CombatVfxPrimitives.drawTaperedTrail(
+          canvas,
+          start: Offset.zero,
+          end: end,
+          startWidth: math.max(2, visualGeometry.width * .24),
+          endWidth: math.max(1, visualGeometry.width * .08),
+          palette: palette,
+          progress: progress,
+          count: visualTier == CombatVfxTier.master ? 3 : 1,
+          tier: visualTier,
+        );
+        canvas.drawLine(
+          Offset.zero,
+          end,
+          corePaint
+            ..strokeWidth = math.max(
+              visualGeometry.width * .3,
+              corePaint.strokeWidth,
+            ),
+        );
+        CombatVfxPrimitives.drawRadialBurst(
+          canvas,
+          center: end,
+          radius: math.max(5, visualGeometry.width * 1.2),
+          palette: palette,
+          progress: progress,
+          count: visualTier == CombatVfxTier.master ? 8 : 4,
+          tier: visualTier,
+        );
     }
   }
 
@@ -125,6 +148,22 @@ class AttackEffectComponent extends PositionComponent {
       radius: visualGeometry.range,
     );
     final start = heading - visualGeometry.angleRadians / 2;
+    final ribbonWidth = math.min(
+      visualGeometry.range * .34,
+      visualTheme.strokeWidth * visualTier.scale * 1.7,
+    );
+    canvas.drawPath(
+      _sectorRibbon(
+        visualGeometry.range,
+        ribbonWidth,
+        start,
+        visualGeometry.angleRadians,
+      ),
+      Paint()
+        ..color = visualTheme.edgeColor.withValues(
+          alpha: visualTheme.maxAlpha * (1 - progress) * .34,
+        ),
+    );
     canvas
       ..drawArc(rect, start, visualGeometry.angleRadians, false, edgePaint)
       ..drawArc(rect, start, visualGeometry.angleRadians, false, corePaint);
@@ -159,6 +198,12 @@ class AttackEffectComponent extends PositionComponent {
     Paint corePaint,
   ) {
     final radius = visualGeometry.radius;
+    final palette = CombatVfxPalette(
+      core: visualTheme.coreColor,
+      edge: visualTheme.edgeColor,
+      accent: const Color(0xfffff4c2),
+      smoke: const Color(0xff6c4d5d),
+    );
     canvas
       ..drawCircle(
         Offset.zero,
@@ -170,6 +215,23 @@ class AttackEffectComponent extends PositionComponent {
       )
       ..drawCircle(Offset.zero, radius, edgePaint)
       ..drawCircle(Offset.zero, radius * .76, corePaint);
+    CombatVfxPrimitives.drawRuneRing(
+      canvas,
+      center: Offset.zero,
+      radius: radius * .82,
+      palette: palette,
+      progress: progress,
+      count: visualTier == CombatVfxTier.master ? 12 : 6,
+    );
+    CombatVfxPrimitives.drawRadialBurst(
+      canvas,
+      center: Offset.zero,
+      radius: radius,
+      palette: palette,
+      progress: progress,
+      count: visualTier == CombatVfxTier.master ? 12 : 7,
+      tier: visualTier,
+    );
     for (var index = 0; index < 4; index += 1) {
       final angle = index * math.pi / 2 + progress * .8;
       final center = Offset(math.cos(angle), math.sin(angle)) * radius * .55;
@@ -277,4 +339,19 @@ class AttackEffectComponent extends PositionComponent {
       );
     }
   }
+}
+
+Path _sectorRibbon(double radius, double width, double start, double sweep) {
+  final innerRadius = math.max(1, radius - width).toDouble();
+  final outer = Rect.fromCircle(center: Offset.zero, radius: radius);
+  final inner = Rect.fromCircle(center: Offset.zero, radius: innerRadius);
+  final startPoint = Offset(math.cos(start), math.sin(start)) * radius;
+  final endAngle = start + sweep;
+  final innerEnd = Offset(math.cos(endAngle), math.sin(endAngle)) * innerRadius;
+  return Path()
+    ..moveTo(startPoint.dx, startPoint.dy)
+    ..arcTo(outer, start, sweep, false)
+    ..lineTo(innerEnd.dx, innerEnd.dy)
+    ..arcTo(inner, endAngle, -sweep, false)
+    ..close();
 }

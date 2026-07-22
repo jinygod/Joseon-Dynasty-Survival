@@ -8,6 +8,7 @@ import 'package:pixel_survivor/game/components/player_component.dart';
 import 'package:pixel_survivor/game/components/projectile_component.dart';
 import 'package:pixel_survivor/game/combat/combat_vfx_primitives.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
+import 'package:pixel_survivor/game/content/weapon_visual_theme.dart';
 import 'package:pixel_survivor/game/content/ids.dart';
 import 'package:pixel_survivor/game/combat/attack_spec.dart';
 import 'package:pixel_survivor/game/systems/weapon_system.dart';
@@ -785,6 +786,40 @@ void main() {
       );
 
       expect(result.firedWeaponIds, isEmpty);
+    });
+
+    test('weapon results propagate authored normal and master VFX routes', () {
+      WeaponTickResult fire(String weaponId, int level) =>
+          WeaponSystem(initialLevels: {weaponId: level}).tick(
+            dt: 10,
+            origin: Vector2.zero(),
+            enemies: [
+              EnemyComponent(
+                enemyId: 'target',
+                maxHealth: 10000,
+                moveSpeed: 0,
+                damage: 0,
+                position: Vector2(30, 0),
+              ),
+            ],
+          );
+
+      final normalProjectile = fire(gakgungShot, 1).projectiles.single;
+      final masterProjectile = fire(gakgungShot, 6).projectiles.first;
+      final normalArc = fire(windThunderFan, 1).meleeArcs.single;
+      final masterArc = fire(windThunderFan, 6).meleeArcs.first;
+      final normalArea = fire(thunderCrashBomb, 1).areaAttacks.single;
+      final masterArea = fire(thunderCrashBomb, 6).areaAttacks.first;
+
+      expect(normalProjectile.visualTier, CombatVfxTier.normal);
+      expect(masterProjectile.visualTier, CombatVfxTier.master);
+      expect(masterProjectile.vfxFamily, WeaponVfxFamily.gakgungArrow);
+      expect(normalArc.visualTier, CombatVfxTier.normal);
+      expect(masterArc.visualTier, CombatVfxTier.master);
+      expect(masterArc.vfxFamily, WeaponVfxFamily.windThunderGale);
+      expect(normalArea.visualTier, CombatVfxTier.normal);
+      expect(masterArea.visualTier, CombatVfxTier.master);
+      expect(masterArea.vfxFamily, WeaponVfxFamily.thunderBomb);
     });
   });
 
