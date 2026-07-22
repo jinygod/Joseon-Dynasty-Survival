@@ -129,14 +129,28 @@ class AreaAttackComponent extends PositionComponent {
   void render(Canvas canvas) {
     super.render(canvas);
     final center = Offset(size.x / 2, size.y / 2);
-    final combatImage = _combatEffectImage;
-    if (combatImage != null && isBossAttack && !_hasTriggered) {
-      final progress = delaySeconds <= 0 ? 1.0 : _elapsed / delaySeconds;
-      CombatEffectAtlas.sprite(
-        combatImage,
-        kind: CombatEffectKind.warning,
-        frame: CombatEffectAtlas.frameForProgress(progress),
-      ).render(canvas, size: size);
+    if (isBossAttack) {
+      final warningPath = _warningPath(center);
+      final theme = weaponVisualThemeFor(weaponId);
+      canvas.drawPath(
+        warningPath,
+        Paint()
+          ..color = theme.accent.withValues(alpha: .42)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2,
+      );
+      final combatImage = _combatEffectImage;
+      if (combatImage != null && !_hasTriggered) {
+        final progress = delaySeconds <= 0 ? 1.0 : _elapsed / delaySeconds;
+        canvas.save();
+        canvas.clipPath(warningPath);
+        CombatEffectAtlas.sprite(
+          combatImage,
+          kind: CombatEffectKind.warning,
+          frame: CombatEffectAtlas.frameForProgress(progress),
+        ).render(canvas, size: size);
+        canvas.restore();
+      }
       return;
     }
     final image = _effectImage;
@@ -160,25 +174,6 @@ class AreaAttackComponent extends PositionComponent {
       );
     }
     final theme = weaponVisualThemeFor(weaponId);
-    if (isBossAttack) {
-      final warningPaint = Paint()
-        ..color = theme.accent.withValues(alpha: .42)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2;
-      if (angleRadians >= math.pi * 2) {
-        canvas.drawCircle(center, radius, warningPaint);
-      } else {
-        final facingAngle = math.atan2(direction.y, direction.x);
-        canvas.drawArc(
-          Rect.fromCircle(center: center, radius: radius),
-          facingAngle - angleRadians / 2,
-          angleRadians,
-          true,
-          warningPaint,
-        );
-      }
-      return;
-    }
     final chargeProgress = delaySeconds <= 0
         ? 1.0
         : (_elapsed / delaySeconds).clamp(0, 1).toDouble();
@@ -267,6 +262,18 @@ class AreaAttackComponent extends PositionComponent {
       return direction.clone();
     }
     return result..normalize();
+  }
+
+  Path _warningPath(Offset center) {
+    final bounds = Rect.fromCircle(center: center, radius: radius);
+    if (angleRadians >= math.pi * 2) {
+      return Path()..addOval(bounds);
+    }
+    final facingAngle = math.atan2(direction.y, direction.x);
+    return Path()
+      ..moveTo(center.dx, center.dy)
+      ..arcTo(bounds, facingAngle - angleRadians / 2, angleRadians, false)
+      ..close();
   }
 
   static Vector2 _normalizedDirection(Vector2 direction) {

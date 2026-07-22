@@ -176,8 +176,11 @@ void main() {
 
       final pause = tester.getRect(find.byKey(const Key('hud-pause')));
       final status = tester.getRect(find.byKey(const Key('hud-status')));
+      final xpBar = tester.getRect(find.byKey(const Key('hud-xp-bar')));
       expect(status.height, lessThanOrEqualTo(92));
-      expect(status.left, greaterThanOrEqualTo(pause.right));
+      expect(status.left, 0);
+      expect(status.right, 844);
+      expect(xpBar.left, greaterThanOrEqualTo(pause.right));
       expect(status.bottom, lessThanOrEqualTo(390));
       expect(tester.takeException(), isNull);
     },

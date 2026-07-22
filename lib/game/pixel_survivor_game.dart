@@ -465,6 +465,9 @@ class PixelSurvivorGame extends FlameGame
   }
 
   void applyLevelUpChoice(LevelUpChoice choice) {
+    if (!_pendingLevelUpChoices.contains(choice)) {
+      return;
+    }
     final selectedAugment = choice.type == LevelUpChoiceType.augment
         ? augmentDefinitionFor(choice.id)
         : null;
@@ -476,6 +479,13 @@ class PixelSurvivorGame extends FlameGame
       if (choice.currentLevel != currentLevel ||
           choice.nextLevel != currentLevel + 1 ||
           !weaponSystem.canUpgrade(choice.id, unlockedWeaponIds)) {
+        return;
+      }
+    } else {
+      final currentLevel = augmentLevels[choice.id] ?? 0;
+      if (choice.currentLevel != currentLevel ||
+          choice.nextLevel != currentLevel + 1 ||
+          currentLevel >= selectedAugment!.maxLevel) {
         return;
       }
     }

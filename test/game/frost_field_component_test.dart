@@ -84,4 +84,31 @@ void main() {
       normalField.containsEnemy(edgeEnemy),
     );
   });
+
+  test('frost rune rotates slowly and deterministically from elapsed time', () {
+    FrostFieldComponent createField() => FrostFieldComponent(
+      weaponId: frostFlask,
+      damage: 4,
+      radius: 30,
+      durationSeconds: 10,
+      slowFraction: .25,
+      knockback: 12,
+      position: Vector2.zero(),
+    );
+    final singleStep = createField();
+    final partitioned = createField();
+
+    expect(singleStep.runeRotationRadians, 0);
+    singleStep.update(2);
+    partitioned
+      ..update(.75)
+      ..update(.75)
+      ..update(.5);
+
+    expect(singleStep.runeRotationRadians, closeTo(.30, 1e-10));
+    expect(partitioned.runeRotationRadians, singleStep.runeRotationRadians);
+    expect(singleStep.runeRotationRadians, lessThan(.4));
+    expect(singleStep.radius, 30);
+    expect(singleStep.size, Vector2.all(60));
+  });
 }

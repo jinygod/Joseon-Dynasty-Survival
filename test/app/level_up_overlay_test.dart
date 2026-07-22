@@ -42,6 +42,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        theme: ThemeData(splashFactory: NoSplash.splashFactory),
         home: LevelUpOverlay(
           choices: choices,
           onChoiceSelected: (choice) => selected = choice,
@@ -71,6 +72,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        theme: ThemeData(splashFactory: NoSplash.splashFactory),
         home: LevelUpOverlay(choices: choices, onChoiceSelected: (_) {}),
       ),
     );

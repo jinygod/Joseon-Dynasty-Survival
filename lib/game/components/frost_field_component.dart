@@ -51,6 +51,9 @@ class FrostFieldComponent extends PositionComponent {
   /// Normalized time since the latest damage tick for the ice-sigil pulse.
   double get pulseProgress => (_elapsed / tickSeconds) % 1;
 
+  /// Slow presentation-only rotation derived entirely from simulation time.
+  double get runeRotationRadians => _elapsed * .15;
+
   int get visualLayerCount => switch (tier) {
     CombatVfxTier.normal => 1,
     CombatVfxTier.strong => 2,
@@ -164,7 +167,7 @@ class FrostFieldComponent extends PositionComponent {
       ..strokeCap = StrokeCap.round;
     for (var layer = 0; layer < visualLayerCount; layer += 1) {
       final layerRadius = radius * (.62 - layer * .11);
-      final rotation = layer == 0 ? 0.0 : math.pi / 6;
+      final rotation = runeRotationRadians + (layer == 0 ? 0.0 : math.pi / 6);
       for (var axis = 0; axis < 6; axis += 1) {
         final angle = math.pi * 2 * axis / 6 + rotation;
         final direction = _directionAt(angle);

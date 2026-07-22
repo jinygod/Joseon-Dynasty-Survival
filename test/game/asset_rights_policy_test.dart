@@ -32,6 +32,22 @@ void main() {
     expect(header, AssetRightsPolicy.ledgerColumns);
   });
 
+  test('every rights ledger row uses a policy lifecycle status', () {
+    final lines = File('docs/assets/asset-rights-ledger.csv').readAsLinesSync();
+    final header = lines.first.split(',');
+    final assetIdIndex = header.indexOf('asset_id');
+    final statusIndex = header.indexOf('status');
+
+    for (final line in lines.skip(1)) {
+      final fields = line.split(',');
+      expect(
+        AssetRightsPolicy.statuses,
+        contains(fields[statusIndex]),
+        reason: fields[assetIdIndex],
+      );
+    }
+  });
+
   test('only approved records are eligible for release', () {
     for (final status in AssetRightsPolicy.statuses) {
       expect(
@@ -44,7 +60,7 @@ void main() {
   });
 
   test(
-    'representative enemy atlases remain temporary before mobile review',
+    'representative enemy atlases remain in review before mobile approval',
     () {
       final lines = File(
         'docs/assets/asset-rights-ledger.csv',
@@ -63,8 +79,24 @@ void main() {
         'balanced_casual_sakkat_specter_atlas',
         'balanced_casual_dokkaebi_atlas',
       ]) {
-        expect(records[id], 'temporary', reason: id);
+        expect(records[id], 'review', reason: id);
       }
     },
   );
+
+  test('balanced casual bandit remains in review before mobile approval', () {
+    final lines = File('docs/assets/asset-rights-ledger.csv').readAsLinesSync();
+    final header = lines.first.split(',');
+    final assetIdIndex = header.indexOf('asset_id');
+    final statusIndex = header.indexOf('status');
+    final bandit = lines
+        .skip(1)
+        .map((line) => line.split(','))
+        .singleWhere(
+          (fields) => fields[assetIdIndex] == 'balanced_casual_bandit_atlas',
+        );
+
+    expect(bandit[statusIndex], 'review');
+    expect(AssetRightsPolicy.canShip(bandit[statusIndex]), isFalse);
+  });
 }

@@ -184,14 +184,14 @@ class _TopHud extends StatelessWidget {
     final showNotice =
         notice != null && source.combatNoticeSecondsRemaining > 0;
     final showStreak = source.killStreak > 1;
-    return Padding(
-      padding: EdgeInsets.only(left: leadingClearance, right: 8),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (source.bossHealthFraction case final health?) ...[
-            Align(
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (source.bossHealthFraction case final health?) ...[
+          Padding(
+            padding: EdgeInsets.only(left: leadingClearance, right: 8),
+            child: Align(
               alignment: Alignment.center,
               child: FractionallySizedBox(
                 key: const Key('boss-warning'),
@@ -203,25 +203,31 @@ class _TopHud extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 5),
-          ],
-          KeyedSubtree(
-            key: const Key('hud-status'),
-            child: _StatusBar(source: source),
           ),
-          if (showNotice) ...[
-            const SizedBox(height: 6),
-            Semantics(
+          const SizedBox(height: 5),
+        ],
+        KeyedSubtree(
+          key: const Key('hud-status'),
+          child: _StatusBar(source: source, leadingClearance: leadingClearance),
+        ),
+        if (showNotice) ...[
+          const SizedBox(height: 6),
+          Padding(
+            padding: EdgeInsets.only(left: leadingClearance, right: 8),
+            child: Semantics(
               key: const Key('combat-notice'),
               liveRegion: true,
               label: '${AppStrings.combatNotice} $notice',
               excludeSemantics: true,
               child: _CombatNotice(label: notice),
             ),
-          ],
-          if (showStreak) ...[
-            const SizedBox(height: 3),
-            Semantics(
+          ),
+        ],
+        if (showStreak) ...[
+          const SizedBox(height: 3),
+          Padding(
+            padding: EdgeInsets.only(left: leadingClearance, right: 8),
+            child: Semantics(
               key: const Key('kill-streak'),
               liveRegion: true,
               label: '${source.killStreak} ${AppStrings.killStreak}',
@@ -240,18 +246,19 @@ class _TopHud extends StatelessWidget {
                 ),
               ),
             ),
-          ],
+          ),
         ],
-      ),
+      ],
     );
   }
 }
 
 class _StatusBar extends StatelessWidget {
-  const _StatusBar({required this.source});
+  const _StatusBar({required this.source, required this.leadingClearance});
 
   static const _panelColor = Color(0xe8101820);
   final GameHudSource source;
+  final double leadingClearance;
 
   @override
   Widget build(BuildContext context) {
@@ -285,7 +292,7 @@ class _StatusBar extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
           ),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(8, 7, 8, 7),
+            padding: EdgeInsets.fromLTRB(leadingClearance, 7, 8, 7),
             child: Column(
               children: [
                 SizedBox(

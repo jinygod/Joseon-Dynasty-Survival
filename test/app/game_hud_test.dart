@@ -62,9 +62,9 @@ void main() {
     final pause = tester.getRect(find.byKey(const Key('hud-pause')));
     final status = tester.getRect(find.byKey(const Key('hud-status')));
     expect(status.top, greaterThanOrEqualTo(24));
-    expect(status.left, greaterThanOrEqualTo(pause.right));
-    expect(status.right, lessThanOrEqualTo(390));
-    expect(status.width, greaterThanOrEqualTo(310));
+    expect(status.left, 0);
+    expect(status.right, 390);
+    expect(status.width, 390);
     expect(
       tester.widget<Text>(find.byKey(const Key('hud-player-level'))).data,
       '레벨 1',
@@ -82,6 +82,7 @@ void main() {
     );
     final xpBar = tester.getRect(find.byKey(const Key('hud-xp-bar')));
     final xpFill = tester.getRect(find.byKey(const Key('hud-xp-fill')));
+    expect(xpBar.left, greaterThanOrEqualTo(pause.right));
     expect(xpBar.width, greaterThanOrEqualTo(220));
     expect(xpFill.width, closeTo(xpBar.width / 3, 0.5));
     expect(

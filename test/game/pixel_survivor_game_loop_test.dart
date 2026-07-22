@@ -745,44 +745,38 @@ void main() {
     );
 
     test('applyLevelUpChoice upgrades a weapon and clears pending state', () {
-      final game = newGame()..unlockedWeaponIds.add(hwandoSlash);
-      const choice = LevelUpChoice(
-        id: hwandoSlash,
-        displayName: '환도 베기',
-        effectDescription: '피해 8, 범위 58',
-        type: LevelUpChoiceType.weapon,
-        currentLevel: 0,
-        nextLevel: 1,
+      final game = newGame();
+      game.gainExperience(11);
+      final choice = game.pendingLevelUpChoices.firstWhere(
+        (choice) => choice.type == LevelUpChoiceType.weapon,
       );
 
       game.applyLevelUpChoice(choice);
 
-      expect(game.weaponSystem.levelOf(hwandoSlash), 1);
+      expect(game.weaponSystem.levelOf(choice.id), 1);
       expect(game.isLevelUpPending, isFalse);
       expect(game.currentRunResult().combatMetrics.weaponSelectionCounts, {
-        hwandoSlash: 1,
+        choice.id: 1,
       });
       expect(game.currentRunResult().combatMetrics.weaponLevelTimes, {
-        hwandoSlash: {1: 0},
+        choice.id: {1: 0},
       });
     });
 
     test('rejected weapon choices do not record selections or level times', () {
-      const firstLevel = LevelUpChoice(
-        id: hwandoSlash,
-        displayName: 'hwando',
-        effectDescription: 'level one',
-        type: LevelUpChoiceType.weapon,
-        currentLevel: 0,
-        nextLevel: 1,
+      final staleGame = newGame();
+      staleGame.gainExperience(24);
+      final firstLevel = staleGame.pendingLevelUpChoices.firstWhere(
+        (choice) => choice.type == LevelUpChoiceType.weapon,
       );
-      final staleGame = newGame()..unlockedWeaponIds.add(hwandoSlash);
-      staleGame
-        ..applyLevelUpChoice(firstLevel)
-        ..applyLevelUpChoice(firstLevel);
-      expect(staleGame.weaponSystem.levelOf(hwandoSlash), 1);
+      staleGame.applyLevelUpChoice(firstLevel);
+      final requeuedChoices = staleGame.pendingLevelUpChoices;
+      staleGame.applyLevelUpChoice(firstLevel);
+      expect(staleGame.weaponSystem.levelOf(firstLevel.id), 1);
+      expect(staleGame.pendingLevelChoiceCount, 1);
+      expect(staleGame.pendingLevelUpChoices, requeuedChoices);
       expect(staleGame.currentRunResult().combatMetrics.weaponSelectionCounts, {
-        hwandoSlash: 1,
+        firstLevel.id: 1,
       });
 
       final maxedGame = newGame()..unlockedWeaponIds.add(hwandoSlash);
@@ -792,6 +786,8 @@ void main() {
           maxedGame.unlockedWeaponIds,
         );
       }
+      maxedGame.gainExperience(11);
+      final maxedPendingCount = maxedGame.pendingLevelChoiceCount;
       maxedGame.applyLevelUpChoice(
         const LevelUpChoice(
           id: hwandoSlash,
@@ -806,8 +802,10 @@ void main() {
         maxedGame.currentRunResult().combatMetrics.weaponSelectionCounts,
         isEmpty,
       );
+      expect(maxedGame.pendingLevelChoiceCount, maxedPendingCount);
 
       final unknownGame = newGame();
+      unknownGame.gainExperience(11);
       unknownGame.applyLevelUpChoice(
         const LevelUpChoice(
           id: 'unknown_weapon',
@@ -824,6 +822,7 @@ void main() {
         isEmpty,
       );
       expect(unknownGame.unlockedWeaponIds, isNot(contains('unknown_weapon')));
+      expect(unknownGame.pendingLevelChoiceCount, 1);
     });
 
     test('combat metrics use raw frame dt before simulation clamping', () {
@@ -1535,23 +1534,20 @@ void main() {
     );
 
     test('applyLevelUpChoice upgrades an augment level', () {
-      final game = newGame()..unlockedAugmentIds.add(martialTraining);
-      const choice = LevelUpChoice(
-        id: martialTraining,
-        displayName: '무예 단련',
-        effectDescription: '모든 무기 피해 +12%',
-        type: LevelUpChoiceType.augment,
-        currentLevel: 0,
-        nextLevel: 1,
+      final game = newGame();
+      game.gainExperience(11);
+      final choice = game.pendingLevelUpChoices.firstWhere(
+        (choice) => choice.type == LevelUpChoiceType.augment,
       );
 
       game.applyLevelUpChoice(choice);
 
-      expect(game.augmentLevels[martialTraining], 1);
+      expect(game.augmentLevels[choice.id], 1);
     });
 
     test('unknown augment choice fails closed without recording state', () {
       final game = newGame();
+      game.gainExperience(11);
       const choice = LevelUpChoice(
         id: 'unknown_augment',
         displayName: 'unknown',
@@ -1567,24 +1563,87 @@ void main() {
       expect(game.unlockedAugmentIds, isNot(contains(choice.id)));
       expect(game.augmentLevels, isNot(contains(choice.id)));
       expect(game.augmentLevels[martialTraining], isNull);
+      expect(game.pendingLevelChoiceCount, 1);
     });
+
+    test('stale augment callback cannot consume a requeued overlay choice', () {
+      final game = newGame();
+      game.gainExperience(24);
+      final firstChoice = game.pendingLevelUpChoices.firstWhere(
+        (choice) => choice.type == LevelUpChoiceType.augment,
+      );
+
+      game.applyLevelUpChoice(firstChoice);
+      final requeuedChoices = game.pendingLevelUpChoices;
+      final recordsAfterSelection = game.currentRunResult().choices;
+      game.applyLevelUpChoice(firstChoice);
+
+      expect(game.augmentLevels[firstChoice.id], 1);
+      expect(game.currentRunResult().choices, recordsAfterSelection);
+      expect(game.pendingLevelChoiceCount, 1);
+      expect(game.pendingLevelUpChoices, requeuedChoices);
+    });
+
+    test(
+      'non-offered augment callback matching current levels is rejected',
+      () {
+        final game = newGame();
+        game.gainExperience(11);
+        final offered = game.pendingLevelUpChoices.firstWhere(
+          (choice) => choice.type == LevelUpChoiceType.augment,
+        );
+        final nonOffered = LevelUpChoice(
+          id: offered.id,
+          displayName: '${offered.displayName} stale',
+          effectDescription: offered.effectDescription,
+          type: offered.type,
+          currentLevel: offered.currentLevel,
+          nextLevel: offered.nextLevel,
+        );
+        final pendingChoices = game.pendingLevelUpChoices;
+
+        game.applyLevelUpChoice(nonOffered);
+
+        expect(game.augmentLevels[offered.id], isNull);
+        expect(game.currentRunResult().choices, isEmpty);
+        expect(game.pendingLevelChoiceCount, 1);
+        expect(game.pendingLevelUpChoices, pendingChoices);
+      },
+    );
+
+    test(
+      'maxed augment callback cannot record or consume a pending choice',
+      () {
+        final game = newGame();
+        game.gainExperience(11);
+        final choice = game.pendingLevelUpChoices.firstWhere(
+          (choice) => choice.type == LevelUpChoiceType.augment,
+        );
+        final definition = augmentDefinitionFor(choice.id)!;
+        game.augmentLevels[choice.id] = definition.maxLevel;
+        final pendingChoices = game.pendingLevelUpChoices;
+
+        game.applyLevelUpChoice(choice);
+
+        expect(game.augmentLevels[choice.id], definition.maxLevel);
+        expect(game.currentRunResult().choices, isEmpty);
+        expect(game.pendingLevelChoiceCount, 1);
+        expect(game.pendingLevelUpChoices, pendingChoices);
+      },
+    );
 
     test('applyLevelUpChoice records selection order and game time', () {
       final game = newGame()..debugAdvanceTo(42);
-      const choice = LevelUpChoice(
-        id: martialTraining,
-        displayName: '무예 단련',
-        effectDescription: '모든 무기 피해 +12%',
-        type: LevelUpChoiceType.augment,
-        currentLevel: 0,
-        nextLevel: 1,
+      game.gainExperience(11);
+      final choice = game.pendingLevelUpChoices.firstWhere(
+        (choice) => choice.type == LevelUpChoiceType.augment,
       );
 
       game.applyLevelUpChoice(choice);
 
       final recorded = game.currentRunResult().choices.single;
       expect(recorded.type, RunChoiceType.augment);
-      expect(recorded.contentId, martialTraining);
+      expect(recorded.contentId, choice.id);
       expect(recorded.selectedAtSeconds, 42);
       expect(recorded.selectedLevel, 1);
     });
@@ -1915,27 +1974,30 @@ void main() {
         final initialHealth = player.currentHealth;
 
         game.augmentLevels.clear();
-        const innerBreathChoice = LevelUpChoice(
-          id: innerBreath,
-          displayName: '내공 호흡',
-          effectDescription: '최대 체력 +10, 체력 10 회복',
-          type: LevelUpChoiceType.augment,
-          currentLevel: 0,
-          nextLevel: 1,
-        );
-        const herbalTonicChoice = LevelUpChoice(
-          id: herbalTonic,
-          displayName: 'herbal tonic',
-          effectDescription: 'heal 12',
-          type: LevelUpChoiceType.augment,
-          currentLevel: 0,
-          nextLevel: 1,
-        );
-
-        game.applyLevelUpChoice(innerBreathChoice);
-        game.applyLevelUpChoice(herbalTonicChoice);
+        game.gainExperience(20000);
+        final remainingImmediateAugments = {innerBreath, herbalTonic};
+        for (
+          var attempt = 0;
+          remainingImmediateAugments.isNotEmpty && attempt < 100;
+          attempt += 1
+        ) {
+          final choices = game.pendingLevelUpChoices;
+          final immediateChoices = choices.where(
+            (choice) => remainingImmediateAugments.contains(choice.id),
+          );
+          final choice =
+              immediateChoices.firstOrNull ??
+              choices.firstWhere(
+                (choice) =>
+                    choice.id != innerBreath && choice.id != herbalTonic,
+                orElse: () => choices.first,
+              );
+          game.applyLevelUpChoice(choice);
+          remainingImmediateAugments.remove(choice.id);
+        }
         game.updateMovementInput(VectorInput.zero);
 
+        expect(remainingImmediateAugments, isEmpty);
         expect(player.maxHealth, initialMaxHealth + 10);
         expect(player.currentHealth, initialHealth + 22);
       },
