@@ -54,4 +54,30 @@ void main() {
     await owner.up();
     expect(inputs.last, VectorInput.zero);
   });
+
+  testWidgets('joystick becomes more visible while the player steers', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Center(child: VirtualJoystick(onInputChanged: (_) {})),
+      ),
+    );
+    final joystick = find.byKey(const Key('virtual-joystick'));
+    expect(_joystickFillAlpha(tester, joystick), closeTo(0.35, 0.001));
+
+    final gesture = await tester.startGesture(tester.getCenter(joystick));
+    await gesture.moveBy(const Offset(24, 0));
+    await tester.pump();
+
+    expect(_joystickFillAlpha(tester, joystick), closeTo(0.55, 0.001));
+    await gesture.up();
+  });
+}
+
+double _joystickFillAlpha(WidgetTester tester, Finder joystick) {
+  final decoration = tester.widget<DecoratedBox>(
+    find.descendant(of: joystick, matching: find.byType(DecoratedBox)).first,
+  );
+  return (decoration.decoration as BoxDecoration).color!.a;
 }

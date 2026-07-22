@@ -29,9 +29,7 @@ class _GameHudState extends State<GameHud> {
   void initState() {
     super.initState();
     _refreshTimer = Timer.periodic(const Duration(milliseconds: 250), (_) {
-      if (mounted) {
-        setState(() {});
-      }
+      if (mounted) setState(() {});
     });
   }
 
@@ -46,7 +44,6 @@ class _GameHudState extends State<GameHud> {
     final rewardSource = widget.source is RewardCollectionHudSource
         ? widget.source as RewardCollectionHudSource
         : null;
-    final scale = widget.uiScale;
     return Material(
       color: Colors.transparent,
       child: SafeArea(
@@ -55,47 +52,52 @@ class _GameHudState extends State<GameHud> {
             if (rewardSource?.rewardCollectionSecondsRemaining
                 case final seconds?)
               Positioned(
-                top: 150,
+                top: 118,
                 left: 0,
                 right: 0,
                 child: Center(
                   child: _RewardCollectionNotice(
                     seconds: seconds,
                     retrying: rewardSource!.isSpiritJadeSaveRetrying,
-                    uiScale: scale,
+                    uiScale: widget.uiScale,
                   ),
                 ),
               ),
             Positioned(
-              top: widget.source.bossHealthFraction == null ? 12 : 8,
-              left: 16,
-              right: 16,
-              child: _TopHud(source: widget.source, uiScale: scale),
+              top: widget.source.bossHealthFraction == null ? 8 : 6,
+              left: 64,
+              right: 12,
+              child: _TopHud(source: widget.source, uiScale: widget.uiScale),
             ),
             Positioned(
               left: 18,
               bottom: 18,
               child: VirtualJoystick(
                 onInputChanged: widget.source.updateMovementInput,
-                size: 120 * scale,
-                deadZone: 10 * scale,
+                size: 104,
+                deadZone: 9,
+                idleOpacity: 0.35,
+                activeOpacity: 0.55,
               ),
             ),
             if (widget.onPause case final onPause?)
               Positioned(
                 top: 8,
                 left: 8,
-                child: IconButton.filledTonal(
-                  key: const Key('hud-pause'),
-                  tooltip: '일시정지',
-                  onPressed: onPause,
-                  iconSize: 24 * scale,
-                  padding: EdgeInsets.all(8 * scale),
-                  constraints: BoxConstraints(
-                    minWidth: 48 * scale,
-                    minHeight: 48 * scale,
+                child: Semantics(
+                  button: true,
+                  label: 'Pause game',
+                  child: SizedBox.square(
+                    key: const Key('hud-pause'),
+                    dimension: 48,
+                    child: IconButton.filledTonal(
+                      tooltip: 'Pause game',
+                      onPressed: onPause,
+                      iconSize: 22,
+                      padding: EdgeInsets.zero,
+                      icon: const Icon(Icons.pause),
+                    ),
                   ),
-                  icon: const Icon(Icons.pause),
                 ),
               ),
           ],
@@ -119,12 +121,14 @@ class _TopHud extends StatelessWidget {
     final showStreak = source.killStreak > 1;
     return Column(
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         if (source.bossHealthFraction case final health?) ...[
-          Center(
+          Align(
+            alignment: Alignment.center,
             child: FractionallySizedBox(
               key: const Key('boss-warning'),
-              widthFactor: 0.65,
+              widthFactor: 0.88,
               child: BossHealthBar(
                 name: source.bossName ?? AppStrings.genericBoss,
                 healthFraction: health,
@@ -132,58 +136,38 @@ class _TopHud extends StatelessWidget {
               ),
             ),
           ),
-          SizedBox(height: 8 * uiScale),
+          const SizedBox(height: 5),
         ],
         KeyedSubtree(
           key: const Key('hud-status'),
-          child: _StatusBar(source: source, uiScale: uiScale),
+          child: _StatusBar(source: source),
         ),
         if (showNotice) ...[
-          SizedBox(height: 8 * uiScale),
+          const SizedBox(height: 6),
           Semantics(
             key: const Key('combat-notice'),
             liveRegion: true,
-            label: '전투 알림 $notice',
+            label: 'Combat notice $notice',
             excludeSemantics: true,
-            child: Center(
-              child: _CombatNotice(label: notice, uiScale: uiScale),
-            ),
+            child: _CombatNotice(label: notice),
           ),
         ],
         if (showStreak) ...[
-          SizedBox(height: 4 * uiScale),
+          const SizedBox(height: 3),
           Semantics(
             key: const Key('kill-streak'),
             liveRegion: true,
-            label: '${source.killStreak} 연속 처치',
+            label: '${source.killStreak} ${AppStrings.hudKills}',
             excludeSemantics: true,
             child: Text(
-              '${source.killStreak} 연속 처치',
+              '${source.killStreak} ${AppStrings.hudKills}',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: const Color(0xffffd166),
-                fontSize: 13 * uiScale,
+              style: const TextStyle(
+                color: Color(0xffffd166),
+                fontSize: 13,
                 fontWeight: FontWeight.w800,
-                shadows: const [
-                  Shadow(color: Color(0xff101820), blurRadius: 3),
-                ],
-              ),
-            ),
-          ),
-        ],
-        if (source.weaponLevelLabels.isNotEmpty) ...[
-          SizedBox(height: 8 * uiScale),
-          Align(
-            alignment: Alignment.topRight,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: 220 * uiScale),
-              child: KeyedSubtree(
-                key: const Key('weapon-list'),
-                child: _WeaponList(
-                  labels: source.weaponLevelLabels,
-                  uiScale: uiScale,
-                ),
+                shadows: [Shadow(color: Color(0xff101820), blurRadius: 3)],
               ),
             ),
           ),
@@ -193,35 +177,297 @@ class _TopHud extends StatelessWidget {
   }
 }
 
+class _StatusBar extends StatelessWidget {
+  const _StatusBar({required this.source});
+
+  static const _panelColor = Color(0xe8101820);
+  final GameHudSource source;
+
+  @override
+  Widget build(BuildContext context) {
+    final elapsed = Duration(seconds: source.elapsedSeconds.floor());
+    final minutes = elapsed.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = elapsed.inSeconds.remainder(60).toString().padLeft(2, '0');
+    final healthFraction = _fractionFromLabel(source.playerHealthLabel);
+    final xpFraction = source.experienceToNextLevel <= 0
+        ? 0.0
+        : (source.currentExperience / source.experienceToNextLevel)
+              .clamp(0, 1)
+              .toDouble();
+    final statusLabel =
+        '${AppStrings.hudTime} $minutes:$seconds, '
+        '${AppStrings.hudHealth} ${source.playerHealthLabel}, '
+        '${AppStrings.hudLevel} ${source.playerLevel}, '
+        '${AppStrings.hudExperience} '
+        '${source.currentExperience}/${source.experienceToNextLevel}, '
+        '${AppStrings.hudEnemies} ${source.enemyCount}, '
+        '${AppStrings.hudKills} ${source.kills}';
+
+    return Semantics(
+      container: true,
+      label: statusLabel,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 292),
+        child: SizedBox(
+          height: 88,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: _panelColor,
+              border: Border.all(color: const Color(0xfff4ead2), width: 1.25),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(8, 7, 8, 7),
+              child: ExcludeSemantics(
+                child: Column(
+                  children: [
+                    SizedBox(
+                      height: 17,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _FittedHudText(
+                              '$minutes:$seconds  '
+                              '${AppStrings.hudLevel} ${source.playerLevel}',
+                              color: const Color(0xfffff1b8),
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: _FittedHudText(
+                              '${source.enemyCount} / ${source.kills}',
+                              color: const Color(0xff9fb3c8),
+                              textAlign: TextAlign.end,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    _MeterBar(
+                      key: const Key('hud-health-bar'),
+                      value: healthFraction,
+                      color: const Color(0xffef5b5b),
+                      trackColor: const Color(0xff48242d),
+                    ),
+                    const SizedBox(height: 4),
+                    SizedBox(
+                      height: 32,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _MeterBar(
+                              key: const Key('hud-xp-bar'),
+                              value: xpFraction,
+                              color: const Color(0xff5cc8ff),
+                              trackColor: const Color(0xff1a3b50),
+                              label:
+                                  '${source.currentExperience}/${source.experienceToNextLevel}',
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          KeyedSubtree(
+                            key: const Key('weapon-list'),
+                            child: _WeaponSlots(
+                              labels: source.weaponLevelLabels.take(3).toList(),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MeterBar extends StatelessWidget {
+  const _MeterBar({
+    required this.value,
+    required this.color,
+    required this.trackColor,
+    this.label,
+    super.key,
+  });
+
+  final double value;
+  final Color color;
+  final Color trackColor;
+  final String? label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: label,
+      child: SizedBox(
+        height: 9,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(4.5),
+          child: DecoratedBox(
+            decoration: BoxDecoration(color: trackColor),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: FractionallySizedBox(
+                widthFactor: value.clamp(0, 1),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius: BorderRadius.circular(4.5),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _WeaponSlots extends StatelessWidget {
+  const _WeaponSlots({required this.labels});
+
+  final List<String> labels;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var index = 0; index < labels.length; index++) ...[
+          if (index > 0) const SizedBox(width: 4),
+          _WeaponSlot(index: index, label: labels[index]),
+        ],
+      ],
+    );
+  }
+}
+
+class _WeaponSlot extends StatelessWidget {
+  const _WeaponSlot({required this.index, required this.label});
+
+  final int index;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    const colors = [Color(0xffd9f7ff), Color(0xffffd6aa), Color(0xffe8c5ff)];
+    final level = _levelFromLabel(label);
+    return Semantics(
+      label: label,
+      child: SizedBox.square(
+        key: Key('hud-weapon-slot-$index'),
+        dimension: 32,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: const Color(0xff172633),
+            border: Border.all(color: colors[index % colors.length]),
+            borderRadius: BorderRadius.circular(7),
+          ),
+          child: Stack(
+            children: [
+              Center(
+                child: Icon(
+                  [
+                    Icons.gesture,
+                    Icons.auto_awesome,
+                    Icons.track_changes,
+                  ][index % 3],
+                  size: 17,
+                  color: colors[index % colors.length],
+                ),
+              ),
+              Align(
+                alignment: Alignment.bottomRight,
+                child: Container(
+                  width: 13,
+                  height: 13,
+                  alignment: Alignment.center,
+                  decoration: const BoxDecoration(
+                    color: Color(0xff101820),
+                    shape: BoxShape.circle,
+                  ),
+                  child: FittedBox(
+                    child: Text(
+                      '$level',
+                      style: const TextStyle(
+                        color: Color(0xfffff1b8),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FittedHudText extends StatelessWidget {
+  const _FittedHudText(
+    this.text, {
+    required this.color,
+    this.fontWeight = FontWeight.w700,
+    this.textAlign = TextAlign.start,
+  });
+
+  final String text;
+  final Color color;
+  final FontWeight fontWeight;
+  final TextAlign textAlign;
+
+  @override
+  Widget build(BuildContext context) {
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: textAlign == TextAlign.end
+          ? Alignment.centerRight
+          : Alignment.centerLeft,
+      child: Text(
+        text,
+        maxLines: 1,
+        textAlign: textAlign,
+        style: TextStyle(color: color, fontSize: 12, fontWeight: fontWeight),
+      ),
+    );
+  }
+}
+
 class _CombatNotice extends StatelessWidget {
-  const _CombatNotice({required this.label, required this.uiScale});
+  const _CombatNotice({required this.label});
 
   final String label;
-  final double uiScale;
 
   @override
   Widget build(BuildContext context) {
     return ConstrainedBox(
-      constraints: BoxConstraints(maxWidth: 240 * uiScale),
+      constraints: const BoxConstraints(maxWidth: 240),
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: const Color(0xff2f1b25).withValues(alpha: 0.9),
           border: Border.all(color: const Color(0xffffd166)),
-          borderRadius: BorderRadius.circular(8 * uiScale),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: 14 * uiScale,
-            vertical: 7 * uiScale,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
           child: Text(
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: const Color(0xfffff1b8),
-              fontSize: 16 * uiScale,
+            style: const TextStyle(
+              color: Color(0xfffff1b8),
+              fontSize: 16,
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -245,8 +491,8 @@ class _RewardCollectionNotice extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final label = retrying
-        ? '혼옥 저장 재시도 중'
-        : '혼옥 수거 ${seconds.ceil().clamp(0, 3)}초';
+        ? 'Saving reward again'
+        : 'Collecting reward ${seconds.ceil().clamp(0, 3)}s';
     return DecoratedBox(
       decoration: BoxDecoration(
         color: const Color(0xff2f1b25).withValues(alpha: 0.9),
@@ -264,78 +510,6 @@ class _RewardCollectionNotice extends StatelessWidget {
             color: const Color(0xfffff1b8),
             fontSize: 18 * uiScale,
             fontWeight: FontWeight.w900,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _StatusBar extends StatelessWidget {
-  const _StatusBar({required this.source, required this.uiScale});
-
-  final GameHudSource source;
-  final double uiScale;
-
-  @override
-  Widget build(BuildContext context) {
-    final elapsed = Duration(seconds: source.elapsedSeconds.floor());
-    final minutes = elapsed.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final seconds = elapsed.inSeconds.remainder(60).toString().padLeft(2, '0');
-
-    return Align(
-      alignment: Alignment.topRight,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: const Color(0xff101820).withValues(alpha: 0.78),
-          border: Border.all(
-            color: const Color(0xfff4ead2),
-            width: 1.5 * uiScale,
-          ),
-          borderRadius: BorderRadius.circular(8 * uiScale),
-        ),
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: 14 * uiScale,
-            vertical: 10 * uiScale,
-          ),
-          child: Wrap(
-            alignment: WrapAlignment.end,
-            spacing: 16 * uiScale,
-            runSpacing: 6 * uiScale,
-            children: [
-              _HudValue(
-                label: AppStrings.hudTime,
-                value: '$minutes:$seconds',
-                uiScale: uiScale,
-              ),
-              _HudValue(
-                label: AppStrings.hudHealth,
-                value: source.playerHealthLabel,
-                uiScale: uiScale,
-              ),
-              _HudValue(
-                label: AppStrings.hudLevel,
-                value: '${source.playerLevel}',
-                uiScale: uiScale,
-              ),
-              _HudValue(
-                label: AppStrings.hudExperience,
-                value:
-                    '${source.currentExperience}/${source.experienceToNextLevel}',
-                uiScale: uiScale,
-              ),
-              _HudValue(
-                label: AppStrings.hudEnemies,
-                value: '${source.enemyCount}',
-                uiScale: uiScale,
-              ),
-              _HudValue(
-                label: AppStrings.hudKills,
-                value: '${source.kills}',
-                uiScale: uiScale,
-              ),
-            ],
           ),
         ),
       ),
@@ -368,7 +542,6 @@ class BossHealthBar extends StatelessWidget {
             color: const Color(0xfff4ead2),
             fontSize: 14 * uiScale,
             fontWeight: FontWeight.w800,
-            letterSpacing: 0,
             shadows: const [Shadow(color: Color(0xff101820), blurRadius: 3)],
           ),
         ),
@@ -385,87 +558,17 @@ class BossHealthBar extends StatelessWidget {
   }
 }
 
-class _WeaponList extends StatelessWidget {
-  const _WeaponList({required this.labels, required this.uiScale});
-
-  final List<String> labels;
-  final double uiScale;
-
-  @override
-  Widget build(BuildContext context) {
-    if (labels.isEmpty) return const SizedBox.shrink();
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: const Color(0xff101820).withValues(alpha: 0.78),
-        border: Border.all(color: const Color(0xff9fb3c8)),
-        borderRadius: BorderRadius.circular(6 * uiScale),
-      ),
-      child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: 12 * uiScale,
-          vertical: 8 * uiScale,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            for (final label in labels)
-              Padding(
-                padding: EdgeInsets.symmetric(vertical: 2 * uiScale),
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: const Color(0xfff4ead2),
-                    fontSize: 13 * uiScale,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0,
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
+double _fractionFromLabel(String label) {
+  final match = RegExp(r'(\\d+)\\s*/\\s*(\\d+)').firstMatch(label);
+  if (match == null) return 1;
+  final current = double.tryParse(match.group(1)!) ?? 0;
+  final maximum = double.tryParse(match.group(2)!) ?? 0;
+  if (maximum <= 0) return 0;
+  return (current / maximum).clamp(0, 1);
 }
 
-class _HudValue extends StatelessWidget {
-  const _HudValue({
-    required this.label,
-    required this.value,
-    required this.uiScale,
-  });
-
-  final String label;
-  final String value;
-  final double uiScale;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text.rich(
-      TextSpan(
-        text: '$label ',
-        style: TextStyle(
-          color: const Color(0xff9fb3c8),
-          fontSize: 12 * uiScale,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0,
-        ),
-        children: [
-          TextSpan(
-            text: value,
-            style: TextStyle(
-              color: const Color(0xfff4ead2),
-              fontSize: 14 * uiScale,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0,
-            ),
-          ),
-        ],
-      ),
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-    );
-  }
+int _levelFromLabel(String label) {
+  final matches = RegExp(r'\\d+').allMatches(label);
+  if (matches.isEmpty) return 1;
+  return int.tryParse(matches.last.group(0)!) ?? 1;
 }

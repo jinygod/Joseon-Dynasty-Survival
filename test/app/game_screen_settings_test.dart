@@ -37,7 +37,7 @@ void main() {
     expect(find.byKey(const Key('hud-ui-scale')), findsNothing);
     expect(
       tester.getSize(find.byKey(const Key('virtual-joystick'))),
-      const Size.square(138),
+      const Size.square(104),
     );
   });
 }

@@ -9,12 +9,17 @@ class VirtualJoystick extends StatefulWidget {
     required this.onInputChanged,
     this.size = 120,
     this.deadZone = 10,
+    this.idleOpacity = 0.35,
+    this.activeOpacity = 0.55,
     super.key,
-  });
+  }) : assert(idleOpacity >= 0 && idleOpacity <= 1),
+       assert(activeOpacity >= 0 && activeOpacity <= 1);
 
   final ValueChanged<VectorInput> onInputChanged;
   final double size;
   final double deadZone;
+  final double idleOpacity;
+  final double activeOpacity;
 
   @override
   State<VirtualJoystick> createState() => _VirtualJoystickState();
@@ -84,7 +89,11 @@ class _VirtualJoystickState extends State<VirtualJoystick> {
         child: DecoratedBox(
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: const Color(0xfff4ead2).withValues(alpha: 0.16),
+            color: const Color(0xfff4ead2).withValues(
+              alpha: _activePointer == null
+                  ? widget.idleOpacity
+                  : widget.activeOpacity,
+            ),
             border: Border.all(
               color: const Color(0xfff4ead2).withValues(alpha: 0.55),
               width: 2,

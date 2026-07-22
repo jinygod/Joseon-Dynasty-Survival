@@ -121,6 +121,38 @@ void main() {
       semantics.dispose();
     },
   );
+  testWidgets('portrait HUD remains compact at system text scale two', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(
+            size: Size(390, 844),
+            textScaler: TextScaler.linear(2),
+          ),
+          child: GameHud(source: _HudSource(), onPause: () {}),
+        ),
+      ),
+    );
+
+    expect(
+      tester.getSize(find.byKey(const Key('hud-status'))).height,
+      lessThanOrEqualTo(92),
+    );
+    expect(
+      tester.getRect(find.byKey(const Key('hud-status'))).height / 844,
+      lessThanOrEqualTo(0.12),
+    );
+    expect(find.byKey(const Key('hud-health-bar')), findsOneWidget);
+    expect(find.byKey(const Key('hud-xp-bar')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }
 
 class _HudSource implements GameHudSource {

@@ -165,7 +165,9 @@ void main() {
     expect(status.top, greaterThanOrEqualTo(boss.bottom));
     expect(notice.top, greaterThanOrEqualTo(status.bottom));
     expect(streak.top, greaterThanOrEqualTo(notice.bottom));
-    expect(weapons.top, greaterThanOrEqualTo(streak.bottom));
+    expect(weapons.top, greaterThanOrEqualTo(status.top));
+    expect(weapons.bottom, lessThanOrEqualTo(status.bottom));
+    expect(status.height, lessThanOrEqualTo(92));
     for (final rect in [boss, status, notice, streak, weapons]) {
       expect(rect.left, greaterThanOrEqualTo(0));
       expect(rect.top, greaterThanOrEqualTo(0));
