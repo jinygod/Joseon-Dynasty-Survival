@@ -6,6 +6,7 @@ import 'package:pixel_survivor/game/components/enemy_component.dart';
 import 'package:pixel_survivor/game/components/experience_gem_component.dart';
 import 'package:pixel_survivor/game/components/player_component.dart';
 import 'package:pixel_survivor/game/components/projectile_component.dart';
+import 'package:pixel_survivor/game/combat/combat_vfx_primitives.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
 import 'package:pixel_survivor/game/content/ids.dart';
 import 'package:pixel_survivor/game/combat/attack_spec.dart';
@@ -656,6 +657,39 @@ void main() {
       expect(result.frostFields.single.durationSeconds, 3.5);
       expect(result.frostFields.single.slowFraction, .30);
     });
+
+    test(
+      'frost flask propagates visual tiers without changing its field stats',
+      () {
+        WeaponTickResult tickAt(int level) =>
+            WeaponSystem(initialLevels: {frostFlask: level}).tick(
+              dt: 3,
+              origin: Vector2.zero(),
+              enemies: [
+                EnemyComponent(
+                  enemyId: 'target',
+                  maxHealth: 20,
+                  moveSpeed: 0,
+                  damage: 1,
+                  position: Vector2(70, 10),
+                ),
+              ],
+            );
+
+        final normal = tickAt(3).frostFields.single;
+        final strong = tickAt(4).frostFields.single;
+        final master = tickAt(6).frostFields.first;
+
+        expect(normal.tier, CombatVfxTier.normal);
+        expect(strong.tier, CombatVfxTier.strong);
+        expect(master.tier, CombatVfxTier.master);
+        expect(master.damage, 12);
+        expect(master.radius, 126);
+        expect(master.durationSeconds, 5);
+        expect(master.slowFraction, .52);
+        expect(master.knockback, 24);
+      },
+    );
 
     test('level five wind thunder fan sweeps forward and backward', () {
       final enemies = [

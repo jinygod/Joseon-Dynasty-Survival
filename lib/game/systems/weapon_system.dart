@@ -8,6 +8,7 @@ import '../components/frost_field_component.dart';
 import '../components/five_color_ward_component.dart';
 import '../components/melee_arc_component.dart';
 import '../components/projectile_component.dart';
+import '../combat/combat_vfx_primitives.dart';
 import '../combat/attack_spec.dart';
 import '../content/ids.dart';
 import '../content/weapon_definitions.dart';
@@ -669,6 +670,11 @@ class WeaponSystem {
           slowFraction: stats.slowFraction,
           knockback: stats.knockback,
           position: position,
+          tier: switch (level) {
+            >= 6 => CombatVfxTier.master,
+            >= 4 => CombatVfxTier.strong,
+            _ => CombatVfxTier.normal,
+          },
         ),
       );
     }
