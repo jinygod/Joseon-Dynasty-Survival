@@ -53,6 +53,100 @@ void main() {
     }
   });
 
+  testWidgets('navigation dock keeps 64px primary buttons in a narrow parent', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 260,
+              child: LobbyNavigationDock(
+                onStagePressed: () {},
+                onCharacterPressed: () {},
+                onCompendiumPressed: () {},
+                onRecordsPressed: () {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    for (final key in const [
+      'lobby-stage',
+      'lobby-character',
+      'lobby-compendium',
+      'lobby-records',
+    ]) {
+      expect(
+        tester.getSize(find.byKey(Key(key))).width,
+        greaterThanOrEqualTo(64),
+      );
+    }
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('navigation dock medals derive from their item colors', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          bottomNavigationBar: LobbyNavigationDock(
+            onStagePressed: () {},
+            onCharacterPressed: () {},
+            onCompendiumPressed: () {},
+            onRecordsPressed: () {},
+          ),
+        ),
+      ),
+    );
+
+    const baseColors = {
+      'lobby-stage': Color(0xff216b5a),
+      'lobby-character': Color(0xff9e2f2f),
+      'lobby-compendium': Color(0xff536fa8),
+      'lobby-records': Color(0xff9b6a34),
+    };
+    for (final entry in baseColors.entries) {
+      final medal = tester.widget<Container>(
+        find.byKey(Key('${entry.key}-medal')),
+      );
+      final decoration = medal.decoration! as BoxDecoration;
+      expect(
+        decoration.color,
+        Color.alphaBlend(const Color(0x44ffffff), entry.value),
+      );
+    }
+  });
+
+  testWidgets('navigation dock exposes labels and forwards callbacks', (
+    tester,
+  ) async {
+    var stageTaps = 0;
+    final semantics = tester.ensureSemantics();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          bottomNavigationBar: LobbyNavigationDock(
+            onStagePressed: () => stageTaps += 1,
+            onCharacterPressed: () {},
+            onCompendiumPressed: () {},
+            onRecordsPressed: () {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.bySemanticsLabel('지도'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('lobby-stage')));
+    expect(stageTaps, 1);
+    semantics.dispose();
+  });
+
   testWidgets('lobby shows saved state and working destinations', (
     tester,
   ) async {

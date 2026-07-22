@@ -5,6 +5,8 @@ import 'joseon_ui_theme.dart';
 
 /// The shared lobby navigation actions, without taking ownership of navigation.
 class LobbyNavigationDock extends StatelessWidget {
+  static const _minimumContentWidth = 296.0;
+
   const LobbyNavigationDock({
     required this.onStagePressed,
     required this.onCharacterPressed,
@@ -31,40 +33,57 @@ class LobbyNavigationDock extends StatelessWidget {
       ),
       child: SafeArea(
         top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
-          child: Row(
-            children: [
-              _DockItem(
-                debugId: 'lobby-stage',
-                icon: Icons.map_outlined,
-                label: '지도',
-                medalColor: JoseonUiTheme.jade,
-                onPressed: onStagePressed,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final availableWidth = constraints.hasBoundedWidth
+                ? constraints.maxWidth
+                : _minimumContentWidth;
+            final contentWidth = availableWidth < _minimumContentWidth
+                ? _minimumContentWidth
+                : availableWidth;
+
+            return SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: SizedBox(
+                width: contentWidth,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
+                  child: Row(
+                    children: [
+                      _DockItem(
+                        debugId: 'lobby-stage',
+                        icon: Icons.map_outlined,
+                        label: '지도',
+                        medalColor: JoseonUiTheme.jade,
+                        onPressed: onStagePressed,
+                      ),
+                      _DockItem(
+                        debugId: 'lobby-character',
+                        icon: Icons.person_outline,
+                        label: '인물',
+                        medalColor: JoseonUiTheme.crimson,
+                        onPressed: onCharacterPressed,
+                      ),
+                      _DockItem(
+                        debugId: 'lobby-compendium',
+                        icon: Icons.menu_book_outlined,
+                        label: '도감',
+                        medalColor: const Color(0xff536fa8),
+                        onPressed: onCompendiumPressed,
+                      ),
+                      _DockItem(
+                        debugId: 'lobby-records',
+                        icon: Icons.emoji_events_outlined,
+                        label: '기록',
+                        medalColor: const Color(0xff9b6a34),
+                        onPressed: onRecordsPressed,
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              _DockItem(
-                debugId: 'lobby-character',
-                icon: Icons.person_outline,
-                label: '인물',
-                medalColor: JoseonUiTheme.crimson,
-                onPressed: onCharacterPressed,
-              ),
-              _DockItem(
-                debugId: 'lobby-compendium',
-                icon: Icons.menu_book_outlined,
-                label: '도감',
-                medalColor: const Color(0xff536fa8),
-                onPressed: onCompendiumPressed,
-              ),
-              _DockItem(
-                debugId: 'lobby-records',
-                icon: Icons.emoji_events_outlined,
-                label: '기록',
-                medalColor: const Color(0xff9b6a34),
-                onPressed: onRecordsPressed,
-              ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
@@ -107,12 +126,13 @@ class _DockItem extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
+                key: Key('$debugId-medal'),
                 width: 27,
                 height: 27,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: JoseonUiTheme.paper,
-                  border: Border.fromBorderSide(
+                  color: Color.alphaBlend(const Color(0x44ffffff), medalColor),
+                  border: const Border.fromBorderSide(
                     BorderSide(color: JoseonUiTheme.gold, width: 2),
                   ),
                 ),

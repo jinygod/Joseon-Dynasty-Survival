@@ -59,7 +59,10 @@ class _JoseonGameButtonState extends State<JoseonGameButton> {
       height: targetSize.height,
       child: Semantics(
         button: true,
+        container: true,
+        excludeSemantics: true,
         label: widget.semanticLabel,
+        onTap: widget.onPressed,
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTapDown: (_) => _setPressed(true),
