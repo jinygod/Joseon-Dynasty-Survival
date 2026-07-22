@@ -124,7 +124,7 @@ void main() {
     });
 
     test(
-      'exorcist selects authored atlas and legacy character stays static',
+      'representative rookie and exorcist select the authored casual atlas',
       () {
         final exorcist = PlayerComponent(
           slotIndex: 0,
@@ -132,7 +132,7 @@ void main() {
           maxHealth: 100,
           moveSpeed: 120,
         );
-        final legacy = PlayerComponent(
+        final rookie = PlayerComponent(
           slotIndex: 0,
           characterId: rookieConstable,
           maxHealth: 100,
@@ -141,8 +141,9 @@ void main() {
 
         expect(exorcist.usesAuthoredAtlas, isTrue);
         expect(exorcist.visualAssetKey, PlayerSpriteSheet.authoredAssetKey);
-        expect(legacy.usesAuthoredAtlas, isFalse);
-        expect(legacy.visualAssetKey, PlayerSpriteSheet.assetKey);
+        expect(rookie.usesAuthoredAtlas, isTrue);
+        expect(rookie.visualAssetKey, PlayerSpriteSheet.authoredAssetKey);
+        expect(rookie.paint.filterQuality, FilterQuality.medium);
       },
     );
 
@@ -287,6 +288,7 @@ void main() {
 
       final player = PlayerComponent(
         slotIndex: 0,
+        characterId: mountainHunter,
         maxHealth: 100,
         moveSpeed: 100,
       );

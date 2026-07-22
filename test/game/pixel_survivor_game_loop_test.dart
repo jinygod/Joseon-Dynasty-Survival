@@ -286,14 +286,14 @@ void main() {
         expect(exorcistGame.activePlayers.single.usesAuthoredAtlas, isTrue);
 
         final legacyGame = PixelSurvivorGame(
-          playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
+          playerSlot: const PlayerSlot(index: 0, characterId: mountainHunter),
           onRunEnded: null,
           loadVisualAssets: false,
         );
         legacyGame.onGameResize(Vector2(960, 540));
         await legacyGame.onLoad();
 
-        expect(legacyGame.activePlayers.single.characterId, rookieConstable);
+        expect(legacyGame.activePlayers.single.characterId, mountainHunter);
         expect(legacyGame.activePlayers.single.usesAuthoredAtlas, isFalse);
       },
     );

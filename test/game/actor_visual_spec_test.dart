@@ -7,6 +7,7 @@ import 'package:pixel_survivor/game/content/enemy_definitions.dart';
 void main() {
   test('representative actor sizes preserve compact casual proportions', () {
     expect(playerVisualSpecFor(exorcistDosa).visualSize, 56);
+    expect(playerVisualSpecFor(rookieConstable).visualSize, 56);
     expect(enemyVisualSpecFor(plagueRatSwarm).visualSize, 32);
     expect(enemyVisualSpecFor(vengefulSpirit).visualSize, 40);
     expect(enemyVisualSpecFor(sakkatSpecter).visualSize, 40);
@@ -16,7 +17,7 @@ void main() {
   });
 
   test('non-representative actors keep the established rank-based sizes', () {
-    final player = playerVisualSpecFor(rookieConstable);
+    final player = playerVisualSpecFor(mountainHunter);
     final enemy = enemyVisualSpecFor(bandit);
 
     expect(player.visualSize, ActorRenderSizes.playerVisual);

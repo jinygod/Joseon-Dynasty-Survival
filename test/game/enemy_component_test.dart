@@ -70,6 +70,14 @@ void main() {
       expect(enemy.paint.filterQuality, FilterQuality.none);
     });
 
+    test('representative 128px enemy art uses smooth downsampling', () {
+      final enemy = EnemyComponent.fromDefinition(
+        enemyDefinitionFor(plagueRatSwarm)!,
+      );
+
+      expect(enemy.paint.filterQuality, FilterQuality.medium);
+    });
+
     test('environmental slow changes movement and can be reset', () {
       final enemy = EnemyComponent(
         enemyId: 'test_enemy',

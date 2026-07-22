@@ -87,7 +87,10 @@ class PlayerComponent
          anchor: Anchor.center,
          autoResize: false,
        ) {
-    paint.filterQuality = FilterQuality.none;
+    paint.filterQuality =
+        characterId == rookieConstable || characterId == exorcistDosa
+        ? FilterQuality.medium
+        : FilterQuality.none;
   }
 
   final int slotIndex;
@@ -113,7 +116,8 @@ class PlayerComponent
   bool get isAlive => currentHealth > 0;
   bool get isMoving => _isMoving;
   bool get isAttacking => _attackPoseRemaining > 0;
-  bool get usesAuthoredAtlas => characterId == exorcistDosa;
+  bool get usesAuthoredAtlas =>
+      characterId == rookieConstable || characterId == exorcistDosa;
   String get visualAssetKey => usesAuthoredAtlas
       ? PlayerSpriteSheet.authoredAssetKey
       : PlayerSpriteSheet.assetKey;

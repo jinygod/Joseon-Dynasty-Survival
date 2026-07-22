@@ -26,7 +26,7 @@ class ActorVisualSpec {
 /// characters retain their existing visual scale until they receive their own
 /// reviewed replacement art.
 ActorVisualSpec playerVisualSpecFor(CharacterId id) {
-  if (id == exorcistDosa) return _visualSpec(56);
+  if (id == rookieConstable || id == exorcistDosa) return _visualSpec(56);
   return _visualSpec(ActorRenderSizes.playerVisual);
 }
 

@@ -13,8 +13,7 @@ class AssetCatalog {
   ]);
 
   static const characters = <String, String>{
-    'rookie_constable':
-        'assets/images/player/exorcist_swordswoman_static_64.png',
+    'rookie_constable': 'assets/images/player/exorcist_dosa_128.png',
     'exorcist_dosa': 'assets/images/player/exorcist_dosa_128.png',
     'mountain_hunter':
         'assets/images/player/exorcist_swordswoman_static_64.png',
@@ -93,8 +92,7 @@ class AssetCatalog {
   };
 
   static const player = <String, String>{
-    'rookie_constable_player':
-        'assets/images/player/exorcist_swordswoman_static_64.png',
+    'rookie_constable_player': 'assets/images/player/exorcist_dosa_128.png',
     'exorcist_dosa_atlas': 'assets/images/player/exorcist_dosa_128.png',
   };
 }

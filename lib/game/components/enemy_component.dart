@@ -137,7 +137,9 @@ class EnemyComponent
          anchor: Anchor.center,
          autoResize: false,
        ) {
-    paint.filterQuality = FilterQuality.none;
+    paint.filterQuality = EnemySpriteSheet.specs[enemyId]?.frameSize == 128
+        ? FilterQuality.medium
+        : FilterQuality.none;
     _behaviorProfile = behaviorProfile ?? _legacyProfileFor(behaviorType);
     _behaviorController = EnemyBehaviorController(profile: _behaviorProfile);
   }
