@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/app/game_screen.dart';
 import 'package:pixel_survivor/app/lobby_controller.dart';
+import 'package:pixel_survivor/app/lobby_navigation_dock.dart';
 import 'package:pixel_survivor/app/lobby_screen.dart';
 import 'package:pixel_survivor/app/compendium_screen.dart';
 import 'package:pixel_survivor/game/audio/audio_settings.dart';
@@ -16,6 +17,40 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+  });
+
+  testWidgets('navigation dock preserves lobby menu targets', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          bottomNavigationBar: LobbyNavigationDock(
+            onStagePressed: () {},
+            onCharacterPressed: () {},
+            onCompendiumPressed: () {},
+            onRecordsPressed: () {},
+          ),
+        ),
+      ),
+    );
+
+    for (final key in const [
+      'lobby-stage',
+      'lobby-character',
+      'lobby-compendium',
+      'lobby-records',
+    ]) {
+      final button = find.byKey(Key(key));
+      expect(button, findsOneWidget);
+      expect(
+        find.descendant(of: button, matching: find.byKey(Key('$key-face'))),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: button, matching: find.byKey(Key('$key-depth'))),
+        findsOneWidget,
+      );
+      expect(tester.getSize(button).height, greaterThanOrEqualTo(72));
+    }
   });
 
   testWidgets('lobby shows saved state and working destinations', (
