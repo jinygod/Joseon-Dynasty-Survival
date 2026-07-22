@@ -34,6 +34,28 @@ void main() {
       }
     });
 
+    test('unknown future enemies preserve constructor rank presentation', () {
+      final elite = EnemyComponent(
+        enemyId: 'future_elite',
+        maxHealth: 100,
+        moveSpeed: 30,
+        damage: 10,
+        rank: EnemyRank.elite,
+      );
+      final boss = EnemyComponent(
+        enemyId: 'future_boss',
+        maxHealth: 1000,
+        moveSpeed: 20,
+        damage: 20,
+        rank: EnemyRank.boss,
+      );
+
+      expect(elite.size, Vector2.all(40));
+      expect(elite.visualSize, 81);
+      expect(boss.size, Vector2.all(42));
+      expect(boss.visualSize, 126);
+    });
+
     test('normal enemy keeps its hitbox while doubling its visual size', () {
       final enemy = EnemyComponent.fromDefinition(enemyDefinitionFor(bandit)!);
 
@@ -471,26 +493,43 @@ void main() {
       },
     );
 
-    test('hit flash does not cancel a ranged warning pose', () async {
-      final spec = EnemySpriteSheet.specs[sakkatSpecter]!;
-      final image = await _loadEnemyAtlas(spec);
-      addTearDown(image.dispose);
-      final enemy = EnemyComponent.fromDefinition(
-        enemyDefinitionFor(sakkatSpecter)!,
-        targetPositionProvider: (_) => Vector2(100, 0),
-      )..animations = EnemySpriteSheet.animations(image, spec);
-      enemy.current = EnemyAnimationState.moving;
+    test(
+      'authored hit flash tints then clears without cancelling warning',
+      () async {
+        final spec = EnemySpriteSheet.specs[sakkatSpecter]!;
+        final image = await _loadEnemyAtlas(spec);
+        addTearDown(image.dispose);
+        final enemy = EnemyComponent.fromDefinition(
+          enemyDefinitionFor(sakkatSpecter)!,
+          targetPositionProvider: (_) => Vector2(100, 0),
+        )..animations = EnemySpriteSheet.animations(image, spec);
+        enemy.current = EnemyAnimationState.moving;
 
-      enemy.update(0);
-      expect(enemy.attackPhase, EnemyBehaviorPhase.warning);
-      enemy.registerHit();
+        enemy.update(0);
+        expect(enemy.attackPhase, EnemyBehaviorPhase.warning);
+        enemy.registerHit();
 
-      expect(enemy.isHitFlashing, isTrue);
-      expect(enemy.attackPhase, EnemyBehaviorPhase.warning);
-      expect(enemy.visualState, EnemyAnimationState.attacking);
-      expect(enemy.animationTicker!.currentIndex, 0);
-      expect(enemy.animationTicker!.isPaused, isTrue);
-    });
+        expect(enemy.isHitFlashing, isTrue);
+        expect(enemy.attackPhase, EnemyBehaviorPhase.warning);
+        expect(enemy.visualState, EnemyAnimationState.attacking);
+        expect(enemy.animationTicker!.currentIndex, 0);
+        expect(enemy.animationTicker!.isPaused, isTrue);
+        expect(
+          enemy.paint.colorFilter,
+          isNotNull,
+          reason: 'authored sprite paint must visibly tint during hit flash',
+        );
+
+        enemy.update(EnemySpriteSheet.hitDurationSeconds + 0.01);
+
+        expect(enemy.isHitFlashing, isFalse);
+        expect(enemy.paint.colorFilter, isNull);
+        expect(enemy.attackPhase, EnemyBehaviorPhase.warning);
+        expect(enemy.visualState, EnemyAnimationState.attacking);
+        expect(enemy.animationTicker!.currentIndex, 0);
+        expect(enemy.animationTicker!.isPaused, isTrue);
+      },
+    );
 
     test('lethal damage keeps death visuals alive for their full sequence', () {
       final enemy = EnemyComponent(

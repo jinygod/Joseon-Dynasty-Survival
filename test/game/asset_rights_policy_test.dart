@@ -42,4 +42,29 @@ void main() {
     }
     expect(AssetRightsPolicy.canShip('unknown'), isFalse);
   });
+
+  test(
+    'representative enemy atlases remain temporary before mobile review',
+    () {
+      final lines = File(
+        'docs/assets/asset-rights-ledger.csv',
+      ).readAsLinesSync();
+      final header = lines.first.split(',');
+      final assetIdIndex = header.indexOf('asset_id');
+      final statusIndex = header.indexOf('status');
+      final records = {
+        for (final line in lines.skip(1))
+          line.split(',')[assetIdIndex]: line.split(',')[statusIndex],
+      };
+
+      for (final id in const [
+        'balanced_casual_plague_rat_swarm_atlas',
+        'balanced_casual_vengeful_spirit_atlas',
+        'balanced_casual_sakkat_specter_atlas',
+        'balanced_casual_dokkaebi_atlas',
+      ]) {
+        expect(records[id], 'temporary', reason: id);
+      }
+    },
+  );
 }

@@ -174,6 +174,10 @@ class EnemyComponent
   final List<EnemyAttackRequest> _attackRequests = [];
 
   static const _hitFlashSeconds = 0.18;
+  static const _hitFlashColorFilter = ColorFilter.mode(
+    Color(0xffffffff),
+    BlendMode.srcATop,
+  );
 
   double _hitFlashRemaining = 0;
   double _visualStateRemaining = 0;
@@ -192,7 +196,8 @@ class EnemyComponent
 
   bool get isDead => currentHealth <= 0;
   bool get isElite => rank == EnemyRank.elite;
-  double get visualSize => enemyVisualSpecFor(enemyId).visualSize;
+  double get visualSize =>
+      enemyVisualSpecFor(enemyId, fallbackRank: rank).visualSize;
   double get visualScale => visualSize / size.x;
   bool get isDashing =>
       _behaviorController.phase == EnemyBehaviorPhase.active &&
@@ -268,7 +273,7 @@ class EnemyComponent
 
     final wasAlive = !isDead;
     currentHealth = (currentHealth - amount).clamp(0, maxHealth).toDouble();
-    _hitFlashRemaining = _hitFlashSeconds;
+    _triggerHitFlash();
     if (isDead) {
       if (wasAlive && _behaviorProfile.kind == EnemyBehaviorKind.deathZone) {
         _deathZonePending = true;
@@ -285,7 +290,7 @@ class EnemyComponent
   }
 
   void registerHit({Vector2? knockback}) {
-    _hitFlashRemaining = _hitFlashSeconds;
+    _triggerHitFlash();
     if (!isDead && _behaviorController.phase == EnemyBehaviorPhase.warning) {
       _holdAttackWarningPose();
     } else if (!isDead) {
@@ -458,6 +463,7 @@ class EnemyComponent
     }
 
     _hitFlashRemaining = math.max(0.0, _hitFlashRemaining - dt);
+    _syncHitFlashPaint();
     if (!_attackTriggeredThisUpdate && _visualStateRemaining > 0) {
       _visualStateRemaining = math.max(0.0, _visualStateRemaining - dt);
       if (_visualStateRemaining == 0 && !isDead) {
@@ -513,6 +519,15 @@ class EnemyComponent
     animationTicker
       ?..reset()
       ..paused = true;
+  }
+
+  void _triggerHitFlash() {
+    _hitFlashRemaining = _hitFlashSeconds;
+    _syncHitFlashPaint();
+  }
+
+  void _syncHitFlashPaint() {
+    paint.colorFilter = isHitFlashing ? _hitFlashColorFilter : null;
   }
 
   bool _blocksMovementForPhase() {
