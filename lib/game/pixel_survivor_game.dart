@@ -67,6 +67,7 @@ import 'systems/run_progression_system.dart';
 import 'systems/run_stats_tracker.dart';
 import 'systems/combat_playtest_tracker.dart';
 import 'systems/wave_director.dart';
+import 'systems/talisman_executor.dart';
 import 'systems/weapon_system.dart';
 import 'systems/weapon_synergy_resolver.dart';
 
@@ -777,22 +778,39 @@ class PixelSurvivorGame extends FlameGame
       final component = TalismanAttachmentComponent(seal: entry.value);
       _talismanAttachmentComponents[entry.key] = component;
       add(component);
+      if (entry.value.transferDepth == 0) {
+        final player = _activePlayers
+            .where((candidate) => candidate.isMounted && candidate.isAlive)
+            .firstOrNull;
+        if (player != null) {
+          _spawnTalismanFlightCue(
+            TalismanTransferCue(
+              source: player.position,
+              target: entry.key.position,
+            ),
+          );
+        }
+      }
     }
     for (final cue in result.talismanTransfers) {
-      if (_combatEffectCount >= performanceBudget.maxCombatEffects) {
-        _rejectPopulation(GamePopulationKind.combatEffect, 1);
-        continue;
-      }
-      _combatEffectCount += 1;
-      add(
-        TalismanTransferCueComponent(
-          cue: cue,
-          onExpired: () {
-            _combatEffectCount = max(0, _combatEffectCount - 1);
-          },
-        ),
-      );
+      _spawnTalismanFlightCue(cue);
     }
+  }
+
+  void _spawnTalismanFlightCue(TalismanTransferCue cue) {
+    if (_combatEffectCount >= performanceBudget.maxCombatEffects) {
+      _rejectPopulation(GamePopulationKind.combatEffect, 1);
+      return;
+    }
+    _combatEffectCount += 1;
+    add(
+      TalismanTransferCueComponent(
+        cue: cue,
+        onExpired: () {
+          _combatEffectCount = max(0, _combatEffectCount - 1);
+        },
+      ),
+    );
   }
 
   void _cleanupCombatPresentationOwners() {

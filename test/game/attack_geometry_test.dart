@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/combat/attack_geometry.dart';
 import 'package:pixel_survivor/game/combat/attack_spec.dart';
 import 'package:pixel_survivor/game/components/enemy_component.dart';
+import 'package:pixel_survivor/game/components/attack_effect_component.dart';
 import 'package:pixel_survivor/game/models/damage_event.dart';
 
 void main() {
@@ -57,6 +58,25 @@ void main() {
     expect(attack.direction, Vector2(1, 0));
     expect(AttackGeometry.contains(attack, Vector2(10, 0), 0), isTrue);
     expect(AttackGeometry.contains(attack, Vector2(-10, 0), 0), isFalse);
+  });
+
+  test('renderer consumes the same frozen sector geometry as hit testing', () {
+    final attack = AttackInstance(
+      spec: _spec(shape: AttackShape.sector, range: 72, angleRadians: pi * .75),
+      origin: Vector2(14, 9),
+      direction: Vector2(0, -4),
+      sequenceIndex: 0,
+    );
+    final effect = AttackEffectComponent(instance: attack);
+
+    expect(effect.position, attack.origin);
+    expect(effect.visualGeometry.direction, attack.direction);
+    expect(effect.visualGeometry.range, attack.spec.range);
+    expect(effect.visualGeometry.angleRadians, attack.spec.angleRadians);
+    expect(
+      AttackGeometry.contains(attack, attack.origin + attack.direction * 50, 0),
+      isTrue,
+    );
   });
 
   test('attack spec defensively freezes caller traits', () {

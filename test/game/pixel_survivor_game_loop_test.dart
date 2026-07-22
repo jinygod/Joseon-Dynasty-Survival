@@ -212,7 +212,9 @@ void main() {
         game.update(0);
 
         expect(game.children.whereType<StageBackdropComponent>(), hasLength(1));
-        final shadows = game.children.whereType<ActorShadowComponent>().toList();
+        final shadows = game.children
+            .whereType<ActorShadowComponent>()
+            .toList();
         expect(shadows, hasLength(5));
         final targets = shadows.map((shadow) => shadow.target).toList();
         final player = targets.whereType<PlayerComponent>().single;
@@ -226,7 +228,8 @@ void main() {
             dokkaebi,
           ]),
         );
-        final uniqueTargets = Set<PositionComponent>.identity()..addAll(targets);
+        final uniqueTargets = Set<PositionComponent>.identity()
+          ..addAll(targets);
         expect(uniqueTargets, hasLength(5));
         for (final shadow in shadows) {
           final expectedWidth = switch (shadow.target) {
@@ -946,6 +949,11 @@ void main() {
             .whereType<TalismanAttachmentComponent>()
             .single;
         expect(mark.seal.target, same(target));
+        final flight = game.children
+            .whereType<TalismanTransferCueComponent>()
+            .single;
+        expect(flight.source, game.activePlayers.single.position);
+        expect(flight.target, target.position);
         target.removeFromParent();
         game.update(.05);
         game.processLifecycleEvents();
@@ -1045,7 +1053,7 @@ void main() {
         );
         expect(
           game.performanceSnapshot.rejected[GamePopulationKind.combatEffect],
-          39,
+          43,
         );
       },
     );

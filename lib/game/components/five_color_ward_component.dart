@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 
 import '../combat/attack_spec.dart';
+import '../combat/combat_visual_theme.dart';
 import '../combat/talisman_damage.dart';
 import '../content/weapon_definitions.dart';
 import '../models/damage_event.dart';
@@ -23,6 +24,8 @@ class FiveColorWardComponent extends PositionComponent {
 
   final AttackInstance attack;
   final double tickSeconds;
+
+  CombatVisualTheme get visualTheme => CombatVisualTheme.forAttack(attack);
 
   double _elapsed = 0;
   double _nextTick = 0;
@@ -92,6 +95,14 @@ class FiveColorWardComponent extends PositionComponent {
       const Color(0xff26252b),
     ];
     final rect = Rect.fromCircle(center: center, radius: radius * .86);
+    canvas.drawCircle(
+      center,
+      radius * .9,
+      Paint()
+        ..color = visualTheme.coreColor.withValues(
+          alpha: visualTheme.maxAlpha * .12,
+        ),
+    );
     for (var index = 0; index < colors.length; index += 1) {
       canvas.drawArc(
         rect,
@@ -99,7 +110,7 @@ class FiveColorWardComponent extends PositionComponent {
         2 * pi / colors.length - .08,
         false,
         Paint()
-          ..color = colors[index].withValues(alpha: .82)
+          ..color = colors[index].withValues(alpha: visualTheme.maxAlpha * .72)
           ..style = PaintingStyle.stroke
           ..strokeWidth = max(3, radius * .13),
       );
@@ -107,13 +118,16 @@ class FiveColorWardComponent extends PositionComponent {
     canvas.drawCircle(
       center,
       radius * .42,
-      Paint()..color = const Color(0xe8ead8b0),
+      Paint()
+        ..color = const Color(
+          0xffead8b0,
+        ).withValues(alpha: visualTheme.maxAlpha * .48),
     );
     canvas.drawCircle(
       center,
       radius * .42,
       Paint()
-        ..color = const Color(0xff6b4423)
+        ..color = visualTheme.edgeColor.withValues(alpha: visualTheme.maxAlpha)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2,
     );

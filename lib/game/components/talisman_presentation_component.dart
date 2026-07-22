@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flame/components.dart';
@@ -13,7 +14,7 @@ abstract final class AttackPresentationPriority {
 class TalismanAttachmentComponent extends PositionComponent {
   TalismanAttachmentComponent({required this.seal})
     : super(
-        size: Vector2(12, 16),
+        size: Vector2(14, 18),
         anchor: Anchor.center,
         priority: AttackPresentationPriority.attachment,
       );
@@ -36,18 +37,21 @@ class TalismanAttachmentComponent extends PositionComponent {
       Offset.zero & Size(size.x, size.y),
       const Radius.circular(1),
     );
-    canvas.drawRRect(paper, Paint()..color = const Color(0xfffff4c2));
+    canvas.drawRRect(
+      paper,
+      Paint()..color = const Color(0xfffff1b8).withValues(alpha: .84),
+    );
     canvas.drawRRect(
       paper,
       Paint()
-        ..color = const Color(0xff8f1d2c)
+        ..color = const Color(0xffd1495b).withValues(alpha: .84)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.5,
     );
     final ink = Paint()
-      ..color = seal.isCritical
-          ? const Color(0xffff8c42)
-          : const Color(0xffb4232f)
+      ..color =
+          (seal.isCritical ? const Color(0xffffd166) : const Color(0xffb4232f))
+              .withValues(alpha: .84)
       ..strokeWidth = 1.4
       ..strokeCap = StrokeCap.round;
     canvas
@@ -99,15 +103,42 @@ class TalismanTransferCueComponent extends PositionComponent {
       Offset.zero,
       Offset(delta.x, delta.y),
       Paint()
-        ..color = const Color(0xffffd166).withValues(alpha: 1 - progress)
+        ..color = const Color(
+          0xffffd166,
+        ).withValues(alpha: .45 * (1 - progress))
         ..strokeWidth = 2.5
         ..strokeCap = StrokeCap.round,
     );
+    final paperCenter = Offset(delta.x, delta.y) * progress;
+    canvas.save();
+    canvas.translate(paperCenter.dx, paperCenter.dy);
+    canvas.rotate(math.atan2(delta.y, delta.x) + progress * .8);
+    final paper = RRect.fromRectAndRadius(
+      const Rect.fromLTWH(-3, -6, 6, 12),
+      const Radius.circular(1),
+    );
+    canvas.drawRRect(
+      paper,
+      Paint()
+        ..color = const Color(
+          0xfffff1b8,
+        ).withValues(alpha: .84 * (1 - progress)),
+    );
+    canvas.drawLine(
+      const Offset(0, -4),
+      const Offset(0, 4),
+      Paint()
+        ..color = const Color(
+          0xffd1495b,
+        ).withValues(alpha: .84 * (1 - progress))
+        ..strokeWidth = 1.4,
+    );
+    canvas.restore();
     canvas.drawCircle(
       Offset(delta.x, delta.y),
       3 + progress * 2,
       Paint()
-        ..color = const Color(0xffef4444).withValues(alpha: 1 - progress)
+        ..color = const Color(0xffd1495b).withValues(alpha: .8 * (1 - progress))
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.5,
     );

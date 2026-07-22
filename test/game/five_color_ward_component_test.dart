@@ -1,6 +1,7 @@
 import 'package:flame/components.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/combat/attack_spec.dart';
+import 'package:pixel_survivor/game/combat/combat_visual_theme.dart';
 import 'package:pixel_survivor/game/components/enemy_component.dart';
 import 'package:pixel_survivor/game/components/five_color_ward_component.dart';
 
@@ -95,5 +96,13 @@ void main() {
       10,
     );
     expect(events.every((event) => event.isCritical), isTrue);
+  });
+
+  test('ward presentation uses bounded five-color alpha and attack radius', () {
+    final ward = FiveColorWardComponent(attack: attack(), tickSeconds: .5);
+
+    expect(ward.radius, attack().spec.radius);
+    expect(ward.visualTheme, CombatVisualTheme.forAttack(attack()));
+    expect(ward.visualTheme.maxAlpha, lessThanOrEqualTo(.88));
   });
 }

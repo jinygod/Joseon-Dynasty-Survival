@@ -94,4 +94,59 @@ void main() {
 
     expect(enhanced, [0, 4]);
   });
+
+  test('feedback timing contract is exact for strong and mastery beats', () {
+    final cases = <(AttackInstance, double)>[
+      (
+        attack(
+          id: 'talisman_explosion',
+          presentation: AttackPresentation.strong,
+          sequenceIndex: 0,
+        ),
+        .020,
+      ),
+      (
+        attack(
+          id: 'hwando_master_opener',
+          presentation: AttackPresentation.master,
+          sequenceIndex: 0,
+        ),
+        .035,
+      ),
+      (
+        attack(
+          id: 'hwando_master_left',
+          presentation: AttackPresentation.master,
+          sequenceIndex: 1,
+        ),
+        0,
+      ),
+      (
+        attack(
+          id: 'hwando_master_finisher',
+          presentation: AttackPresentation.master,
+          sequenceIndex: 4,
+        ),
+        .035,
+      ),
+      (
+        attack(
+          id: 'sealing_slash',
+          presentation: AttackPresentation.synergy,
+          sequenceIndex: 0,
+        ),
+        0,
+      ),
+    ];
+
+    for (final (instance, expectedSeconds) in cases) {
+      final feedback = CombatFeedbackController(screenShakeEnabled: true);
+      feedback.requestAttack(instance);
+      expect(
+        feedback.hitStopRemaining,
+        expectedSeconds,
+        reason: instance.spec.id,
+      );
+    }
+  });
 }

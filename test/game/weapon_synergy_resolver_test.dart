@@ -167,6 +167,41 @@ void main() {
 
     expect(attack.origin, Vector2(20, 30));
   });
+
+  test(
+    'activation name is emitted once while detonations remain available',
+    () {
+      final first = enemy('first', Vector2.zero());
+      final second = enemy('second', Vector2(80, 0));
+      final resolver = WeaponSynergyResolver();
+
+      for (final target in [first, second]) {
+        resolver.onHwandoHit(
+          target: target,
+          nearby: [first, second],
+          now: 1,
+          originatingAttackId: 1,
+        );
+      }
+      final firstDetonation = resolver.onHwandoHit(
+        target: first,
+        nearby: [first, second],
+        now: 2,
+        originatingAttackId: 2,
+      );
+      final secondDetonation = resolver.onHwandoHit(
+        target: second,
+        nearby: [first, second],
+        now: 3,
+        originatingAttackId: 3,
+      );
+
+      expect(firstDetonation.showFirstActivationNotice, isTrue);
+      expect(firstDetonation.attack, isNotNull);
+      expect(secondDetonation.showFirstActivationNotice, isFalse);
+      expect(secondDetonation.attack, isNotNull);
+    },
+  );
 }
 
 EnemyComponent enemy(String id, Vector2 position) => EnemyComponent(
