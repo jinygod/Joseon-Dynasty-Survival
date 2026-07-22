@@ -90,6 +90,14 @@ void main() {
     newGame,
     gameSize: Vector2(960, 540),
   );
+  final representativeStageGameTester = FlameTester<PixelSurvivorGame>(
+    () => PixelSurvivorGame(
+      playerSlot: const PlayerSlot(index: 0, characterId: exorcistDosa),
+      onRunEnded: null,
+      loadVisualAssets: false,
+    ),
+    gameSize: Vector2(960, 540),
+  );
   var audioCues = <AudioCue>[];
   final audioGameTester = FlameTester<PixelSurvivorGame>(() {
     audioCues = <AudioCue>[];
@@ -187,7 +195,7 @@ void main() {
   );
 
   group('PixelSurvivorGame run loop progression', () {
-    gameTester.testGameWidget(
+    representativeStageGameTester.testGameWidget(
       'bright stage and actor shadows mount before representative combat',
       setUp: (game, _) async {
         final origin = game.activePlayers.single.position;
@@ -207,7 +215,8 @@ void main() {
         final shadows = game.children.whereType<ActorShadowComponent>().toList();
         expect(shadows, hasLength(5));
         final targets = shadows.map((shadow) => shadow.target).toList();
-        expect(targets.whereType<PlayerComponent>(), hasLength(1));
+        final player = targets.whereType<PlayerComponent>().single;
+        expect(player.characterId, exorcistDosa);
         expect(
           targets.whereType<EnemyComponent>().map((enemy) => enemy.enemyId),
           unorderedEquals([
@@ -221,8 +230,7 @@ void main() {
         expect(uniqueTargets, hasLength(5));
         for (final shadow in shadows) {
           final expectedWidth = switch (shadow.target) {
-            PlayerComponent player =>
-              playerVisualSpecFor(player.characterId).shadowWidth,
+            PlayerComponent _ => 56 * .64,
             EnemyComponent enemy => enemyVisualSpecFor(
               enemy.enemyId,
               fallbackRank: enemy.rank,
@@ -230,10 +238,10 @@ void main() {
             _ => fail('A shadow must target a combat actor.'),
           };
           expect(shadow.width, closeTo(expectedWidth, .0001));
-          expect(shadow.priority, lessThan(shadow.target.priority));
+          expect(shadow.priority, -1);
+          expect(shadow.target.priority, 0);
         }
 
-        final player = targets.whereType<PlayerComponent>().single;
         final playerShadow = shadows.singleWhere(
           (shadow) => identical(shadow.target, player),
         );

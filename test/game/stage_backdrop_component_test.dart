@@ -9,6 +9,17 @@ void main() {
 
     expect(backdrop.priority, -100);
     expect(backdrop.baseColor.computeLuminance(), greaterThan(.45));
+    expect(backdrop.baseColor.r, greaterThan(backdrop.baseColor.g));
+    expect(backdrop.baseColor.g, greaterThan(backdrop.baseColor.b));
+    expect(backdrop.jadePatchColor.g, greaterThan(backdrop.jadePatchColor.r));
+    expect(backdrop.jadePatchColor.g, greaterThan(backdrop.jadePatchColor.b));
+    expect(backdrop.baseColor.r - backdrop.baseColor.g, greaterThan(.05));
+    expect(
+      (backdrop.baseColor.r - backdrop.jadePatchColor.r).abs() +
+          (backdrop.baseColor.g - backdrop.jadePatchColor.g).abs() +
+          (backdrop.baseColor.b - backdrop.jadePatchColor.b).abs(),
+      greaterThan(.20),
+    );
     expect(backdrop.ownsCollision, isFalse);
     expect(backdrop.cachedPaintCount, 4);
   });

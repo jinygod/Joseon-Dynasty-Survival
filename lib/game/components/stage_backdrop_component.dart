@@ -21,7 +21,7 @@ class StageBackdropComponent extends PositionComponent {
 
   static const maxDecorationCount = 40;
   static const _decorationSeed = 0x0BA7D0C;
-  static const Color _baseColor = Color(0xffdce8ce);
+  static const Color _baseColor = Color(0xfff1d7ab);
   static const Color _jadePatchColor = Color(0xffb6d4b4);
   static const Color _stoneLineColor = Color(0xff92a99d);
   static const Color _tileColor = Color(0xffb97c65);
@@ -37,6 +37,8 @@ class StageBackdropComponent extends PositionComponent {
   bool get ownsCollision => false;
 
   Color get baseColor => _baseColor;
+
+  Color get jadePatchColor => _jadePatchColor;
 
   /// The full render-time paint cache; no decoration allocates a [Paint].
   int get cachedPaintCount => 4;
