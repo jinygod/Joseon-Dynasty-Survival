@@ -51,6 +51,42 @@ void main() {
     expect(find.byKey(const Key('lobby-deploy')), findsOneWidget);
   });
 
+  testWidgets(
+    'portrait lobby centers the stage hero and keeps menus reachable',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(390, 844);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+      final lobby = LobbyController(
+        store: _MemorySaveStore(SaveState.defaults()),
+      );
+      await lobby.load();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: LobbyScreen(
+            controller: lobby,
+            audioSettingsController: _audioController(),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.byKey(const Key('lobby-resource-bar')), findsOneWidget);
+      expect(find.byKey(const Key('lobby-stage-hero')), findsOneWidget);
+      expect(find.byKey(const Key('lobby-character-art')), findsOneWidget);
+      expect(find.byKey(const Key('lobby-bottom-menu')), findsOneWidget);
+      expect(find.byKey(const Key('lobby-deploy')), findsOneWidget);
+      expect(find.byKey(const Key('lobby-character')), findsOneWidget);
+      expect(find.byKey(const Key('lobby-stage')), findsOneWidget);
+      expect(find.byKey(const Key('lobby-compendium')), findsOneWidget);
+      expect(find.byKey(const Key('lobby-records')), findsOneWidget);
+      expect(tester.getCenter(find.byKey(const Key('lobby-deploy'))).dx, 195);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('lobby opens the compendium destination', (tester) async {
     final lobby = LobbyController(
       store: _MemorySaveStore(SaveState.defaults()),

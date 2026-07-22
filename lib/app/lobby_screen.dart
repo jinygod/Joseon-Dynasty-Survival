@@ -233,90 +233,202 @@ class _LobbyScreenState extends State<LobbyScreen> with WidgetsBindingObserver {
           (item) => item.id == state.selectedStageId,
         );
         return Scaffold(
-          backgroundColor: const Color(0xffefe4ca),
-          body: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(18, 10, 18, 14),
-              child: Column(
-                children: [
-                  if (widget.accountController case final account?) ...[
-                    AccountSection(
-                      controller: account,
-                      syncLabel: widget.progressSyncController?.status.label,
-                      onSyncNow: widget.controller.syncNow,
-                      syncListenable: widget.progressSyncController,
+          backgroundColor: const Color(0xffffa52f),
+          body: DecoratedBox(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xffffcf62), Color(0xffff982f)],
+              ),
+            ),
+            child: SafeArea(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final compact = constraints.maxWidth < 600;
+                  return Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      compact ? 12 : 18,
+                      10,
+                      compact ? 12 : 18,
+                      14,
                     ),
-                    const SizedBox(height: 8),
-                  ],
-                  _LobbyHeader(
-                    coin: state.wallet.coin,
-                    spiritJade: state.wallet.spiritJade,
-                    purchaseController: widget.purchaseController,
-                    purchaseInitializationFailed:
-                        widget.onPurchaseInitializationRetry != null,
-                    onPremiumShop: _openPremiumShop,
-                    onSettings: _openSettings,
-                  ),
-                  const SizedBox(height: 10),
-                  Expanded(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                    child: Column(
                       children: [
-                        _LobbyMenuButton(
-                          buttonKey: const Key('lobby-stage'),
-                          icon: Icons.map_outlined,
-                          label: '스테이지',
-                          onPressed: _openStagePicker,
+                        if (widget.accountController case final account?) ...[
+                          AccountSection(
+                            controller: account,
+                            syncLabel:
+                                widget.progressSyncController?.status.label,
+                            onSyncNow: widget.controller.syncNow,
+                            syncListenable: widget.progressSyncController,
+                          ),
+                          const SizedBox(height: 8),
+                        ],
+                        KeyedSubtree(
+                          key: const Key('lobby-resource-bar'),
+                          child: _LobbyHeader(
+                            coin: state.wallet.coin,
+                            spiritJade: state.wallet.spiritJade,
+                            purchaseController: widget.purchaseController,
+                            purchaseInitializationFailed:
+                                widget.onPurchaseInitializationRetry != null,
+                            onPremiumShop: _openPremiumShop,
+                            onSettings: _openSettings,
+                          ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(height: 10),
                         Expanded(
-                          child: _GovernmentOfficeScene(
-                            characterName: character.name,
-                            stage: stage,
-                            bestSeconds: state.bestSurvivalSeconds,
-                            launching: _launching,
-                            saving: widget.controller.saving,
-                            onDeploy: _deploy,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        SizedBox(
-                          width: 116,
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              _LobbyMenuButton(
-                                buttonKey: const Key('lobby-character'),
-                                icon: Icons.person_outline,
-                                label: '인물',
-                                onPressed: _openCharacterPicker,
-                              ),
-                              const SizedBox(height: 12),
-                              _LobbyMenuButton(
-                                buttonKey: const Key('lobby-compendium'),
-                                icon: Icons.menu_book_outlined,
-                                label: '도감',
-                                onPressed: _openCompendium,
-                              ),
-                              const SizedBox(height: 12),
-                              _LobbyMenuButton(
-                                buttonKey: const Key('lobby-records'),
-                                icon: Icons.emoji_events_outlined,
-                                label: '기록',
-                                onPressed: () => Navigator.of(context).push(
-                                  MaterialPageRoute<void>(
-                                    builder: (_) => RecordsScreen(state: state),
+                          child: compact
+                              ? SingleChildScrollView(
+                                  child: Column(
+                                    children: [
+                                      SizedBox(
+                                        height: 430,
+                                        child: _GovernmentOfficeScene(
+                                          characterId: character.id,
+                                          characterName: character.name,
+                                          stage: stage,
+                                          bestSeconds:
+                                              state.bestSurvivalSeconds,
+                                          launching: _launching,
+                                          saving: widget.controller.saving,
+                                          onDeploy: _deploy,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      KeyedSubtree(
+                                        key: const Key('lobby-bottom-menu'),
+                                        child: Wrap(
+                                          alignment: WrapAlignment.center,
+                                          spacing: 8,
+                                          runSpacing: 8,
+                                          children: [
+                                            _LobbyMenuButton(
+                                              buttonKey: const Key(
+                                                'lobby-stage',
+                                              ),
+                                              icon: Icons.map_outlined,
+                                              label: '지도',
+                                              compact: true,
+                                              onPressed: _openStagePicker,
+                                            ),
+                                            _LobbyMenuButton(
+                                              buttonKey: const Key(
+                                                'lobby-character',
+                                              ),
+                                              icon: Icons.person_outline,
+                                              label: '인물',
+                                              compact: true,
+                                              onPressed: _openCharacterPicker,
+                                            ),
+                                            _LobbyMenuButton(
+                                              buttonKey: const Key(
+                                                'lobby-compendium',
+                                              ),
+                                              icon: Icons.menu_book_outlined,
+                                              label: '도감',
+                                              compact: true,
+                                              onPressed: _openCompendium,
+                                            ),
+                                            _LobbyMenuButton(
+                                              buttonKey: const Key(
+                                                'lobby-records',
+                                              ),
+                                              icon: Icons.emoji_events_outlined,
+                                              label: '기록',
+                                              compact: true,
+                                              onPressed: () =>
+                                                  Navigator.of(context).push(
+                                                    MaterialPageRoute<void>(
+                                                      builder: (_) =>
+                                                          RecordsScreen(
+                                                            state: state,
+                                                          ),
+                                                    ),
+                                                  ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
                                   ),
+                                )
+                              : Row(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    _LobbyMenuButton(
+                                      buttonKey: const Key('lobby-stage'),
+                                      icon: Icons.map_outlined,
+                                      label: '지도',
+                                      onPressed: _openStagePicker,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: _GovernmentOfficeScene(
+                                        characterId: character.id,
+                                        characterName: character.name,
+                                        stage: stage,
+                                        bestSeconds: state.bestSurvivalSeconds,
+                                        launching: _launching,
+                                        saving: widget.controller.saving,
+                                        onDeploy: _deploy,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    SizedBox(
+                                      width: 116,
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
+                                        children: [
+                                          _LobbyMenuButton(
+                                            buttonKey: const Key(
+                                              'lobby-character',
+                                            ),
+                                            icon: Icons.person_outline,
+                                            label: '인물',
+                                            onPressed: _openCharacterPicker,
+                                          ),
+                                          const SizedBox(height: 12),
+                                          _LobbyMenuButton(
+                                            buttonKey: const Key(
+                                              'lobby-compendium',
+                                            ),
+                                            icon: Icons.menu_book_outlined,
+                                            label: '도감',
+                                            onPressed: _openCompendium,
+                                          ),
+                                          const SizedBox(height: 12),
+                                          _LobbyMenuButton(
+                                            buttonKey: const Key(
+                                              'lobby-records',
+                                            ),
+                                            icon: Icons.emoji_events_outlined,
+                                            label: '기록',
+                                            onPressed: () =>
+                                                Navigator.of(context).push(
+                                                  MaterialPageRoute<void>(
+                                                    builder: (_) =>
+                                                        RecordsScreen(
+                                                          state: state,
+                                                        ),
+                                                  ),
+                                                ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                            ],
-                          ),
                         ),
                       ],
                     ),
-                  ),
-                ],
+                  );
+                },
               ),
             ),
           ),
@@ -446,6 +558,7 @@ class _ResourceBadge extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, size: 18, color: const Color(0xff8f2d38)),
             const SizedBox(width: 6),
@@ -463,27 +576,29 @@ class _LobbyMenuButton extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.onPressed,
+    this.compact = false,
   });
 
   final Key buttonKey;
   final IconData icon;
   final String label;
   final VoidCallback onPressed;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 116,
-      height: 88,
+      width: compact ? 80 : 116,
+      height: compact ? 64 : 88,
       child: FilledButton.tonal(
         key: buttonKey,
         onPressed: onPressed,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 30),
-            const SizedBox(height: 6),
-            Text(label),
+            Icon(icon, size: compact ? 23 : 30),
+            SizedBox(height: compact ? 2 : 6),
+            Text(label, style: TextStyle(fontSize: compact ? 12 : 14)),
           ],
         ),
       ),
@@ -493,6 +608,7 @@ class _LobbyMenuButton extends StatelessWidget {
 
 class _GovernmentOfficeScene extends StatelessWidget {
   const _GovernmentOfficeScene({
+    required this.characterId,
     required this.characterName,
     required this.stage,
     required this.bestSeconds,
@@ -501,6 +617,7 @@ class _GovernmentOfficeScene extends StatelessWidget {
     required this.onDeploy,
   });
 
+  final String characterId;
   final String characterName;
   final StageDefinition stage;
   final int bestSeconds;
@@ -511,6 +628,7 @@ class _GovernmentOfficeScene extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
+      key: const Key('lobby-stage-hero'),
       clipBehavior: Clip.antiAlias,
       color: const Color(0xff243b32),
       shape: RoundedRectangleBorder(
@@ -520,27 +638,36 @@ class _GovernmentOfficeScene extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Opacity(
-            opacity: 0.2,
-            child: Image.asset(
-              AssetCatalog.lobby['government_office']!,
-              repeat: ImageRepeat.repeat,
-              filterQuality: FilterQuality.none,
-              errorBuilder: (_, _, _) => const ColoredBox(
-                color: Color(0xff365246),
-                child: SizedBox.expand(),
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xff356653), Color(0xff183b36)],
               ),
             ),
           ),
+          const CustomPaint(painter: _OfficeStagePainter()),
           Padding(
             padding: const EdgeInsets.all(18),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(
-                  Icons.account_balance,
-                  size: 48,
-                  color: Color(0xffffe6a7),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xff102b2b).withValues(alpha: .8),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: const Text(
+                    '오늘의 출진',
+                    style: TextStyle(
+                      color: Color(0xffffd166),
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 6),
                 Text(
@@ -551,31 +678,45 @@ class _GovernmentOfficeScene extends StatelessWidget {
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  characterName,
-                  style: const TextStyle(color: Color(0xffffe6a7)),
-                ),
+                const SizedBox(height: 2),
                 Text(
                   '최고 기록 ${_clock(bestSeconds)}',
                   style: const TextStyle(color: Color(0xffffe6a7)),
                 ),
-                const SizedBox(height: 12),
-                FilledButton.icon(
-                  key: const Key('lobby-deploy'),
-                  onPressed: launching || saving ? null : onDeploy,
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 42,
-                      vertical: 14,
-                    ),
-                    textStyle: const TextStyle(
-                      fontSize: 19,
-                      fontWeight: FontWeight.w900,
-                    ),
+                const Spacer(),
+                _LobbyCharacterArt(characterId: characterId),
+                Text(
+                  characterName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
                   ),
-                  icon: const Icon(Icons.outdoor_grill),
-                  label: Text(launching ? '출진 준비 중' : '출진'),
+                ),
+                const Spacer(),
+                SizedBox(
+                  width: 210,
+                  child: FilledButton.icon(
+                    key: const Key('lobby-deploy'),
+                    onPressed: launching || saving ? null : onDeploy,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xffffc928),
+                      foregroundColor: const Color(0xff281807),
+                      side: const BorderSide(
+                        color: Color(0xff281807),
+                        width: 2,
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      textStyle: const TextStyle(
+                        fontSize: 19,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    icon: const Icon(Icons.local_fire_department),
+                    label: Text(launching ? '출진 준비 중' : '출진'),
+                  ),
                 ),
               ],
             ),
@@ -584,6 +725,111 @@ class _GovernmentOfficeScene extends StatelessWidget {
       ),
     );
   }
+}
+
+class _LobbyCharacterArt extends StatelessWidget {
+  const _LobbyCharacterArt({required this.characterId});
+
+  final String characterId;
+
+  @override
+  Widget build(BuildContext context) {
+    final path =
+        AssetCatalog.characters[characterId] ??
+        AssetCatalog.characters[rookieConstable]!;
+    final usesAtlas = path.endsWith('_128.png');
+    return SizedBox.square(
+      key: const Key('lobby-character-art'),
+      dimension: 132,
+      child: DecoratedBox(
+        decoration: const BoxDecoration(
+          color: Color(0x3348d7a1),
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Color(0x99000000),
+              blurRadius: 18,
+              spreadRadius: 2,
+            ),
+          ],
+        ),
+        child: usesAtlas
+            ? ClipRect(
+                child: OverflowBox(
+                  alignment: Alignment.topLeft,
+                  minWidth: 528,
+                  maxWidth: 528,
+                  minHeight: 528,
+                  maxHeight: 528,
+                  child: Image.asset(
+                    path,
+                    width: 528,
+                    height: 528,
+                    fit: BoxFit.fill,
+                    filterQuality: FilterQuality.medium,
+                  ),
+                ),
+              )
+            : Padding(
+                padding: const EdgeInsets.all(10),
+                child: Image.asset(
+                  path,
+                  fit: BoxFit.contain,
+                  filterQuality: FilterQuality.medium,
+                ),
+              ),
+      ),
+    );
+  }
+}
+
+class _OfficeStagePainter extends CustomPainter {
+  const _OfficeStagePainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final roof = Paint()..color = const Color(0xff8f2d38);
+    final timber = Paint()..color = const Color(0xff4d2b20);
+    final paper = Paint()..color = const Color(0x55fff1b8);
+    final roofPath = Path()
+      ..moveTo(size.width * .08, size.height * .25)
+      ..lineTo(size.width * .5, size.height * .08)
+      ..lineTo(size.width * .92, size.height * .25)
+      ..lineTo(size.width * .86, size.height * .29)
+      ..lineTo(size.width * .14, size.height * .29)
+      ..close();
+    canvas.drawPath(roofPath, roof);
+    canvas.drawRect(
+      Rect.fromLTWH(
+        size.width * .18,
+        size.height * .27,
+        size.width * .64,
+        size.height * .42,
+      ),
+      paper,
+    );
+    canvas.drawRect(
+      Rect.fromLTWH(
+        size.width * .18,
+        size.height * .27,
+        size.width * .035,
+        size.height * .48,
+      ),
+      timber,
+    );
+    canvas.drawRect(
+      Rect.fromLTWH(
+        size.width * .785,
+        size.height * .27,
+        size.width * .035,
+        size.height * .48,
+      ),
+      timber,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _OfficeStagePainter oldDelegate) => false;
 }
 
 String _clock(int totalSeconds) {
