@@ -18,6 +18,8 @@ import 'hwando_executor.dart';
 import 'talisman_executor.dart';
 
 class WeaponSystem {
+  static const maxOwnedWeapons = 6;
+
   WeaponSystem({Map<WeaponId, int>? initialLevels, Random? random})
     : _random = random ?? Random(),
       _talismanExecutor = TalismanExecutor(random: random) {
@@ -37,6 +39,7 @@ class WeaponSystem {
   List<AttachedTalisman> get attachedTalismans => _talismanExecutor.attached;
 
   int levelOf(WeaponId weaponId) => _levels[weaponId] ?? 0;
+  int get ownedWeaponCount => _levels.values.where((level) => level > 0).length;
 
   void recordHwandoKill({required int count}) {
     _hwandoExecutor.recordKill(count: count);
@@ -47,7 +50,11 @@ class WeaponSystem {
     if (definition == null || !unlockedWeaponIds.contains(weaponId)) {
       return false;
     }
-    return levelOf(weaponId) < definition.maxLevel;
+    final currentLevel = levelOf(weaponId);
+    if (currentLevel == 0 && ownedWeaponCount >= maxOwnedWeapons) {
+      return false;
+    }
+    return currentLevel < definition.maxLevel;
   }
 
   void upgrade(WeaponId weaponId, Set<WeaponId> unlockedWeaponIds) {

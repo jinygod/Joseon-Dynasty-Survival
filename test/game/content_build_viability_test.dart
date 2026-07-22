@@ -115,8 +115,6 @@ _ConstructedBuild _constructBuild(
   SaveState progression, {
   required int seed,
 }) {
-  final levelUps = LevelUpSystem(random: Random(seed));
-  final weapons = WeaponSystem(random: Random(seed));
   final weaponLevels = <WeaponId, int>{};
   final augmentLevels = <AugmentId, int>{};
   var appliedChoices = 0;
@@ -125,6 +123,14 @@ _ConstructedBuild _constructBuild(
     (item) => item.id == build.characterId,
   );
   final startingWeaponId = character.startingWeaponId;
+  final buildWeaponIds = {...build.weaponLevels.keys, startingWeaponId};
+  final levelUps = LevelUpSystem(
+    random: Random(seed),
+    weaponDefinitions: weaponDefinitions
+        .where((definition) => buildWeaponIds.contains(definition.id))
+        .toList(growable: false),
+  );
+  final weapons = WeaponSystem(random: Random(seed));
   weapons.upgrade(startingWeaponId, progression.unlockedWeaponIds);
   weaponLevels[startingWeaponId] = weapons.levelOf(startingWeaponId);
 
@@ -145,7 +151,8 @@ _ConstructedBuild _constructBuild(
       currentWeaponLevels: weaponLevels,
       currentAugmentLevels: augmentLevels,
     );
-    expect(choices, hasLength(3), reason: '${build.id} round $round');
+    expect(choices, isNotEmpty, reason: '${build.id} round $round');
+    expect(choices.length, lessThanOrEqualTo(3));
     offeredRounds += 1;
     final selected =
         choices.where((choice) {

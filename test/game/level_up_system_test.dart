@@ -177,6 +177,55 @@ void main() {
       );
     });
 
+    test('six owned weapons suppress every unowned weapon offer', () {
+      const owned = {
+        hwandoSlash: 1,
+        gakgungShot: 1,
+        talismanThrow: 1,
+        thunderCrashBomb: 1,
+        jangseungWard: 1,
+        singijeonVolley: 1,
+      };
+      final choices = LevelUpSystem(random: Random(3)).choices(
+        unlockedWeaponIds: weaponDefinitions.map((item) => item.id).toSet(),
+        unlockedAugmentIds: const {},
+        currentWeaponLevels: owned,
+        currentAugmentLevels: const {},
+        maxChoices: 12,
+      );
+
+      expect(choices, hasLength(6));
+      expect(choices.map((choice) => choice.id).toSet(), owned.keys.toSet());
+    });
+
+    test('an upgrade for an owned weapon is always offered when available', () {
+      const owned = {
+        hwandoSlash: 1,
+        gakgungShot: 1,
+        talismanThrow: 1,
+        thunderCrashBomb: 1,
+        jangseungWard: 1,
+      };
+
+      for (var seed = 0; seed < 20; seed += 1) {
+        final choices = LevelUpSystem(random: Random(seed)).choices(
+          unlockedWeaponIds: weaponDefinitions.map((item) => item.id).toSet(),
+          unlockedAugmentIds: {martialTraining, quickStep, rapidReload},
+          currentWeaponLevels: owned,
+          currentAugmentLevels: const {},
+        );
+        expect(
+          choices.any(
+            (choice) =>
+                choice.type == LevelUpChoiceType.weapon &&
+                owned.containsKey(choice.id),
+          ),
+          isTrue,
+          reason: 'seed $seed',
+        );
+      }
+    });
+
     test('augment cards show cumulative production values', () {
       final choices = LevelUpSystem(random: Random(1)).choices(
         unlockedWeaponIds: const {},

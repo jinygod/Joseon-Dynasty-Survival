@@ -47,6 +47,26 @@ void main() {
       );
     });
 
+    test('direct upgrade cannot add a seventh weapon', () {
+      final system = WeaponSystem(
+        initialLevels: const {
+          hwandoSlash: 1,
+          gakgungShot: 1,
+          talismanThrow: 1,
+          thunderCrashBomb: 1,
+          jangseungWard: 1,
+          singijeonVolley: 1,
+        },
+      );
+      final unlocked = weaponDefinitions.map((item) => item.id).toSet();
+
+      expect(system.ownedWeaponCount, 6);
+      expect(system.canUpgrade(frostFlask, unlocked), isFalse);
+      system.upgrade(frostFlask, unlocked);
+      expect(system.levelOf(frostFlask), 0);
+      expect(system.canUpgrade(hwandoSlash, unlocked), isTrue);
+    });
+
     test('tick applies damage multiplier to weapon damage', () {
       final system = WeaponSystem(initialLevels: const {hwandoSlash: 1});
       final enemy = EnemyComponent(

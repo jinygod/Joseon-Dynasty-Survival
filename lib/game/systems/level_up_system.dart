@@ -48,6 +48,8 @@ class LevelUpChoice {
 }
 
 class LevelUpSystem {
+  static const maxOwnedWeapons = 6;
+
   LevelUpSystem({
     Random? random,
     this.weaponDefinitions = weapon_content.weaponDefinitions,
@@ -69,9 +71,15 @@ class LevelUpSystem {
       return const [];
     }
 
+    final ownedWeaponIds = currentWeaponLevels.entries
+        .where((entry) => entry.value > 0)
+        .map((entry) => entry.key)
+        .toSet();
+    final weaponSlotsFull = ownedWeaponIds.length >= maxOwnedWeapons;
     final weaponChoices = <LevelUpChoice?>[
       for (final definition in weaponDefinitions)
-        if (unlockedWeaponIds.contains(definition.id))
+        if (unlockedWeaponIds.contains(definition.id) &&
+            (!weaponSlotsFull || ownedWeaponIds.contains(definition.id)))
           _weaponChoice(definition, currentWeaponLevels),
     ].whereType<LevelUpChoice>().toList();
     final augmentChoices = <LevelUpChoice?>[
@@ -83,13 +91,26 @@ class LevelUpSystem {
     weaponChoices.shuffle(_random);
     augmentChoices.shuffle(_random);
     final selected = <LevelUpChoice>[];
+    final ownedUpgradeIndex = weaponChoices.indexWhere(
+      (choice) => ownedWeaponIds.contains(choice.id),
+    );
+    if (ownedUpgradeIndex >= 0) {
+      selected.add(weaponChoices.removeAt(ownedUpgradeIndex));
+    }
 
-    if (weaponChoices.isNotEmpty &&
+    if (selected.isEmpty &&
+        weaponChoices.isNotEmpty &&
         augmentChoices.isNotEmpty &&
         maxChoices >= 2) {
       selected
         ..add(weaponChoices.removeLast())
         ..add(augmentChoices.removeLast());
+    }
+
+    if (selected.isNotEmpty &&
+        augmentChoices.isNotEmpty &&
+        selected.length < maxChoices) {
+      selected.add(augmentChoices.removeLast());
     }
 
     final remaining = [...weaponChoices, ...augmentChoices]..shuffle(_random);
