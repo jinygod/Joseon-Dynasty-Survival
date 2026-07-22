@@ -706,20 +706,43 @@ void main() {
       expect(game.isLevelUpPending, isTrue);
     });
 
-    test('retains every level choice from oversized experience', () {
-      final game = newGame();
+    test(
+      'drains every eligible choice before clearing oversized remainder',
+      () {
+        final game = newGame();
 
-      game.gainExperience(20000);
+        game.gainExperience(20000);
 
-      expect(game.playerLevel, 137);
-      expect(game.pendingLevelChoiceCount, 136);
+        expect(game.playerLevel, 137);
+        expect(game.pendingLevelChoiceCount, 136);
+        var acceptedChoices = 0;
+        while (game.levelUpChoices().isNotEmpty) {
+          final pendingBeforeSelection = game.pendingLevelChoiceCount;
+          expect(game.pendingLevelUpChoices, isNotEmpty);
 
-      game.applyLevelUpChoice(game.pendingLevelUpChoices.first);
+          game.applyLevelUpChoice(game.pendingLevelUpChoices.first);
+          acceptedChoices += 1;
 
-      expect(game.pendingLevelChoiceCount, 135);
-      expect(game.isLevelUpPending, isTrue);
-      expect(game.pendingLevelUpChoices, isNotEmpty);
-    });
+          if (game.levelUpChoices().isEmpty) {
+            expect(game.pendingLevelChoiceCount, 0);
+            expect(game.isLevelUpPending, isFalse);
+          } else {
+            expect(
+              game.pendingLevelChoiceCount,
+              pendingBeforeSelection - 1,
+              reason: 'a valid choice must consume exactly one pending level',
+            );
+            expect(game.isLevelUpPending, isTrue);
+            expect(game.pendingLevelUpChoices, isNotEmpty);
+          }
+        }
+
+        expect(acceptedChoices, 82);
+        expect(game.levelUpChoices(), isEmpty);
+        expect(game.pendingLevelChoiceCount, 0);
+        expect(game.pendingLevelUpChoices, isEmpty);
+      },
+    );
 
     test('applyLevelUpChoice upgrades a weapon and clears pending state', () {
       final game = newGame()..unlockedWeaponIds.add(hwandoSlash);

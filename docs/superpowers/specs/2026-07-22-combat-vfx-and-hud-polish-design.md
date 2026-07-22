@@ -76,7 +76,7 @@ The top HUD gains a prominent full-width experience header inside `SafeArea`:
 - time, kills, health, and weapon slots compressed below it;
 - keys and semantic labels preserved or expanded for tests and accessibility.
 
-The run still starts at level 1. Crossing an XP threshold increments the displayed player level. If one collection crosses multiple thresholds, the game queues one weapon/augment choice for each level gained rather than dropping extra choices.
+The run still starts at level 1. Crossing an XP threshold increments the displayed player level. The queue contract is: one queued choice per gained level while at least one eligible weapon or augment choice exists; once the finite roster is fully maxed, the remaining pending count is cleared without showing an empty overlay. Maxed content never produces repeatable or no-op choices.
 
 ## Background readability
 
@@ -97,7 +97,7 @@ Automated coverage must prove:
 - every weapon family resolves to a non-primitive presentation route;
 - experience gems default to at least 20 pixels and visually scale with stored value without changing pickup radius;
 - the HUD displays `레벨 1`, a prominent XP bar, correct progress, and responsive safe-area bounds;
-- multiple level gains queue the matching number of choices;
+- multiple level gains queue the matching number of eligible choices, and content exhaustion clears only the unusable remainder without an empty overlay;
 - updated 390-by-844 combat goldens contain bandit, frost, ranged, hazard, and late-density examples;
 - `flutter analyze`, the complete test suite, web release build, and Android debug build succeed.
 

@@ -118,9 +118,39 @@ The level starts at 1 and the existing `9 + level * 2` requirement curve, multip
 
   - passed with `No issues found` for all 4 items.
 
-The 20,000-XP case now reaches player level 137 from level 1, retains all 136 pending choices, and decrements to 135 while immediately presenting the next choice set after one accepted selection. At 2x system text scale, even a 19-digit kill count remains horizontally inside the status panel and vertically above the health meter without a render exception.
+The 20,000-XP case now reaches player level 137 from level 1 and initially retains all 136 pending thresholds. At 2x system text scale, even a 19-digit kill count remains horizontally inside the status panel and vertically above the health meter without a render exception.
+
+## Exhaustion-policy resolution
+
+The approved contract is: one queued choice per gained level while at least one eligible weapon or augment choice exists; once the finite roster is fully maxed, the remaining pending count is cleared without showing an empty overlay. Repeatable upgrades and no-op choices remain out of scope, and the balance roster is unchanged.
+
+The regression `drains every eligible choice before clearing oversized remainder` starts with the 136 pending thresholds from a 20,000-XP grant and drains the default finite roster. It verifies that:
+
+- all 82 eligible weapon/augment selections are presented and accepted;
+- every accepted selection consumes exactly one pending level while any valid choice remains;
+- the pending state never clears while `levelUpChoices()` is non-empty;
+- after the 82nd meaningful selection, `levelUpChoices()` is empty and only then are the unusable 54 remaining pending thresholds cleared without an empty overlay.
+
+The regression passed against the existing empty-choice guard, so this policy resolution required documentation and coverage changes but no production or balance change.
+
+### Exhaustion-policy verification
+
+- `flutter test test/game/pixel_survivor_game_loop_test.dart --plain-name "drains every eligible choice before clearing oversized remainder"`
+  - passed, 1/1;
+  - characterized the existing approved behavior rather than requiring a production change.
+- Covering Task 7 suite:
+
+  `flutter test test/app/game_hud_test.dart test/app/accessibility_surfaces_test.dart test/app/responsive_layout_test.dart test/game/run_progression_system_test.dart test/game/pixel_survivor_game_loop_test.dart`
+
+  - passed, 99/99.
+- Changed-Dart analysis:
+
+  `flutter analyze test/game/pixel_survivor_game_loop_test.dart`
+
+  - passed with `No issues found`.
+
+The design and implementation plan now state the same finite-roster exhaustion policy as the tested runtime. No XP requirement, weapon level, augment level, unlock, offer, or selection balance was changed.
 
 ## Concerns
 
-- Eligible weapon/augment content remains finite; if every available upgrade is exhausted, the pre-existing empty-choice guard clears the pending state rather than presenting an unusable overlay.
 - Existing combat/release golden images will change because the HUD composition changed. They were not updated in this task and should be reviewed in the designated golden-update task.

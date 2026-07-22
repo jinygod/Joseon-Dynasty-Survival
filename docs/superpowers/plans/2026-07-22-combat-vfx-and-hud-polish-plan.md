@@ -284,7 +284,7 @@ feat: make experience drops visible and value aware
 - Preserve `GameHudSource.playerLevel/currentExperience/experienceToNextLevel`.
 - Add stable keys `hud-player-level`, `hud-xp-fill`, and keep `hud-xp-bar`.
 - `RunProgressionSystem.addExperience` returns the number of levels gained or exposes it through a result value.
-- `PixelSurvivorGame` maintains a bounded pending level-choice count and queues the next choice after the current selection closes.
+- `PixelSurvivorGame` maintains a scalar pending level-choice count and queues the next choice after the current selection closes. Contract: one queued choice per gained level while at least one eligible weapon or augment choice exists; once the finite roster is fully maxed, the remaining pending count is cleared without showing an empty overlay.
 
 - [ ] **Step 1: Write failing HUD tests at 390×844**
 
@@ -308,7 +308,7 @@ Leave 64px for pause, use a gold level badge, blue/cyan meter with bright leadin
 
 - [ ] **Step 5: Queue one choice per gained level**
 
-Do not alter the XP curve. Consume one pending choice when a selection is applied, then immediately queue the next set until the count reaches zero.
+Do not alter the XP curve or add repeatable/no-op upgrades. Consume one pending choice when a selection is applied, then immediately queue the next set while at least one eligible weapon or augment choice exists. Once the finite roster is fully maxed and `levelUpChoices()` is empty, clear the remaining pending count without showing an empty overlay.
 
 - [ ] **Step 6: Run focused responsive and progression tests**
 
