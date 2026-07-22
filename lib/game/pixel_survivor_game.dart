@@ -338,7 +338,7 @@ class PixelSurvivorGame extends FlameGame
   ];
 
   @override
-  Color backgroundColor() => const Color(0xfff1d7ab);
+  Color backgroundColor() => warmHanjiBeige;
 
   @override
   KeyEventResult onKeyEvent(

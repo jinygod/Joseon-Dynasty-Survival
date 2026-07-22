@@ -2,6 +2,9 @@ import 'package:flame/components.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/components/actor_shadow_component.dart';
 import 'package:pixel_survivor/game/components/stage_backdrop_component.dart';
+import 'package:pixel_survivor/game/content/character_definitions.dart';
+import 'package:pixel_survivor/game/models/player_slot.dart';
+import 'package:pixel_survivor/game/pixel_survivor_game.dart';
 
 void main() {
   test('bright stage stays behind every combat actor', () {
@@ -30,6 +33,17 @@ void main() {
 
     expect(first.decorations, hasLength(lessThanOrEqualTo(40)));
     expect(first.decorations, second.decorations);
+  });
+
+  test('game fallback and stage share the warm hanji palette color', () {
+    final backdrop = StageBackdropComponent();
+    final game = PixelSurvivorGame(
+      playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
+      onRunEnded: null,
+    );
+
+    expect(backdrop.baseColor, warmHanjiBeige);
+    expect(game.backgroundColor(), warmHanjiBeige);
   });
 
   test('actor shadow uses the supplied width at an actor ground anchor', () {

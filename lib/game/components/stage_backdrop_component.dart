@@ -3,6 +3,9 @@ import 'dart:ui';
 
 import 'package:flame/components.dart';
 
+/// Shared warm-earth fallback for the Joseon combat field and empty canvas.
+const Color warmHanjiBeige = Color(0xfff1d7ab);
+
 /// A static, low-cost Joseon folk-fantasy combat ground.
 ///
 /// The backdrop deliberately owns neither collision nor simulation. Its
@@ -21,7 +24,7 @@ class StageBackdropComponent extends PositionComponent {
 
   static const maxDecorationCount = 40;
   static const _decorationSeed = 0x0BA7D0C;
-  static const Color _baseColor = Color(0xfff1d7ab);
+  static const Color _baseColor = warmHanjiBeige;
   static const Color _jadePatchColor = Color(0xffb6d4b4);
   static const Color _stoneLineColor = Color(0xff92a99d);
   static const Color _tileColor = Color(0xffb97c65);
