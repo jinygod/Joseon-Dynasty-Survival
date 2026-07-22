@@ -1907,7 +1907,10 @@ class PixelSurvivorGame extends FlameGame
 
   AudioCue _attackCueFor(WeaponId weaponId) => switch (weaponId) {
     hwandoSlash => AudioCue.hwandoAttack,
-    gakgungShot => AudioCue.bowAttack,
+    gakgungShot =>
+      weaponSystem.levelOf(gakgungShot) >= 6
+          ? AudioCue.gakgungMasterAttack
+          : AudioCue.bowAttack,
     talismanThrow => AudioCue.talismanAttack,
     thunderCrashBomb => AudioCue.bombAttack,
     jangseungWard => AudioCue.talismanAttack,

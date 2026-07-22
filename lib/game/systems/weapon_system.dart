@@ -15,6 +15,7 @@ import '../content/weapon_level_definitions.dart';
 import '../models/damage_event.dart';
 import 'hwando_aim_resolver.dart';
 import 'hwando_executor.dart';
+import 'gakgung_executor.dart';
 import 'talisman_executor.dart';
 
 class WeaponSystem {
@@ -32,6 +33,7 @@ class WeaponSystem {
   final Map<WeaponId, double> _cooldowns = {};
   final Random _random;
   final HwandoExecutor _hwandoExecutor = HwandoExecutor();
+  final GakgungExecutor _gakgungExecutor = const GakgungExecutor();
   final TalismanExecutor _talismanExecutor;
   double _talismanNow = 0;
 
@@ -368,23 +370,29 @@ class WeaponSystem {
       return;
     }
 
-    final nearest = _nearestEnemy(origin, enemies)!;
-    final baseDirection = _direction(origin, nearest.position);
-    for (var index = 0; index < stats.projectileCount; index += 1) {
-      final spread = (index - (stats.projectileCount - 1) / 2) * 0.10;
-      final direction = baseDirection.clone()..rotate(spread);
+    final volley = _gakgungExecutor.plan(
+      GakgungInput(
+        level: level,
+        origin: origin,
+        enemies: enemies,
+        stats: stats,
+      ),
+    );
+    for (final shot in volley.shots) {
       projectiles.add(
         ProjectileComponent(
           weaponId: gakgungShot,
           damage: _rolledDamage(
-            stats.damage * damageMultiplier,
+            stats.damage * damageMultiplier * shot.damageMultiplier,
             criticalChance,
           ),
           position: origin.clone(),
-          velocity: direction * 260,
+          velocity: shot.direction * (shot.isMasterLead ? 340 : 300),
           pierce: stats.pierce,
           knockback: stats.knockback,
-          size: Vector2.all(8 * sizeMultiplier),
+          followUpIndex: shot.followUpIndex,
+          isMasterLead: shot.isMasterLead,
+          size: Vector2.all(8 * sizeMultiplier * shot.visualScale),
         ),
       );
     }

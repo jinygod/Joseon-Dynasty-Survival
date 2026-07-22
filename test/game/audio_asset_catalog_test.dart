@@ -35,6 +35,13 @@ void main() {
     }
   });
 
+  test('gakgung mastery sound differs from ordinary bow fire', () {
+    expect(
+      AudioAssetCatalog.forCue(AudioCue.gakgungMasterAttack).path,
+      isNot(AudioAssetCatalog.forCue(AudioCue.bowAttack).path),
+    );
+  });
+
   test('pubspec registers every audio asset subdirectory', () {
     final pubspec = File('pubspec.yaml').readAsStringSync();
     final directories = AudioAssetCatalog.assets.values

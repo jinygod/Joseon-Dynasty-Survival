@@ -123,6 +123,41 @@ void main() {
       );
     });
 
+    test('gakgung mastery emits one lead and two follow-up projectiles', () {
+      final strongest = EnemyComponent(
+        enemyId: 'strongest',
+        maxHealth: 90,
+        moveSpeed: 0,
+        damage: 1,
+        position: Vector2(80, 0),
+      );
+      final weaker = EnemyComponent(
+        enemyId: 'weaker',
+        maxHealth: 30,
+        moveSpeed: 0,
+        damage: 1,
+        position: Vector2(40, 0),
+      );
+      final system = WeaponSystem(initialLevels: const {gakgungShot: 6});
+
+      final result = system.tick(
+        dt: 1,
+        origin: Vector2.zero(),
+        enemies: [weaker, strongest],
+      );
+      final arrows = result.projectiles
+          .where((projectile) => projectile.weaponId == gakgungShot)
+          .toList();
+
+      expect(arrows, hasLength(3));
+      expect(arrows.first.isMasterLead, isTrue);
+      expect(arrows.map((arrow) => arrow.followUpIndex), [0, 1, 2]);
+      expect(
+        result.areaAttacks.where((area) => area.weaponId == gakgungShot),
+        isEmpty,
+      );
+    });
+
     test('level five hwando creates timed arc attacks with knockback', () {
       final enemy = EnemyComponent(
         enemyId: 'bandit',

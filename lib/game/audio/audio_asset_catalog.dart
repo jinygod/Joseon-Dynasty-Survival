@@ -32,6 +32,9 @@ abstract final class AudioAssetCatalog {
     AudioCue.talismanMasterAttack: AudioAssetDefinition(
       path: 'audio/sfx/talisman.ogg',
     ),
+    AudioCue.gakgungMasterAttack: AudioAssetDefinition(
+      path: 'audio/sfx/critical.ogg',
+    ),
     AudioCue.sealingSlash: AudioAssetDefinition(path: 'audio/sfx/hwando.ogg'),
     AudioCue.bowAttack: AudioAssetDefinition(path: 'audio/sfx/bow.ogg'),
     AudioCue.talismanAttack: AudioAssetDefinition(

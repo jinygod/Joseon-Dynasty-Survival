@@ -17,6 +17,8 @@ class ProjectileComponent extends PositionComponent {
     this.lifetime = 2.2,
     this.pierce = 0,
     this.knockback = 0,
+    this.followUpIndex = 0,
+    this.isMasterLead = false,
     Vector2? size,
   }) : _remainingHits = pierce + 1,
        super(
@@ -31,6 +33,8 @@ class ProjectileComponent extends PositionComponent {
   final double lifetime;
   final int pierce;
   final double knockback;
+  final int followUpIndex;
+  final bool isMasterLead;
   final Set<EnemyComponent> _hitEnemies = {};
   int _remainingHits;
   double _age = 0;
@@ -82,7 +86,12 @@ class ProjectileComponent extends PositionComponent {
     final image = _effectImage;
     final row = WeaponEffectAtlas.rowForWeapon(weaponId);
     if (image != null && row != null) {
-      final visualSize = Vector2(28, 28);
+      final visualExtent = isMasterLead
+          ? 52.0
+          : followUpIndex > 0
+          ? 36.0
+          : 28.0;
+      final visualSize = Vector2.all(visualExtent);
       final center = Offset(size.x / 2, size.y / 2);
       final facingAngle = math.atan2(velocity.y, velocity.x);
       final sprite = WeaponEffectAtlas.sprite(
@@ -103,7 +112,12 @@ class ProjectileComponent extends PositionComponent {
       return;
     }
 
-    final paint = Paint()..color = const Color(0xfff2cc8f);
+    final paint = Paint()
+      ..color = isMasterLead
+          ? const Color(0xffffd66b)
+          : followUpIndex > 0
+          ? const Color(0xff8ecae6)
+          : const Color(0xfff2cc8f);
     final outlinePaint = Paint()
       ..color = const Color(0xff2f1b25)
       ..style = PaintingStyle.stroke

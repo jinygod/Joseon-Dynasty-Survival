@@ -41,6 +41,10 @@ void main() {
       AudioCueCatalog.channelFor(AudioCue.talismanMasterAttack),
       AudioChannel.sfx,
     );
+    expect(
+      AudioCueCatalog.channelFor(AudioCue.gakgungMasterAttack),
+      AudioChannel.sfx,
+    );
     expect(AudioCueCatalog.channelFor(AudioCue.sealingSlash), AudioChannel.sfx);
   });
 }

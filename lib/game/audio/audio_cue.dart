@@ -9,6 +9,7 @@ enum AudioCue {
   hwandoAttack,
   hwandoMasterAttack,
   talismanMasterAttack,
+  gakgungMasterAttack,
   sealingSlash,
   bowAttack,
   talismanAttack,
