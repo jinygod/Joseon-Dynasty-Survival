@@ -78,6 +78,7 @@ class PixelSurvivorGame extends FlameGame
     implements GameHudSource, RewardCollectionHudSource, VisualAssetLoadPolicy {
   static const levelUpOverlayId = 'levelUp';
   static const maxExperienceGemComponents = 128;
+  static const maxPendingLevelChoiceCount = 100;
 
   PixelSurvivorGame({
     required this.playerSlot,
@@ -165,6 +166,7 @@ class PixelSurvivorGame extends FlameGame
   double? _rewardCollectionSecondsRemaining;
   int _pendingBossSpiritJade = 0;
   List<LevelUpChoice> _pendingLevelUpChoices = const [];
+  int _pendingLevelChoiceCount = 0;
 
   VectorInput movementInput = VectorInput.zero;
 
@@ -308,6 +310,7 @@ class PixelSurvivorGame extends FlameGame
       max(-21.0, _resolvedAugmentModifiers.pickupRadiusBonus);
 
   bool get isLevelUpPending => _pendingLevelUpChoices.isNotEmpty;
+  int get pendingLevelChoiceCount => _pendingLevelChoiceCount;
   List<PlayerComponent> get activePlayers => _activePlayersView;
   List<LevelUpChoice> get pendingLevelUpChoices =>
       List.unmodifiable(_pendingLevelUpChoices);
@@ -446,16 +449,23 @@ class PixelSurvivorGame extends FlameGame
   }
 
   bool gainExperience(int amount) {
-    final leveledUp = runProgression.addExperience(
+    final result = runProgression.addExperience(
       amount,
       gainMultiplier: experienceGainMultiplier,
       requirementMultiplier: experienceRequirementMultiplier,
     );
-    if (leveledUp && !isLevelUpPending) {
-      _queueLevelUpChoices();
+    if (result.leveledUp) {
+      final shouldOpenChoices = !isLevelUpPending;
+      _pendingLevelChoiceCount = min(
+        maxPendingLevelChoiceCount,
+        _pendingLevelChoiceCount + result.levelsGained,
+      );
+      if (shouldOpenChoices) {
+        _queueLevelUpChoices();
+      }
     }
 
-    return leveledUp;
+    return result.leveledUp;
   }
 
   void applyLevelUpChoice(LevelUpChoice choice) {
@@ -509,8 +519,11 @@ class PixelSurvivorGame extends FlameGame
     );
 
     _pendingLevelUpChoices = const [];
-    if (isMounted) {
-      overlays.remove(levelUpOverlayId);
+    _pendingLevelChoiceCount = max(0, _pendingLevelChoiceCount - 1);
+    if (isMounted) overlays.remove(levelUpOverlayId);
+    if (_pendingLevelChoiceCount > 0) {
+      _queueLevelUpChoices();
+    } else if (isMounted) {
       resumeEngine();
     }
   }
@@ -1743,6 +1756,11 @@ class PixelSurvivorGame extends FlameGame
   void _queueLevelUpChoices() {
     final choices = levelUpChoices();
     if (choices.isEmpty) {
+      _pendingLevelChoiceCount = 0;
+      if (isMounted) {
+        overlays.remove(levelUpOverlayId);
+        resumeEngine();
+      }
       return;
     }
 
@@ -1803,6 +1821,7 @@ class PixelSurvivorGame extends FlameGame
           : AudioCue.defeatMusic,
     );
     _pendingLevelUpChoices = const [];
+    _pendingLevelChoiceCount = 0;
     if (isMounted) {
       overlays.remove(levelUpOverlayId);
       pauseEngine();

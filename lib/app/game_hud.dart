@@ -68,7 +68,11 @@ class _GameHudState extends State<GameHud> {
               top: widget.source.bossHealthFraction == null ? 8 : 6,
               left: 0,
               right: 0,
-              child: _TopHud(source: widget.source, uiScale: widget.uiScale),
+              child: _TopHud(
+                source: widget.source,
+                uiScale: widget.uiScale,
+                leadingClearance: widget.onPause == null ? 8 : 64,
+              ),
             ),
             Positioned.fill(
               child: VirtualJoystick(
@@ -164,10 +168,15 @@ class _PauseGlyphPainter extends CustomPainter {
 }
 
 class _TopHud extends StatelessWidget {
-  const _TopHud({required this.source, required this.uiScale});
+  const _TopHud({
+    required this.source,
+    required this.uiScale,
+    required this.leadingClearance,
+  });
 
   final GameHudSource source;
   final double uiScale;
+  final double leadingClearance;
 
   @override
   Widget build(BuildContext context) {
@@ -175,62 +184,65 @@ class _TopHud extends StatelessWidget {
     final showNotice =
         notice != null && source.combatNoticeSecondsRemaining > 0;
     final showStreak = source.killStreak > 1;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        if (source.bossHealthFraction case final health?) ...[
-          Align(
-            alignment: Alignment.center,
-            child: FractionallySizedBox(
-              key: const Key('boss-warning'),
-              widthFactor: 0.88,
-              child: BossHealthBar(
-                name: source.bossName ?? AppStrings.genericBoss,
-                healthFraction: health,
-                uiScale: uiScale,
-              ),
-            ),
-          ),
-          const SizedBox(height: 5),
-        ],
-        KeyedSubtree(
-          key: const Key('hud-status'),
-          child: _StatusBar(source: source),
-        ),
-        if (showNotice) ...[
-          const SizedBox(height: 6),
-          Semantics(
-            key: const Key('combat-notice'),
-            liveRegion: true,
-            label: '${AppStrings.combatNotice} $notice',
-            excludeSemantics: true,
-            child: _CombatNotice(label: notice),
-          ),
-        ],
-        if (showStreak) ...[
-          const SizedBox(height: 3),
-          Semantics(
-            key: const Key('kill-streak'),
-            liveRegion: true,
-            label: '${source.killStreak} ${AppStrings.killStreak}',
-            excludeSemantics: true,
-            child: Center(
-              child: Text(
-                '${source.killStreak} ${AppStrings.killStreak}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Color(0xffffd166),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  shadows: [Shadow(color: Color(0xff101820), blurRadius: 3)],
+    return Padding(
+      padding: EdgeInsets.only(left: leadingClearance, right: 8),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (source.bossHealthFraction case final health?) ...[
+            Align(
+              alignment: Alignment.center,
+              child: FractionallySizedBox(
+                key: const Key('boss-warning'),
+                widthFactor: 0.88,
+                child: BossHealthBar(
+                  name: source.bossName ?? AppStrings.genericBoss,
+                  healthFraction: health,
+                  uiScale: uiScale,
                 ),
               ),
             ),
+            const SizedBox(height: 5),
+          ],
+          KeyedSubtree(
+            key: const Key('hud-status'),
+            child: _StatusBar(source: source),
           ),
+          if (showNotice) ...[
+            const SizedBox(height: 6),
+            Semantics(
+              key: const Key('combat-notice'),
+              liveRegion: true,
+              label: '${AppStrings.combatNotice} $notice',
+              excludeSemantics: true,
+              child: _CombatNotice(label: notice),
+            ),
+          ],
+          if (showStreak) ...[
+            const SizedBox(height: 3),
+            Semantics(
+              key: const Key('kill-streak'),
+              liveRegion: true,
+              label: '${source.killStreak} ${AppStrings.killStreak}',
+              excludeSemantics: true,
+              child: Center(
+                child: Text(
+                  '${source.killStreak} ${AppStrings.killStreak}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xffffd166),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    shadows: [Shadow(color: Color(0xff101820), blurRadius: 3)],
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 }
@@ -264,93 +276,164 @@ class _StatusBar extends StatelessWidget {
       container: true,
       explicitChildNodes: true,
       label: statusLabel,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 292),
-        child: SizedBox(
-          height: 88,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: _panelColor,
-              border: Border.all(color: const Color(0xfff4ead2), width: 1.25),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(8, 7, 8, 7),
-              child: Column(
-                children: [
-                  ExcludeSemantics(
-                    child: SizedBox(
-                      height: 17,
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: _FittedHudText(
-                              '$minutes:$seconds  '
-                              '${AppStrings.hudLevel} ${source.playerLevel}',
-                              color: const Color(0xfffff1b8),
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          SizedBox(
-                            width: 42,
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              alignment: Alignment.centerRight,
-                              child: Text(
-                                '${source.kills}',
-                                key: const Key('hud-kills-value'),
-                                style: const TextStyle(
-                                  color: Color(0xff9fb3c8),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  ExcludeSemantics(
-                    child: _MeterBar(
-                      key: const Key('hud-health-bar'),
-                      value: healthFraction,
-                      color: const Color(0xffef5b5b),
-                      trackColor: const Color(0xff48242d),
-                      fillKey: const Key('hud-health-fill'),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  SizedBox(
-                    height: 32,
+      child: SizedBox(
+        height: 88,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: _panelColor,
+            border: Border.all(color: const Color(0xfff4ead2), width: 1.25),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(8, 7, 8, 7),
+            child: Column(
+              children: [
+                SizedBox(
+                  height: 28,
+                  child: ExcludeSemantics(
                     child: Row(
                       children: [
-                        Expanded(
-                          child: ExcludeSemantics(
-                            child: _MeterBar(
-                              key: const Key('hud-xp-bar'),
-                              value: xpFraction,
-                              color: const Color(0xff5cc8ff),
-                              trackColor: const Color(0xff1a3b50),
-                              label:
-                                  '${source.currentExperience}/${source.experienceToNextLevel}',
+                        Container(
+                          height: 28,
+                          constraints: const BoxConstraints(minWidth: 58),
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xffffe08a), Color(0xffc88719)],
+                            ),
+                            border: Border.all(
+                              color: const Color(0xfffff1b8),
+                              width: 1,
+                            ),
+                            borderRadius: BorderRadius.circular(7),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x66000000),
+                                blurRadius: 3,
+                                offset: Offset(0, 1),
+                              ),
+                            ],
+                          ),
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              '${AppStrings.hudLevel} ${source.playerLevel}',
+                              key: const Key('hud-player-level'),
+                              style: const TextStyle(
+                                color: Color(0xff24170a),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w900,
+                              ),
                             ),
                           ),
                         ),
                         const SizedBox(width: 6),
-                        KeyedSubtree(
-                          key: const Key('weapon-list'),
-                          child: _WeaponSlots(
-                            labels: source.weaponLevelLabels.take(3).toList(),
+                        Expanded(
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              Center(
+                                child: _MeterBar(
+                                  key: const Key('hud-xp-bar'),
+                                  value: xpFraction,
+                                  color: const Color(0xff43bff5),
+                                  fillGradient: const LinearGradient(
+                                    colors: [
+                                      Color(0xffd9fbff),
+                                      Color(0xff43bff5),
+                                      Color(0xff2284db),
+                                    ],
+                                  ),
+                                  trackColor: const Color(0xff122f4b),
+                                  fillKey: const Key('hud-xp-fill'),
+                                  height: 16,
+                                  showLeadingCap: true,
+                                ),
+                              ),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(right: 7),
+                                  child: Text(
+                                    '${source.currentExperience}/${source.experienceToNextLevel}',
+                                    key: const Key('hud-xp-value'),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w900,
+                                      shadows: [
+                                        Shadow(
+                                          color: Color(0xff07121d),
+                                          blurRadius: 2,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 5),
+                SizedBox(
+                  height: 38,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: ExcludeSemantics(
+                          child: Column(
+                            children: [
+                              SizedBox(
+                                height: 17,
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: _FittedHudText(
+                                        '$minutes:$seconds',
+                                        color: const Color(0xfffff1b8),
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      '${source.kills}',
+                                      key: const Key('hud-kills-value'),
+                                      style: const TextStyle(
+                                        color: Color(0xff9fb3c8),
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              _MeterBar(
+                                key: const Key('hud-health-bar'),
+                                value: healthFraction,
+                                color: const Color(0xffef5b5b),
+                                trackColor: const Color(0xff48242d),
+                                fillKey: const Key('hud-health-fill'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      KeyedSubtree(
+                        key: const Key('weapon-list'),
+                        child: _WeaponSlots(
+                          labels: source.weaponLevelLabels.take(3).toList(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -364,38 +447,49 @@ class _MeterBar extends StatelessWidget {
     required this.value,
     required this.color,
     required this.trackColor,
-    this.label,
     this.fillKey,
+    this.fillGradient,
+    this.height = 9,
+    this.showLeadingCap = false,
     super.key,
   });
 
   final double value;
   final Color color;
   final Color trackColor;
-  final String? label;
   final Key? fillKey;
+  final Gradient? fillGradient;
+  final double height;
+  final bool showLeadingCap;
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      label: label,
-      child: SizedBox(
-        height: 9,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(4.5),
-          child: DecoratedBox(
-            decoration: BoxDecoration(color: trackColor),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: FractionallySizedBox(
-                widthFactor: value.clamp(0, 1),
-                child: DecoratedBox(
-                  key: fillKey,
-                  decoration: BoxDecoration(
-                    color: color,
-                    borderRadius: BorderRadius.circular(4.5),
-                  ),
+    return SizedBox(
+      height: height,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(height / 2),
+        child: DecoratedBox(
+          decoration: BoxDecoration(color: trackColor),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: FractionallySizedBox(
+              widthFactor: value.clamp(0, 1),
+              child: DecoratedBox(
+                key: fillKey,
+                decoration: BoxDecoration(
+                  color: fillGradient == null ? color : null,
+                  gradient: fillGradient,
+                  borderRadius: BorderRadius.circular(height / 2),
                 ),
+                child: showLeadingCap
+                    ? const Align(
+                        alignment: Alignment.centerLeft,
+                        child: SizedBox(
+                          width: 3,
+                          child: ColoredBox(color: Color(0xfff2ffff)),
+                        ),
+                      )
+                    : null,
               ),
             ),
           ),

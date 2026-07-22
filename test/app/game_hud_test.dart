@@ -27,11 +27,16 @@ void main() {
   testWidgets('portrait HUD keeps combat controls compact', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
+    tester.view.padding = const FakeViewPadding(top: 24);
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPadding);
     final source = FakeGameHudSource(
       bossName: null,
       bossHealthFraction: null,
+      playerLevel: 1,
+      currentExperience: 4,
+      experienceToNextLevel: 12,
       weaponLevelLabels: const [
         'Hwando Slash Lv. 6',
         'Talisman Lv. 6',
@@ -54,6 +59,17 @@ void main() {
       tester.getSize(find.byKey(const Key('hud-status'))).height,
       lessThanOrEqualTo(92),
     );
+    final pause = tester.getRect(find.byKey(const Key('hud-pause')));
+    final status = tester.getRect(find.byKey(const Key('hud-status')));
+    expect(status.top, greaterThanOrEqualTo(24));
+    expect(status.left, greaterThanOrEqualTo(pause.right));
+    expect(status.right, lessThanOrEqualTo(390));
+    expect(status.width, greaterThanOrEqualTo(310));
+    expect(
+      tester.widget<Text>(find.byKey(const Key('hud-player-level'))).data,
+      '레벨 1',
+    );
+    expect(find.text('4/12'), findsOneWidget);
     expect(find.byKey(const Key('hud-health-bar')), findsOneWidget);
     expect(find.byKey(const Key('hud-xp-bar')), findsOneWidget);
     expect(
@@ -62,11 +78,15 @@ void main() {
     );
     expect(
       tester.getSize(find.byKey(const Key('hud-xp-bar'))).height,
-      inInclusiveRange(8, 10),
+      inInclusiveRange(14, 18),
     );
+    final xpBar = tester.getRect(find.byKey(const Key('hud-xp-bar')));
+    final xpFill = tester.getRect(find.byKey(const Key('hud-xp-fill')));
+    expect(xpBar.width, greaterThanOrEqualTo(220));
+    expect(xpFill.width, closeTo(xpBar.width / 3, 0.5));
     expect(
       tester.getSize(find.byKey(const Key('virtual-joystick'))),
-      const Size(390, 844),
+      const Size(390, 820),
     );
     expect(
       tester.getSize(find.byKey(const Key('virtual-joystick-base'))),
@@ -243,6 +263,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        theme: ThemeData(splashFactory: NoSplash.splashFactory),
         home: GameHud(source: source, onPause: () => pauses += 1),
       ),
     );
@@ -281,6 +302,9 @@ class FakeGameHudSource implements GameHudSource {
     required this.bossName,
     required this.bossHealthFraction,
     required this.weaponLevelLabels,
+    this.playerLevel = 9,
+    this.currentExperience = 4,
+    this.experienceToNextLevel = 12,
     this.combatNotice,
     this.combatNoticeSecondsRemaining = 0,
     this.killStreak = 0,
@@ -303,11 +327,11 @@ class FakeGameHudSource implements GameHudSource {
   @override
   String get playerHealthLabel => '80/100';
   @override
-  int get playerLevel => 9;
+  final int playerLevel;
   @override
-  int get currentExperience => 4;
+  final int currentExperience;
   @override
-  int get experienceToNextLevel => 12;
+  final int experienceToNextLevel;
   @override
   int get enemyCount => 20;
   @override

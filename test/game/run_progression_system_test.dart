@@ -14,9 +14,10 @@ void main() {
     test('adds experience without leveling when below the threshold', () {
       final progression = RunProgressionSystem();
 
-      final leveledUp = progression.addExperience(10);
+      final result = progression.addExperience(10);
 
-      expect(leveledUp, isFalse);
+      expect(result.leveledUp, isFalse);
+      expect(result.levelsGained, 0);
       expect(progression.level, 1);
       expect(progression.currentExperience, 10);
       expect(progression.experienceToNextLevel, 11);
@@ -25,9 +26,10 @@ void main() {
     test('levels up and carries overflow experience', () {
       final progression = RunProgressionSystem();
 
-      final leveledUp = progression.addExperience(14);
+      final result = progression.addExperience(14);
 
-      expect(leveledUp, isTrue);
+      expect(result.leveledUp, isTrue);
+      expect(result.levelsGained, 1);
       expect(progression.level, 2);
       expect(progression.currentExperience, 3);
       expect(progression.experienceToNextLevel, 13);
@@ -36,8 +38,8 @@ void main() {
     test('ignores zero and negative experience', () {
       final progression = RunProgressionSystem();
 
-      expect(progression.addExperience(0), isFalse);
-      expect(progression.addExperience(-1), isFalse);
+      expect(progression.addExperience(0).leveledUp, isFalse);
+      expect(progression.addExperience(-1).leveledUp, isFalse);
       expect(progression.currentExperience, 0);
     });
 
@@ -70,11 +72,11 @@ void main() {
         expect(progression.level, 1);
         expect(progression.experienceRequiredForLevel(1, multiplier: 0.85), 10);
         expect(
-          progression.addExperience(0, requirementMultiplier: 0.85),
+          progression.addExperience(0, requirementMultiplier: 0.85).leveledUp,
           isFalse,
         );
         expect(
-          progression.addExperience(1, requirementMultiplier: 0.85),
+          progression.addExperience(1, requirementMultiplier: 0.85).leveledUp,
           isTrue,
         );
       },
@@ -85,12 +87,24 @@ void main() {
       var upgrades = 0;
 
       for (var index = 0; index < 177; index += 1) {
-        if (system.addExperience(1)) upgrades += 1;
+        upgrades += system.addExperience(1).levelsGained;
       }
 
       expect(system.experienceRequiredForLevel(1), 11);
       expect(system.experienceRequiredForLevel(10), 29);
       expect(upgrades, 9);
+    });
+
+    test('reports every level crossed by one experience collection', () {
+      final progression = RunProgressionSystem();
+
+      final result = progression.addExperience(24);
+
+      expect(result.levelsGained, 2);
+      expect(result.leveledUp, isTrue);
+      expect(progression.level, 3);
+      expect(progression.currentExperience, 0);
+      expect(progression.experienceToNextLevel, 15);
     });
   });
 }

@@ -183,7 +183,12 @@ Future<void> _pumpSurface(
   Widget surface, {
   bool settle = false,
 }) async {
-  await tester.pumpWidget(MaterialApp(home: surface));
+  await tester.pumpWidget(
+    MaterialApp(
+      theme: ThemeData(splashFactory: NoSplash.splashFactory),
+      home: surface,
+    ),
+  );
   if (settle) {
     await tester.pumpAndSettle();
   } else {

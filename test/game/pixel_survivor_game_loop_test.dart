@@ -652,6 +652,7 @@ void main() {
       expect(game.currentExperience, 0);
       expect(game.isLevelUpPending, isTrue);
       expect(game.pendingLevelUpChoices, isNotEmpty);
+      expect(game.pendingLevelChoiceCount, 1);
       for (final choice in game.pendingLevelUpChoices.where(
         (choice) => choice.type == LevelUpChoiceType.weapon,
       )) {
@@ -660,6 +661,60 @@ void main() {
           1,
         );
       }
+    });
+
+    test('queues one choice for every level crossed in one collection', () {
+      final game = newGame()
+        ..unlockedWeaponIds.add(hwandoSlash)
+        ..unlockedAugmentIds.add(martialTraining);
+
+      final leveledUp = game.gainExperience(24);
+
+      expect(leveledUp, isTrue);
+      expect(game.playerLevel, 3);
+      expect(game.pendingLevelChoiceCount, 2);
+
+      final firstChoices = game.pendingLevelUpChoices;
+      game.applyLevelUpChoice(firstChoices.first);
+
+      expect(game.pendingLevelChoiceCount, 1);
+      expect(game.isLevelUpPending, isTrue);
+      expect(game.pendingLevelUpChoices, isNotEmpty);
+
+      game.applyLevelUpChoice(game.pendingLevelUpChoices.first);
+
+      expect(game.pendingLevelChoiceCount, 0);
+      expect(game.isLevelUpPending, isFalse);
+    });
+
+    test('keeps later level choices while an overlay choice is pending', () {
+      final game = newGame()
+        ..unlockedWeaponIds.add(hwandoSlash)
+        ..unlockedAugmentIds.add(martialTraining);
+
+      game.gainExperience(11);
+      final firstChoices = game.pendingLevelUpChoices;
+      game.gainExperience(13);
+
+      expect(game.playerLevel, 3);
+      expect(game.pendingLevelChoiceCount, 2);
+      expect(game.pendingLevelUpChoices, equals(firstChoices));
+
+      game.applyLevelUpChoice(firstChoices.first);
+
+      expect(game.pendingLevelChoiceCount, 1);
+      expect(game.isLevelUpPending, isTrue);
+    });
+
+    test('bounds accumulated level choices from oversized experience', () {
+      final game = newGame();
+
+      game.gainExperience(20000);
+
+      expect(
+        game.pendingLevelChoiceCount,
+        PixelSurvivorGame.maxPendingLevelChoiceCount,
+      );
     });
 
     test('applyLevelUpChoice upgrades a weapon and clears pending state', () {
