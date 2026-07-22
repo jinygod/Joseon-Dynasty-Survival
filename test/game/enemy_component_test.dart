@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:ui';
 
 import 'package:flame/components.dart';
@@ -12,6 +13,27 @@ import 'package:pixel_survivor/game/systems/enemy_behavior_controller.dart';
 
 void main() {
   group('EnemyComponent', () {
+    test('representative enemies keep collisions but use approved sizes', () {
+      for (final entry in const {
+        plagueRatSwarm: 32.0,
+        vengefulSpirit: 40.0,
+        sakkatSpecter: 40.0,
+        dokkaebi: 44.0,
+      }.entries) {
+        final enemy = EnemyComponent.fromDefinition(
+          enemyDefinitionFor(entry.key)!,
+        );
+
+        expect(enemy.size, Vector2.all(18), reason: entry.key);
+        expect(enemy.visualSize, entry.value, reason: entry.key);
+        expect(
+          EnemySpriteSheet.specs[entry.key]!.frameSize,
+          128,
+          reason: entry.key,
+        );
+      }
+    });
+
     test('normal enemy keeps its hitbox while doubling its visual size', () {
       final enemy = EnemyComponent.fromDefinition(enemyDefinitionFor(bandit)!);
 
@@ -320,12 +342,154 @@ void main() {
         plagueRatSwarm,
         bandit,
         dokkaebi,
+        sakkatSpecter,
         vengefulSpirit,
         fallenGeneral,
       });
-      expect(EnemySpriteSheet.specs, isNot(contains(sakkatSpecter)));
-      expect(EnemySpriteSheet.specs[plagueRatSwarm]!.frameSize, 24);
+      expect(EnemySpriteSheet.specs[plagueRatSwarm]!.frameSize, 128);
+      expect(EnemySpriteSheet.specs[vengefulSpirit]!.frameSize, 128);
+      expect(EnemySpriteSheet.specs[sakkatSpecter]!.frameSize, 128);
+      expect(EnemySpriteSheet.specs[dokkaebi]!.frameSize, 128);
+      expect(
+        EnemySpriteSheet.specs[plagueRatSwarm]!.assetKey,
+        'monsters/plague_rat_swarm_128.png',
+      );
+      expect(
+        EnemySpriteSheet.specs[vengefulSpirit]!.assetKey,
+        'monsters/vengeful_spirit_128.png',
+      );
+      expect(
+        EnemySpriteSheet.specs[sakkatSpecter]!.assetKey,
+        'monsters/sakkat_specter_128.png',
+      );
+      expect(
+        EnemySpriteSheet.specs[dokkaebi]!.assetKey,
+        'monsters/dokkaebi_128.png',
+      );
+      expect(EnemySpriteSheet.specs[bandit]!.frameSize, 32);
       expect(EnemySpriteSheet.specs[fallenGeneral]!.frameSize, 64);
+    });
+
+    test('representative atlases build real role animation maps', () async {
+      for (final id in const [
+        plagueRatSwarm,
+        vengefulSpirit,
+        sakkatSpecter,
+        dokkaebi,
+      ]) {
+        final spec = EnemySpriteSheet.specs[id]!;
+        final image = await _loadEnemyAtlas(spec);
+        addTearDown(image.dispose);
+        final animations = EnemySpriteSheet.animations(image, spec);
+
+        expect(
+          animations[EnemyAnimationState.moving]!.frames,
+          hasLength(4),
+          reason: '$id move',
+        );
+        expect(
+          animations[EnemyAnimationState.attacking]!.frames,
+          hasLength(4),
+          reason: '$id attack',
+        );
+        expect(
+          animations[EnemyAnimationState.hit]!.frames,
+          hasLength(2),
+          reason: '$id hit',
+        );
+        expect(
+          animations[EnemyAnimationState.death]!.frames,
+          hasLength(6),
+          reason: '$id death',
+        );
+        expect(
+          animations[EnemyAnimationState.moving]!
+              .frames
+              .first
+              .sprite
+              .srcPosition,
+          Vector2(0, 0),
+          reason: '$id move frame 0',
+        );
+        expect(
+          animations[EnemyAnimationState.attacking]!
+              .frames
+              .first
+              .sprite
+              .srcPosition,
+          Vector2(0, 128),
+          reason: '$id attack frame 4',
+        );
+        expect(
+          animations[EnemyAnimationState.hit]!.frames.first.sprite.srcPosition,
+          Vector2(0, 256),
+          reason: '$id hit frame 8',
+        );
+        expect(
+          animations[EnemyAnimationState.death]!
+              .frames
+              .first
+              .sprite
+              .srcPosition,
+          Vector2(256, 256),
+          reason: '$id death frame 10',
+        );
+      }
+    });
+
+    test(
+      'dash warning holds frame four then active dash replays attack',
+      () async {
+        final spec = EnemySpriteSheet.specs[vengefulSpirit]!;
+        final image = await _loadEnemyAtlas(spec);
+        addTearDown(image.dispose);
+        final enemy = EnemyComponent.fromDefinition(
+          enemyDefinitionFor(vengefulSpirit)!,
+          targetPositionProvider: (_) => Vector2(100, 0),
+        )..animations = EnemySpriteSheet.animations(image, spec);
+        enemy.current = EnemyAnimationState.moving;
+
+        enemy.update(enemy.behaviorProfile.cooldownSeconds + 0.01);
+
+        expect(enemy.attackPhase, EnemyBehaviorPhase.warning);
+        expect(enemy.visualState, EnemyAnimationState.attacking);
+        expect(enemy.animationTicker!.currentIndex, 0);
+        expect(enemy.animationTicker!.isPaused, isTrue);
+
+        enemy.playAttack();
+        expect(enemy.animationTicker!.currentIndex, 0);
+        expect(enemy.animationTicker!.isPaused, isTrue);
+
+        enemy.update(enemy.behaviorProfile.warningSeconds);
+
+        expect(enemy.attackPhase, EnemyBehaviorPhase.active);
+        expect(enemy.visualState, EnemyAnimationState.attacking);
+        expect(enemy.animationTicker!.currentIndex, 0);
+        expect(enemy.animationTicker!.isPaused, isFalse);
+        enemy.update(0.09);
+        expect(enemy.animationTicker!.currentIndex, greaterThan(0));
+      },
+    );
+
+    test('hit flash does not cancel a ranged warning pose', () async {
+      final spec = EnemySpriteSheet.specs[sakkatSpecter]!;
+      final image = await _loadEnemyAtlas(spec);
+      addTearDown(image.dispose);
+      final enemy = EnemyComponent.fromDefinition(
+        enemyDefinitionFor(sakkatSpecter)!,
+        targetPositionProvider: (_) => Vector2(100, 0),
+      )..animations = EnemySpriteSheet.animations(image, spec);
+      enemy.current = EnemyAnimationState.moving;
+
+      enemy.update(0);
+      expect(enemy.attackPhase, EnemyBehaviorPhase.warning);
+      enemy.registerHit();
+
+      expect(enemy.isHitFlashing, isTrue);
+      expect(enemy.attackPhase, EnemyBehaviorPhase.warning);
+      expect(enemy.visualState, EnemyAnimationState.attacking);
+      expect(enemy.animationTicker!.currentIndex, 0);
+      expect(enemy.animationTicker!.isPaused, isTrue);
     });
 
     test('lethal damage keeps death visuals alive for their full sequence', () {
@@ -344,4 +508,12 @@ void main() {
       expect(enemy.deathVisualComplete, isTrue);
     });
   });
+}
+
+Future<Image> _loadEnemyAtlas(EnemySpriteSpec spec) async {
+  final bytes = File('assets/images/${spec.assetKey}').readAsBytesSync();
+  final codec = await instantiateImageCodec(bytes);
+  final frame = await codec.getNextFrame();
+  codec.dispose();
+  return frame.image;
 }

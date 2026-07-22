@@ -74,22 +74,18 @@ void main() {
         )
         .map((atlas) => atlas.id)
         .toSet();
-    expect(
-      temporarilyUnbundledIds,
-      ReplaceableArtCatalog.representativeAtlasIds.difference({
-        'exorcist_dosa_balanced_casual',
-      }),
-    );
+    expect(temporarilyUnbundledIds, isEmpty);
 
-    final exorcist = ReplaceableArtCatalog.byId(
-      'exorcist_dosa_balanced_casual',
-    );
-    expect(File(exorcist.runtimePath).existsSync(), isTrue);
-    expect(
-      exorcist.validatePngHeader(File(exorcist.runtimePath).readAsBytesSync()),
-      isEmpty,
-    );
-    expect(AssetCatalog.allPaths, contains(exorcist.runtimePath));
+    for (final id in ReplaceableArtCatalog.representativeAtlasIds) {
+      final atlas = ReplaceableArtCatalog.byId(id);
+      expect(File(atlas.runtimePath).existsSync(), isTrue, reason: id);
+      expect(
+        atlas.validatePngHeader(File(atlas.runtimePath).readAsBytesSync()),
+        isEmpty,
+        reason: id,
+      );
+      expect(AssetCatalog.allPaths, contains(atlas.runtimePath), reason: id);
+    }
   });
 
   test('frame lookup rejects coordinates outside the atlas contract', () {

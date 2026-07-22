@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 
 import '../combat/attack_spec.dart';
 import '../content/actor_render_sizes.dart';
+import '../content/actor_visual_spec.dart';
 import '../content/enemy_definitions.dart';
 import '../content/enemy_behavior_definitions.dart';
 import '../content/ids.dart';
@@ -56,17 +57,21 @@ abstract final class EnemySpriteSheet {
 
   static const specs = <EnemyId, EnemySpriteSpec>{
     plagueRatSwarm: EnemySpriteSpec(
-      assetKey: 'monsters/plague_rat_swarm_24.png',
-      frameSize: 24,
+      assetKey: 'monsters/plague_rat_swarm_128.png',
+      frameSize: 128,
     ),
     bandit: EnemySpriteSpec(assetKey: 'monsters/bandit_32.png', frameSize: 32),
     dokkaebi: EnemySpriteSpec(
-      assetKey: 'monsters/dokkaebi_32.png',
-      frameSize: 32,
+      assetKey: 'monsters/dokkaebi_128.png',
+      frameSize: 128,
+    ),
+    sakkatSpecter: EnemySpriteSpec(
+      assetKey: 'monsters/sakkat_specter_128.png',
+      frameSize: 128,
     ),
     vengefulSpirit: EnemySpriteSpec(
-      assetKey: 'monsters/vengeful_spirit_32.png',
-      frameSize: 32,
+      assetKey: 'monsters/vengeful_spirit_128.png',
+      frameSize: 128,
     ),
     fallenGeneral: EnemySpriteSpec(
       assetKey: 'monsters/fallen_general_64.png',
@@ -177,6 +182,7 @@ class EnemyComponent
   double _environmentalHasteFraction = 0;
   bool _deathZonePending = false;
   bool _blockFeedbackPending = false;
+  bool _attackTriggeredThisUpdate = false;
   final Vector2 knockbackVelocity = Vector2.zero();
   final Vector2 facingDirection = Vector2(1, 0);
   EnemyAnimationState visualState = EnemyAnimationState.moving;
@@ -186,7 +192,7 @@ class EnemyComponent
 
   bool get isDead => currentHealth <= 0;
   bool get isElite => rank == EnemyRank.elite;
-  double get visualSize => ActorRenderSizes.enemyVisualSize(rank);
+  double get visualSize => enemyVisualSpecFor(enemyId).visualSize;
   double get visualScale => visualSize / size.x;
   bool get isDashing =>
       _behaviorController.phase == EnemyBehaviorPhase.active &&
@@ -268,6 +274,10 @@ class EnemyComponent
         _deathZonePending = true;
       }
       _setVisualState(EnemyAnimationState.death);
+    } else if (_behaviorController.phase == EnemyBehaviorPhase.warning) {
+      // The telegraph is gameplay information. Keep its first attack frame
+      // visible while the independent paint flash communicates this hit.
+      _holdAttackWarningPose();
     } else {
       _visualStateRemaining = EnemySpriteSheet.hitDurationSeconds;
       _setVisualState(EnemyAnimationState.hit);
@@ -276,7 +286,9 @@ class EnemyComponent
 
   void registerHit({Vector2? knockback}) {
     _hitFlashRemaining = _hitFlashSeconds;
-    if (!isDead) {
+    if (!isDead && _behaviorController.phase == EnemyBehaviorPhase.warning) {
+      _holdAttackWarningPose();
+    } else if (!isDead) {
       _visualStateRemaining = EnemySpriteSheet.hitDurationSeconds;
       _setVisualState(EnemyAnimationState.hit);
     }
@@ -289,8 +301,13 @@ class EnemyComponent
     if (isDead || visualState == EnemyAnimationState.hit) {
       return;
     }
+    if (_behaviorController.phase == EnemyBehaviorPhase.warning) {
+      _holdAttackWarningPose();
+      return;
+    }
     _visualStateRemaining = EnemySpriteSheet.attackDurationSeconds;
     _setVisualState(EnemyAnimationState.attacking);
+    animationTicker?.reset();
   }
 
   void playMove() {
@@ -391,8 +408,10 @@ class EnemyComponent
       _deathVisualElapsed += dt;
     }
 
+    _attackTriggeredThisUpdate = false;
     final target = targetPositionProvider?.call(position);
     if (target != null && !isDead) {
+      final phaseBeforeTick = _behaviorController.phase;
       final behavior = _tickBehavior(dt, target);
       final hasLockedAttackFacing =
           _behaviorProfile.kind == EnemyBehaviorKind.ranged &&
@@ -427,6 +446,7 @@ class EnemyComponent
           moveToward(target, dt);
         }
       }
+      _syncBehaviorVisual(phaseBeforeTick);
     }
 
     if (!isDead && knockbackVelocity.length2 > 0) {
@@ -438,10 +458,7 @@ class EnemyComponent
     }
 
     _hitFlashRemaining = math.max(0.0, _hitFlashRemaining - dt);
-    if (isDashing && visualState != EnemyAnimationState.hit) {
-      playAttack();
-    }
-    if (_visualStateRemaining > 0) {
+    if (!_attackTriggeredThisUpdate && _visualStateRemaining > 0) {
       _visualStateRemaining = math.max(0.0, _visualStateRemaining - dt);
       if (_visualStateRemaining == 0 && !isDead) {
         _setVisualState(EnemyAnimationState.moving);
@@ -465,12 +482,37 @@ class EnemyComponent
       );
       final attack = result.attack;
       if (attack != null) {
+        _attackTriggeredThisUpdate = true;
         if (_attackRequests.length == 2) _attackRequests.removeAt(0);
         _attackRequests.add(attack);
       }
       remaining -= step;
     }
     return result;
+  }
+
+  void _syncBehaviorVisual(EnemyBehaviorPhase phaseBeforeTick) {
+    final phase = _behaviorController.phase;
+    if (phase == EnemyBehaviorPhase.warning) {
+      if (phaseBeforeTick != phase ||
+          visualState != EnemyAnimationState.attacking ||
+          animationTicker?.isPaused != true) {
+        _holdAttackWarningPose();
+      }
+      return;
+    }
+    if (_attackTriggeredThisUpdate) {
+      playAttack();
+    }
+  }
+
+  void _holdAttackWarningPose() {
+    if (isDead) return;
+    _visualStateRemaining = 0;
+    _setVisualState(EnemyAnimationState.attacking);
+    animationTicker
+      ?..reset()
+      ..paused = true;
   }
 
   bool _blocksMovementForPhase() {

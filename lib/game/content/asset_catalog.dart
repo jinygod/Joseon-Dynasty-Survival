@@ -21,12 +21,11 @@ class AssetCatalog {
   };
 
   static const monsters = <String, String>{
-    'plague_rat_swarm': 'assets/images/monsters/plague_rat_swarm_24.png',
+    'plague_rat_swarm': 'assets/images/monsters/plague_rat_swarm_128.png',
     'bandit': 'assets/images/monsters/bandit_32.png',
-    'dokkaebi': 'assets/images/monsters/dokkaebi_32.png',
-    // Temporary content slot only. Runtime uses the authored fallback silhouette.
-    'sakkat_specter': 'assets/images/monsters/vengeful_spirit_32.png',
-    'vengeful_spirit': 'assets/images/monsters/vengeful_spirit_32.png',
+    'dokkaebi': 'assets/images/monsters/dokkaebi_128.png',
+    'sakkat_specter': 'assets/images/monsters/sakkat_specter_128.png',
+    'vengeful_spirit': 'assets/images/monsters/vengeful_spirit_128.png',
     'plague_crow': 'assets/images/monsters/plague_rat_swarm_24.png',
     'spear_bandit': 'assets/images/monsters/bandit_32.png',
     'rotten_herbalist': 'assets/images/monsters/bandit_32.png',

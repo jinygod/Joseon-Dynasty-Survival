@@ -55,6 +55,51 @@ void main() {
     codec.dispose();
   });
 
+  test(
+    'representative enemy atlases are transparent 512px RGBA sheets',
+    () async {
+      for (final path in const [
+        'assets/images/monsters/plague_rat_swarm_128.png',
+        'assets/images/monsters/vengeful_spirit_128.png',
+        'assets/images/monsters/sakkat_specter_128.png',
+        'assets/images/monsters/dokkaebi_128.png',
+      ]) {
+        final bytes = File(path).readAsBytesSync();
+
+        expect(_pngUint32(bytes, 16), 512, reason: path);
+        expect(_pngUint32(bytes, 20), 512, reason: path);
+        expect(bytes[25], 6, reason: '$path must be RGBA');
+
+        final codec = await ui.instantiateImageCodec(bytes);
+        final frame = await codec.getNextFrame();
+        final data = await frame.image.toByteData(
+          format: ui.ImageByteFormat.rawRgba,
+        );
+        final rgba = data!.buffer.asUint8List();
+        int alphaAt(int x, int y) => rgba[(y * 512 + x) * 4 + 3];
+
+        for (final corner in const [(0, 0), (511, 0), (0, 511), (511, 511)]) {
+          expect(alphaAt(corner.$1, corner.$2), 0, reason: '$path $corner');
+        }
+        for (final boundary in const [0, 127, 128, 255, 256, 383, 384, 511]) {
+          expect(
+            List.generate(512, (offset) => alphaAt(boundary, offset)),
+            everyElement(0),
+            reason: '$path vertical gutter $boundary',
+          );
+          expect(
+            List.generate(512, (offset) => alphaAt(offset, boundary)),
+            everyElement(0),
+            reason: '$path horizontal gutter $boundary',
+          );
+        }
+
+        frame.image.dispose();
+        codec.dispose();
+      }
+    },
+  );
+
   test('aggregate report is deterministic and covers bundled contracts', () {
     final images = bundledImagePathsFromDisk();
     final first = validateContentIntegrity(bundledImagePaths: images);
