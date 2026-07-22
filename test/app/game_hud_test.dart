@@ -97,6 +97,59 @@ void main() {
     );
   });
 
+  testWidgets('weapon slots expose name and level in the semantics tree', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    const label = '부적 투척 레벨 6';
+    final source = FakeGameHudSource(
+      bossName: null,
+      bossHealthFraction: null,
+      weaponLevelLabels: const [label],
+    );
+
+    await tester.pumpWidget(MaterialApp(home: GameHud(source: source)));
+
+    expect(
+      tester.getSemantics(find.byKey(const Key('hud-weapon-slot-0'))).label,
+      label,
+    );
+    semantics.dispose();
+  });
+
+  testWidgets('weapon marks follow weapon identity instead of slot index', (
+    tester,
+  ) async {
+    final source = FakeGameHudSource(
+      bossName: null,
+      bossHealthFraction: null,
+      weaponLevelLabels: const ['부적 투척 레벨 6', '각궁 사격 레벨 5', '환도 베기 레벨 6'],
+    );
+
+    await tester.pumpWidget(MaterialApp(home: GameHud(source: source)));
+
+    expect(find.byKey(const Key('hud-weapon-mark-0-talisman')), findsOneWidget);
+    expect(
+      find.byKey(const Key('hud-weapon-mark-1-projectile')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('hud-weapon-mark-2-hwando')), findsOneWidget);
+  });
+
+  testWidgets('a talisman-only legacy source still paints a talisman', (
+    tester,
+  ) async {
+    final source = FakeGameHudSource(
+      bossName: null,
+      bossHealthFraction: null,
+      weaponLevelLabels: const ['Talisman Lv. 4'],
+    );
+
+    await tester.pumpWidget(MaterialApp(home: GameHud(source: source)));
+
+    expect(find.byKey(const Key('hud-weapon-mark-0-talisman')), findsOneWidget);
+  });
+
   testWidgets('top status shows kills without a competing enemy count', (
     tester,
   ) async {
@@ -156,8 +209,8 @@ void main() {
   testWidgets('level-up card shows effect description', (tester) async {
     const choice = LevelUpChoice(
       id: 'inner_breath',
-      displayName: 'Inner Breath',
-      effectDescription: 'Maximum health +10 and recover 10 health.',
+      displayName: '내공 호흡',
+      effectDescription: '최대 체력 +10, 체력 10 회복',
       type: LevelUpChoiceType.augment,
       currentLevel: 0,
       nextLevel: 1,
@@ -170,6 +223,7 @@ void main() {
     );
 
     expect(find.text(choice.displayName), findsOneWidget);
+    expect(find.text('레벨 0 → 1'), findsOneWidget);
     expect(find.text(choice.effectDescription), findsOneWidget);
   });
 

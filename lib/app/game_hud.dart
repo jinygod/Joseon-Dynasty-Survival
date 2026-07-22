@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../game/content/weapon_definitions.dart';
 import '../l10n/app_strings.dart';
 import 'game_hud_source.dart';
 import 'virtual_joystick.dart';
@@ -263,6 +264,7 @@ class _StatusBar extends StatelessWidget {
 
     return Semantics(
       container: true,
+      explicitChildNodes: true,
       label: statusLabel,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 292),
@@ -276,10 +278,10 @@ class _StatusBar extends StatelessWidget {
             ),
             child: Padding(
               padding: const EdgeInsets.fromLTRB(8, 7, 8, 7),
-              child: ExcludeSemantics(
-                child: Column(
-                  children: [
-                    SizedBox(
+              child: Column(
+                children: [
+                  ExcludeSemantics(
+                    child: SizedBox(
                       height: 17,
                       child: Row(
                         children: [
@@ -311,20 +313,24 @@ class _StatusBar extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    _MeterBar(
+                  ),
+                  const SizedBox(height: 4),
+                  ExcludeSemantics(
+                    child: _MeterBar(
                       key: const Key('hud-health-bar'),
                       value: healthFraction,
                       color: const Color(0xffef5b5b),
                       trackColor: const Color(0xff48242d),
                       fillKey: const Key('hud-health-fill'),
                     ),
-                    const SizedBox(height: 4),
-                    SizedBox(
-                      height: 32,
-                      child: Row(
-                        children: [
-                          Expanded(
+                  ),
+                  const SizedBox(height: 4),
+                  SizedBox(
+                    height: 32,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: ExcludeSemantics(
                             child: _MeterBar(
                               key: const Key('hud-xp-bar'),
                               value: xpFraction,
@@ -334,18 +340,18 @@ class _StatusBar extends StatelessWidget {
                                   '${source.currentExperience}/${source.experienceToNextLevel}',
                             ),
                           ),
-                          const SizedBox(width: 6),
-                          KeyedSubtree(
-                            key: const Key('weapon-list'),
-                            child: _WeaponSlots(
-                              labels: source.weaponLevelLabels.take(3).toList(),
-                            ),
+                        ),
+                        const SizedBox(width: 6),
+                        KeyedSubtree(
+                          key: const Key('weapon-list'),
+                          child: _WeaponSlots(
+                            labels: source.weaponLevelLabels.take(3).toList(),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -428,29 +434,33 @@ class _WeaponSlot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const colors = [Color(0xffd9f7ff), Color(0xffffd6aa), Color(0xffe8c5ff)];
     final level = _levelFromLabel(label);
+    final style = _weaponMarkStyleForLabel(label);
+    final color = switch (style) {
+      _WeaponMarkStyle.hwando => const Color(0xffd9f7ff),
+      _WeaponMarkStyle.talisman => const Color(0xffffd6aa),
+      _WeaponMarkStyle.projectile => const Color(0xffe8c5ff),
+    };
     return Semantics(
+      container: true,
       label: label,
+      excludeSemantics: true,
       child: SizedBox.square(
         key: Key('hud-weapon-slot-$index'),
         dimension: 32,
         child: DecoratedBox(
           decoration: BoxDecoration(
             color: const Color(0xff172633),
-            border: Border.all(color: colors[index % colors.length]),
+            border: Border.all(color: color),
             borderRadius: BorderRadius.circular(7),
           ),
           child: Stack(
             children: [
               Center(
                 child: CustomPaint(
-                  key: Key('hud-weapon-mark-$index'),
+                  key: Key('hud-weapon-mark-$index-${style.name}'),
                   size: const Size.square(17),
-                  painter: _WeaponMarkPainter(
-                    variant: index % 3,
-                    color: colors[index % colors.length],
-                  ),
+                  painter: _WeaponMarkPainter(style: style, color: color),
                 ),
               ),
               Align(
@@ -484,10 +494,39 @@ class _WeaponSlot extends StatelessWidget {
   }
 }
 
-class _WeaponMarkPainter extends CustomPainter {
-  const _WeaponMarkPainter({required this.variant, required this.color});
+enum _WeaponMarkStyle { hwando, talisman, projectile }
 
-  final int variant;
+const _weaponMarkStyleById = <String, _WeaponMarkStyle>{
+  hwandoSlash: _WeaponMarkStyle.hwando,
+  talismanThrow: _WeaponMarkStyle.talisman,
+  gakgungShot: _WeaponMarkStyle.projectile,
+};
+
+const _weaponIdAliases = <String, List<String>>{
+  hwandoSlash: ['hwando slash', 'hwando'],
+  talismanThrow: ['talisman throw', 'talisman'],
+  gakgungShot: ['gakgung shot', 'gakgung', 'bow shot'],
+};
+
+_WeaponMarkStyle _weaponMarkStyleForLabel(String label) {
+  final normalized = label.toLowerCase();
+  for (final definition in weaponDefinitions) {
+    if (normalized.contains(definition.name.toLowerCase())) {
+      return _weaponMarkStyleById[definition.id] ?? _WeaponMarkStyle.projectile;
+    }
+  }
+  for (final entry in _weaponIdAliases.entries) {
+    if (entry.value.any(normalized.contains)) {
+      return _weaponMarkStyleById[entry.key] ?? _WeaponMarkStyle.projectile;
+    }
+  }
+  return _WeaponMarkStyle.projectile;
+}
+
+class _WeaponMarkPainter extends CustomPainter {
+  const _WeaponMarkPainter({required this.style, required this.color});
+
+  final _WeaponMarkStyle style;
   final Color color;
 
   @override
@@ -498,8 +537,8 @@ class _WeaponMarkPainter extends CustomPainter {
       ..strokeWidth = 2.4
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
-    switch (variant) {
-      case 0:
+    switch (style) {
+      case _WeaponMarkStyle.hwando:
         canvas.drawLine(
           Offset(size.width * .22, size.height * .78),
           Offset(size.width * .78, size.height * .22),
@@ -511,7 +550,7 @@ class _WeaponMarkPainter extends CustomPainter {
           paint..strokeWidth = 1.4,
         );
         return;
-      case 1:
+      case _WeaponMarkStyle.talisman:
         paint.style = PaintingStyle.fill;
         final talisman = RRect.fromRectAndRadius(
           Rect.fromCenter(
@@ -530,7 +569,7 @@ class _WeaponMarkPainter extends CustomPainter {
           paint,
         );
         return;
-      default:
+      case _WeaponMarkStyle.projectile:
         paint.style = PaintingStyle.fill;
         final path = Path()
           ..moveTo(size.width * .57, size.height * .08)
@@ -546,7 +585,7 @@ class _WeaponMarkPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _WeaponMarkPainter oldDelegate) =>
-      oldDelegate.variant != variant || oldDelegate.color != color;
+      oldDelegate.style != style || oldDelegate.color != color;
 }
 
 class _FittedHudText extends StatelessWidget {

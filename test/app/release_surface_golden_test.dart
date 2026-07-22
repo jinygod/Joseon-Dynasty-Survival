@@ -127,14 +127,6 @@ void main() {
           expect(slot, findsOneWidget);
           expect(
             tester
-                .widgetList<Semantics>(
-                  find.ancestor(of: slot, matching: find.byType(Semantics)),
-                )
-                .map((widget) => widget.properties.label),
-            contains(expectedWeaponLabels[index]),
-          );
-          expect(
-            tester
                 .widget<Text>(find.byKey(Key('hud-weapon-level-$index')))
                 .data,
             '${expectedWeaponLevels.values.elementAt(index)}',
@@ -208,9 +200,14 @@ Future<void> _expectGolden(
 }
 
 Future<void> _expectWeaponMarksPainted(WidgetTester tester) async {
+  const expectedMarks = [
+    (index: 0, style: 'hwando', color: (217, 247, 255)),
+    (index: 1, style: 'projectile', color: (232, 197, 255)),
+    (index: 2, style: 'talisman', color: (255, 214, 170)),
+  ];
   final marks = [
-    for (var index = 0; index < 3; index++)
-      find.byKey(Key('hud-weapon-mark-$index')),
+    for (final expected in expectedMarks)
+      find.byKey(Key('hud-weapon-mark-${expected.index}-${expected.style}')),
   ];
   for (final mark in marks) {
     expect(mark, findsOneWidget);
@@ -227,10 +224,9 @@ Future<void> _expectWeaponMarksPainted(WidgetTester tester) async {
   expect(rendered, isNotNull);
   expect(rendered!.pixels, isNotNull);
   final pixels = rendered.pixels!;
-  const expectedColors = [(217, 247, 255), (255, 214, 170), (232, 197, 255)];
   for (var index = 0; index < rects.length; index++) {
     final rect = rects[index];
-    final expected = expectedColors[index];
+    final expected = expectedMarks[index].color;
     var paintedPixels = 0;
     for (var y = rect.top.floor(); y < rect.bottom.ceil(); y++) {
       for (var x = rect.left.floor(); x < rect.right.ceil(); x++) {
