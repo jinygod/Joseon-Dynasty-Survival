@@ -944,6 +944,26 @@ void main() {
       expect(ExperienceGemComponent.visualScaleForValue(21), mergedScale);
     });
 
+    test(
+      'brightens halo opacity by value deterministically within a safe cap',
+      () {
+        final baseGem = ExperienceGemComponent(experienceValue: 1);
+        final mergedGem = ExperienceGemComponent(experienceValue: 1)
+          ..absorbExperience(20);
+        final sameValueGem = ExperienceGemComponent(experienceValue: 21);
+        final extremeValueGem = ExperienceGemComponent(experienceValue: 1)
+          ..absorbExperience(1000000);
+
+        expect(mergedGem.haloOpacity, greaterThan(baseGem.haloOpacity));
+        expect(mergedGem.haloOpacity, sameValueGem.haloOpacity);
+        expect(
+          extremeValueGem.haloOpacity,
+          greaterThanOrEqualTo(mergedGem.haloOpacity),
+        );
+        expect(extremeValueGem.haloOpacity, lessThanOrEqualTo(.40));
+      },
+    );
+
     test('canBePickedUpBy uses pickup radius distance', () {
       final player = PlayerComponent(
         slotIndex: 0,
