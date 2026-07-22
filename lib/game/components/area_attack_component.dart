@@ -8,6 +8,7 @@ import '../combat/attack_spec.dart';
 import '../content/combat_effect_atlas.dart';
 import '../content/ids.dart';
 import '../content/weapon_effect_atlas.dart';
+import '../content/weapon_visual_theme.dart';
 import '../models/damage_event.dart';
 import 'enemy_component.dart';
 import 'player_component.dart';
@@ -154,10 +155,11 @@ class AreaAttackComponent extends PositionComponent {
       );
       return;
     }
+    final theme = weaponVisualThemeFor(weaponId);
     final paint = Paint()
       ..color = (_hasTriggered
-          ? const Color(0xffffb703)
-          : const Color(0xffe63946).withValues(alpha: 0.38))
+          ? theme.primary.withValues(alpha: .82)
+          : theme.accent.withValues(alpha: 0.42))
       ..style = _hasTriggered ? PaintingStyle.fill : PaintingStyle.stroke
       ..strokeWidth = 2;
     if (angleRadians >= math.pi * 2) {

@@ -6,6 +6,7 @@ import 'package:flame/components.dart';
 
 import '../content/ids.dart';
 import '../content/weapon_effect_atlas.dart';
+import '../content/weapon_visual_theme.dart';
 import 'enemy_component.dart';
 
 class MeleeArcComponent extends PositionComponent {
@@ -94,10 +95,24 @@ class MeleeArcComponent extends PositionComponent {
       canvas.restore();
       return;
     }
-    final paint = Paint()
-      ..color = const Color(0xfff4ead2).withValues(alpha: 0.55)
+    final theme = weaponVisualThemeFor(weaponId);
+    final glowPaint = Paint()
+      ..color = theme.accent.withValues(alpha: 0.28)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 4;
+      ..strokeWidth = theme.trailWidth + 5
+      ..strokeCap = StrokeCap.round;
+    final paint = Paint()
+      ..color = theme.primary.withValues(alpha: 0.88)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = theme.trailWidth
+      ..strokeCap = StrokeCap.round;
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: range),
+      facingAngle - angleRadians / 2,
+      angleRadians,
+      false,
+      glowPaint,
+    );
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: range),
       facingAngle - angleRadians / 2,

@@ -7,6 +7,7 @@ import 'package:flame/components.dart';
 import 'enemy_component.dart';
 import '../content/ids.dart';
 import '../content/weapon_effect_atlas.dart';
+import '../content/weapon_visual_theme.dart';
 
 class ProjectileComponent extends PositionComponent {
   ProjectileComponent({
@@ -114,17 +115,55 @@ class ProjectileComponent extends PositionComponent {
       return;
     }
 
-    final paint = Paint()
-      ..color = isMasterLead
-          ? const Color(0xffffd66b)
-          : followUpIndex > 0
-          ? const Color(0xff8ecae6)
-          : const Color(0xfff2cc8f);
+    final theme = weaponVisualThemeFor(weaponId);
+    final center = Offset(size.x / 2, size.y / 2);
+    final direction = velocity.length2 == 0
+        ? Vector2(1, 0)
+        : velocity.normalized();
+    final trailLength = size.x * (isMasterLead ? theme.masterScale : 1.25);
+    canvas.drawLine(
+      center,
+      center - Offset(direction.x, direction.y) * trailLength,
+      Paint()
+        ..color = theme.accent.withValues(alpha: .72)
+        ..strokeWidth = theme.trailWidth
+        ..strokeCap = StrokeCap.round,
+    );
+    if (isMasterLead) {
+      canvas.drawCircle(
+        center,
+        size.x * .9,
+        Paint()..color = theme.primary.withValues(alpha: .22),
+      );
+    }
+    final paint = Paint()..color = theme.primary;
     final outlinePaint = Paint()
       ..color = const Color(0xff2f1b25)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5;
     final rect = Offset.zero & Size(size.x, size.y);
+    if (weaponId == 'hawk_summon') {
+      final path = Path()
+        ..moveTo(size.x, size.y / 2)
+        ..lineTo(0, 0)
+        ..lineTo(size.x * .28, size.y / 2)
+        ..lineTo(0, size.y)
+        ..close();
+      canvas.drawPath(path, paint);
+      canvas.drawPath(path, outlinePaint);
+      return;
+    }
+    if (weaponId == 'matchlock_cannon') {
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(rect, Radius.circular(size.y / 2)),
+        paint,
+      );
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(rect, Radius.circular(size.y / 2)),
+        outlinePaint,
+      );
+      return;
+    }
     canvas.drawOval(rect, paint);
     canvas.drawOval(rect, outlinePaint);
   }
