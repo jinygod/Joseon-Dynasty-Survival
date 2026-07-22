@@ -1732,6 +1732,10 @@ void main() {
         game.update(0);
 
         expect(game.currentExperience, 2);
+        expect(
+          game.children.whereType<ExperienceGemComponent>().single.size,
+          Vector2.all(20),
+        );
       },
     );
 

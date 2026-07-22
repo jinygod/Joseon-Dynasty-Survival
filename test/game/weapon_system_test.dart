@@ -923,6 +923,27 @@ void main() {
   });
 
   group('ExperienceGemComponent', () {
+    test('uses a larger visual footprint without changing pickup radius', () {
+      final gem = ExperienceGemComponent(experienceValue: 1);
+
+      expect(gem.size, Vector2.all(20));
+      expect(gem.pickupRadius, 28);
+    });
+
+    test('scales merged value visuals deterministically within a safe cap', () {
+      final gem = ExperienceGemComponent(experienceValue: 1);
+
+      gem.absorbExperience(20);
+      final mergedScale = gem.visualScale;
+
+      gem.absorbExperience(1000000);
+
+      expect(mergedScale, greaterThan(1));
+      expect(gem.visualScale, greaterThanOrEqualTo(mergedScale));
+      expect(gem.visualScale, lessThanOrEqualTo(1.65));
+      expect(ExperienceGemComponent.visualScaleForValue(21), mergedScale);
+    });
+
     test('canBePickedUpBy uses pickup radius distance', () {
       final player = PlayerComponent(
         slotIndex: 0,
