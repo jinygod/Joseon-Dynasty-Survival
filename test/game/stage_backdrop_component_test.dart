@@ -10,6 +10,7 @@ void main() {
     expect(backdrop.priority, -100);
     expect(backdrop.baseColor.computeLuminance(), greaterThan(.45));
     expect(backdrop.ownsCollision, isFalse);
+    expect(backdrop.cachedPaintCount, 4);
   });
 
   test('stage decorations are capped and deterministic for a viewport', () {
@@ -31,6 +32,8 @@ void main() {
     shadow.syncToTarget();
 
     expect(shadow.opacity, .18);
+    expect(shadow.width, 36);
+    expect(shadow.cachedPaintCount, 1);
     expect(shadow.size.y, closeTo(10.08, .0001));
     expect(shadow.position.x, 60);
     expect(shadow.position.y, 92);

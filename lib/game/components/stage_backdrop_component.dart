@@ -26,10 +26,20 @@ class StageBackdropComponent extends PositionComponent {
   static const Color _stoneLineColor = Color(0xff92a99d);
   static const Color _tileColor = Color(0xffb97c65);
 
+  final Paint _basePaint = Paint()..color = _baseColor;
+  final Paint _jadePatchPaint = Paint()
+    ..color = _jadePatchColor.withValues(alpha: .32);
+  final Paint _stoneLinePaint = Paint()
+    ..color = _stoneLineColor.withValues(alpha: .32);
+  final Paint _tilePaint = Paint()..color = _tileColor.withValues(alpha: .42);
+
   /// Documents that the stage is presentation-only; it never owns hitboxes.
   bool get ownsCollision => false;
 
   Color get baseColor => _baseColor;
+
+  /// The full render-time paint cache; no decoration allocates a [Paint].
+  int get cachedPaintCount => 4;
 
   final List<StageDecoration> _decorations = [];
 
@@ -44,7 +54,7 @@ class StageBackdropComponent extends PositionComponent {
 
   @override
   void render(Canvas canvas) {
-    canvas.drawRect(Offset.zero & size.toSize(), Paint()..color = baseColor);
+    canvas.drawRect(Offset.zero & size.toSize(), _basePaint);
 
     for (final decoration in _decorations) {
       final center = Offset(
@@ -57,16 +67,14 @@ class StageBackdropComponent extends PositionComponent {
         case StageDecorationKind.jadePatch:
           canvas.drawOval(
             Rect.fromCenter(center: center, width: width, height: height),
-            Paint()..color = _jadePatchColor.withValues(alpha: .32),
+            _jadePatchPaint,
           );
         case StageDecorationKind.stoneLine:
-          final paint = Paint()
-            ..color = _stoneLineColor.withValues(alpha: .32)
-            ..strokeWidth = math.max(1, math.min(2.5, height));
+          _stoneLinePaint.strokeWidth = math.max(1, math.min(2.5, height));
           canvas.drawLine(
             Offset(center.dx - width / 2, center.dy - height / 2),
             Offset(center.dx + width / 2, center.dy + height / 2),
-            paint,
+            _stoneLinePaint,
           );
         case StageDecorationKind.tileFragment:
           final tile = Rect.fromCenter(
@@ -80,7 +88,7 @@ class StageBackdropComponent extends PositionComponent {
           canvas.translate(-center.dx, -center.dy);
           canvas.drawRRect(
             RRect.fromRectAndRadius(tile, const Radius.circular(1.5)),
-            Paint()..color = _tileColor.withValues(alpha: .42),
+            _tilePaint,
           );
           canvas.restore();
       }

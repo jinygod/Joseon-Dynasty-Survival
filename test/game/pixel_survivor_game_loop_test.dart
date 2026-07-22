@@ -27,6 +27,7 @@ import 'package:pixel_survivor/game/combat/attack_geometry.dart';
 import 'package:pixel_survivor/game/combat/attack_spec.dart';
 import 'package:pixel_survivor/game/content/augment_definitions.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
+import 'package:pixel_survivor/game/content/actor_visual_spec.dart';
 import 'package:pixel_survivor/game/content/combat_effect_atlas.dart';
 import 'package:pixel_survivor/game/content/ids.dart';
 import 'package:pixel_survivor/game/content/enemy_definitions.dart';
@@ -205,10 +206,58 @@ void main() {
         expect(game.children.whereType<StageBackdropComponent>(), hasLength(1));
         final shadows = game.children.whereType<ActorShadowComponent>().toList();
         expect(shadows, hasLength(5));
+        final targets = shadows.map((shadow) => shadow.target).toList();
+        expect(targets.whereType<PlayerComponent>(), hasLength(1));
         expect(
-          shadows.every((shadow) => shadow.priority < 0),
-          isTrue,
+          targets.whereType<EnemyComponent>().map((enemy) => enemy.enemyId),
+          unorderedEquals([
+            plagueRatSwarm,
+            vengefulSpirit,
+            sakkatSpecter,
+            dokkaebi,
+          ]),
         );
+        final uniqueTargets = Set<PositionComponent>.identity()..addAll(targets);
+        expect(uniqueTargets, hasLength(5));
+        for (final shadow in shadows) {
+          final expectedWidth = switch (shadow.target) {
+            PlayerComponent player =>
+              playerVisualSpecFor(player.characterId).shadowWidth,
+            EnemyComponent enemy => enemyVisualSpecFor(
+              enemy.enemyId,
+              fallbackRank: enemy.rank,
+            ).shadowWidth,
+            _ => fail('A shadow must target a combat actor.'),
+          };
+          expect(shadow.width, closeTo(expectedWidth, .0001));
+          expect(shadow.priority, lessThan(shadow.target.priority));
+        }
+
+        final player = targets.whereType<PlayerComponent>().single;
+        final playerShadow = shadows.singleWhere(
+          (shadow) => identical(shadow.target, player),
+        );
+        final playerXBeforeMove = player.position.x;
+        game.updateMovementInput(const VectorInput(1, 0));
+        game.update(.1);
+        final recorder = PictureRecorder();
+        playerShadow.renderTree(Canvas(recorder));
+        recorder.endRecording();
+        expect(player.position.x, greaterThan(playerXBeforeMove));
+        expect(playerShadow.position.x, player.position.x);
+        expect(playerShadow.position.y, player.position.y + player.size.y / 2);
+
+        final removableEnemy = targets.whereType<EnemyComponent>().first;
+        final removableShadow = shadows.singleWhere(
+          (shadow) => identical(shadow.target, removableEnemy),
+        );
+        removableEnemy.removeFromParent();
+        game.processLifecycleEvents();
+        final cleanupRecorder = PictureRecorder();
+        removableShadow.renderTree(Canvas(cleanupRecorder));
+        cleanupRecorder.endRecording();
+        game.processLifecycleEvents();
+        expect(removableShadow.isMounted, isFalse);
       },
     );
     test(
