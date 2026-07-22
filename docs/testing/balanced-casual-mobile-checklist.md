@@ -21,6 +21,12 @@ thermal stability, or a player's willingness to start a second run.
       attacking, hit, and dying.
 - [ ] Plague-rat swarm, vengeful spirit, sakkat specter, and dokkaebi are
       distinguishable from silhouette alone at normal play distance.
+- [ ] The authored bandit remains readable beside the player and the larger
+      black-hat-assassin variant without looking like a player clone.
+- [ ] Plague crow, spear bandit, rotten herbalist, grave ember, black-hat
+      assassin, broken jangseung spirit, and sorrowful maiden ghost all render
+      as authored family art; no square enemy fallback appears while moving,
+      attacking, hit, or dying.
 - [ ] In the late window, count a representative frame and record whether
       30-55 live enemies are visible without losing the player position.
 - [ ] When enemies overlap, the dash and ranged warnings remain readable.
@@ -39,11 +45,17 @@ thermal stability, or a player's willingness to start a second run.
       and its short unique sound without repeatedly obscuring the HUD.
 - [ ] Visual direction, radius, and timing match the actual hit result for
       hwando master, talisman ward, and Sealing Slash.
+- [ ] Frost fields read as crystalline ice sigils rather than plain circles at
+      normal, strong, and master tiers.
+- [ ] Player projectiles retain a visible body, bright core, accent edge, and
+      directional trail over both pale terrain and crowded mastery effects.
 
 ## Enemy behavior and combat comfort
 
 - [ ] Dash warning gives enough time and direction information to evade.
 - [ ] Ranged warning and projectile remain visible through mastery effects.
+- [ ] Poison, shockwave, and scream hazards remain distinct from one another
+      and from player frost/ward areas at normal viewing distance.
 - [ ] Dokkaebi front shield direction is obvious, and side/rear or bypass hits
       communicate a different result.
 - [ ] Strong attacks use limited shake and hit-stop; ordinary attacks do not
@@ -51,6 +63,17 @@ thermal stability, or a player's willingness to start a second run.
 - [ ] No effect whites out the whole screen or hides an unavoidable enemy
       attack.
 - [ ] Damage numbers and repeated effects remain bounded in late combat.
+
+## Progress and pickup readability
+
+- [ ] The level badge and XP track remain fully inside the portrait SafeArea;
+      neither is clipped by the screen edge, pause button, or device cutout.
+- [ ] Current/required XP and the filled portion of the track are readable at
+      a glance without hiding the health/time/kills row.
+- [ ] Default and merged XP gems remain recognizable as cyan diamonds on pale
+      terrain, under enemies, and beside bright weapon effects.
+- [ ] A high-value merged gem is visibly larger/brighter than a one-XP gem but
+      does not imply a larger pickup radius.
 
 ## Physical Android performance and replay signal
 

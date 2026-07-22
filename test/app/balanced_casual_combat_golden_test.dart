@@ -7,10 +7,15 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/app/game_hud.dart';
 import 'package:pixel_survivor/game/combat/attack_spec.dart';
+import 'package:pixel_survivor/game/combat/combat_vfx_primitives.dart';
 import 'package:pixel_survivor/game/components/attack_effect_component.dart';
 import 'package:pixel_survivor/game/components/enemy_component.dart';
+import 'package:pixel_survivor/game/components/enemy_hazard_component.dart';
+import 'package:pixel_survivor/game/components/experience_gem_component.dart';
 import 'package:pixel_survivor/game/components/five_color_ward_component.dart';
+import 'package:pixel_survivor/game/components/frost_field_component.dart';
 import 'package:pixel_survivor/game/components/player_component.dart';
+import 'package:pixel_survivor/game/components/projectile_component.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
 import 'package:pixel_survivor/game/content/enemy_definitions.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
@@ -26,9 +31,8 @@ void main() {
   testWidgets('balanced casual early combat at 390x844', (tester) async {
     final fixture = await _pumpCombatFixture(tester, late: false);
 
-    expect(fixture.game.enemyCount, 8);
-    expect(fixture.enemyIds, containsAll(_representativeEnemyIds));
-    expect(find.byKey(const Key('hud-status')), findsOneWidget);
+    _expectReviewedSpectacleFrame(fixture);
+    _expectProgressHeader(fixture, tester);
 
     await expectLater(
       find.byKey(const Key('game-surface')),
@@ -71,10 +75,49 @@ void main() {
 const _goldenFontFamily = 'BalancedCasualGoldenTestFont';
 const _representativeEnemyIds = <String>{
   plagueRatSwarm,
+  bandit,
   vengefulSpirit,
   sakkatSpecter,
   dokkaebi,
+  plagueCrow,
+  spearBandit,
+  rottenHerbalist,
+  graveEmber,
+  blackHatAssassin,
+  brokenJangseungSpirit,
+  sorrowfulMaidenGhost,
 };
+
+const _priorMissingSpriteEnemyIds = <String>{
+  plagueCrow,
+  spearBandit,
+  rottenHerbalist,
+  graveEmber,
+  blackHatAssassin,
+  brokenJangseungSpirit,
+  sorrowfulMaidenGhost,
+};
+
+void _expectReviewedSpectacleFrame(_CombatFixture fixture) {
+  expect(fixture.game.enemyCount, greaterThanOrEqualTo(13));
+  expect(fixture.enemyIds, contains(bandit));
+  expect(fixture.enemyIds, containsAll(_priorMissingSpriteEnemyIds));
+  expect(fixture.game.children.whereType<FrostFieldComponent>(), isNotEmpty);
+  expect(fixture.game.children.whereType<ProjectileComponent>(), isNotEmpty);
+  expect(fixture.game.children.whereType<EnemyHazardComponent>(), isNotEmpty);
+  expect(fixture.enemies.any((enemy) => enemy.warningSnapshot != null), isTrue);
+  final gems = fixture.game.children.whereType<ExperienceGemComponent>();
+  expect(gems, isNotEmpty);
+  expect(gems.any((gem) => gem.visualScale > 1), isTrue);
+}
+
+void _expectProgressHeader(_CombatFixture fixture, WidgetTester tester) {
+  expect(fixture.game.currentExperience, greaterThan(0));
+  expect(find.byKey(const Key('hud-status')), findsOneWidget);
+  expect(find.byKey(const Key('hud-player-level')), findsOneWidget);
+  expect(find.byKey(const Key('hud-xp-bar')), findsOneWidget);
+  expect(find.byKey(const Key('hud-xp-fill')), findsOneWidget);
+}
 
 Future<_CombatFixture> _pumpCombatFixture(
   WidgetTester tester, {
@@ -170,10 +213,57 @@ Future<_CombatFixture> _pumpCombatFixture(
     game.resumeEngine();
     await tester.pump(const Duration(milliseconds: 1));
     game.pauseEngine();
+  } else {
+    expect(game.gainExperience(4), isFalse);
+    _addReviewedCombatPresentation(game);
+    game.resumeEngine();
+    await tester.pump(const Duration(milliseconds: 1));
+    game.pauseEngine();
   }
 
   expect(tester.takeException(), isNull);
   return _CombatFixture(game: game, enemies: enemies);
+}
+
+void _addReviewedCombatPresentation(PixelSurvivorGame game) {
+  game.add(
+    FrostFieldComponent(
+      weaponId: frostFlask,
+      damage: 0,
+      radius: 52,
+      durationSeconds: 30,
+      slowFraction: .25,
+      knockback: 0,
+      position: Vector2(100, 410),
+      tier: CombatVfxTier.master,
+    ),
+  );
+  game.add(
+    ProjectileComponent(
+      weaponId: singijeonVolley,
+      damage: 0,
+      position: Vector2(145, 535),
+      velocity: Vector2(80, -18),
+      lifetime: 30,
+      pierce: 99,
+      isMasterLead: true,
+      tier: CombatVfxTier.master,
+      size: Vector2.all(18),
+    ),
+  );
+  game.add(
+    EnemyHazardComponent.poison(
+      position: Vector2(295, 420),
+      damage: 0,
+      sourceId: 'golden-poison-warning',
+    ),
+  );
+  game.add(
+    ExperienceGemComponent(experienceValue: 1, position: Vector2(78, 720)),
+  );
+  game.add(
+    ExperienceGemComponent(experienceValue: 64, position: Vector2(300, 710)),
+  );
 }
 
 void _upgradeTo(PixelSurvivorGame game, String weaponId, int level) {
@@ -249,14 +339,19 @@ void _addLateMasteryPresentation(
 }
 
 List<Vector2> _earlyEnemyPositions() => [
-  Vector2(72, 250),
-  Vector2(195, 220),
-  Vector2(320, 278),
-  Vector2(82, 474),
-  Vector2(312, 492),
-  Vector2(110, 650),
-  Vector2(242, 650),
-  Vector2(330, 680),
+  Vector2(52, 175),
+  Vector2(145, 185),
+  Vector2(245, 180),
+  Vector2(338, 205),
+  Vector2(52, 300),
+  Vector2(335, 315),
+  Vector2(48, 505),
+  Vector2(340, 515),
+  Vector2(65, 615),
+  Vector2(155, 645),
+  Vector2(245, 635),
+  Vector2(335, 610),
+  Vector2(195, 750),
 ];
 
 List<Vector2> _lateEnemyPositions() => [
