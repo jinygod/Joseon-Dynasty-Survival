@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/content/augment_definitions.dart';
+import 'package:pixel_survivor/game/content/base_content_policy.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
 import 'package:pixel_survivor/game/content/stage_definitions.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
@@ -84,7 +85,7 @@ void main() {
     expect(restored.selectedCharacterId, rookieConstable);
     expect(restored.selectedStageId, moonlitAbandonedOffice);
     expect(restored.claimedRewardIds, isEmpty);
-    expect(restored.unlockedStageIds, {moonlitAbandonedOffice});
+    expect(restored.unlockedStageIds, BaseContentPolicy.stageIds);
     expect(restored.totalEliteKills, 0);
     expect(restored.victoryCount, 0);
   });
@@ -140,7 +141,7 @@ void main() {
 
       expect(restored.schemaVersion, SaveState.currentSchemaVersion);
       expect(restored.totalKills, 0);
-      expect(restored.unlockedCharacterIds, {rookieConstable});
+      expect(restored.unlockedCharacterIds, BaseContentPolicy.characterIds);
     });
 
     test('negative schema returns defaults', () {
@@ -171,22 +172,20 @@ void main() {
 
     expect(save.schemaVersion, SaveState.currentSchemaVersion);
     expect(save.totalKills, 0);
-    expect(save.unlockedCharacterIds, {rookieConstable});
+    expect(save.unlockedCharacterIds, BaseContentPolicy.characterIds);
   });
 
-  test('defaults include the starting character, weapons, and augments', () {
+  test('defaults include all base content and starting augments', () {
     final save = SaveState.defaults();
     final startingAugmentIds = augmentDefinitions
         .where((augment) => augment.startsUnlocked)
         .map((augment) => augment.id)
         .toSet();
 
-    expect(save.unlockedCharacterIds, contains(rookieConstable));
-    expect(save.unlockedWeaponIds, containsAll([hwandoSlash, gakgungShot]));
+    expect(save.unlockedCharacterIds, BaseContentPolicy.characterIds);
+    expect(save.unlockedWeaponIds, BaseContentPolicy.weaponIds);
     expect(save.unlockedAugmentIds, containsAll(startingAugmentIds));
-    expect(save.unlockedStageIds, {moonlitAbandonedOffice});
-    expect(save.unlockedCharacterIds, isNot(contains(exorcistDosa)));
-    expect(save.unlockedCharacterIds, isNot(contains(mountainHunter)));
+    expect(save.unlockedStageIds, BaseContentPolicy.stageIds);
   });
 
   test(
@@ -224,8 +223,8 @@ void main() {
 
     final restored = SaveState.fromJson(original.toJson());
 
-    expect(restored.unlockedCharacterIds, {rookieConstable, exorcistDosa});
-    expect(restored.unlockedWeaponIds, original.unlockedWeaponIds);
+    expect(restored.unlockedCharacterIds, BaseContentPolicy.characterIds);
+    expect(restored.unlockedWeaponIds, BaseContentPolicy.weaponIds);
     expect(
       restored.unlockedAugmentIds,
       containsAll(original.unlockedAugmentIds),
@@ -251,7 +250,7 @@ void main() {
     });
 
     expect(restored.schemaVersion, 3);
-    expect(restored.unlockedStageIds, {moonlitAbandonedOffice});
+    expect(restored.unlockedStageIds, BaseContentPolicy.stageIds);
     expect(restored.totalEliteKills, 0);
     expect(restored.victoryCount, 0);
     expect(restored.completedGoalIds, {'survive_3_minutes'});
@@ -269,12 +268,12 @@ void main() {
       'victoryCount': 'bad',
     });
 
-    expect(restored.unlockedCharacterIds, {rookieConstable, exorcistDosa});
+    expect(restored.unlockedCharacterIds, BaseContentPolicy.characterIds);
     expect(restored.unlockedWeaponIds, contains(talismanThrow));
     expect(restored.unlockedWeaponIds, isNot(contains('missing')));
     expect(restored.unlockedAugmentIds, contains(rapidReload));
     expect(restored.unlockedAugmentIds, isNot(contains('missing')));
-    expect(restored.unlockedStageIds, {moonlitAbandonedOffice, plagueMarket});
+    expect(restored.unlockedStageIds, BaseContentPolicy.stageIds);
     expect(restored.completedGoalIds, {'survive_3_minutes'});
     expect(restored.totalEliteKills, 0);
     expect(restored.victoryCount, 0);

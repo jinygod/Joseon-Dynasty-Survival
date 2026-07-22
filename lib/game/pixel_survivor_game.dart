@@ -36,6 +36,7 @@ import 'components/stage_backdrop_component.dart';
 import 'balance/meta_reward_balance.dart';
 import 'content/augment_definitions.dart';
 import 'content/actor_visual_spec.dart';
+import 'content/base_content_policy.dart';
 import 'content/boss_definitions.dart';
 import 'content/character_definitions.dart';
 import 'content/combat_effect_atlas.dart';
@@ -1732,13 +1733,7 @@ class PixelSurvivorGame extends FlameGame
   }
 
   void _addStartingRunUnlocks() {
-    unlockedWeaponIds.addAll(
-      contentPolicy.resolveWeaponIds(
-        weaponDefinitions
-            .where((definition) => definition.startsUnlocked)
-            .map((definition) => definition.id),
-      ),
-    );
+    unlockedWeaponIds.addAll(BaseContentPolicy.weaponIds);
     _addStartingAugments();
   }
 

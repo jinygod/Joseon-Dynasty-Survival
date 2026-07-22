@@ -257,7 +257,10 @@ void _expectPostV1Defaults(SaveState restored) {
   expect(restored.shopProgress, ShopProgress.empty);
   expect(restored.selectedCharacterId, rookieConstable);
   expect(restored.selectedStageId, moonlitAbandonedOffice);
-  expect(restored.unlockedStageIds, {moonlitAbandonedOffice});
+  expect(
+    restored.unlockedStageIds,
+    stageDefinitions.map((definition) => definition.id).toSet(),
+  );
   expect(restored.totalEliteKills, 0);
   expect(restored.victoryCount, 0);
   expect(restored.characterVictoryCounts, isEmpty);

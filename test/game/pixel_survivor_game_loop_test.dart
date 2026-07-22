@@ -449,7 +449,7 @@ void main() {
       );
     });
 
-    test('default construction keeps normal weapon availability', () {
+    test('default construction opens every implemented base weapon', () {
       final game = PixelSurvivorGame(
         playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
         onRunEnded: null,
@@ -457,10 +457,7 @@ void main() {
 
       expect(
         game.unlockedWeaponIds,
-        weaponDefinitions
-            .where((definition) => definition.startsUnlocked)
-            .map((definition) => definition.id)
-            .toSet(),
+        weaponDefinitions.map((definition) => definition.id).toSet(),
       );
     });
 

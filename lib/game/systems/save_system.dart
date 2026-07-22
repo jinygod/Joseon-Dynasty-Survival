@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../content/augment_definitions.dart';
+import '../content/base_content_policy.dart';
 import '../content/character_definitions.dart';
 import '../content/stage_definitions.dart';
 import '../content/unlock_definitions.dart';
@@ -45,19 +46,16 @@ class SaveState {
   static const currentSchemaVersion = 3;
 
   factory SaveState.defaults() {
-    final startingWeaponIds = weaponDefinitions
-        .where((weapon) => weapon.startsUnlocked)
-        .map((weapon) => weapon.id)
-        .toSet();
+    final startingWeaponIds = BaseContentPolicy.weaponIds;
 
     return SaveState(
-      unlockedCharacterIds: const {rookieConstable},
+      unlockedCharacterIds: BaseContentPolicy.characterIds,
       unlockedWeaponIds: startingWeaponIds,
       unlockedAugmentIds: augmentDefinitions
           .where((augment) => augment.startsUnlocked)
           .map((augment) => augment.id)
           .toSet(),
-      unlockedStageIds: const {moonlitAbandonedOffice},
+      unlockedStageIds: BaseContentPolicy.stageIds,
       completedGoalIds: const {},
       claimedRewardIds: const {},
       wallet: Wallet.empty,
@@ -93,10 +91,13 @@ class SaveState {
   static SaveState _fromSupportedJson(Map<String, dynamic> json) {
     final defaults = SaveState.defaults();
     final sourceSchemaVersion = json['schemaVersion'] as int? ?? 0;
-    final unlockedCharacterIds = _knownStringSet(
-      json['unlockedCharacterIds'],
-      characterDefinitions.map((definition) => definition.id),
-      fallback: defaults.unlockedCharacterIds,
+    final unlockedCharacterIds = BaseContentPolicy.includeBase(
+      _knownStringSet(
+        json['unlockedCharacterIds'],
+        characterDefinitions.map((definition) => definition.id),
+        fallback: defaults.unlockedCharacterIds,
+      ),
+      BaseContentPolicy.characterIds,
     );
     final unlockedStageIds = <String>{
       ..._knownStringSet(
@@ -123,20 +124,27 @@ class SaveState {
       unlockedStageIds,
       defaults.selectedStageId,
     );
-    return SaveState(
-      schemaVersion: currentSchemaVersion,
-      unlockedCharacterIds: unlockedCharacterIds,
-      unlockedWeaponIds: _knownStringSet(
+    final unlockedWeaponIds = BaseContentPolicy.includeBase(
+      _knownStringSet(
         json['unlockedWeaponIds'],
         weaponDefinitions.map((definition) => definition.id),
         fallback: defaults.unlockedWeaponIds,
       ),
+      BaseContentPolicy.weaponIds,
+    );
+    return SaveState(
+      schemaVersion: currentSchemaVersion,
+      unlockedCharacterIds: unlockedCharacterIds,
+      unlockedWeaponIds: unlockedWeaponIds,
       unlockedAugmentIds: _knownStringSet(
         json['unlockedAugmentIds'],
         augmentDefinitions.map((definition) => definition.id),
         fallback: defaults.unlockedAugmentIds,
       ),
-      unlockedStageIds: unlockedStageIds,
+      unlockedStageIds: BaseContentPolicy.includeBase(
+        unlockedStageIds,
+        BaseContentPolicy.stageIds,
+      ),
       completedGoalIds: _knownStringSet(
         json['completedGoalIds'],
         unlockGoals.map((goal) => goal.id),

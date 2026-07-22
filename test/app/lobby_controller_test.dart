@@ -38,7 +38,7 @@ void main() {
     expect(controller.takeRecoveryNotice(), isNull);
   });
 
-  test('load normalizes selections that are not unlocked', () async {
+  test('load preserves selections that are part of the base roster', () async {
     final store = _MemorySaveStore(
       SaveState.defaults().copyWith(
         selectedCharacterId: exorcistDosa,
@@ -49,8 +49,8 @@ void main() {
 
     await controller.load();
 
-    expect(controller.state.selectedCharacterId, rookieConstable);
-    expect(controller.state.selectedStageId, moonlitAbandonedOffice);
+    expect(controller.state.selectedCharacterId, exorcistDosa);
+    expect(controller.state.selectedStageId, plagueMarket);
   });
 
   test('marking compendium entries seen persists namespaced keys', () async {
@@ -69,12 +69,12 @@ void main() {
     });
   });
 
-  test('cannot persist a locked stage selection', () async {
+  test('cannot persist an unknown stage selection', () async {
     final store = _MemorySaveStore(SaveState.defaults());
     final controller = LobbyController(store: store);
     await controller.load();
 
-    await controller.selectStage(plagueMarket);
+    await controller.selectStage('missing_stage');
 
     expect(controller.state.selectedStageId, moonlitAbandonedOffice);
     expect(store.value.selectedStageId, moonlitAbandonedOffice);

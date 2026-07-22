@@ -101,7 +101,14 @@ void main() {
       expect(find.byType(RunSummaryScreen), findsOneWidget);
 
       final retryButton = find.byKey(const Key('result-retry'));
-      await tester.ensureVisible(retryButton);
+      await tester.scrollUntilVisible(
+        retryButton,
+        240,
+        scrollable: find.descendant(
+          of: find.byType(RunSummaryScreen),
+          matching: find.byType(Scrollable),
+        ),
+      );
       await tester.pump();
       await tester.tap(retryButton);
       await tester.pump();
