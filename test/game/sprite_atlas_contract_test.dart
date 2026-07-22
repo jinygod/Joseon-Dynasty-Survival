@@ -76,8 +76,20 @@ void main() {
         .toSet();
     expect(
       temporarilyUnbundledIds,
-      ReplaceableArtCatalog.representativeAtlasIds,
+      ReplaceableArtCatalog.representativeAtlasIds.difference({
+        'exorcist_dosa_balanced_casual',
+      }),
     );
+
+    final exorcist = ReplaceableArtCatalog.byId(
+      'exorcist_dosa_balanced_casual',
+    );
+    expect(File(exorcist.runtimePath).existsSync(), isTrue);
+    expect(
+      exorcist.validatePngHeader(File(exorcist.runtimePath).readAsBytesSync()),
+      isEmpty,
+    );
+    expect(AssetCatalog.allPaths, contains(exorcist.runtimePath));
   });
 
   test('frame lookup rejects coordinates outside the atlas contract', () {

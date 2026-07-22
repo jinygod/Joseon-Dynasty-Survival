@@ -6,29 +6,74 @@ import 'package:flame/components.dart';
 import 'package:flutter/services.dart';
 
 import '../content/actor_render_sizes.dart';
+import '../content/actor_visual_spec.dart';
+import '../content/character_definitions.dart';
+import '../content/ids.dart';
 import '../content/safe_asset_loader.dart';
 import '../content/visual_asset_load_policy.dart';
 import '../models/vector_input.dart';
 import '../systems/combat_feedback_tuning.dart';
 
-enum PlayerAnimationState { idle, walking, hit, death }
+enum PlayerAnimationState { idle, walking, attacking, hit, death }
 
 abstract final class PlayerSpriteSheet {
+  // Legacy single-frame art remains the fallback for characters that have not
+  // received an authored atlas yet.
   static const assetKey = 'player/exorcist_swordswoman_static_64.png';
   static final frameSize = Vector2.all(64);
   static final displaySize = Vector2.all(ActorRenderSizes.playerVisual);
   static const frameCount = 1;
+  static const authoredAssetKey = 'player/exorcist_dosa_128.png';
+  static final authoredFrameSize = Vector2.all(128);
+  static const moveFrames = [0, 1, 2, 3];
+  static const attackFrames = [4, 5, 6, 7];
+  static const hitFrames = [8, 9];
+  static const deathFrames = [10, 11, 12, 13, 14, 15];
+  static const attackDurationSeconds = 0.28;
   static const hitDurationSeconds = 0.20;
 
   static Sprite sprite(Image image) => Sprite(image, srcSize: frameSize);
+
+  static Map<PlayerAnimationState, SpriteAnimation> animations(Image image) {
+    SpriteAnimation animation(
+      List<int> frames,
+      double stepTime, {
+      bool loop = true,
+    }) => SpriteAnimation.fromFrameData(
+      image,
+      SpriteAnimationData.range(
+        start: frames.first,
+        end: frames.last,
+        amount: 16,
+        amountPerRow: 4,
+        stepTimes: List.filled(frames.length, stepTime),
+        textureSize: authoredFrameSize,
+        loop: loop,
+      ),
+    );
+
+    return {
+      PlayerAnimationState.idle: animation(moveFrames, 0.14),
+      PlayerAnimationState.walking: animation(moveFrames, 0.11),
+      PlayerAnimationState.attacking: animation(
+        attackFrames,
+        attackDurationSeconds / attackFrames.length,
+        loop: false,
+      ),
+      PlayerAnimationState.hit: animation(hitFrames, 0.10, loop: false),
+      PlayerAnimationState.death: animation(deathFrames, 0.11, loop: false),
+    };
+  }
 }
 
 class PlayerComponent
     extends SpriteAnimationGroupComponent<PlayerAnimationState> {
-  static const attackPoseDurationSeconds = 0.15;
+  static const attackPoseDurationSeconds =
+      PlayerSpriteSheet.attackDurationSeconds;
 
   PlayerComponent({
     required this.slotIndex,
+    this.characterId = rookieConstable,
     required this.maxHealth,
     required this.moveSpeed,
     double? currentHealth,
@@ -45,6 +90,7 @@ class PlayerComponent
   }
 
   final int slotIndex;
+  final CharacterId characterId;
   double maxHealth;
   double currentHealth;
   final double moveSpeed;
@@ -71,6 +117,8 @@ class PlayerComponent
   double get environmentalSlowFraction => _environmentalSlowFraction;
   Vector2? get lastMovementDirection => _lastMovementDirection?.clone();
   Vector2? get lastAttackDirection => _lastAttackDirection?.clone();
+  Vector2 get displaySize =>
+      Vector2.all(playerVisualSpecFor(characterId).visualSize);
   Vector2 get preferredAttackDirection =>
       (_lastMovementDirection ?? _lastAttackDirection ?? Vector2(1, 0)).clone();
 
@@ -137,7 +185,7 @@ class PlayerComponent
         _desiredFacingX = normalizedDirection.x.sign;
       }
     }
-    if (visualState != PlayerAnimationState.hit && isAlive) {
+    if (visualState != PlayerAnimationState.hit && !isAttacking && isAlive) {
       _setVisualState(
         _isMoving ? PlayerAnimationState.walking : PlayerAnimationState.idle,
       );
@@ -178,6 +226,7 @@ class PlayerComponent
       _desiredFacingX = normalizedDirection.x.sign;
     }
     _attackPoseRemaining = attackPoseDurationSeconds;
+    _setVisualState(PlayerAnimationState.attacking);
   }
 
   @override
@@ -193,19 +242,33 @@ class PlayerComponent
       // Pure game-loop tests intentionally run without a Flutter binding.
       return;
     }
+    final usesAuthoredAtlas = characterId == exorcistDosa;
+    final assetKey = usesAuthoredAtlas
+        ? PlayerSpriteSheet.authoredAssetKey
+        : PlayerSpriteSheet.assetKey;
     final image = await SafeAssetLoader.load(
-      load: () => findGame()!.images.load(PlayerSpriteSheet.assetKey),
+      load: () => findGame()!.images.load(assetKey),
       library: 'pixel_survivor player sprites',
-      assetKey: PlayerSpriteSheet.assetKey,
+      assetKey: assetKey,
     );
     if (image == null) return;
-    _sprite = PlayerSpriteSheet.sprite(image);
+    if (usesAuthoredAtlas) {
+      animations = PlayerSpriteSheet.animations(image);
+      current = visualState;
+    } else {
+      _sprite = PlayerSpriteSheet.sprite(image);
+    }
   }
 
   @override
   void update(double dt) {
     super.update(dt);
     _updateProceduralPose(dt);
+    if (visualState == PlayerAnimationState.attacking && !isAttacking) {
+      _setVisualState(
+        _isMoving ? PlayerAnimationState.walking : PlayerAnimationState.idle,
+      );
+    }
     if (visualState != PlayerAnimationState.hit) {
       return;
     }
@@ -234,26 +297,33 @@ class PlayerComponent
     if ((_desiredFacingX - _displayedFacingX).abs() < 0.001) {
       _displayedFacingX = _desiredFacingX;
     }
-    _attackPoseRemaining = math.max(0, _attackPoseRemaining - safeDt);
+    final timerDt = dt.isFinite && dt > 0 ? dt : 0.0;
+    _attackPoseRemaining = math.max(0, _attackPoseRemaining - timerDt);
   }
 
   void _setVisualState(PlayerAnimationState state) {
     visualState = state;
+    if (animations != null) {
+      current = state;
+    }
   }
 
   @override
   void render(Canvas canvas) {
     canvas.save();
     _applyProceduralPose(canvas);
-    super.render(canvas);
-    if (_sprite case final sprite?) {
+    if (animations != null) {
+      final renderScale = displaySize.x / size.x;
+      canvas
+        ..translate(size.x / 2, size.y)
+        ..scale(renderScale)
+        ..translate(-size.x / 2, -size.y);
+      super.render(canvas);
+    } else if (_sprite case final sprite?) {
       sprite.render(
         canvas,
-        position: Vector2(
-          (size.x - PlayerSpriteSheet.displaySize.x) / 2,
-          size.y - PlayerSpriteSheet.displaySize.y,
-        ),
-        size: PlayerSpriteSheet.displaySize,
+        position: Vector2((size.x - displaySize.x) / 2, size.y - displaySize.y),
+        size: displaySize,
         overridePaint: paint,
       );
     } else {

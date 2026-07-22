@@ -3,10 +3,55 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/components/player_component.dart';
+import 'package:pixel_survivor/game/content/character_definitions.dart';
 import 'package:pixel_survivor/game/models/vector_input.dart';
 
 void main() {
   group('PlayerComponent.applyInput', () {
+    test('exorcist uses authored attack frames and keeps collision size', () {
+      final player = PlayerComponent(
+        slotIndex: 0,
+        characterId: exorcistDosa,
+        maxHealth: 100,
+        moveSpeed: 120,
+      );
+
+      expect(player.size, Vector2.all(24));
+      expect(player.displaySize, Vector2.all(56));
+
+      player.playAttack(Vector2(1, 0));
+
+      expect(player.visualState, PlayerAnimationState.attacking);
+    });
+
+    test('authored attack returns to the current movement state', () {
+      final player = PlayerComponent(
+        slotIndex: 0,
+        characterId: exorcistDosa,
+        maxHealth: 100,
+        moveSpeed: 120,
+      );
+
+      player.applyInput(const VectorInput(1, 0), 0);
+      player.playAttack(Vector2(1, 0));
+      player.update(PlayerSpriteSheet.attackDurationSeconds);
+
+      expect(player.visualState, PlayerAnimationState.walking);
+      expect(player.isAttacking, isFalse);
+    });
+
+    test('authored atlas frame ranges follow the 4 by 4 contract', () {
+      expect(
+        PlayerSpriteSheet.authoredAssetKey,
+        'player/exorcist_dosa_128.png',
+      );
+      expect(PlayerSpriteSheet.authoredFrameSize, Vector2.all(128));
+      expect(PlayerSpriteSheet.moveFrames, [0, 1, 2, 3]);
+      expect(PlayerSpriteSheet.attackFrames, [4, 5, 6, 7]);
+      expect(PlayerSpriteSheet.hitFrames, [8, 9]);
+      expect(PlayerSpriteSheet.deathFrames, [10, 11, 12, 13, 14, 15]);
+    });
+
     test('normalizes diagonal movement so it does not exceed move speed', () {
       final player = PlayerComponent(
         slotIndex: 0,

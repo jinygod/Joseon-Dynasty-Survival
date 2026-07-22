@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/audio/audio_asset_catalog.dart';
@@ -17,6 +18,43 @@ import 'package:pixel_survivor/game/content/wave_definitions.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
 
 void main() {
+  test('exorcist atlas is a transparent 512px RGBA 4 by 4 sheet', () async {
+    final bytes = File(
+      'assets/images/player/exorcist_dosa_128.png',
+    ).readAsBytesSync();
+
+    expect(_pngUint32(bytes, 16), 512);
+    expect(_pngUint32(bytes, 20), 512);
+    expect(bytes[25], 6, reason: 'PNG IHDR color type must be RGBA');
+
+    final codec = await ui.instantiateImageCodec(bytes);
+    final frame = await codec.getNextFrame();
+    final data = await frame.image.toByteData(
+      format: ui.ImageByteFormat.rawRgba,
+    );
+    final rgba = data!.buffer.asUint8List();
+    int alphaAt(int x, int y) => rgba[(y * 512 + x) * 4 + 3];
+
+    for (final corner in const [(0, 0), (511, 0), (0, 511), (511, 511)]) {
+      expect(alphaAt(corner.$1, corner.$2), 0, reason: 'corner $corner');
+    }
+    for (final boundary in const [0, 127, 128, 255, 256, 383, 384, 511]) {
+      expect(
+        List.generate(512, (offset) => alphaAt(boundary, offset)),
+        everyElement(0),
+        reason: 'vertical cell gutter $boundary must be transparent',
+      );
+      expect(
+        List.generate(512, (offset) => alphaAt(offset, boundary)),
+        everyElement(0),
+        reason: 'horizontal cell gutter $boundary must be transparent',
+      );
+    }
+
+    frame.image.dispose();
+    codec.dispose();
+  });
+
   test('aggregate report is deterministic and covers bundled contracts', () {
     final images = bundledImagePathsFromDisk();
     final first = validateContentIntegrity(bundledImagePaths: images);
@@ -252,3 +290,9 @@ Set<String> bundledImagePathsFromDisk() => Directory('assets/images')
     .whereType<File>()
     .map((file) => file.path.replaceAll('\\', '/'))
     .toSet();
+
+int _pngUint32(List<int> bytes, int offset) =>
+    (bytes[offset] << 24) |
+    (bytes[offset + 1] << 16) |
+    (bytes[offset + 2] << 8) |
+    bytes[offset + 3];

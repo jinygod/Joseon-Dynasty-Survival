@@ -519,6 +519,7 @@ class PixelSurvivorGame extends FlameGame
     final character = _characterDefinitionFor(playerSlot.characterId);
     final player = PlayerComponent(
       slotIndex: playerSlot.index,
+      characterId: playerSlot.characterId,
       maxHealth: character.maxHealth,
       moveSpeed: character.moveSpeed,
       position: Vector2(size.x / 2, size.y / 2),

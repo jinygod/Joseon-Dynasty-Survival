@@ -93,6 +93,12 @@ void main() {
   });
 
   test('every catalog asset uses an approved native-size suffix', () {
+    expect(
+      JoseonArtStyle.hasApprovedSizeSuffix(
+        'assets/images/player/exorcist_dosa_128.png',
+      ),
+      isTrue,
+    );
     final paths = <String>[
       ...AssetCatalog.characters.values,
       ...AssetCatalog.monsters.values,
