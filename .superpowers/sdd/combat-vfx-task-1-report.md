@@ -139,3 +139,23 @@ required two-file focused command, each supplemental focused suite, and
 `flutter analyze` all completed successfully afterward. This is an environment
 tooling instability, not a task-source failure; it should be monitored if a
 single large test invocation is required later.
+
+## Review follow-up — transparent cell boundaries
+
+Review found that the bandit-atlas test checked transparent corners and frame
+occupancy but did not assert the full 4-by-4 gutter contract. The test now
+checks every pixel on both axes at `0/127/128/255/256/383/384/511`, matching
+the existing representative-atlas checks. This guards against medium-filtered
+frame bleed at all cell boundaries.
+
+This is a test-only coverage correction: the committed normalized PNG already
+had fully transparent gutters, so the newly added real-asset assertion passed
+immediately and no production/asset change was appropriate.
+
+Verification command:
+
+```text
+flutter test test/game/content_integrity_test.dart test/game/enemy_component_test.dart
+```
+
+Result: PASS, 39 tests.

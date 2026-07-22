@@ -42,6 +42,18 @@ void main() {
     for (final corner in const [(0, 0), (511, 0), (0, 511), (511, 511)]) {
       expect(alphaAt(corner.$1, corner.$2), 0, reason: 'corner $corner');
     }
+    for (final boundary in const [0, 127, 128, 255, 256, 383, 384, 511]) {
+      expect(
+        List.generate(512, (offset) => alphaAt(boundary, offset)),
+        everyElement(0),
+        reason: 'vertical cell gutter $boundary must be transparent',
+      );
+      expect(
+        List.generate(512, (offset) => alphaAt(offset, boundary)),
+        everyElement(0),
+        reason: 'horizontal cell gutter $boundary must be transparent',
+      );
+    }
     for (var row = 0; row < 4; row += 1) {
       for (var column = 0; column < 4; column += 1) {
         final occupied = <int>[];
