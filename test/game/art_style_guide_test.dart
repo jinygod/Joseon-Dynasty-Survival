@@ -5,6 +5,25 @@ import 'package:pixel_survivor/game/content/art_style_guide.dart';
 import 'package:pixel_survivor/game/content/asset_catalog.dart';
 
 void main() {
+  test('representative art brief locks the approved lineup', () {
+    final brief = File(
+      'docs/assets/prompts/balanced-casual-representative-set.md',
+    ).readAsStringSync();
+    for (final token in [
+      'exorcist_dosa',
+      'plague_rat_swarm',
+      'vengeful_spirit',
+      'sakkat_specter',
+      'dokkaebi',
+      '128x128',
+      '4x4',
+      'bold clean outline',
+      'Joseon',
+    ]) {
+      expect(brief, contains(token));
+    }
+  });
+
   test('palette colors are unique opaque ARGB values', () {
     expect(JoseonArtStyle.palette, hasLength(11));
     expect(JoseonArtStyle.palette.values.toSet(), hasLength(11));
