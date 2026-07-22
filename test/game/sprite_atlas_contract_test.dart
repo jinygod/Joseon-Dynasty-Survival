@@ -52,6 +52,7 @@ void main() {
       'vengeful_spirit_balanced_casual',
       'sakkat_specter_balanced_casual',
       'dokkaebi_balanced_casual',
+      'bandit_balanced_casual',
     });
 
     for (final id in ReplaceableArtCatalog.representativeAtlasIds) {

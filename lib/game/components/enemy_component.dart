@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import '../combat/attack_spec.dart';
 import '../content/actor_render_sizes.dart';
 import '../content/actor_visual_spec.dart';
+import '../content/boss_definitions.dart';
 import '../content/enemy_definitions.dart';
 import '../content/enemy_behavior_definitions.dart';
 import '../content/ids.dart';
@@ -64,7 +65,22 @@ abstract final class EnemySpriteSheet {
       assetKey: 'monsters/plague_rat_swarm_128.png',
       frameSize: 128,
     ),
-    bandit: EnemySpriteSpec(assetKey: 'monsters/bandit_32.png', frameSize: 32),
+    bandit: EnemySpriteSpec(
+      assetKey: 'monsters/bandit_128.png',
+      frameSize: 128,
+    ),
+    spearBandit: EnemySpriteSpec(
+      assetKey: 'monsters/bandit_128.png',
+      frameSize: 128,
+    ),
+    blackHatAssassin: EnemySpriteSpec(
+      assetKey: 'monsters/bandit_128.png',
+      frameSize: 128,
+    ),
+    maskedExecutioner: EnemySpriteSpec(
+      assetKey: 'monsters/bandit_128.png',
+      frameSize: 128,
+    ),
     dokkaebi: EnemySpriteSpec(
       assetKey: 'monsters/dokkaebi_128.png',
       frameSize: 128,
@@ -77,9 +93,33 @@ abstract final class EnemySpriteSheet {
       assetKey: 'monsters/vengeful_spirit_128.png',
       frameSize: 128,
     ),
+    graveEmber: EnemySpriteSpec(
+      assetKey: 'monsters/vengeful_spirit_128.png',
+      frameSize: 128,
+    ),
+    sorrowfulMaidenGhost: EnemySpriteSpec(
+      assetKey: 'monsters/vengeful_spirit_128.png',
+      frameSize: 128,
+    ),
+    plagueCrow: EnemySpriteSpec(
+      assetKey: 'monsters/plague_rat_swarm_128.png',
+      frameSize: 128,
+    ),
+    rottenHerbalist: EnemySpriteSpec(
+      assetKey: 'monsters/plague_rat_swarm_128.png',
+      frameSize: 128,
+    ),
+    plagueMagistrate: EnemySpriteSpec(
+      assetKey: 'monsters/plague_rat_swarm_128.png',
+      frameSize: 128,
+    ),
+    brokenJangseungSpirit: EnemySpriteSpec(
+      assetKey: 'monsters/dokkaebi_128.png',
+      frameSize: 128,
+    ),
     fallenGeneral: EnemySpriteSpec(
-      assetKey: 'monsters/fallen_general_64.png',
-      frameSize: 64,
+      assetKey: 'monsters/dokkaebi_128.png',
+      frameSize: 128,
     ),
   };
 
@@ -661,9 +701,26 @@ class EnemyComponent
         canvas.drawPath(body, bodyPaint);
         canvas.drawPath(body, outlinePaint);
       } else {
-        final rect = Offset.zero & Size(size.x, size.y);
-        canvas.drawRect(rect, bodyPaint);
-        canvas.drawRect(rect, outlinePaint);
+        final centerX = size.x / 2;
+        final head = Path()
+          ..addOval(
+            Rect.fromCircle(
+              center: Offset(centerX, size.y * .32),
+              radius: size.x * .23,
+            ),
+          );
+        final body = Path()
+          ..addOval(
+            Rect.fromCenter(
+              center: Offset(centerX, size.y * .68),
+              width: size.x * .72,
+              height: size.y * .58,
+            ),
+          );
+        canvas.drawPath(body, bodyPaint);
+        canvas.drawPath(body, outlinePaint);
+        canvas.drawPath(head, bodyPaint);
+        canvas.drawPath(head, outlinePaint);
       }
     }
     canvas.restore();

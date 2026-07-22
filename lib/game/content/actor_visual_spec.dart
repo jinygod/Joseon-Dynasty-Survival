@@ -37,6 +37,7 @@ ActorVisualSpec playerVisualSpecFor(CharacterId id) {
 /// a missing content record has a safe, readable rendering fallback.
 ActorVisualSpec enemyVisualSpecFor(EnemyId id, {EnemyRank? fallbackRank}) =>
     switch (id) {
+      bandit || spearBandit => _visualSpec(54),
       plagueRatSwarm => _visualSpec(32),
       vengefulSpirit || sakkatSpecter => _visualSpec(40),
       dokkaebi => _visualSpec(44),

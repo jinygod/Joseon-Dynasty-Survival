@@ -18,6 +18,50 @@ import 'package:pixel_survivor/game/content/wave_definitions.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
 
 void main() {
+  test('bandit atlas is a transparent 512px RGBA 4 by 4 sheet', () async {
+    final bytes = File(
+      'assets/images/monsters/bandit_128.png',
+    ).readAsBytesSync();
+
+    expect(
+      AssetCatalog.monsters[bandit],
+      'assets/images/monsters/bandit_128.png',
+    );
+    expect(_pngUint32(bytes, 16), 512);
+    expect(_pngUint32(bytes, 20), 512);
+    expect(bytes[25], 6, reason: 'PNG IHDR color type must be RGBA');
+
+    final codec = await ui.instantiateImageCodec(bytes);
+    final frame = await codec.getNextFrame();
+    final data = await frame.image.toByteData(
+      format: ui.ImageByteFormat.rawRgba,
+    );
+    final rgba = data!.buffer.asUint8List();
+    int alphaAt(int x, int y) => rgba[(y * 512 + x) * 4 + 3];
+
+    for (final corner in const [(0, 0), (511, 0), (0, 511), (511, 511)]) {
+      expect(alphaAt(corner.$1, corner.$2), 0, reason: 'corner $corner');
+    }
+    for (var row = 0; row < 4; row += 1) {
+      for (var column = 0; column < 4; column += 1) {
+        final occupied = <int>[];
+        for (var y = row * 128 + 1; y < (row + 1) * 128 - 1; y += 1) {
+          for (var x = column * 128 + 1; x < (column + 1) * 128 - 1; x += 1) {
+            occupied.add(alphaAt(x, y));
+          }
+        }
+        expect(
+          occupied.any((alpha) => alpha > 0),
+          isTrue,
+          reason: 'frame ${row * 4 + column} must contain bandit art',
+        );
+      }
+    }
+
+    frame.image.dispose();
+    codec.dispose();
+  });
+
   test('exorcist atlas is a transparent 512px RGBA 4 by 4 sheet', () async {
     final bytes = File(
       'assets/images/player/exorcist_dosa_128.png',

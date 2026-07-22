@@ -21,20 +21,20 @@ class AssetCatalog {
 
   static const monsters = <String, String>{
     'plague_rat_swarm': 'assets/images/monsters/plague_rat_swarm_128.png',
-    'bandit': 'assets/images/monsters/bandit_32.png',
+    'bandit': 'assets/images/monsters/bandit_128.png',
     'dokkaebi': 'assets/images/monsters/dokkaebi_128.png',
     'sakkat_specter': 'assets/images/monsters/sakkat_specter_128.png',
     'vengeful_spirit': 'assets/images/monsters/vengeful_spirit_128.png',
-    'plague_crow': 'assets/images/monsters/plague_rat_swarm_24.png',
-    'spear_bandit': 'assets/images/monsters/bandit_32.png',
-    'rotten_herbalist': 'assets/images/monsters/bandit_32.png',
-    'grave_ember': 'assets/images/monsters/vengeful_spirit_32.png',
-    'black_hat_assassin': 'assets/images/monsters/bandit_32.png',
-    'broken_jangseung_spirit': 'assets/images/monsters/dokkaebi_32.png',
-    'sorrowful_maiden_ghost': 'assets/images/monsters/vengeful_spirit_32.png',
-    'fallen_general': 'assets/images/monsters/fallen_general_64.png',
-    'plague_magistrate': 'assets/images/monsters/fallen_general_64.png',
-    'masked_executioner': 'assets/images/monsters/fallen_general_64.png',
+    'plague_crow': 'assets/images/monsters/plague_rat_swarm_128.png',
+    'spear_bandit': 'assets/images/monsters/bandit_128.png',
+    'rotten_herbalist': 'assets/images/monsters/plague_rat_swarm_128.png',
+    'grave_ember': 'assets/images/monsters/vengeful_spirit_128.png',
+    'black_hat_assassin': 'assets/images/monsters/bandit_128.png',
+    'broken_jangseung_spirit': 'assets/images/monsters/dokkaebi_128.png',
+    'sorrowful_maiden_ghost': 'assets/images/monsters/vengeful_spirit_128.png',
+    'fallen_general': 'assets/images/monsters/dokkaebi_128.png',
+    'plague_magistrate': 'assets/images/monsters/plague_rat_swarm_128.png',
+    'masked_executioner': 'assets/images/monsters/bandit_128.png',
   };
 
   static const weapons = <String, String>{

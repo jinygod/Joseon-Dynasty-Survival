@@ -8,6 +8,7 @@ import 'package:pixel_survivor/game/components/player_component.dart';
 import 'package:pixel_survivor/game/combat/attack_spec.dart';
 import 'package:pixel_survivor/game/content/enemy_definitions.dart';
 import 'package:pixel_survivor/game/content/ids.dart';
+import 'package:pixel_survivor/game/content/wave_definitions.dart';
 import 'package:pixel_survivor/game/models/damage_event.dart';
 import 'package:pixel_survivor/game/systems/enemy_behavior_controller.dart';
 
@@ -67,7 +68,7 @@ void main() {
       expect(enemy.damage, 8);
       expect(enemy.experienceValue, 1);
       expect(enemy.anchor, Anchor.center);
-      expect(enemy.paint.filterQuality, FilterQuality.none);
+      expect(enemy.paint.filterQuality, FilterQuality.medium);
     });
 
     test('representative 128px enemy art uses smooth downsampling', () {
@@ -398,19 +399,33 @@ void main() {
       expect(enemy.visualState, EnemyAnimationState.death);
     });
 
+    test('enemy sheets totally route every current stage enemy', () {
+      final stageEnemyIds = stageWaveDefinitions.values
+          .expand((waves) => waves)
+          .expand(
+            (wave) => [...wave.enemyWeights.keys, ...wave.eliteWeights.keys],
+          )
+          .toSet();
+      final definedEnemyIds = enemyDefinitions.map((enemy) => enemy.id).toSet();
+
+      expect(EnemySpriteSheet.specs.keys, containsAll(stageEnemyIds));
+      expect(EnemySpriteSheet.specs.keys, containsAll(definedEnemyIds));
+      expect(EnemySpriteSheet.specs[bandit]!.frameSize, 128);
+      expect(
+        EnemySpriteSheet.specs[bandit]!.assetKey,
+        'monsters/bandit_128.png',
+      );
+    });
+
     test('enemy sheets share the 4-4-2-6 frame contract', () {
       expect(EnemySpriteSheet.moveFrames, [0, 1, 2, 3]);
       expect(EnemySpriteSheet.attackFrames, [4, 5, 6, 7]);
       expect(EnemySpriteSheet.hitFrames, [8, 9]);
       expect(EnemySpriteSheet.deathFrames, [10, 11, 12, 13, 14, 15]);
-      expect(EnemySpriteSheet.specs.keys.toSet(), {
-        plagueRatSwarm,
-        bandit,
-        dokkaebi,
-        sakkatSpecter,
-        vengefulSpirit,
-        fallenGeneral,
-      });
+      expect(
+        EnemySpriteSheet.specs.keys,
+        containsAll(enemyDefinitions.map((enemy) => enemy.id)),
+      );
       expect(EnemySpriteSheet.specs[plagueRatSwarm]!.frameSize, 128);
       expect(EnemySpriteSheet.specs[vengefulSpirit]!.frameSize, 128);
       expect(EnemySpriteSheet.specs[sakkatSpecter]!.frameSize, 128);
@@ -431,8 +446,22 @@ void main() {
         EnemySpriteSheet.specs[dokkaebi]!.assetKey,
         'monsters/dokkaebi_128.png',
       );
-      expect(EnemySpriteSheet.specs[bandit]!.frameSize, 32);
-      expect(EnemySpriteSheet.specs[fallenGeneral]!.frameSize, 64);
+      expect(EnemySpriteSheet.specs[bandit]!.frameSize, 128);
+      expect(
+        EnemySpriteSheet.specs[bandit]!.assetKey,
+        'monsters/bandit_128.png',
+      );
+      expect(EnemySpriteSheet.specs[fallenGeneral]!.frameSize, 128);
+    });
+
+    test('fallback renderer never draws a full-body rectangle', () {
+      final source = File(
+        'lib/game/components/enemy_component.dart',
+      ).readAsStringSync();
+
+      expect(source, contains('final head = Path()'));
+      expect(source, contains('final body = Path()'));
+      expect(source, isNot(contains('canvas.drawRect(')));
     });
 
     test('representative atlases build real role animation maps', () async {
