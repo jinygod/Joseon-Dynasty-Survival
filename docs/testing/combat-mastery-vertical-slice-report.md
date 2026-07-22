@@ -117,3 +117,69 @@ web 산출물은
 실제 모바일 기기의 프로필 모드 RSS·heap·raster/frame timing, 실제 화면에서의 공격
 방향·타격 정렬·마스터 크기·적 경고 가시성·프레임 안정성, 그리고 주관적인 재미와
 두 번째 런 의향은 모두 미검증 상태로 남는다.
+
+## 2026-07-22 balanced-casual presentation verification
+
+The deterministic 390x844 fixtures use production actor components and the
+production hwando, talisman, and Sealing Slash attack data. The early fixture
+contains the representative player and all four representative enemy roles.
+The late fixture mounts 36 enemies and simultaneously renders a level-6
+hwando master circle, three level-6 five-color wards, and a Sealing Slash
+detonation under the compact HUD. Both committed PNGs were inspected at their
+original 390x844 resolution; neither is a placeholder composition.
+
+The fixed-seed five-minute run uses seed 3107 for 18,000 logical 60 Hz frames.
+The host harness now renders and processes presentation lifecycles each frame,
+matching the lifecycle that removes actor shadows on a real game frame while
+keeping the existing 512-component memory-proxy budget unchanged.
+
+- Overall average / maximum live enemies: 16.91872222222222 / 49
+- Late average / maximum live enemies: 30.326527777777777 / 49 across 7,200
+  samples after 180 seconds
+- Late average / minimum deterministic FPS: 59.998800023996225 /
+  59.99880002399952
+- Peak enemy / projectile / damage-number / combat-effect counts:
+  49 / 14 / 21 / 25
+- Peak mounted components / retained owners / memory proxy: 296 / 17 / 312
+- Population-budget violations / memory-proxy violations: 0 / 0
+- Twenty-seed regression: boss request, cap, pool, spawn-frame, late-role, and
+  fingerprint invariants passed for every seed
+
+Before the authorized density correction, the same seed averaged
+26.999444444444446 live enemies in the late window. The 270-second boss phase
+had reset pressure to 1.5-2.2 spawns per second. The smallest production
+correction keeps enemy HP, the post-boss 48-64 wave cap, and the global cap of
+96 unchanged, but holds post-boss pressure at 3.6-4.6 spawns per second. This
+raises the measured late average to 30.326527777777777
+while retaining zero population and memory-proxy violations. Physical Android
+FPS, thermal behavior, sound, touch comfort, subjective combat feel, and
+second-run intent remain unchecked in `balanced-casual-mobile-checklist.md`
+until observed on a device.
+
+### Task 9 final automated gates
+
+Every Flutter/Dart command used `TEMP` and `TMP` at
+`D:\CodexTemp\balanced-casual-art-overhaul` and the ASCII Flutter launcher
+`F:\bin\flutter.bat` (or `F:\bin\dart.bat`).
+
+| Gate | Result | Elapsed |
+| --- | --- | ---: |
+| `dart format --output=none --set-exit-if-changed lib test` | 282 files, 0 changed | 4.567 s |
+| `git diff --check` | exit 0 | 0.089 s |
+| `flutter analyze --no-pub` | no issues | 58.918 s |
+| `flutter test --no-pub -r compact` | 803 tests passed | 73.099 s |
+| `flutter build web --release --no-pub` | succeeded | 62.423 s |
+| `flutter build apk --debug --no-pub` | succeeded | 122.744 s |
+
+Build and review artifacts:
+
+- `build/web`: 78 files, 44,974,614 bytes total
+- `build/web/main.dart.js`: 3,349,613 bytes, SHA-256
+  `A1DFFC385C53D7D7E3D6A038C229CAA4478BAD95E1231F734C08D98E6AC930B2`
+- `build/app/outputs/flutter-apk/app-debug.apk`: 163,998,254 bytes,
+  SHA-256
+  `6319DBAD8C0215455554B1D49E786B1C5749915E8AC7B20A33B9D422E0A70B3D`
+- Early golden: 35,276 bytes, SHA-256
+  `34CA416AE1E75FBB41B4EA976EDE47778F4AA82F6486689CA5679B00950A9D77`
+- Late golden: 123,228 bytes, SHA-256
+  `08DFF0297DFB02A1400F3BBF8B122E860FBA31A2311D457EDE116303A04C4E48`

@@ -33,7 +33,7 @@ void main() {
     test('pre-boss cap peaks and boss phase stays populated', () {
       expect(wavePressureForSecond(240).maxActiveEnemies, 86);
       expect(wavePressureForSecond(269.999).maxActiveEnemies, 96);
-      expect(wavePressureForSecond(270).spawnsPerSecond, 1.5);
+      expect(wavePressureForSecond(270).spawnsPerSecond, 3.6);
       expect(wavePressureForSecond(329.999).maxActiveEnemies, 64);
     });
 

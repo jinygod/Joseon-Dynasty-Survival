@@ -7,7 +7,7 @@ void main() {
       final report = const ExperienceBalanceSimulator().simulate();
 
       expect(report.durationSeconds, 300);
-      expect(report.expectedSpawnedExperience, closeTo(1178.1654, 0.001));
+      expect(report.expectedSpawnedExperience, closeTo(1285.4341, 0.001));
       expect(
         defaultExperienceProfiles.map((profile) => profile.acquisitionRate),
         [0.18, 0.25, 0.30],
@@ -19,11 +19,11 @@ void main() {
       final report = const ExperienceBalanceSimulator().simulate();
 
       expect(report.profileResults.map((result) => result.levelUps), [
-        10,
-        12,
-        14,
+        11,
+        13,
+        15,
       ]);
-      expect(report.averageLevelUps, 12);
+      expect(report.averageLevelUps, 13);
       expect(report.minimumTargetLevelUps, 9);
       expect(report.maximumTargetLevelUps, 12);
       expect(report.meetsTargetBand, isFalse);

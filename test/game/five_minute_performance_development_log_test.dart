@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+import 'dart:ui' as ui;
 
 import 'package:flame/game.dart';
 import 'package:flutter/widgets.dart';
@@ -142,6 +143,10 @@ void main() {
           boss.currentHealth = 1000000000;
         }
         stopwatch.stop();
+        final recorder = ui.PictureRecorder();
+        game.render(ui.Canvas(recorder));
+        recorder.endRecording().dispose();
+        game.processLifecycleEvents();
         if (frame % observationIntervalFrames != 0) continue;
         final mountedComponentCount = game
             .descendants(includeSelf: true)
@@ -175,11 +180,13 @@ void main() {
       expect(game.elapsedSeconds, closeTo(300, 0.001));
       expect(log.sampleCount, frameCount ~/ observationIntervalFrames);
       expect(log.peakFrameStepMicros, frameStepMicros);
-      expect(log.averageActiveEnemies, closeTo(15.68288888888889, 1e-12));
-      expect(log.maximumActiveEnemies, 51);
+      expect(log.averageActiveEnemies, closeTo(16.91872222222222, 1e-12));
+      expect(log.maximumActiveEnemies, 49);
       expect(log.lateFrameSampleCount, 7200);
-      expect(log.lateAverageActiveEnemies, inInclusiveRange(27, 28));
-      expect(log.lateMaximumActiveEnemies, 51);
+      expect(log.lateAverageActiveEnemies, closeTo(30.326527777777777, 1e-12));
+      expect(log.lateAverageActiveEnemies, greaterThanOrEqualTo(30));
+      expect(log.lateAverageActiveEnemies, lessThanOrEqualTo(55));
+      expect(log.lateMaximumActiveEnemies, 49);
       expect(
         log.lateAverageSimulatedFps,
         closeTo(1000000 / frameStepMicros, 1e-9),
@@ -188,9 +195,9 @@ void main() {
         log.lateMinimumSimulatedFps,
         closeTo(1000000 / frameStepMicros, 1e-12),
       );
-      expect(log.peakMountedComponentCount, 262);
-      expect(log.peakRetainedOwnerCount, 13);
-      expect(log.peakMemoryProxyComponents, 272);
+      expect(log.peakMountedComponentCount, 296);
+      expect(log.peakRetainedOwnerCount, 17);
+      expect(log.peakMemoryProxyComponents, 312);
       for (final kind in GamePopulationKind.values) {
         expect(log.peakCounts[kind], greaterThan(0), reason: kind.name);
         expect(
@@ -200,11 +207,13 @@ void main() {
         );
       }
       expect(log.peakCounts, {
-        GamePopulationKind.enemy: 51,
+        GamePopulationKind.enemy: 49,
         GamePopulationKind.projectile: 14,
-        GamePopulationKind.damageNumber: 24,
-        GamePopulationKind.combatEffect: 23,
+        GamePopulationKind.damageNumber: 21,
+        GamePopulationKind.combatEffect: 25,
       });
+      expect(log.budgetViolationSamples, 0);
+      expect(log.memoryProxyViolationSamples, 0);
       expect(log.isWithinPopulationBudget, isTrue);
       expect(log.isWithinMemoryProxyBudget, isTrue);
       expect(log.isWithinLateFrameBudget, isTrue);
@@ -219,10 +228,10 @@ void main() {
       final json =
           jsonDecode(artifacts['production-high-risk-performance-log.json']!)
               as Map<String, dynamic>;
-      expect(json['averageActiveEnemies'], 15.68288888888889);
-      expect(json['maximumActiveEnemies'], 51);
-      expect(json['lateAverageActiveEnemies'], 27.236944444444443);
-      expect(json['lateMaximumActiveEnemies'], 51);
+      expect(json['averageActiveEnemies'], 16.91872222222222);
+      expect(json['maximumActiveEnemies'], 49);
+      expect(json['lateAverageActiveEnemies'], 30.326527777777777);
+      expect(json['lateMaximumActiveEnemies'], 49);
       expect(
         json['lateAverageSimulatedFps'],
         closeTo(1000000 / frameStepMicros, 1e-9),
@@ -236,7 +245,7 @@ void main() {
       final markdown = artifacts['production-high-risk-performance-log.md']!;
       expect(
         markdown,
-        contains('- Average / maximum active enemies: 15.68 / 51'),
+        contains('- Average / maximum active enemies: 16.92 / 49'),
       );
       expect(
         markdown,

@@ -10,8 +10,7 @@ import 'package:flame/components.dart';
 class ActorShadowComponent extends PositionComponent {
   ActorShadowComponent({required this.target, required double width})
     : opacity = .18,
-      _paint = Paint()
-        ..color = const Color(0xff13233c).withValues(alpha: .18),
+      _paint = Paint()..color = const Color(0xff13233c).withValues(alpha: .18),
       super(
         size: Vector2(width, width * .28),
         anchor: Anchor.center,
@@ -60,9 +59,6 @@ class ActorShadowComponent extends PositionComponent {
 
   @override
   void render(Canvas canvas) {
-    canvas.drawOval(
-      Offset.zero & size.toSize(),
-      _paint,
-    );
+    canvas.drawOval(Offset.zero & size.toSize(), _paint);
   }
 }
