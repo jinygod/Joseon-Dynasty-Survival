@@ -8,6 +8,7 @@ import 'package:pixel_survivor/game/components/combat_effect_component.dart';
 import 'package:pixel_survivor/game/components/damage_number_component.dart';
 import 'package:pixel_survivor/game/components/projectile_component.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
+import 'package:pixel_survivor/game/content/ids.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
 import 'package:pixel_survivor/game/game_performance_budget.dart';
 import 'package:pixel_survivor/game/models/damage_event.dart';
@@ -121,6 +122,104 @@ void main() {
         ),
         hasLength(1),
       );
+      game.onDispose();
+    },
+  );
+
+  test(
+    'damage aggregation honors the 0.12 second boundary and target identity',
+    () async {
+      final game = await _loadDamageGame();
+      final first = await _addDamageTarget(game, 'first', 160);
+      final second = await _addDamageTarget(game, 'second', 260);
+
+      _applyNormalDamage(game, first);
+      _advanceDamageTime(game, .119);
+      _applyNormalDamage(game, first);
+      expect(_numbersFor(game, first), hasLength(1));
+      expect(_numbersFor(game, first).single.damage, 2);
+
+      _advanceDamageTime(game, .001);
+      _applyNormalDamage(game, first);
+      expect(_numbersFor(game, first), hasLength(1));
+      expect(_numbersFor(game, first).single.damage, 3);
+
+      _advanceDamageTime(game, .001);
+      _applyNormalDamage(game, first);
+      _applyNormalDamage(game, second);
+      expect(game.elapsedSeconds, closeTo(.121, 1e-9));
+      game.update(0);
+      expect(_numbersFor(game, first), hasLength(2));
+      expect(_numbersFor(game, second), hasLength(1));
+
+      for (final number
+          in game.children.whereType<DamageNumberComponent>().toList()) {
+        number.update(.56);
+      }
+      game.processLifecycleEvents();
+      expect(
+        game.performanceSnapshot.counts[GamePopulationKind.damageNumber],
+        0,
+      );
+      expect(game.activeDamageNumberAggregateCount, 0);
+      _applyNormalDamage(game, first);
+      expect(_numbersFor(game, first), hasLength(1));
+      expect(game.activeDamageNumberAggregateCount, 1);
+      game.onDispose();
+    },
+  );
+
+  test(
+    'only critical, frontal guard break, and master damage are emphasized',
+    () async {
+      final game = await _loadDamageGame();
+      final normal = await _addDamageTarget(game, 'normal', 120);
+      final backExplosion = await _addDamageTarget(
+        game,
+        'back-explosion',
+        220,
+        tank: true,
+      );
+      final frontSynergy = await _addDamageTarget(
+        game,
+        'front-synergy',
+        320,
+        tank: true,
+      );
+      final backSynergy = await _addDamageTarget(
+        game,
+        'back-synergy',
+        420,
+        tank: true,
+      );
+      final master = await _addDamageTarget(game, 'master', 520);
+
+      _applyNormalDamage(game, normal, critical: true);
+      _applyNormalDamage(
+        game,
+        backExplosion,
+        direction: Vector2(1, 0),
+        traits: const {AttackTrait.explosion},
+      );
+      _applyNormalDamage(
+        game,
+        frontSynergy,
+        direction: Vector2(-1, 0),
+        traits: const {AttackTrait.synergy},
+      );
+      _applyNormalDamage(
+        game,
+        backSynergy,
+        direction: Vector2(1, 0),
+        traits: const {AttackTrait.synergy},
+      );
+      _applyNormalDamage(game, master, traits: const {AttackTrait.master});
+
+      expect(_numbersFor(game, normal).single.isEmphasized, isTrue);
+      expect(_numbersFor(game, backExplosion).single.isEmphasized, isFalse);
+      expect(_numbersFor(game, frontSynergy).single.isEmphasized, isTrue);
+      expect(_numbersFor(game, backSynergy).single.isEmphasized, isFalse);
+      expect(_numbersFor(game, master).single.isEmphasized, isTrue);
       game.onDispose();
     },
   );
@@ -336,3 +435,62 @@ void main() {
     expect(game.performanceSnapshot.isWithinBudget, isTrue);
   });
 }
+
+Future<PixelSurvivorGame> _loadDamageGame() async {
+  final game = PixelSurvivorGame(
+    playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
+    onRunEnded: null,
+  );
+  game.onGameResize(Vector2(960, 540));
+  await game.onLoad();
+  return game;
+}
+
+Future<EnemyComponent> _addDamageTarget(
+  PixelSurvivorGame game,
+  String id,
+  double x, {
+  bool tank = false,
+}) async {
+  final target = EnemyComponent(
+    enemyId: id,
+    maxHealth: 100,
+    moveSpeed: 0,
+    damage: 0,
+    behaviorType: tank ? EnemyBehaviorType.tank : EnemyBehaviorType.chase,
+    position: Vector2(x, 270),
+  );
+  target.debugFace(Vector2(1, 0));
+  await game.ensureAdd(target);
+  return target;
+}
+
+void _applyNormalDamage(
+  PixelSurvivorGame game,
+  EnemyComponent target, {
+  bool critical = false,
+  Vector2? direction,
+  Set<AttackTrait> traits = const {},
+}) {
+  game.debugApplyDamageEvent(
+    DamageEvent(
+      target: target,
+      damage: 1,
+      knockback: 0,
+      direction: direction ?? Vector2(1, 0),
+      isCritical: critical,
+      traits: traits,
+    ),
+  );
+}
+
+void _advanceDamageTime(PixelSurvivorGame game, double seconds) {
+  game.debugAdvanceTo(game.elapsedSeconds + seconds);
+}
+
+Iterable<DamageNumberComponent> _numbersFor(
+  PixelSurvivorGame game,
+  EnemyComponent target,
+) => game.children.whereType<DamageNumberComponent>().where(
+  (number) => number.position.x == target.position.x,
+);

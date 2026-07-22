@@ -27,14 +27,18 @@ class EnemyWarningSnapshot {
     required Vector2 direction,
     required this.range,
     required this.progress,
-  }) : _direction = direction.clone();
+    Vector2? telegraphEndpoint,
+  }) : _direction = direction.clone(),
+       _telegraphEndpoint = telegraphEndpoint?.clone();
 
   final EnemyBehaviorKind kind;
   final Vector2 _direction;
   final double range;
   final double progress;
+  final Vector2? _telegraphEndpoint;
 
   Vector2 get direction => _direction.clone();
+  Vector2? get telegraphEndpoint => _telegraphEndpoint?.clone();
 }
 
 enum EnemyAnimationState { moving, attacking, hit, death }
@@ -222,6 +226,10 @@ class EnemyComponent
   Vector2 get shieldDirection => facingDirection.clone();
   EnemyWarningSnapshot? get warningSnapshot {
     if (_behaviorController.phase != EnemyBehaviorPhase.warning) return null;
+    final preview = _behaviorController.warningAttackPreview(
+      origin: position,
+      dashTravelDistance: _telegraphedDashDistance,
+    );
     return EnemyWarningSnapshot(
       kind: _behaviorProfile.kind,
       direction: _behaviorController.lockedDirection,
@@ -231,6 +239,7 @@ class EnemyComponent
           : (_behaviorController.phaseElapsed / _behaviorProfile.warningSeconds)
                 .clamp(0, 1)
                 .toDouble(),
+      telegraphEndpoint: preview?.telegraphEndpoint,
     );
   }
 
@@ -353,6 +362,13 @@ class EnemyComponent
       hasDirectionalShield &&
       (event.traits.contains(AttackTrait.explosion) ||
           event.traits.contains(AttackTrait.synergy));
+
+  bool isFrontalShieldHit(DamageEvent event) =>
+      hasDirectionalShield &&
+      facingDirection.dot(-event.direction) >= math.cos(math.pi / 3);
+
+  bool isGuardBreakBy(DamageEvent event) =>
+      isShieldBypassedBy(event) && isFrontalShieldHit(event);
 
   void debugFace(Vector2 direction) => _face(direction);
 
@@ -482,6 +498,7 @@ class EnemyComponent
       dt: 0,
       origin: position,
       target: target,
+      dashTravelDistance: _telegraphedDashDistance,
     );
     while (remaining > 0) {
       final step = math.min(.05, remaining);
@@ -489,6 +506,7 @@ class EnemyComponent
         dt: step,
         origin: position,
         target: target,
+        dashTravelDistance: _telegraphedDashDistance,
       );
       final attack = result.attack;
       if (attack != null) {
@@ -500,6 +518,11 @@ class EnemyComponent
     }
     return result;
   }
+
+  double get _telegraphedDashDistance =>
+      effectiveMoveSpeed *
+      _behaviorProfile.movementMultiplier *
+      _behaviorProfile.activeSeconds;
 
   void _syncBehaviorVisual(EnemyBehaviorPhase phaseBeforeTick) {
     final phase = _behaviorController.phase;
@@ -642,23 +665,6 @@ class EnemyComponent
       }
     }
     canvas.restore();
-    if (hasDirectionalShield) {
-      final angle = math.atan2(facingDirection.y, facingDirection.x);
-      canvas.drawArc(
-        Rect.fromCircle(
-          center: Offset(size.x / 2, size.y / 2),
-          radius: size.x * .58,
-        ),
-        angle - math.pi / 3,
-        math.pi * 2 / 3,
-        false,
-        Paint()
-          ..color = const Color(0xffbde0fe)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 4
-          ..strokeCap = StrokeCap.round,
-      );
-    }
   }
 }
 

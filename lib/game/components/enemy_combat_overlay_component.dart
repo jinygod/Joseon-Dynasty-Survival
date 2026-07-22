@@ -15,8 +15,9 @@ abstract final class EnemyCombatOverlayStyle {
 }
 
 class EnemyWarningOverlayComponent extends PositionComponent {
-  EnemyWarningOverlayComponent({required this.enemy})
-    : super(
+  EnemyWarningOverlayComponent({required this.enemy, int? stableOrder})
+    : stableOrder = stableOrder ?? _nextStableOrder++,
+      super(
         position: enemy.position,
         size: enemy.size.clone(),
         anchor: Anchor.center,
@@ -24,6 +25,8 @@ class EnemyWarningOverlayComponent extends PositionComponent {
       );
 
   final EnemyComponent enemy;
+  static int _nextStableOrder = 0;
+  final int stableOrder;
   double _warningAlpha = EnemyCombatOverlayStyle.warningAlpha;
 
   double get warningAlpha => _warningAlpha;
@@ -42,7 +45,9 @@ class EnemyWarningOverlayComponent extends PositionComponent {
         if (x != 0) return x;
         final y = left.enemy.position.y.compareTo(right.enemy.position.y);
         if (y != 0) return y;
-        return left.enemy.enemyId.compareTo(right.enemy.enemyId);
+        final id = left.enemy.enemyId.compareTo(right.enemy.enemyId);
+        if (id != 0) return id;
+        return left.stableOrder.compareTo(right.stableOrder);
       });
     for (var index = 0; index < ranked.length; index += 1) {
       ranked[index]._warningAlpha =
@@ -76,38 +81,31 @@ class EnemyWarningOverlayComponent extends PositionComponent {
       return;
     }
     final direction = warning.direction;
+    final endpoint =
+        warning.telegraphEndpoint ?? enemy.position + direction * warning.range;
     switch (warning.kind) {
       case EnemyBehaviorKind.dash:
       case EnemyBehaviorKind.dive:
       case EnemyBehaviorKind.doubleDash:
       case EnemyBehaviorKind.thrust:
-        _drawDirectionStrip(canvas, center, direction, warning.range, paint);
+        _drawDirectionStrip(canvas, center, endpoint, paint);
       case EnemyBehaviorKind.ranged:
-        _drawRangedTarget(
-          canvas,
-          center,
-          direction,
-          warning.range,
-          warning.progress,
-          paint,
-        );
+        _drawRangedTarget(canvas, center, endpoint, warning.progress, paint);
       default:
-        _drawDirectionStrip(canvas, center, direction, warning.range, paint);
+        _drawDirectionStrip(canvas, center, endpoint, paint);
     }
   }
 
   void _drawDirectionStrip(
     Canvas canvas,
     Offset center,
-    Vector2 direction,
-    double range,
+    Vector2 endpoint,
     Paint paint,
   ) {
-    final length = range.clamp(24, 72).toDouble();
-    final start = center + Offset(direction.x, direction.y) * (size.x * .45);
+    final endpointOffset = endpoint - enemy.position;
     canvas.drawLine(
-      start,
-      start + Offset(direction.x, direction.y) * length,
+      center,
+      center + Offset(endpointOffset.x, endpointOffset.y),
       paint,
     );
   }
@@ -115,13 +113,12 @@ class EnemyWarningOverlayComponent extends PositionComponent {
   void _drawRangedTarget(
     Canvas canvas,
     Offset center,
-    Vector2 direction,
-    double range,
+    Vector2 endpoint,
     double progress,
     Paint paint,
   ) {
-    final targetDistance = (range * .16).clamp(24, 72).toDouble();
-    final target = center + Offset(direction.x, direction.y) * targetDistance;
+    final endpointOffset = endpoint - enemy.position;
+    final target = center + Offset(endpointOffset.x, endpointOffset.y);
     canvas.drawCircle(target, 5 + progress * 3, paint);
   }
 

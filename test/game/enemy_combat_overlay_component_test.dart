@@ -1,4 +1,6 @@
 import 'dart:math' show pi;
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:flame/components.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -7,6 +9,7 @@ import 'package:pixel_survivor/game/components/attack_effect_component.dart';
 import 'package:pixel_survivor/game/components/enemy_combat_overlay_component.dart';
 import 'package:pixel_survivor/game/components/enemy_component.dart';
 import 'package:pixel_survivor/game/content/enemy_definitions.dart';
+import 'package:pixel_survivor/game/content/ids.dart';
 
 void main() {
   test(
@@ -83,6 +86,53 @@ void main() {
     expect(overlays[9].warningAlpha, EnemyCombatOverlayStyle.warningAlpha * .5);
   });
 
+  test('warning rank falls back to stable spawn order for exact ties', () {
+    final overlays = List.generate(10, (index) {
+      return EnemyWarningOverlayComponent(
+        enemy: EnemyComponent(
+          enemyId: 'same-warning',
+          maxHealth: 1,
+          moveSpeed: 0,
+          damage: 0,
+          position: Vector2(40, 40),
+        ),
+        stableOrder: index,
+      );
+    });
+
+    EnemyWarningOverlayComponent.rankByDistance(
+      overlays.reversed,
+      playerPosition: Vector2.zero(),
+    );
+
+    for (final overlay in overlays) {
+      expect(
+        overlay.warningAlpha,
+        overlay.stableOrder < 8
+            ? EnemyCombatOverlayStyle.warningAlpha
+            : EnemyCombatOverlayStyle.warningAlpha * .5,
+        reason: 'stable order ${overlay.stableOrder}',
+      );
+    }
+  });
+
+  test('enemy body render has no duplicate legacy shield arc', () async {
+    final enemy = EnemyComponent(
+      enemyId: 'shield-body',
+      maxHealth: 1,
+      moveSpeed: 0,
+      damage: 0,
+      behaviorType: EnemyBehaviorType.tank,
+    );
+    final recorder = ui.PictureRecorder();
+    enemy.render(ui.Canvas(recorder));
+    final image = await recorder.endRecording().toImage(64, 64);
+    addTearDown(image.dispose);
+    final data = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+
+    expect(_countExactColor(data!, const ui.Color(0xffbde0fe)), 0);
+  });
+
   test('shield block feedback is visually distinct and short lived', () {
     var expirations = 0;
     final effect = ShieldBlockEffectComponent(
@@ -110,4 +160,22 @@ void main() {
     effect.update(1);
     expect(expirations, 1);
   });
+}
+
+int _countExactColor(ByteData data, ui.Color color) {
+  final argb = color.toARGB32();
+  final red = (argb >> 16) & 0xff;
+  final green = (argb >> 8) & 0xff;
+  final blue = argb & 0xff;
+  final alpha = (argb >> 24) & 0xff;
+  var count = 0;
+  for (var offset = 0; offset < data.lengthInBytes; offset += 4) {
+    if (data.getUint8(offset) == red &&
+        data.getUint8(offset + 1) == green &&
+        data.getUint8(offset + 2) == blue &&
+        data.getUint8(offset + 3) == alpha) {
+      count += 1;
+    }
+  }
+  return count;
 }

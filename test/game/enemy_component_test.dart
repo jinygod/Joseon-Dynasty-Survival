@@ -191,6 +191,25 @@ void main() {
       expect(enemy.isDashing, isFalse);
     });
 
+    test('dash warning endpoint matches its controller attack endpoint', () {
+      final enemy = EnemyComponent(
+        enemyId: vengefulSpirit,
+        maxHealth: 22,
+        moveSpeed: 10,
+        damage: 10,
+        behaviorType: EnemyBehaviorType.dash,
+        position: Vector2.zero(),
+        targetPositionProvider: (_) => Vector2(1000, 0),
+      );
+
+      enemy.update(2.45);
+      final preview = enemy.warningSnapshot!;
+      enemy.update(.5);
+      final attack = enemy.drainAttackRequests().single;
+
+      expect(preview.telegraphEndpoint, attack.telegraphEndpoint);
+    });
+
     test('ranged warning movement preserves the locked aim facing', () {
       var target = Vector2(180, 0);
       final enemy = EnemyComponent.fromDefinition(
@@ -208,6 +227,21 @@ void main() {
       expect(enemy.position.distanceTo(before), greaterThan(0));
       expect(enemy.facingDirection.x, greaterThan(.99));
       expect(enemy.facingDirection.y.abs(), lessThan(.01));
+    });
+
+    test('ranged warning endpoint matches its controller shot endpoint', () {
+      final enemy = EnemyComponent.fromDefinition(
+        enemyDefinitionFor(sakkatSpecter)!,
+        position: Vector2.zero(),
+        targetPositionProvider: (_) => Vector2(180, 0),
+      );
+
+      enemy.update(.05);
+      final preview = enemy.warningSnapshot!;
+      enemy.update(.7);
+      final shot = enemy.drainAttackRequests().single;
+
+      expect(preview.telegraphEndpoint, shot.telegraphEndpoint);
     });
 
     test('dokkaebi reduces received knockback by seventy percent', () {

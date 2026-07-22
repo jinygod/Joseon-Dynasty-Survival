@@ -11,13 +11,18 @@ class EnemyAttackRequest {
     required Vector2 origin,
     required Vector2 direction,
     required this.range,
-  }) : origin = origin.clone(),
+    double? telegraphDistance,
+  }) : telegraphDistance = telegraphDistance ?? range,
+       origin = origin.clone(),
        direction = direction.clone();
 
   final EnemyAttackKind kind;
   final Vector2 origin;
   final Vector2 direction;
   final double range;
+  final double telegraphDistance;
+
+  Vector2 get telegraphEndpoint => origin + direction * telegraphDistance;
 }
 
 class EnemyBehaviorTick {
@@ -49,6 +54,7 @@ class EnemyBehaviorController {
     required double dt,
     required Vector2 origin,
     required Vector2 target,
+    double dashTravelDistance = 0,
   }) {
     final safeDt = !dt.isFinite || dt < 0 ? 0.0 : dt.clamp(0, .05).toDouble();
     final attackKind = _attackKindFor(profile.kind);
@@ -76,14 +82,14 @@ class EnemyBehaviorController {
       case EnemyBehaviorPhase.warning:
         if (phaseElapsed >= profile.warningSeconds) {
           _enter(EnemyBehaviorPhase.active);
-          attack = _attack(attackKind, origin);
+          attack = _attack(attackKind, origin, dashTravelDistance);
           _activeAttackCount = 1;
         }
       case EnemyBehaviorPhase.active:
         if (profile.kind == EnemyBehaviorKind.doubleDash &&
             _activeAttackCount == 1 &&
             phaseElapsed >= profile.activeSeconds / 2) {
-          attack = _attack(attackKind, origin);
+          attack = _attack(attackKind, origin, dashTravelDistance);
           _activeAttackCount = 2;
         }
         if (phaseElapsed >= profile.activeSeconds) {
@@ -114,6 +120,16 @@ class EnemyBehaviorController {
     );
   }
 
+  EnemyAttackRequest? warningAttackPreview({
+    required Vector2 origin,
+    required double dashTravelDistance,
+  }) {
+    if (phase != EnemyBehaviorPhase.warning) return null;
+    final attackKind = _attackKindFor(profile.kind);
+    if (attackKind == null) return null;
+    return _attack(attackKind, origin, dashTravelDistance);
+  }
+
   void _enter(EnemyBehaviorPhase next) {
     phase = next;
     phaseElapsed = 0;
@@ -129,13 +145,20 @@ class EnemyBehaviorController {
     }
   }
 
-  EnemyAttackRequest _attack(EnemyAttackKind kind, Vector2 origin) =>
-      EnemyAttackRequest(
-        kind: kind,
-        origin: origin,
-        direction: lockedDirection,
-        range: profile.range,
-      );
+  EnemyAttackRequest _attack(
+    EnemyAttackKind kind,
+    Vector2 origin,
+    double dashTravelDistance,
+  ) => EnemyAttackRequest(
+    kind: kind,
+    origin: origin,
+    direction: lockedDirection,
+    range: profile.range,
+    telegraphDistance: switch (kind) {
+      EnemyAttackKind.dash || EnemyAttackKind.dive => dashTravelDistance,
+      _ => profile.range,
+    },
+  );
 
   (double, Vector2) _movementFor(Vector2 towardTarget, double distance) {
     if (profile.kind != EnemyBehaviorKind.ranged) return (1, towardTarget);

@@ -175,6 +175,8 @@ class PixelSurvivorGame extends FlameGame
   int _damageNumberCount = 0;
   final Map<EnemyComponent, _DamageNumberAggregate> _damageNumberAggregates =
       {};
+  @visibleForTesting
+  int get activeDamageNumberAggregateCount => _damageNumberAggregates.length;
   int _combatEffectCount = 0;
   final Map<GamePopulationKind, int> _rejectedPopulations = {};
   double _screenShakeRemaining = 0;
@@ -1262,7 +1264,7 @@ class PixelSurvivorGame extends FlameGame
     for (final event in events) {
       if (event.target.isDead) continue;
       final healthBefore = event.target.currentHealth;
-      final isGuardBreak = event.target.isShieldBypassedBy(event);
+      final isGuardBreak = event.target.isGuardBreakBy(event);
       final resolvedDamage = event.target.resolveIncomingDamage(event);
       final wasBlocked = event.target.consumeBlockFeedback();
       event.target.takeDamage(resolvedDamage);
