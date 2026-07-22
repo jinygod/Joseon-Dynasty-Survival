@@ -1,8 +1,10 @@
 import 'dart:io';
 import 'dart:math';
+import 'dart:ui' as ui;
 
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/app/character_select_screen.dart';
@@ -18,7 +20,9 @@ import 'package:pixel_survivor/game/audio/audio_settings.dart';
 import 'package:pixel_survivor/game/audio/audio_settings_controller.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
 import 'package:pixel_survivor/game/content/enemy_definitions.dart';
+import 'package:pixel_survivor/game/content/ids.dart';
 import 'package:pixel_survivor/game/content/stage_definitions.dart';
+import 'package:pixel_survivor/game/content/weapon_definitions.dart';
 import 'package:pixel_survivor/game/models/player_slot.dart';
 import 'package:pixel_survivor/game/models/run_outcome.dart';
 import 'package:pixel_survivor/game/models/run_result.dart';
@@ -84,6 +88,16 @@ void main() {
       ..debugSpawnEnemy(plagueRatSwarm, position: Vector2(360, 270))
       ..debugSpawnEnemy(bandit, position: Vector2(760, 360))
       ..debugSpawnEnemy(vengefulSpirit, position: Vector2(920, 230));
+    const expectedWeaponLevels = <WeaponId, int>{
+      hwandoSlash: 6,
+      gakgungShot: 5,
+      talismanThrow: 6,
+    };
+    _equipWeapons(game, expectedWeaponLevels);
+    final expectedWeaponLabels = [
+      for (final entry in expectedWeaponLevels.entries)
+        '${_weaponName(entry.key)} 레벨 ${entry.value}',
+    ];
     await _expectGolden(
       tester,
       Stack(
@@ -94,6 +108,41 @@ void main() {
         ],
       ),
       'game_hud_16_9.png',
+      beforeCapture: (tester) async {
+        expect(
+          game.weaponSystem.levels,
+          containsPair(hwandoSlash, expectedWeaponLevels[hwandoSlash]),
+        );
+        expect(
+          game.weaponSystem.levels,
+          containsPair(gakgungShot, expectedWeaponLevels[gakgungShot]),
+        );
+        expect(
+          game.weaponSystem.levels,
+          containsPair(talismanThrow, expectedWeaponLevels[talismanThrow]),
+        );
+        expect(game.weaponLevelLabels, expectedWeaponLabels);
+        for (var index = 0; index < expectedWeaponLabels.length; index++) {
+          final slot = find.byKey(Key('hud-weapon-slot-$index'));
+          expect(slot, findsOneWidget);
+          expect(
+            tester
+                .widgetList<Semantics>(
+                  find.ancestor(of: slot, matching: find.byType(Semantics)),
+                )
+                .map((widget) => widget.properties.label),
+            contains(expectedWeaponLabels[index]),
+          );
+          expect(
+            tester
+                .widget<Text>(find.byKey(Key('hud-weapon-level-$index')))
+                .data,
+            '${expectedWeaponLevels.values.elementAt(index)}',
+          );
+        }
+        expect(find.byKey(const Key('hud-weapon-slot-3')), findsNothing);
+        await _expectWeaponMarksPainted(tester);
+      },
     );
   });
 
@@ -127,8 +176,9 @@ void main() {
 Future<void> _expectGolden(
   WidgetTester tester,
   Widget surface,
-  String fileName,
-) async {
+  String fileName, {
+  Future<void> Function(WidgetTester tester)? beforeCapture,
+}) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(1280, 720);
   addTearDown(() {
@@ -149,11 +199,68 @@ Future<void> _expectGolden(
   );
   await tester.pump(const Duration(milliseconds: 100));
   expect(tester.takeException(), isNull);
+  await beforeCapture?.call(tester);
   await expectLater(
     find.byKey(const Key('golden-root')),
     matchesGoldenFile('goldens/$fileName'),
   );
   await tester.pumpWidget(const SizedBox.shrink());
+}
+
+Future<void> _expectWeaponMarksPainted(WidgetTester tester) async {
+  final marks = [
+    for (var index = 0; index < 3; index++)
+      find.byKey(Key('hud-weapon-mark-$index')),
+  ];
+  for (final mark in marks) {
+    expect(mark, findsOneWidget);
+  }
+  final boundary = tester.renderObject<RenderRepaintBoundary>(
+    find.byKey(const Key('golden-root')),
+  );
+  final rects = marks.map(tester.getRect).toList(growable: false);
+  final rendered = await tester.runAsync(() async {
+    final image = await boundary.toImage(pixelRatio: 1);
+    final bytes = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+    return (width: image.width, pixels: bytes?.buffer.asUint8List());
+  });
+  expect(rendered, isNotNull);
+  expect(rendered!.pixels, isNotNull);
+  final pixels = rendered.pixels!;
+  const expectedColors = [(217, 247, 255), (255, 214, 170), (232, 197, 255)];
+  for (var index = 0; index < rects.length; index++) {
+    final rect = rects[index];
+    final expected = expectedColors[index];
+    var paintedPixels = 0;
+    for (var y = rect.top.floor(); y < rect.bottom.ceil(); y++) {
+      for (var x = rect.left.floor(); x < rect.right.ceil(); x++) {
+        final pixel = (y * rendered.width + x) * 4;
+        final red = pixels[pixel];
+        final green = pixels[pixel + 1];
+        final blue = pixels[pixel + 2];
+        final alpha = pixels[pixel + 3];
+        if ((red - expected.$1).abs() <= 20 &&
+            (green - expected.$2).abs() <= 20 &&
+            (blue - expected.$3).abs() <= 20 &&
+            alpha > 240) {
+          paintedPixels += 1;
+        }
+      }
+    }
+    expect(paintedPixels, greaterThan(12), reason: 'weapon mark $index');
+  }
+}
+
+String _weaponName(WeaponId id) =>
+    weaponDefinitions.singleWhere((definition) => definition.id == id).name;
+
+void _equipWeapons(PixelSurvivorGame game, Map<WeaponId, int> targetLevels) {
+  game.unlockedWeaponIds.addAll(targetLevels.keys);
+  for (final entry in targetLevels.entries) {
+    while (game.weaponSystem.levelOf(entry.key) < entry.value) {
+      game.weaponSystem.upgrade(entry.key, game.unlockedWeaponIds);
+    }
+  }
 }
 
 const _goldenFontFamily = 'ReleaseGoldenTestFont';
