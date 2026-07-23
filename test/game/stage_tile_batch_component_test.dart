@@ -21,11 +21,11 @@ void main() {
   Future<ui.Image> image() async {
     final recorder = ui.PictureRecorder();
     ui.Canvas(recorder).drawRect(
-      const ui.Rect.fromLTWH(0, 0, 256, 128),
+      const ui.Rect.fromLTWH(0, 0, 512, 256),
       ui.Paint()..color = const ui.Color(0xffffffff),
     );
     final picture = recorder.endRecording();
-    final result = await picture.toImage(256, 128);
+    final result = await picture.toImage(512, 256);
     picture.dispose();
     return result;
   }
@@ -103,4 +103,39 @@ void main() {
       expect(component.ownsCollision, isFalse);
     },
   );
+
+  test('atlas source cells preserve tile, decal, and prop row contracts', () {
+    expect(
+      StageTileBatchComponent.sourceRectFor(
+        kind: StageAtlasKind.tile,
+        variant: 3,
+        cellSize: 128,
+      ),
+      const ui.Rect.fromLTWH(384, 0, 128, 128),
+    );
+    expect(
+      StageTileBatchComponent.sourceRectFor(
+        kind: StageAtlasKind.decal,
+        variant: 0,
+        cellSize: 128,
+      ),
+      const ui.Rect.fromLTWH(0, 128, 128, 128),
+    );
+    expect(
+      StageTileBatchComponent.sourceRectFor(
+        kind: StageAtlasKind.decal,
+        variant: 3,
+        cellSize: 128,
+      ),
+      const ui.Rect.fromLTWH(384, 128, 128, 128),
+    );
+    expect(
+      StageTileBatchComponent.sourceRectFor(
+        kind: StageAtlasKind.prop,
+        variant: 7,
+        cellSize: 128,
+      ),
+      const ui.Rect.fromLTWH(384, 128, 128, 128),
+    );
+  });
 }

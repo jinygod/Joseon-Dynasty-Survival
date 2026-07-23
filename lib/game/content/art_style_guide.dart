@@ -101,7 +101,7 @@ class JoseonArtStyle {
   };
 
   static bool hasApprovedSizeSuffix(String path) =>
-      RegExp(r'_(16|24|32|64)\.png$').hasMatch(path);
+      RegExp(r'_(16|24|32|64|128)\.png$').hasMatch(path);
 }
 
 class SilhouetteRule {

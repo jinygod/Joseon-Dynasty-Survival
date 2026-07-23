@@ -14,9 +14,15 @@ class StageVisualSpec {
     this.decalAssetKey,
     this.propAssetKey,
     this.tileVariants = 2,
+    this.decalVariants = 4,
+    this.propVariants = 8,
+    this.atlasColumns = 4,
     this.tileSize = 128,
     this.edgeBand = 128,
   }) : assert(tileVariants >= 2 && tileVariants <= 4),
+       assert(decalVariants >= 1 && decalVariants <= 4),
+       assert(propVariants >= 1 && propVariants <= 8),
+       assert(atlasColumns == 4),
        assert(tileSize > 0),
        assert(edgeBand >= 0);
 
@@ -26,6 +32,9 @@ class StageVisualSpec {
   final String? decalAssetKey;
   final String? propAssetKey;
   final int tileVariants;
+  final int decalVariants;
+  final int propVariants;
+  final int atlasColumns;
   final double tileSize;
   final double edgeBand;
 }
@@ -34,16 +43,22 @@ const stageVisualSpecs = <String, StageVisualSpec>{
   moonlitAbandonedOffice: StageVisualSpec(
     stageId: moonlitAbandonedOffice,
     seedSalt: 0x4D4F4F4E,
-    tileAssetKey: 'stages/moonlit_office_tiles_128.png',
-    decalAssetKey: 'stages/moonlit_office_tiles_128.png',
-    propAssetKey: 'stages/moonlit_office_props_128.png',
+    tileAssetKey: 'tiles/moonlit_office_tiles_128.png',
+    decalAssetKey: 'tiles/moonlit_office_tiles_128.png',
+    propAssetKey: 'props/moonlit_office_props_128.png',
+    tileVariants: 4,
+    decalVariants: 4,
+    propVariants: 8,
   ),
   plagueMarket: StageVisualSpec(
     stageId: plagueMarket,
     seedSalt: 0x504C4147,
-    tileAssetKey: 'stages/plague_market_tiles_128.png',
-    decalAssetKey: 'stages/plague_market_tiles_128.png',
-    propAssetKey: 'stages/plague_market_props_128.png',
+    tileAssetKey: 'tiles/plague_market_tiles_128.png',
+    decalAssetKey: 'tiles/plague_market_tiles_128.png',
+    propAssetKey: 'props/plague_market_props_128.png',
+    tileVariants: 4,
+    decalVariants: 4,
+    propVariants: 8,
   ),
 };
 
@@ -146,7 +161,7 @@ class StageLayout {
               kind: StageDecorationKind.decal,
               position: position,
               size: size,
-              variant: random.nextInt(spec.tileVariants),
+              variant: random.nextInt(spec.decalVariants),
             ),
           );
         }
@@ -160,7 +175,7 @@ class StageLayout {
           kind: StageDecorationKind.decal,
           position: tile.position,
           size: size,
-          variant: random.nextInt(spec.tileVariants),
+          variant: random.nextInt(spec.decalVariants),
         ),
       );
     }
@@ -182,7 +197,7 @@ class StageLayout {
             kind: StageDecorationKind.prop,
             position: tile.position,
             size: size,
-            variant: random.nextInt(spec.tileVariants),
+            variant: random.nextInt(spec.propVariants),
           ),
         );
       }

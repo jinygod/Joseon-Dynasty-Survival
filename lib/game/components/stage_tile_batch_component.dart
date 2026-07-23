@@ -22,6 +22,25 @@ class StageTileBatchComponent extends Component {
   int get batchBuildCount => _batchBuildCount;
   bool get ownsCollision => false;
 
+  /// Exact source-cell mapping for the fixed 4x2 stage atlases.
+  static Rect sourceRectFor({
+    required StageAtlasKind kind,
+    required int variant,
+    required double cellSize,
+  }) {
+    final row = switch (kind) {
+      StageAtlasKind.tile => 0,
+      StageAtlasKind.decal => 1,
+      StageAtlasKind.prop => variant ~/ 4,
+    };
+    return Rect.fromLTWH(
+      (variant % 4) * cellSize,
+      row * cellSize,
+      cellSize,
+      cellSize,
+    );
+  }
+
   @override
   Future<void> onLoad() async {
     _placementBuildCount += 1;
@@ -66,6 +85,7 @@ class StageTileBatchComponent extends Component {
     position: placement.position,
     size: placement.size,
     variant: placement.variant,
+    kind: StageAtlasKind.tile,
   );
 
   _BatchEntry _batchEntryForDecoration(StageDecorationPlacement placement) =>
@@ -73,6 +93,9 @@ class StageTileBatchComponent extends Component {
         position: placement.position,
         size: placement.size,
         variant: placement.variant,
+        kind: placement.kind == StageDecorationKind.decal
+            ? StageAtlasKind.decal
+            : StageAtlasKind.prop,
       );
 
   void _addBatch(String assetKey, Iterable<_BatchEntry> placements) {
@@ -81,11 +104,10 @@ class StageTileBatchComponent extends Component {
     final batch = SpriteBatch(image);
     for (final placement in placements) {
       batch.add(
-        source: Rect.fromLTWH(
-          placement.variant * placement.size,
-          0,
-          placement.size,
-          placement.size,
+        source: sourceRectFor(
+          kind: placement.kind,
+          variant: placement.variant,
+          cellSize: placement.size,
         ),
         offset: Vector2(placement.position.dx, placement.position.dy),
       );
@@ -103,14 +125,18 @@ class StageTileBatchComponent extends Component {
   }
 }
 
+enum StageAtlasKind { tile, decal, prop }
+
 class _BatchEntry {
   const _BatchEntry({
     required this.position,
     required this.size,
     required this.variant,
+    required this.kind,
   });
 
   final Offset position;
   final double size;
   final int variant;
+  final StageAtlasKind kind;
 }

@@ -119,8 +119,8 @@ class AssetCatalog {
 
   static const stages = <String, String>{
     'moonlit_abandoned_office':
-        'assets/images/effects/combat_effects_atlas_64.png',
-    'plague_market': 'assets/images/effects/combat_effects_atlas_64.png',
+        'assets/images/tiles/moonlit_office_tiles_128.png',
+    'plague_market': 'assets/images/tiles/plague_market_tiles_128.png',
   };
 
   static const lobby = <String, String>{

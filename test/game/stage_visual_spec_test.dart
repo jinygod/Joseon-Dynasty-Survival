@@ -83,10 +83,29 @@ void main() {
     expect(moonlit.seedSalt, isNot(plague.seedSalt));
     expect(moonlit.tileVariants, inInclusiveRange(2, 4));
     expect(plague.tileVariants, inInclusiveRange(2, 4));
-    expect(moonlit.tileAssetKey, 'stages/moonlit_office_tiles_128.png');
-    expect(moonlit.propAssetKey, 'stages/moonlit_office_props_128.png');
-    expect(plague.tileAssetKey, 'stages/plague_market_tiles_128.png');
-    expect(plague.propAssetKey, 'stages/plague_market_props_128.png');
+    expect(moonlit.tileAssetKey, 'tiles/moonlit_office_tiles_128.png');
+    expect(moonlit.propAssetKey, 'props/moonlit_office_props_128.png');
+    expect(plague.tileAssetKey, 'tiles/plague_market_tiles_128.png');
+    expect(plague.propAssetKey, 'props/plague_market_props_128.png');
+    expect(moonlit.tileVariants, 4);
+    expect(moonlit.decalVariants, 4);
+    expect(moonlit.propVariants, 8);
+    expect(plague.tileVariants, 4);
+    expect(plague.decalVariants, 4);
+    expect(plague.propVariants, 8);
+  });
+
+  test('authored decoration variant ranges are reachable across fixed seeds', () {
+    final spec = stageVisualSpecFor(moonlitAbandonedOffice);
+    final decals = <int>{};
+    final props = <int>{};
+    for (var seed = 0; seed < 512; seed++) {
+      final layout = StageLayout.build(spec, seed: seed, bounds: bounds);
+      decals.addAll(layout.decorations.map((placement) => placement.variant));
+      props.addAll(layout.props.map((placement) => placement.variant));
+    }
+    expect(decals, {0, 1, 2, 3});
+    expect(props, {0, 1, 2, 3, 4, 5, 6, 7});
   });
 
   test('placement collections are unmodifiable', () {

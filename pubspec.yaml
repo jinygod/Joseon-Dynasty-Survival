@@ -73,6 +73,8 @@ flutter:
     - assets/images/zones/
     - assets/images/zones/player/
     - assets/images/stages/
+    - assets/images/tiles/
+    - assets/images/props/
     - assets/images/ui/
     - assets/audio/music/
     - assets/audio/sfx/
