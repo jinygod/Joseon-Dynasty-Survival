@@ -62,6 +62,7 @@ void main() {
 
   test('sakkat projectile composes a centered cached registry child', () async {
     final recorder = PictureRecorder();
+    Canvas(recorder).drawRect(const Rect.fromLTWH(0, 0, 1, 1), Paint());
     final image = await recorder.endRecording().toImage(1, 1);
     final projectile = EnemyProjectileComponent(
       sourceId: 'sakkat_specter',
