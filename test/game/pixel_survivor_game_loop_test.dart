@@ -512,15 +512,15 @@ void main() {
       final image = await recorder.endRecording().toImage(1, 1);
       addTearDown(image.dispose);
       final requestedKeys = <String>[];
-      var playersWereUnmountedDuringPreload = false;
+      var playersWereUnmountedDuringPreload = true;
       late final PixelSurvivorGame game;
       game = PixelSurvivorGame(
         playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
         onRunEnded: null,
-        preloadCombatVisualAssets: (keys) async {
-          playersWereUnmountedDuringPreload = game.activePlayers.isEmpty;
-          requestedKeys.addAll(keys);
-          return Map.unmodifiable({for (final key in keys) key: image});
+        visualAssetLoader: (key) async {
+          playersWereUnmountedDuringPreload &= game.activePlayers.isEmpty;
+          requestedKeys.add(key);
+          return image;
         },
       );
       game.onGameResize(Vector2(960, 540));
@@ -545,7 +545,7 @@ void main() {
         playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
         onRunEnded: null,
         loadVisualAssets: false,
-        preloadCombatVisualAssets: (_) async =>
+        visualAssetLoader: (_) async =>
             throw StateError('preloader should not be called'),
       );
       game.onGameResize(Vector2(960, 540));

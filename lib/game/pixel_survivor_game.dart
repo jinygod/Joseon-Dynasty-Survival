@@ -70,9 +70,6 @@ import 'systems/wave_director.dart';
 import 'systems/weapon_system.dart';
 import 'systems/weapon_synergy_resolver.dart';
 
-typedef CombatVisualAssetPreloader =
-    Future<Map<String, Image>> Function(Iterable<String> keys);
-
 class PixelSurvivorGame extends FlameGame
     with KeyboardEvents
     implements GameHudSource, RewardCollectionHudSource, VisualAssetLoadPolicy {
@@ -95,7 +92,7 @@ class PixelSurvivorGame extends FlameGame
     this.performanceBudget = GamePerformanceBudget.standard,
     this.onPerformanceDiagnostic,
     this.loadVisualAssets = true,
-    this.preloadCombatVisualAssets,
+    this.visualAssetLoader,
     this.contentPolicy = const PlaytestContentPolicy(
       unlockAllBaseWeapons: false,
     ),
@@ -138,7 +135,8 @@ class PixelSurvivorGame extends FlameGame
   final GamePerformanceDiagnosticReporter? onPerformanceDiagnostic;
   @override
   final bool loadVisualAssets;
-  final CombatVisualAssetPreloader? preloadCombatVisualAssets;
+  @visibleForTesting
+  final Future<Image> Function(String key)? visualAssetLoader;
   final PlaytestContentPolicy contentPolicy;
   final MetaRewardPolicy _metaRewardPolicy = const MetaRewardPolicy();
   final AugmentEffectResolver _augmentEffectResolver =
@@ -360,14 +358,9 @@ class PixelSurvivorGame extends FlameGame
   Future<void> onLoad() async {
     await super.onLoad();
     _visualImages = loadVisualAssets
-        ? Map.unmodifiable(
-            await (preloadCombatVisualAssets?.call(
-                  AttackVisualRegistry.requiredAssetKeys,
-                ) ??
-                CombatAssetPreloader.load(
-                  images,
-                  AttackVisualRegistry.requiredAssetKeys,
-                )),
+        ? await CombatAssetPreloader.loadWith(
+            AttackVisualRegistry.requiredAssetKeys,
+            visualAssetLoader ?? images.load,
           )
         : const {};
 
