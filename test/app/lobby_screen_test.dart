@@ -180,13 +180,54 @@ void main() {
     expect(find.byKey(const Key('lobby-deploy')), findsOneWidget);
   });
 
+  testWidgets('390x844 lobby presents the command hierarchy without overflow', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    final lobby = LobbyController(
+      store: _MemorySaveStore(SaveState.defaults()),
+    );
+    await lobby.load();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: LobbyScreen(
+          controller: lobby,
+          audioSettingsController: _audioController(),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byKey(const Key('lobby-title-plaque')), findsOneWidget);
+    expect(find.byKey(const Key('lobby-resource-ribbon')), findsOneWidget);
+    expect(find.byKey(const Key('lobby-resource-bar')), findsOneWidget);
+    expect(find.byKey(const Key('lobby-stage-hero')), findsOneWidget);
+    expect(find.byKey(const Key('lobby-character-art')), findsOneWidget);
+    expect(find.byKey(const Key('lobby-deploy-face')), findsOneWidget);
+    expect(find.byKey(const Key('lobby-navigation-dock')), findsOneWidget);
+    expect(find.byKey(const Key('lobby-bottom-menu')), findsOneWidget);
+    expect(find.byKey(const Key('lobby-deploy')), findsOneWidget);
+    expect(find.byKey(const Key('lobby-character')), findsOneWidget);
+    expect(find.byKey(const Key('lobby-stage')), findsOneWidget);
+    expect(find.byKey(const Key('lobby-compendium')), findsOneWidget);
+    expect(find.byKey(const Key('lobby-records')), findsOneWidget);
+    expect(tester.getCenter(find.byKey(const Key('lobby-deploy'))).dx, 195);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
-    'portrait lobby centers the stage hero and keeps menus reachable',
+    '390x844 lobby keeps every destination reachable at text scale two',
     (tester) async {
       tester.view.devicePixelRatio = 1;
       tester.view.physicalSize = const Size(390, 844);
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
       addTearDown(tester.view.resetDevicePixelRatio);
       addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
       final lobby = LobbyController(
         store: _MemorySaveStore(SaveState.defaults()),
       );
@@ -202,19 +243,49 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.byKey(const Key('lobby-resource-bar')), findsOneWidget);
+      expect(find.byKey(const Key('lobby-title-plaque')), findsOneWidget);
+      expect(find.byKey(const Key('lobby-resource-ribbon')), findsOneWidget);
       expect(find.byKey(const Key('lobby-stage-hero')), findsOneWidget);
-      expect(find.byKey(const Key('lobby-character-art')), findsOneWidget);
-      expect(find.byKey(const Key('lobby-bottom-menu')), findsOneWidget);
-      expect(find.byKey(const Key('lobby-deploy')), findsOneWidget);
-      expect(find.byKey(const Key('lobby-character')), findsOneWidget);
-      expect(find.byKey(const Key('lobby-stage')), findsOneWidget);
-      expect(find.byKey(const Key('lobby-compendium')), findsOneWidget);
-      expect(find.byKey(const Key('lobby-records')), findsOneWidget);
-      expect(tester.getCenter(find.byKey(const Key('lobby-deploy'))).dx, 195);
+      expect(find.byKey(const Key('lobby-deploy-face')), findsOneWidget);
+      expect(find.byKey(const Key('lobby-navigation-dock')), findsOneWidget);
+
+      await tester.ensureVisible(find.byKey(const Key('lobby-deploy')));
+      await tester.pump();
+      for (final key in const [
+        'lobby-settings',
+        'lobby-stage',
+        'lobby-character',
+        'lobby-compendium',
+        'lobby-records',
+        'lobby-deploy',
+      ]) {
+        expect(find.byKey(Key(key)), findsOneWidget);
+      }
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('lobby settings command meets the primary target size', (
+    tester,
+  ) async {
+    final lobby = LobbyController(
+      store: _MemorySaveStore(SaveState.defaults()),
+    );
+    await lobby.load();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: LobbyScreen(
+          controller: lobby,
+          audioSettingsController: _audioController(),
+        ),
+      ),
+    );
+
+    final size = tester.getSize(find.byKey(const Key('lobby-settings')));
+    expect(size.width, greaterThanOrEqualTo(64));
+    expect(size.height, greaterThanOrEqualTo(72));
+  });
 
   testWidgets('lobby opens the compendium destination', (tester) async {
     final lobby = LobbyController(
@@ -260,6 +331,8 @@ void main() {
       ),
     );
 
+    await tester.ensureVisible(find.byKey(const Key('lobby-deploy')));
+    await tester.pump();
     await tester.tap(find.byKey(const Key('lobby-deploy')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
