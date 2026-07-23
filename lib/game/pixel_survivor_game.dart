@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:collection';
 import 'dart:math';
-import 'dart:ui' show Image;
+import 'dart:ui' show Image, Rect;
 
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
@@ -32,6 +32,7 @@ import 'components/five_color_ward_component.dart';
 import 'components/player_component.dart';
 import 'components/projectile_component.dart';
 import 'components/spirit_jade_component.dart';
+import 'components/stage_tile_batch_component.dart';
 import 'components/talisman_presentation_component.dart';
 import 'components/ward_aura_component.dart';
 import 'components/stage_backdrop_component.dart';
@@ -393,15 +394,30 @@ class PixelSurvivorGame extends FlameGame
         ? await CombatAssetPreloader.loadWith([
             ...AttackVisualRegistry.requiredAssetKeys,
             WeaponEffectAtlas.assetKey,
-            stageVisualSpec.tileAssetKey,
-            if (stageVisualSpec.decalAssetKey case final decalKey?) decalKey,
-            if (stageVisualSpec.propAssetKey case final propKey?) propKey,
+            if (stageId == plagueMarket) ...[
+              stageVisualSpec.tileAssetKey,
+              if (stageVisualSpec.decalAssetKey case final decalKey?) decalKey,
+              if (stageVisualSpec.propAssetKey case final propKey?) propKey,
+            ],
           ], visualAssetLoader ?? images.load)
         : const {};
 
     camera.viewfinder.anchor = Anchor.center;
 
-    add(StageBackdropComponent(viewportSize: size));
+    if (stageId == plagueMarket) {
+      await add(
+        StageTileBatchComponent(
+          layout: StageLayout.build(
+            stageVisualSpec,
+            seed: stageVisualSeed,
+            bounds: Rect.fromLTWH(0, 0, size.x, size.y),
+          ),
+          images: _visualImages,
+        ),
+      );
+    } else {
+      add(StageBackdropComponent(viewportSize: size));
+    }
     await _addActivePlayers();
     _addStartingAugments();
   }
