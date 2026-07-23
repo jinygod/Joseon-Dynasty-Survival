@@ -647,7 +647,12 @@ class PixelSurvivorGame extends FlameGame
 
   void _addEnemyWithWarningOverlay(EnemyComponent enemy) {
     add(enemy);
-    add(EnemyWarningOverlayComponent(enemy: enemy));
+    add(
+      EnemyWarningOverlayComponent(
+        enemy: enemy,
+        visualFactory: _combatVisualFactory,
+      ),
+    );
   }
 
   void _updateWeapons(double dt) {
@@ -1093,6 +1098,7 @@ class PixelSurvivorGame extends FlameGame
                 radius: request.range,
                 damage: enemy.damage * enemy.behaviorProfile.effectMultiplier,
                 sourceId: enemy.enemyId,
+                visualFactory: _combatVisualFactory,
               ),
             );
             break;
@@ -1103,6 +1109,7 @@ class PixelSurvivorGame extends FlameGame
                 radius: request.range,
                 damage: enemy.damage * enemy.behaviorProfile.effectMultiplier,
                 sourceId: enemy.enemyId,
+                visualFactory: _combatVisualFactory,
               ),
             );
             break;
@@ -1114,6 +1121,7 @@ class PixelSurvivorGame extends FlameGame
                 position: request.origin,
                 velocity:
                     request.direction * enemy.behaviorProfile.projectileSpeed,
+                visualFactory: _combatVisualFactory,
               ),
             );
             break;
@@ -1357,6 +1365,7 @@ class PixelSurvivorGame extends FlameGame
       ShieldBlockEffectComponent(
         position: enemy.position.clone(),
         facingDirection: enemy.shieldDirection,
+        visualFactory: _combatVisualFactory,
         onExpired: () {
           _combatEffectCount = max(0, _combatEffectCount - 1);
         },
@@ -1448,6 +1457,7 @@ class PixelSurvivorGame extends FlameGame
             position: enemy.position.clone(),
             damage: enemy.damage * enemy.behaviorProfile.effectMultiplier,
             sourceId: enemy.enemyId,
+            visualFactory: _combatVisualFactory,
           ),
         );
       }

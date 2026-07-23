@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 
 import 'player_component.dart';
+import '../content/combat_visual_factory.dart';
 
 class EnemyProjectileComponent extends PositionComponent {
   EnemyProjectileComponent({
@@ -12,6 +13,7 @@ class EnemyProjectileComponent extends PositionComponent {
     required Vector2 velocity,
     this.lifetime = 3,
     Vector2? size,
+    this.visualFactory,
   }) : velocity = velocity.clone(),
        super(
          position: position,
@@ -23,11 +25,20 @@ class EnemyProjectileComponent extends PositionComponent {
   final double damage;
   final Vector2 velocity;
   final double lifetime;
+  final CombatVisualFactory? visualFactory;
   double _age = 0;
   bool _spent = false;
 
   bool get isExpired => _age >= lifetime;
   bool get isSpent => _spent;
+  double get visualFootprint => 34;
+  bool get usesRegistryVisual =>
+      visualFactory?.images.containsKey(
+        'projectiles/enemy/sakkat_spirit_projectile_128.png',
+      ) ??
+      false;
+  bool get startsImageLoadOnMount => false;
+  bool get ownsDamageResolution => false;
 
   bool overlapsPlayer(PlayerComponent player) {
     final radius = (size.x + player.size.x) / 2;
@@ -52,7 +63,11 @@ class EnemyProjectileComponent extends PositionComponent {
   @override
   void render(Canvas canvas) {
     super.render(canvas);
-    final rect = Offset.zero & Size(size.x, size.y);
+    final rect = Rect.fromCenter(
+      center: Offset(size.x / 2, size.y / 2),
+      width: visualFootprint,
+      height: visualFootprint,
+    );
     canvas.drawOval(rect, Paint()..color = const Color(0xff9f2b68));
     canvas.drawOval(
       rect,

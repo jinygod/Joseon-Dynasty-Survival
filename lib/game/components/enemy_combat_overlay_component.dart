@@ -6,9 +6,10 @@ import 'package:flame/components.dart';
 import '../content/ids.dart';
 import 'enemy_component.dart';
 import 'talisman_presentation_component.dart';
+import '../content/combat_visual_factory.dart';
 
 class EnemyWarningOverlayComponent extends PositionComponent {
-  EnemyWarningOverlayComponent({required this.enemy})
+  EnemyWarningOverlayComponent({required this.enemy, this.visualFactory})
     : super(
         position: enemy.position,
         size: enemy.size.clone(),
@@ -17,6 +18,10 @@ class EnemyWarningOverlayComponent extends PositionComponent {
       );
 
   final EnemyComponent enemy;
+  final CombatVisualFactory? visualFactory;
+  bool get usesRegistryVisual => false;
+  bool get startsImageLoadOnMount => false;
+  bool get ownsDamageResolution => false;
 
   @override
   void update(double dt) {
@@ -56,6 +61,7 @@ class ShieldBlockEffectComponent extends PositionComponent {
     required Vector2 position,
     required Vector2 facingDirection,
     this.onExpired,
+    this.visualFactory,
   }) : _facingDirection = _unit(facingDirection),
        super(
          position: position,
@@ -68,11 +74,15 @@ class ShieldBlockEffectComponent extends PositionComponent {
 
   final Vector2 _facingDirection;
   final void Function()? onExpired;
+  final CombatVisualFactory? visualFactory;
   double _age = 0;
   bool _expired = false;
 
   Vector2 get facingDirection => _facingDirection.clone();
   double get lifetime => _lifetime;
+  bool get usesRegistryVisual => false;
+  bool get startsImageLoadOnMount => false;
+  bool get ownsDamageResolution => false;
 
   @override
   void update(double dt) {

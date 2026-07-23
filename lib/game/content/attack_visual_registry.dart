@@ -1,3 +1,5 @@
+// ignore_for_file: prefer_const_constructors
+
 import 'package:flame/components.dart';
 
 enum AttackVisualStatus { ready, generatedReview, temporary, missing }
@@ -261,7 +263,63 @@ abstract final class AttackVisualRegistry {
     ),
   ];
 
-  static const _specs = <String, AttackVisualSpec>{
+  static final _specs = <String, AttackVisualSpec>{
+    'enemy_poison_pool': _enemySpec(
+      'enemy_poison_pool',
+      CombatVisualCategory.area,
+      'vfx/enemy/poison_pool_128.png',
+      8,
+      false,
+    ),
+    'enemy_shockwave': _enemySpec(
+      'enemy_shockwave',
+      CombatVisualCategory.area,
+      'vfx/enemy/shockwave_128.png',
+      6,
+      false,
+    ),
+    'enemy_spirit_scream': _enemySpec(
+      'enemy_spirit_scream',
+      CombatVisualCategory.area,
+      'vfx/enemy/spirit_scream_128.png',
+      6,
+      false,
+    ),
+    'enemy_line_telegraph': _enemySpec(
+      'enemy_line_telegraph',
+      CombatVisualCategory.telegraph,
+      'vfx/enemy/line_telegraph_128.png',
+      6,
+      true,
+    ),
+    'enemy_ranged_telegraph': _enemySpec(
+      'enemy_ranged_telegraph',
+      CombatVisualCategory.telegraph,
+      'vfx/enemy/ranged_telegraph_128.png',
+      6,
+      true,
+    ),
+    'enemy_radial_telegraph': _enemySpec(
+      'enemy_radial_telegraph',
+      CombatVisualCategory.telegraph,
+      'vfx/enemy/radial_telegraph_128.png',
+      8,
+      false,
+    ),
+    'enemy_shield_block_flash': _enemySpec(
+      'enemy_shield_block_flash',
+      CombatVisualCategory.status,
+      'vfx/enemy/shield_block_flash_128.png',
+      5,
+      true,
+    ),
+    'sakkat_spirit_projectile': _enemySpec(
+      'sakkat_spirit_projectile',
+      CombatVisualCategory.projectile,
+      'projectiles/enemy/sakkat_spirit_projectile_128.png',
+      4,
+      true,
+    ),
     'hwando_slash': AttackVisualSpec(
       effectId: 'hwando_slash',
       category: CombatVisualCategory.hwando,
@@ -396,6 +454,31 @@ abstract final class AttackVisualRegistry {
       rotateWithDirection: false,
     ),
   };
+
+  static AttackVisualSpec _enemySpec(
+    String effectId,
+    CombatVisualCategory category,
+    String assetKey,
+    int frameCount,
+    bool rotateWithDirection,
+  ) => AttackVisualSpec(
+    effectId: effectId,
+    category: category,
+    status: AttackVisualStatus.generatedReview,
+    rotateWithDirection: rotateWithDirection,
+    layers: [
+      AttackVisualLayerSpec(
+        id: 'effect',
+        assetKey: assetKey,
+        frameSize: 128,
+        frameCount: frameCount,
+        anchor: Anchor.center,
+        priorityOffset: 0,
+        startFraction: 0,
+        endFraction: 1,
+      ),
+    ],
+  );
 
   static final List<String> requiredAssetKeys = List.unmodifiable(
     _specs.values

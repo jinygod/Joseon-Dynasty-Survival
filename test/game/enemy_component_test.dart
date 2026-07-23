@@ -6,6 +6,7 @@ import 'package:pixel_survivor/game/components/enemy_component.dart';
 import 'package:pixel_survivor/game/components/player_component.dart';
 import 'package:pixel_survivor/game/combat/attack_spec.dart';
 import 'package:pixel_survivor/game/content/enemy_definitions.dart';
+import 'package:pixel_survivor/game/content/enemy_behavior_definitions.dart';
 import 'package:pixel_survivor/game/content/ids.dart';
 import 'package:pixel_survivor/game/models/damage_event.dart';
 import 'package:pixel_survivor/game/systems/enemy_behavior_controller.dart';
@@ -164,6 +165,38 @@ void main() {
       expect(enemy.position.distanceTo(before), greaterThan(0));
       expect(enemy.facingDirection.x, greaterThan(.99));
       expect(enemy.facingDirection.y.abs(), lessThan(.01));
+    });
+
+    test('warning snapshot keeps phase identity and profile duration', () {
+      const profile = EnemyBehaviorProfile(
+        id: 'test_warning',
+        kind: EnemyBehaviorKind.ranged,
+        warningSeconds: .1,
+        activeSeconds: .05,
+        recoverySeconds: .05,
+        cooldownSeconds: .1,
+        range: 40,
+        preferredRange: 10,
+        minimumRange: 0,
+      );
+      final enemy = EnemyComponent(
+        enemyId: 'test',
+        maxHealth: 1,
+        moveSpeed: 0,
+        damage: 1,
+        behaviorProfile: profile,
+        targetPositionProvider: (_) => Vector2(20, 0),
+      );
+      enemy.update(.05);
+      final first = enemy.warningSnapshot!;
+      expect(first.durationSeconds, .1);
+      expect(first.phaseToken, greaterThan(0));
+      enemy.update(.02);
+      expect(enemy.warningSnapshot!.phaseToken, first.phaseToken);
+      for (var i = 0; i < 7; i++) {
+        enemy.update(.05);
+      }
+      expect(enemy.warningSnapshot!.phaseToken, greaterThan(first.phaseToken));
     });
 
     test('dokkaebi reduces received knockback by seventy percent', () {

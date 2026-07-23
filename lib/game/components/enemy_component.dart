@@ -26,12 +26,16 @@ class EnemyWarningSnapshot {
     required Vector2 direction,
     required this.range,
     required this.progress,
+    required this.durationSeconds,
+    required this.phaseToken,
   }) : _direction = direction.clone();
 
   final EnemyBehaviorKind kind;
   final Vector2 _direction;
   final double range;
   final double progress;
+  final double durationSeconds;
+  final int phaseToken;
 
   Vector2 get direction => _direction.clone();
 }
@@ -167,6 +171,8 @@ class EnemyComponent
   late final EnemyBehaviorProfile _behaviorProfile;
   late final EnemyBehaviorController _behaviorController;
   final List<EnemyAttackRequest> _attackRequests = [];
+  EnemyBehaviorPhase _lastBehaviorPhase = EnemyBehaviorPhase.tracking;
+  int _warningPhaseToken = 0;
 
   static const _hitFlashSeconds = 0.18;
 
@@ -215,6 +221,8 @@ class EnemyComponent
       kind: _behaviorProfile.kind,
       direction: _behaviorController.lockedDirection,
       range: _behaviorProfile.range,
+      durationSeconds: _behaviorProfile.warningSeconds,
+      phaseToken: _warningPhaseToken,
       progress: _behaviorProfile.warningSeconds <= 0
           ? 1
           : (_behaviorController.phaseElapsed / _behaviorProfile.warningSeconds)
@@ -463,6 +471,11 @@ class EnemyComponent
         origin: position,
         target: target,
       );
+      if (_lastBehaviorPhase != EnemyBehaviorPhase.warning &&
+          _behaviorController.phase == EnemyBehaviorPhase.warning) {
+        _warningPhaseToken += 1;
+      }
+      _lastBehaviorPhase = _behaviorController.phase;
       final attack = result.attack;
       if (attack != null) {
         if (_attackRequests.length == 2) _attackRequests.removeAt(0);

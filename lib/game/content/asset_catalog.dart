@@ -70,6 +70,18 @@ class AssetCatalog {
   };
 
   static const effects = <String, String>{
+    'enemy_poison_pool': 'assets/images/vfx/enemy/poison_pool_128.png',
+    'enemy_shockwave': 'assets/images/vfx/enemy/shockwave_128.png',
+    'enemy_spirit_scream': 'assets/images/vfx/enemy/spirit_scream_128.png',
+    'enemy_line_telegraph': 'assets/images/vfx/enemy/line_telegraph_128.png',
+    'enemy_ranged_telegraph':
+        'assets/images/vfx/enemy/ranged_telegraph_128.png',
+    'enemy_radial_telegraph':
+        'assets/images/vfx/enemy/radial_telegraph_128.png',
+    'enemy_shield_block_flash':
+        'assets/images/vfx/enemy/shield_block_flash_128.png',
+    'sakkat_spirit_projectile':
+        'assets/images/projectiles/enemy/sakkat_spirit_projectile_128.png',
     'experience_gem': 'assets/images/effects/combat_effects_atlas_64.png',
     // Temporary art slot. Replace this path when the final spirit jade sprite lands.
     'spirit_jade': 'assets/images/effects/combat_effects_atlas_64.png',

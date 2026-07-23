@@ -39,4 +39,16 @@ void main() {
     expect(projectile.registerHit(), isFalse);
     expect(projectile.isSpent, isTrue);
   });
+
+  test('sakkat projectile visual footprint does not alter its 10px hitbox', () {
+    final projectile = EnemyProjectileComponent(
+      sourceId: 'sakkat_specter',
+      damage: 1,
+      position: Vector2.zero(),
+      velocity: Vector2.zero(),
+    );
+    expect(projectile.size, Vector2.all(10));
+    expect(projectile.visualFootprint, greaterThanOrEqualTo(34));
+    expect(projectile.ownsDamageResolution, isFalse);
+  });
 }

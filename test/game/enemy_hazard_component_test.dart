@@ -42,4 +42,16 @@ void main() {
 
     expect(hazard.damageFor(player), 0);
   });
+
+  test('hazard visual boundary exceeds gameplay damage boundary', () {
+    final hazard = EnemyHazardComponent.poison(
+      position: Vector2.zero(),
+      damage: 1,
+      sourceId: 'test',
+    );
+    expect(hazard.damageRadius, hazard.radius);
+    expect(hazard.visualRadius, greaterThanOrEqualTo(hazard.damageRadius + 12));
+    expect(hazard.ownsDamageResolution, isFalse);
+    expect(hazard.startsImageLoadOnMount, isFalse);
+  });
 }
