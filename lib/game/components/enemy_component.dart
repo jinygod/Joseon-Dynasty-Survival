@@ -251,6 +251,7 @@ class EnemyComponent
           _behaviorProfile.kind == EnemyBehaviorKind.dive ||
           _behaviorProfile.kind == EnemyBehaviorKind.doubleDash);
   bool get isHitFlashing => _hitFlashRemaining > 0;
+  bool get facesLeft => facingDirection.x < 0;
   double get environmentalSlowFraction => _environmentalSlowFraction;
   double get environmentalHasteFraction => _environmentalHasteFraction;
   double get effectiveMoveSpeed =>
@@ -665,6 +666,10 @@ class EnemyComponent
     canvas.translate(size.x / 2, size.y);
     canvas.scale(visualScale);
     canvas.translate(-size.x / 2, -size.y);
+    if (facesLeft) {
+      canvas.translate(size.x, 0);
+      canvas.scale(-1, 1);
+    }
     super.render(canvas);
 
     if (animations == null) {

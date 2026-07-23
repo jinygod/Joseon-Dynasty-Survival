@@ -77,13 +77,15 @@ class AssetCatalog {
     'spirit_jade': 'assets/images/effects/combat_effects_atlas_64.png',
     'healing_item': 'assets/images/effects/healing_item_16.png',
     'hwando_slash_effect': 'assets/images/effects/hwando_slash_effect_64.png',
+    'hwando_slash_ribbon_hd':
+        'assets/images/effects/hwando_slash_ribbon_512.png',
     'weapon_effects_atlas': 'assets/images/effects/weapon_effects_atlas_64.png',
     'combat_effects_atlas': 'assets/images/effects/combat_effects_atlas_64.png',
   };
 
   static const stages = <String, String>{
     'moonlit_abandoned_office':
-        'assets/images/effects/combat_effects_atlas_64.png',
+        'assets/images/stages/joseon_courtyard_combat_1024x1824.png',
     'plague_market': 'assets/images/effects/combat_effects_atlas_64.png',
   };
 

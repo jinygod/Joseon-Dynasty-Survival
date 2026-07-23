@@ -106,6 +106,7 @@ void main() {
       ...AssetCatalog.augments.values,
       ...AssetCatalog.effects.values,
       ...AssetCatalog.stages.values,
+      ...AssetCatalog.lobby.values,
       ...AssetCatalog.player.values,
     ];
 

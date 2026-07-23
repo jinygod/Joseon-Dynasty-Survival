@@ -30,6 +30,7 @@ void main() {
       normal.visualGeometry.angleRadians,
     );
     expect(master.visualGeometry.width, normal.visualGeometry.width);
+    expect(normal.usesHwandoRaster, isTrue);
   });
 
   test('component tiers only alter bounded presentation metadata', () {

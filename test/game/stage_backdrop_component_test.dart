@@ -24,7 +24,11 @@ void main() {
       greaterThan(.20),
     );
     expect(backdrop.ownsCollision, isFalse);
-    expect(backdrop.cachedPaintCount, 4);
+    expect(backdrop.cachedPaintCount, 5);
+    expect(
+      backdrop.groundTileAssetKey,
+      'stages/joseon_courtyard_combat_1024x1824.png',
+    );
   });
 
   test('stage decorations are capped and deterministic for a viewport', () {

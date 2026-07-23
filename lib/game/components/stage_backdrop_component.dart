@@ -1,7 +1,11 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flame/components.dart';
+
+import '../content/safe_asset_loader.dart';
+import '../content/visual_asset_load_policy.dart';
 
 /// Shared warm-earth fallback for the Joseon combat field and empty canvas.
 const Color warmHanjiBeige = Color(0xfff1d7ab);
@@ -36,6 +40,11 @@ class StageBackdropComponent extends PositionComponent {
   final Paint _stoneLinePaint = Paint()
     ..color = _stoneLineColor.withValues(alpha: _stoneLineOpacity);
   final Paint _tilePaint = Paint()..color = _tileColor.withValues(alpha: .42);
+  final Paint _groundImagePaint = Paint()..filterQuality = FilterQuality.medium;
+  Image? _groundImage;
+
+  String get groundTileAssetKey =>
+      'stages/joseon_courtyard_combat_1024x1824.png';
 
   /// Documents that the stage is presentation-only; it never owns hitboxes.
   bool get ownsCollision => false;
@@ -47,11 +56,29 @@ class StageBackdropComponent extends PositionComponent {
   double get stoneLineOpacity => _stoneLineOpacity;
 
   /// The full render-time paint cache; no decoration allocates a [Paint].
-  int get cachedPaintCount => 4;
+  int get cachedPaintCount => 5;
 
   final List<StageDecoration> _decorations = [];
 
   List<StageDecoration> get decorations => List.unmodifiable(_decorations);
+
+  @override
+  void onLoad() {
+    super.onLoad();
+    if (shouldLoadVisualAssets(this)) {
+      unawaited(_loadGroundImage());
+    }
+  }
+
+  Future<void> _loadGroundImage() async {
+    final image = await SafeAssetLoader.load(
+      load: () => findGame()!.images.load(groundTileAssetKey),
+      library: 'pixel_survivor stage backgrounds',
+      assetKey: groundTileAssetKey,
+      reportErrors: false,
+    );
+    if (image != null) _groundImage = image;
+  }
 
   @override
   void onGameResize(Vector2 size) {
@@ -62,6 +89,11 @@ class StageBackdropComponent extends PositionComponent {
 
   @override
   void render(Canvas canvas) {
+    final groundImage = _groundImage;
+    if (groundImage != null) {
+      _drawGroundImage(canvas, groundImage);
+      return;
+    }
     canvas.drawRect(Offset.zero & size.toSize(), _basePaint);
 
     for (final decoration in _decorations) {
@@ -101,6 +133,36 @@ class StageBackdropComponent extends PositionComponent {
           canvas.restore();
       }
     }
+  }
+
+  void _drawGroundImage(Canvas canvas, Image image) {
+    final sourceSize = Size(image.width.toDouble(), image.height.toDouble());
+    final targetAspect = size.x / size.y;
+    final sourceAspect = sourceSize.width / sourceSize.height;
+    late final Rect source;
+    if (sourceAspect > targetAspect) {
+      final width = sourceSize.height * targetAspect;
+      source = Rect.fromLTWH(
+        (sourceSize.width - width) / 2,
+        0,
+        width,
+        sourceSize.height,
+      );
+    } else {
+      final height = sourceSize.width / targetAspect;
+      source = Rect.fromLTWH(
+        0,
+        (sourceSize.height - height) / 2,
+        sourceSize.width,
+        height,
+      );
+    }
+    canvas.drawImageRect(
+      image,
+      source,
+      Offset.zero & size.toSize(),
+      _groundImagePaint,
+    );
   }
 
   void _rebuildDecorations() {

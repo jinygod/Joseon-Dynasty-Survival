@@ -618,6 +618,21 @@ void main() {
       enemy.update(0.01);
       expect(enemy.deathVisualComplete, isTrue);
     });
+
+    test('enemy visual facing follows horizontal movement direction', () {
+      final enemy = EnemyComponent(
+        enemyId: bandit,
+        maxHealth: 18,
+        moveSpeed: 60,
+        damage: 8,
+      );
+
+      enemy.debugFace(Vector2(-1, 0));
+      expect(enemy.facesLeft, isTrue);
+
+      enemy.debugFace(Vector2(1, 0));
+      expect(enemy.facesLeft, isFalse);
+    });
   });
 }
 

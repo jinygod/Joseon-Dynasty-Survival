@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui';
 
@@ -7,6 +8,8 @@ import '../combat/attack_spec.dart';
 import '../combat/combat_vfx_primitives.dart';
 import '../combat/combat_visual_theme.dart';
 import '../content/weapon_visual_theme.dart';
+import '../content/safe_asset_loader.dart';
+import '../content/visual_asset_load_policy.dart';
 import 'talisman_presentation_component.dart';
 
 class AttackEffectComponent extends PositionComponent {
@@ -25,6 +28,11 @@ class AttackEffectComponent extends PositionComponent {
   CombatVfxTier get visualTier =>
       combatVfxTierForPresentation(instance.spec.presentation);
   WeaponVfxFamily get vfxFamily => weaponVfxFamilyForAttackId(instance.spec.id);
+  bool get usesHwandoRaster =>
+      vfxFamily == WeaponVfxFamily.hwandoBlade &&
+      (visualGeometry.shape == AttackShape.sector ||
+          visualGeometry.shape == AttackShape.circle);
+  String get hwandoRasterAssetKey => 'effects/hwando_slash_ribbon_512.png';
   static const synergySlashColor = Color(0xffffd166);
   static const synergyFragmentColors = <Color>[
     Color(0xff3b82f6),
@@ -35,6 +43,25 @@ class AttackEffectComponent extends PositionComponent {
   ];
   double _age = 0;
   bool _expired = false;
+  Image? _hwandoRaster;
+
+  @override
+  void onLoad() {
+    super.onLoad();
+    if (usesHwandoRaster && shouldLoadVisualAssets(this)) {
+      unawaited(_loadHwandoRaster());
+    }
+  }
+
+  Future<void> _loadHwandoRaster() async {
+    final image = await SafeAssetLoader.load(
+      load: () => findGame()!.images.load(hwandoRasterAssetKey),
+      library: 'pixel_survivor weapon effects',
+      assetKey: hwandoRasterAssetKey,
+      reportErrors: false,
+    );
+    if (image != null) _hwandoRaster = image;
+  }
 
   double get _lifetime => math.max(
     .001,
@@ -82,6 +109,18 @@ class AttackEffectComponent extends PositionComponent {
           : visualTheme.coreColor,
       smoke: const Color(0xff53606c),
     );
+    final hwandoRaster = _hwandoRaster;
+    if (hwandoRaster != null && usesHwandoRaster) {
+      final steppedProgress = (progress * 12).floor() / 12;
+      _drawHwandoRaster(
+        canvas,
+        hwandoRaster,
+        heading: heading,
+        progress: steppedProgress,
+        fade: (1 - steppedProgress) * visualTheme.maxAlpha,
+      );
+      return;
+    }
 
     switch (visualGeometry.shape) {
       case AttackShape.sector:
@@ -134,6 +173,64 @@ class AttackEffectComponent extends PositionComponent {
           tier: visualTier,
         );
     }
+  }
+
+  void _drawHwandoRaster(
+    Canvas canvas,
+    Image image, {
+    required double heading,
+    required double progress,
+    required double fade,
+  }) {
+    final source = Rect.fromLTWH(
+      0,
+      0,
+      image.width.toDouble(),
+      image.height.toDouble(),
+    );
+    final radius = visualGeometry.shape == AttackShape.circle
+        ? visualGeometry.radius
+        : visualGeometry.range;
+    final extent = radius * (visualTier == CombatVfxTier.master ? 2.5 : 2.2);
+    final destination = Rect.fromCenter(
+      center: Offset.zero,
+      width: extent,
+      height: extent,
+    );
+    final paint = Paint()
+      ..filterQuality = FilterQuality.high
+      ..color = Color.fromRGBO(255, 255, 255, fade.clamp(0, 1));
+
+    canvas.save();
+    if (visualGeometry.shape == AttackShape.sector) {
+      canvas.rotate(heading);
+      final clipRadius = visualGeometry.range * 1.12;
+      final clipRect = Rect.fromCircle(center: Offset.zero, radius: clipRadius);
+      final halfSweep = visualGeometry.angleRadians / 2;
+      final clip = Path()
+        ..moveTo(0, 0)
+        ..arcTo(clipRect, -halfSweep, visualGeometry.angleRadians, false)
+        ..close();
+      canvas.clipPath(clip);
+      canvas.drawImageRect(image, source, destination, paint);
+    } else {
+      canvas.rotate(progress * .35);
+      if (visualTier == CombatVfxTier.master) {
+        canvas.save();
+        canvas.rotate(math.pi);
+        canvas.drawImageRect(
+          image,
+          source,
+          destination.deflate(radius * .08),
+          Paint()
+            ..filterQuality = FilterQuality.high
+            ..color = Color.fromRGBO(255, 210, 135, fade * .55),
+        );
+        canvas.restore();
+      }
+      canvas.drawImageRect(image, source, destination, paint);
+    }
+    canvas.restore();
   }
 
   void _drawSector(

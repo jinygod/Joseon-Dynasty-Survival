@@ -173,6 +173,8 @@ Future<_CombatFixture> _pumpCombatFixture(
   await tester.runAsync(
     () => Future.wait([
       game.images.load(PlayerSpriteSheet.authoredAssetKey),
+      game.images.load('effects/hwando_slash_ribbon_512.png'),
+      game.images.load('stages/joseon_courtyard_combat_1024x1824.png'),
       for (final enemyId in _representativeEnemyIds)
         game.images.load(EnemySpriteSheet.specs[enemyId]!.assetKey),
     ]),

@@ -67,6 +67,7 @@ import 'systems/enemy_aura_resolver.dart';
 import 'systems/enemy_behavior_controller.dart';
 import 'systems/run_progression_system.dart';
 import 'systems/run_stats_tracker.dart';
+import 'systems/spawn_ring_geometry.dart';
 import 'systems/combat_playtest_tracker.dart';
 import 'systems/wave_director.dart';
 import 'systems/talisman_executor.dart';
@@ -2003,16 +2004,9 @@ class PixelSurvivorGame extends FlameGame
   }
 
   Vector2 _spawnOffsetFor(int spawnIndex) {
-    final side = spawnIndex % 4;
-    final halfWidth = size.x / 2;
-    final halfHeight = size.y / 2;
-
-    return switch (side) {
-      0 => Vector2(-halfWidth - 24, 0),
-      1 => Vector2(halfWidth + 24, 0),
-      2 => Vector2(0, -halfHeight - 24),
-      _ => Vector2(0, halfHeight + 24),
-    };
+    final goldenAngle = pi * (3 - sqrt(5));
+    final angle = (spawnIndex * goldenAngle + _elapsedSeconds * .37) % (pi * 2);
+    return SpawnRingGeometry.offsetForAngle(size, angle);
   }
 
   bool _isProjectileOutsideBounds(ProjectileComponent projectile) {
