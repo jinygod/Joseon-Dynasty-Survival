@@ -13,7 +13,9 @@ frame/render timing measurement.
 - Browser: Google Chrome, one normal-profile window, extensions disabled.
 - Flutter mode: web profile mode. Flutter web profile traces are recorded in
   Chrome DevTools, not Flutter DevTools.
-- Output directory: `build/qa/combat-visual-profile/`.
+- Output directory: a fresh, run-specific directory under
+  `build/qa/combat-visual-profile/` (for example,
+  `build/qa/combat-visual-profile/2026-07-24T120000-seed3107/`).
 
 The current interactive app has no supported runtime seed injection. Before
 calling a capture `seed 3107`, use a build that exposes the existing seeded
@@ -73,18 +75,18 @@ document here: do not guess trace event names or infer these series from a
 trace. Create the required evidence immediately with:
 
 ```powershell
-dart run tool/combat_visual_profile_report.dart --not-measured "seed injection and profile instrumentation unavailable" --output build/qa/combat-visual-profile
+dart run tool/combat_visual_profile_report.dart --not-measured "seed injection and profile instrumentation unavailable" --output build/qa/combat-visual-profile/2026-07-24T120000-seed3107
 ```
 
 This writes
-`build/qa/combat-visual-profile/chrome-frame-profile.not-measured.json` and
+`chrome-frame-profile-not-measured.json` in that run directory and
 does not create a made-up profile result.
 
 When a future supported capture exporter produces the normalized JSON below,
 the end-to-end aggregation and artifact-writing command is:
 
 ```powershell
-dart run tool/combat_visual_profile_report.dart --input build/qa/combat-visual-profile/normalized-capture.json --output build/qa/combat-visual-profile
+dart run tool/combat_visual_profile_report.dart --input build/qa/combat-visual-profile/2026-07-24T120000-seed3107/normalized-capture.json --output build/qa/combat-visual-profile/2026-07-24T120000-seed3107
 ```
 
 `normalized-capture.json` has this exact schema; every field is required and
@@ -105,6 +107,12 @@ The command validates the schema, aggregates through `ChromeFrameProfile`, and
 writes `chrome-frame-profile.json` and `chrome-frame-profile.md`. It does not
 parse Chrome trace events itself, so no tool output may be claimed until a
 supported exporter supplies this normalized input.
+
+The tool fails closed if a measured artifact (`chrome-frame-profile.json` or
+`chrome-frame-profile.md`) and not-measured evidence would coexist in the same
+directory. It does not delete or alter existing conflicting evidence. Repeating
+the same mode is allowed and overwrites only that mode's own artifact files;
+use a new timestamped directory for every capture to preserve prior evidence.
 
 For a supported future capture, also record in
 `cold-first-combat-observations.json`:
