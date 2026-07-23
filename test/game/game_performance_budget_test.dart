@@ -2,9 +2,9 @@ import 'package:flame/components.dart';
 import 'package:flame_test/flame_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/components/enemy_component.dart';
-import 'package:pixel_survivor/game/components/attack_effect_component.dart';
 import 'package:pixel_survivor/game/components/combat_effect_component.dart';
 import 'package:pixel_survivor/game/components/projectile_component.dart';
+import 'package:pixel_survivor/game/components/hwando_vfx_component.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
 import 'package:pixel_survivor/game/game_performance_budget.dart';
@@ -26,6 +26,7 @@ void main() {
       onRunEnded: null,
       performanceBudget: constrainedBudget,
       onPerformanceDiagnostic: runtimeDiagnostics.add,
+      loadVisualAssets: false,
     ),
     gameSize: Vector2(960, 540),
   );
@@ -34,6 +35,7 @@ void main() {
       playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
       onRunEnded: null,
       performanceBudget: constrainedBudget,
+      loadVisualAssets: false,
     );
     for (var level = 0; level < 6; level += 1) {
       game.weaponSystem.upgrade(hwandoSlash, game.unlockedWeaponIds);
@@ -103,7 +105,7 @@ void main() {
       game.update(.05);
       game.update(0);
 
-      expect(game.children.whereType<AttackEffectComponent>(), hasLength(1));
+      expect(game.children.whereType<HwandoVfxComponent>(), hasLength(1));
       expect(game.children.whereType<CombatEffectComponent>(), isEmpty);
       expect(
         game.performanceSnapshot.counts[GamePopulationKind.combatEffect],

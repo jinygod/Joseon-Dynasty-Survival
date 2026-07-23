@@ -4,11 +4,16 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 
 import '../combat/attack_spec.dart';
+import '../content/attack_visual_registry.dart';
 import 'talisman_presentation_component.dart';
 
 class AttackEffectComponent extends PositionComponent {
   AttackEffectComponent({required this.instance, this.onExpired})
-    : super(
+    : assert(
+        _isNotHwandoEffect(instance.spec.id),
+        'Hwando attacks must use HwandoVfxComponent.',
+      ),
+      super(
         position: instance.origin,
         priority: AttackPresentationPriority.attack,
       );
@@ -25,6 +30,15 @@ class AttackEffectComponent extends PositionComponent {
   ];
   double _age = 0;
   bool _expired = false;
+
+  static bool _isNotHwandoEffect(String effectId) {
+    try {
+      return AttackVisualRegistry.byId(effectId).category !=
+          CombatVisualCategory.hwando;
+    } on MissingAttackVisualException {
+      return true;
+    }
+  }
 
   double get _lifetime =>
       instance.spec.activeSeconds + instance.spec.lingerSeconds;

@@ -15,8 +15,10 @@ import 'components/area_attack_component.dart';
 import 'audio/audio_cue.dart';
 import 'combat/attack_geometry.dart';
 import 'combat/attack_spec.dart';
+import 'combat/attack_visual_event.dart';
 import 'combat/talisman_damage.dart';
 import 'components/attack_effect_component.dart';
+import 'components/hwando_vfx_component.dart';
 import 'components/boss_component.dart';
 import 'components/combat_effect_component.dart';
 import 'components/damage_number_component.dart';
@@ -46,6 +48,7 @@ import 'content/stage_definitions.dart';
 import 'content/wave_definitions.dart';
 import 'content/weapon_definitions.dart';
 import 'content/weapon_level_definitions.dart';
+import 'content/weapon_effect_atlas.dart';
 import 'content/visual_asset_load_policy.dart';
 import 'game_performance_budget.dart';
 import 'models/player_slot.dart';
@@ -358,10 +361,10 @@ class PixelSurvivorGame extends FlameGame
   Future<void> onLoad() async {
     await super.onLoad();
     _visualImages = loadVisualAssets
-        ? await CombatAssetPreloader.loadWith(
-            AttackVisualRegistry.requiredAssetKeys,
-            visualAssetLoader ?? images.load,
-          )
+        ? await CombatAssetPreloader.loadWith([
+            ...AttackVisualRegistry.requiredAssetKeys,
+            WeaponEffectAtlas.assetKey,
+          ], visualAssetLoader ?? images.load)
         : const {};
 
     camera.viewfinder.anchor = Anchor.center;
@@ -705,6 +708,7 @@ class PixelSurvivorGame extends FlameGame
     }
     for (final arc in result.meleeArcs) {
       if (arc.weaponId == hwandoSlash) continue;
+      arc.attachEffectImage(_visualImages[WeaponEffectAtlas.assetKey]);
       add(arc);
     }
     for (final areaAttack in result.areaAttacks) {
@@ -896,14 +900,30 @@ class PixelSurvivorGame extends FlameGame
       return;
     }
     _combatEffectCount += 1;
-    add(
-      AttackEffectComponent(
-        instance: attack,
-        onExpired: () {
-          _combatEffectCount = max(0, _combatEffectCount - 1);
-        },
-      ),
-    );
+    void onExpired() {
+      _combatEffectCount = max(0, _combatEffectCount - 1);
+    }
+
+    if (_isHwandoEffect(attack.spec.id)) {
+      add(
+        HwandoVfxComponent(
+          event: AttackVisualEvent.fromAttack(attack),
+          images: _visualImages,
+          onExpired: onExpired,
+        ),
+      );
+      return;
+    }
+    add(AttackEffectComponent(instance: attack, onExpired: onExpired));
+  }
+
+  bool _isHwandoEffect(String effectId) {
+    try {
+      return AttackVisualRegistry.byId(effectId).category ==
+          CombatVisualCategory.hwando;
+    } on MissingAttackVisualException {
+      return false;
+    }
   }
 
   void _ensureWardAura(PlayerComponent player) {

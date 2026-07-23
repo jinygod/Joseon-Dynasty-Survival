@@ -10,6 +10,8 @@ import 'package:pixel_survivor/game/components/enemy_component.dart';
 import 'package:pixel_survivor/game/components/enemy_combat_overlay_component.dart';
 import 'package:pixel_survivor/game/components/attack_effect_component.dart';
 import 'package:pixel_survivor/game/components/combat_effect_component.dart';
+import 'package:pixel_survivor/game/components/hwando_vfx_component.dart';
+import 'package:pixel_survivor/game/components/melee_arc_component.dart';
 import 'package:pixel_survivor/game/components/enemy_hazard_component.dart';
 import 'package:pixel_survivor/game/components/enemy_projectile_component.dart';
 import 'package:pixel_survivor/game/components/experience_gem_component.dart';
@@ -20,13 +22,13 @@ import 'package:pixel_survivor/game/components/spirit_jade_component.dart';
 import 'package:pixel_survivor/game/components/talisman_presentation_component.dart';
 import 'package:pixel_survivor/game/components/ward_aura_component.dart';
 import 'package:pixel_survivor/game/audio/audio_cue.dart';
-import 'package:pixel_survivor/game/combat/attack_geometry.dart';
 import 'package:pixel_survivor/game/combat/attack_spec.dart';
 import 'package:pixel_survivor/game/content/augment_definitions.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
 import 'package:pixel_survivor/game/content/combat_effect_atlas.dart';
 import 'package:pixel_survivor/game/content/attack_visual_registry.dart';
 import 'package:pixel_survivor/game/content/ids.dart';
+import 'package:pixel_survivor/game/content/weapon_effect_atlas.dart';
 import 'package:pixel_survivor/game/content/enemy_definitions.dart';
 import 'package:pixel_survivor/game/content/playtest_content_policy.dart';
 import 'package:pixel_survivor/game/content/stage_definitions.dart';
@@ -527,13 +529,13 @@ void main() {
 
       await game.onLoad();
 
-      expect(
-        requestedKeys.toSet(),
-        AttackVisualRegistry.requiredAssetKeys.toSet(),
-      );
+      expect(requestedKeys.toSet(), {
+        ...AttackVisualRegistry.requiredAssetKeys,
+        WeaponEffectAtlas.assetKey,
+      });
       expect(
         requestedKeys,
-        hasLength(AttackVisualRegistry.requiredAssetKeys.length),
+        hasLength(AttackVisualRegistry.requiredAssetKeys.length + 1),
       );
       expect(playersWereUnmountedDuringPreload, isTrue);
       expect(game.visualImages.keys, requestedKeys);
@@ -555,6 +557,27 @@ void main() {
       expect(game.visualImages, isEmpty);
       expect(() => game.visualImages.clear(), throwsUnsupportedError);
     });
+
+    gameTester.testGameWidget(
+      'fired Hwando attacks use one authored VFX without legacy visuals',
+      verify: (game, _) async {
+        game.update(0);
+
+        expect(game.children.whereType<HwandoVfxComponent>(), hasLength(1));
+        expect(
+          game.children.whereType<MeleeArcComponent>().where(
+            (arc) => arc.weaponId == hwandoSlash,
+          ),
+          isEmpty,
+        );
+        expect(
+          game.children.whereType<AttackEffectComponent>().where(
+            (effect) => effect.instance.spec.id.startsWith('hwando_'),
+          ),
+          isEmpty,
+        );
+      },
+    );
 
     test('starts each run with all globally unlocked weapons and augments', () {
       final game = newGame();
@@ -1181,27 +1204,15 @@ void main() {
       'hwando mastery enhances only sequence start and finish',
       verify: (game, _) async {
         game.update(0);
-        final effect = game.children.whereType<AttackEffectComponent>().single;
+        final effect = game.children.whereType<HwandoVfxComponent>().single;
         final enemies = game.children.whereType<EnemyComponent>().toList();
-        final expected = enemies
-            .where(
-              (enemy) => AttackGeometry.contains(
-                effect.instance,
-                enemy.position,
-                enemy.size.x / 2,
-              ),
-            )
-            .toSet();
         final damaged = enemies
             .where((enemy) => enemy.currentHealth < enemy.maxHealth)
             .toSet();
 
-        expect(damaged, expected);
-        expect(effect.instance.isCritical, isFalse);
-        expect(
-          damaged.single.maxHealth - damaged.single.currentHealth,
-          effect.instance.spec.damage,
-        );
+        expect(effect.event.effectId, 'hwando_master_opener');
+        expect(damaged, hasLength(1));
+        expect(damaged.single.maxHealth - damaged.single.currentHealth, 24);
         expect(
           game.children.whereType<CombatEffectComponent>().single.kind,
           CombatEffectKind.hit,
@@ -1236,14 +1247,11 @@ void main() {
       verify: (game, _) async {
         game.update(.05);
         game.update(0);
-        final attack = game.children.whereType<AttackEffectComponent>().single;
+        final attack = game.children.whereType<HwandoVfxComponent>().single;
         final enemy = game.children.whereType<EnemyComponent>().single;
 
-        expect(attack.instance.isCritical, isTrue);
-        expect(
-          enemy.maxHealth - enemy.currentHealth,
-          attack.instance.spec.damage * 2,
-        );
+        expect(attack.event.effectId, 'hwando_master_opener');
+        expect(enemy.maxHealth - enemy.currentHealth, 48);
         expect(
           game.children.whereType<CombatEffectComponent>().single.kind,
           CombatEffectKind.critical,

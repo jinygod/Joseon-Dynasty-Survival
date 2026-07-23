@@ -6,7 +6,9 @@ import 'package:flame/components.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/combat/attack_spec.dart';
 import 'package:pixel_survivor/game/combat/attack_geometry.dart';
-import 'package:pixel_survivor/game/components/attack_effect_component.dart';
+import 'package:pixel_survivor/game/combat/attack_visual_event.dart';
+import 'package:pixel_survivor/game/components/hwando_vfx_component.dart';
+import 'package:pixel_survivor/game/content/attack_visual_registry.dart';
 import 'package:pixel_survivor/game/systems/hwando_executor.dart';
 
 void main() {
@@ -218,10 +220,26 @@ void main() {
 }
 
 Future<Uint8List> _renderBytes(AttackInstance instance) async {
+  final sheetRecorder = ui.PictureRecorder();
+  ui.Canvas(sheetRecorder).drawRect(
+    const ui.Rect.fromLTWH(64, 60, 64, 8),
+    ui.Paint()..color = const ui.Color(0xffffffff),
+  );
+  final sheet = await sheetRecorder.endRecording().toImage(768, 128);
   final recorder = ui.PictureRecorder();
   final canvas = ui.Canvas(recorder)..translate(100, 100);
-  AttackEffectComponent(instance: instance).render(canvas);
+  final event = AttackVisualEvent.fromAttack(instance);
+  HwandoVfxComponent(
+    event: event,
+    images: {
+      for (final layer in AttackVisualRegistry.byId(event.effectId).layers)
+        layer.assetKey: sheet,
+    },
+  ).render(canvas);
   final image = await recorder.endRecording().toImage(200, 200);
   final data = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
-  return data!.buffer.asUint8List();
+  final bytes = Uint8List.fromList(data!.buffer.asUint8List());
+  image.dispose();
+  sheet.dispose();
+  return bytes;
 }

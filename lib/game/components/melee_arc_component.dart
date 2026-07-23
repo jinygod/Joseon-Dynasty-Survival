@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui';
 
@@ -18,6 +17,7 @@ class MeleeArcComponent extends PositionComponent {
     required this.range,
     this.angleRadians = math.pi * 0.7,
     this.lifetime = 0.12,
+    this.effectImage,
   }) : direction = _normalizedDirection(direction),
        super(
          position: position,
@@ -35,7 +35,11 @@ class MeleeArcComponent extends PositionComponent {
   double get facingAngle => math.atan2(direction.y, direction.x);
 
   double _age = 0;
-  Image? _effectImage;
+  Image? effectImage;
+
+  void attachEffectImage(Image? image) {
+    effectImage = image;
+  }
 
   bool containsEnemy(EnemyComponent enemy) {
     final offset = enemy.position - position;
@@ -52,16 +56,6 @@ class MeleeArcComponent extends PositionComponent {
   }
 
   @override
-  void onLoad() {
-    super.onLoad();
-    unawaited(_loadEffect());
-  }
-
-  Future<void> _loadEffect() async {
-    _effectImage = await WeaponEffectAtlas.load(this);
-  }
-
-  @override
   void update(double dt) {
     super.update(dt);
     _age += dt;
@@ -74,7 +68,7 @@ class MeleeArcComponent extends PositionComponent {
   void render(Canvas canvas) {
     super.render(canvas);
     final center = Offset(size.x / 2, size.y / 2);
-    final image = _effectImage;
+    final image = effectImage;
     final atlasRow = WeaponEffectAtlas.rowForWeapon(weaponId);
     if (image != null && atlasRow != null) {
       final sprite = WeaponEffectAtlas.sprite(
