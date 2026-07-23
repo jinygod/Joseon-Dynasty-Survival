@@ -257,9 +257,7 @@ git commit -m "feat: define combat visual registry"
 **Files:**
 - Create: `lib/game/content/combat_asset_preloader.dart`
 - Modify: `lib/game/pixel_survivor_game.dart`
-- Modify: `lib/app/game_screen.dart`
 - Test: `test/game/combat_asset_preloader_test.dart`
-- Test: `test/app/game_screen_settings_test.dart`
 
 **Interfaces:**
 - Consumes: `AttackVisualRegistry.requiredAssetKeys`, Flame `Images`.
@@ -309,20 +307,20 @@ abstract final class CombatAssetPreloader {
 
 In `PixelSurvivorGame.onLoad`, await this loader after `super.onLoad()` and before spawning active combat actors. Preserve `loadVisualAssets: false` tests by returning an empty immutable map.
 
-- [ ] **Step 4: Prevent first-mount loads**
+- [ ] **Step 4: Expose only the preloaded immutable cache**
 
-Pass cached images into migrated VFX components. Add a test that mounts a Hwando component with a fake cached map and verifies the injected loader is never invoked during `onLoad`.
+Expose the result as a read-only `PixelSurvivorGame.visualImages` map. Add a game test that uses an injected preload function, calls `onLoad`, and verifies each registry key was requested exactly once before active combat actors are mounted. The Task 5 component receives this cache and owns the no-load-on-mount assertion after `HwandoVfxComponent` exists.
 
 - [ ] **Step 5: Run focused tests**
 
-Run: `flutter test test/game/combat_asset_preloader_test.dart test/game/pixel_survivor_game_loop_test.dart test/app/game_screen_settings_test.dart`
+Run: `flutter test test/game/combat_asset_preloader_test.dart test/game/pixel_survivor_game_loop_test.dart`
 
-Expected: tests pass; game construction remains asynchronous only where already supported by `GameScreen`.
+Expected: tests pass; `loadVisualAssets: false` produces an empty immutable cache, and enabled loading requests every deduplicated registry key before combat actors are added.
 
 - [ ] **Step 6: Commit**
 
 ```powershell
-git add lib/game/content/combat_asset_preloader.dart lib/game/pixel_survivor_game.dart lib/app/game_screen.dart test/game/combat_asset_preloader_test.dart test/app/game_screen_settings_test.dart
+git add lib/game/content/combat_asset_preloader.dart lib/game/pixel_survivor_game.dart test/game/combat_asset_preloader_test.dart test/game/pixel_survivor_game_loop_test.dart
 git commit -m "perf: preload combat visual assets"
 ```
 
