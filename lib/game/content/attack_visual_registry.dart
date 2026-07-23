@@ -487,6 +487,9 @@ abstract final class AttackVisualRegistry {
         .toSet(),
   );
 
+  /// Stable, immutable IDs for tools that need to browse the production VFX.
+  static final List<String> effectIds = List.unmodifiable(_specs.keys);
+
   static AttackVisualSpec byId(String effectId) {
     final spec = _specs[effectId];
     if (spec != null) return spec;

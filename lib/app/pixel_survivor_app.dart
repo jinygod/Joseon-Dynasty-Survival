@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -27,6 +28,30 @@ import 'audio_settings_audio_binding.dart';
 import 'lobby_controller.dart';
 import 'lobby_screen.dart';
 import 'mobile_preview.dart';
+import 'vfx_gallery_screen.dart';
+
+Map<String, WidgetBuilder> debugVfxGalleryRoutes({
+  required bool isDebug,
+  WidgetBuilder? galleryBuilder,
+}) => isDebug
+    ? {'/debug/vfx-gallery': galleryBuilder ?? (_) => const VfxGalleryScreen()}
+    : const {};
+
+Widget? debugVfxGalleryEntry({required bool isDebug}) {
+  if (!isDebug) return null;
+  return Positioned(
+    top: 8,
+    right: 8,
+    child: Builder(
+      builder: (context) => IconButton(
+        key: const Key('vfx-gallery-entry'),
+        tooltip: 'Open VFX gallery',
+        icon: const Icon(Icons.auto_awesome),
+        onPressed: () => Navigator.of(context).pushNamed('/debug/vfx-gallery'),
+      ),
+    ),
+  );
+}
 
 class PixelSurvivorApp extends StatefulWidget {
   const PixelSurvivorApp({
@@ -194,6 +219,18 @@ class _PixelSurvivorAppState extends State<PixelSurvivorApp> {
 
   @override
   Widget build(BuildContext context) {
+    final lobby = LobbyScreen(
+      controller: _lobbyController,
+      audioService: _audioService,
+      audioSettingsController: _audioSettingsController,
+      accountController: _accountController,
+      progressSyncController: _progressSyncController,
+      purchaseController: _purchaseController,
+      playtestSessionRepository: _playtestSessionRepository,
+      onPurchaseInitializationRetry: _purchaseInitializationFailed
+          ? () => unawaited(_initializePurchasesSafely())
+          : null,
+    );
     return MaterialApp(
       title: AppStrings.appTitle,
       debugShowCheckedModeBanner: false,
@@ -201,23 +238,15 @@ class _PixelSurvivorAppState extends State<PixelSurvivorApp> {
         enabled: MobilePreviewPolicy.enabled,
         child: child ?? const SizedBox.shrink(),
       ),
+      routes: debugVfxGalleryRoutes(isDebug: kDebugMode),
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xff3fbf7f)),
         splashFactory: NoSplash.splashFactory,
         useMaterial3: false,
       ),
-      home: LobbyScreen(
-        controller: _lobbyController,
-        audioService: _audioService,
-        audioSettingsController: _audioSettingsController,
-        accountController: _accountController,
-        progressSyncController: _progressSyncController,
-        purchaseController: _purchaseController,
-        playtestSessionRepository: _playtestSessionRepository,
-        onPurchaseInitializationRetry: _purchaseInitializationFailed
-            ? () => unawaited(_initializePurchasesSafely())
-            : null,
-      ),
+      home: kDebugMode
+          ? Stack(children: [lobby, debugVfxGalleryEntry(isDebug: true)!])
+          : lobby,
     );
   }
 }

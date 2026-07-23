@@ -50,4 +50,17 @@ void main() {
 
     expect(assetKeys.toSet().length, assetKeys.length);
   });
+
+  test('effect IDs are immutable and resolve through the registry', () {
+    final effectIds = AttackVisualRegistry.effectIds;
+
+    expect(effectIds, isNotEmpty);
+    expect(
+      effectIds.every(
+        (effectId) => AttackVisualRegistry.byId(effectId).effectId == effectId,
+      ),
+      isTrue,
+    );
+    expect(() => effectIds.add('not_registered'), throwsUnsupportedError);
+  });
 }
