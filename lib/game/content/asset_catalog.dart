@@ -75,6 +75,20 @@ class AssetCatalog {
     'spirit_jade': 'assets/images/effects/combat_effects_atlas_64.png',
     'healing_item': 'assets/images/effects/healing_item_16.png',
     'hwando_slash_effect': 'assets/images/effects/hwando_slash_effect_64.png',
+    'hwando_slash_trail_128': 'assets/images/vfx/hwando_slash_trail_128.png',
+    'hwando_slash_impact_128': 'assets/images/vfx/hwando_slash_impact_128.png',
+    'hwando_blade_wave_trail_128':
+        'assets/images/vfx/hwando_blade_wave_trail_128.png',
+    'hwando_blade_wave_impact_128':
+        'assets/images/vfx/hwando_blade_wave_impact_128.png',
+    'hwando_master_circle_trail_128':
+        'assets/images/vfx/hwando_master_circle_trail_128.png',
+    'hwando_master_circle_impact_128':
+        'assets/images/vfx/hwando_master_circle_impact_128.png',
+    'hwando_master_finisher_trail_128':
+        'assets/images/vfx/hwando_master_finisher_trail_128.png',
+    'hwando_master_finisher_impact_128':
+        'assets/images/vfx/hwando_master_finisher_impact_128.png',
     'weapon_effects_atlas': 'assets/images/effects/weapon_effects_atlas_64.png',
     'combat_effects_atlas': 'assets/images/effects/combat_effects_atlas_64.png',
   };
