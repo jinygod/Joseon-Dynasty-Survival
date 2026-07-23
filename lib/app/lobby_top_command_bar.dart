@@ -51,10 +51,11 @@ class LobbyTopCommandBar extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         if (constraints.maxWidth > 600) {
+          final titleWidth = constraints.maxWidth > 900 ? 260.0 : 180.0;
           return Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              SizedBox(width: 260, child: titlePlaque),
+              SizedBox(width: titleWidth, child: titlePlaque),
               const SizedBox(width: 12),
               Expanded(child: resourceRibbon),
               const SizedBox(width: 12),

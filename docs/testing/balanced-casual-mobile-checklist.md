@@ -75,6 +75,21 @@ thermal stability, or a player's willingness to start a second run.
 - [ ] A high-value merged gem is visibly larger/brighter than a one-XP gem but
       does not imply a larger pickup radius.
 
+## Lobby presentation and interaction
+
+- [ ] On the physical device, bundled SongMyung and Gowun Batang render every
+      Korean lobby label without tofu glyphs, clipping, or broken syllables.
+- [ ] Pressing and releasing 출진 and each dock control communicates a clear
+      change in button depth without shifting or obscuring its label.
+- [ ] In a one-handed portrait grip, the 출진 action and all four dock targets
+      remain comfortable to reach with the thumb and do not cause mistaps.
+- [ ] At the Android 2.0 text-scale setting, lobby titles, status chips, stage
+      copy, 출진, and dock labels remain visible without overlap or clipping.
+- [ ] With gesture navigation and a display cutout enabled, the command bar,
+      stage card, 출진 action, and dock remain fully inside the SafeArea.
+- [ ] Profile-mode lobby tab changes and the transition from lobby to stage
+      selection sustain 60 FPS on the physical device; record timing evidence.
+
 ## Physical Android performance and replay signal
 
 - [ ] Profile-mode late-window average FPS (record exact value):
