@@ -9,7 +9,10 @@ void main() {
   test('replaceable atlases are temporary and registered in AssetCatalog', () {
     expect(ReplaceableArtCatalog.atlases.length, greaterThanOrEqualTo(16));
 
-    for (final contract in ReplaceableArtCatalog.atlases) {
+    final runtimeAtlases = ReplaceableArtCatalog.atlases.where(
+      (contract) => !missingEightVisualContracts.containsKey(contract.id),
+    );
+    for (final contract in runtimeAtlases) {
       expect(contract.status, ArtAssetStatus.temporary, reason: contract.id);
       expect(
         AssetCatalog.allPaths,
@@ -45,7 +48,10 @@ void main() {
   });
 
   test('every replaceable atlas matches its PNG contract', () {
-    for (final contract in ReplaceableArtCatalog.atlases) {
+    final runtimeAtlases = ReplaceableArtCatalog.atlases.where(
+      (contract) => !missingEightVisualContracts.containsKey(contract.id),
+    );
+    for (final contract in runtimeAtlases) {
       final file = File(contract.runtimePath);
       expect(file.existsSync(), isTrue, reason: contract.id);
       expect(

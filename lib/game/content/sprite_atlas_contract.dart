@@ -64,8 +64,93 @@ class SpriteAtlasContract {
   }
 }
 
+/// Future enemy sheets whose visual specification is locked before generation.
+const Map<String, SpriteAtlasContract> missingEightVisualContracts =
+    <String, SpriteAtlasContract>{
+      'sakkat_specter': SpriteAtlasContract(
+        id: 'sakkat_specter',
+        runtimePath: 'assets/images/enemies/sakkat_specter_128.png',
+        frameWidth: 128,
+        frameHeight: 128,
+        columns: 4,
+        rows: 4,
+        requiresTransparency: true,
+        status: ArtAssetStatus.temporary,
+      ),
+      'plague_crow': SpriteAtlasContract(
+        id: 'plague_crow',
+        runtimePath: 'assets/images/enemies/plague_crow_128.png',
+        frameWidth: 128,
+        frameHeight: 128,
+        columns: 4,
+        rows: 4,
+        requiresTransparency: true,
+        status: ArtAssetStatus.temporary,
+      ),
+      'spear_bandit': SpriteAtlasContract(
+        id: 'spear_bandit',
+        runtimePath: 'assets/images/enemies/spear_bandit_128.png',
+        frameWidth: 128,
+        frameHeight: 128,
+        columns: 4,
+        rows: 4,
+        requiresTransparency: true,
+        status: ArtAssetStatus.temporary,
+      ),
+      'rotten_herbalist': SpriteAtlasContract(
+        id: 'rotten_herbalist',
+        runtimePath: 'assets/images/enemies/rotten_herbalist_128.png',
+        frameWidth: 128,
+        frameHeight: 128,
+        columns: 4,
+        rows: 4,
+        requiresTransparency: true,
+        status: ArtAssetStatus.temporary,
+      ),
+      'grave_ember': SpriteAtlasContract(
+        id: 'grave_ember',
+        runtimePath: 'assets/images/enemies/grave_ember_128.png',
+        frameWidth: 128,
+        frameHeight: 128,
+        columns: 4,
+        rows: 4,
+        requiresTransparency: true,
+        status: ArtAssetStatus.temporary,
+      ),
+      'black_hat_assassin': SpriteAtlasContract(
+        id: 'black_hat_assassin',
+        runtimePath: 'assets/images/enemies/black_hat_assassin_128.png',
+        frameWidth: 128,
+        frameHeight: 128,
+        columns: 4,
+        rows: 4,
+        requiresTransparency: true,
+        status: ArtAssetStatus.temporary,
+      ),
+      'broken_jangseung_spirit': SpriteAtlasContract(
+        id: 'broken_jangseung_spirit',
+        runtimePath: 'assets/images/enemies/broken_jangseung_spirit_128.png',
+        frameWidth: 128,
+        frameHeight: 128,
+        columns: 4,
+        rows: 4,
+        requiresTransparency: true,
+        status: ArtAssetStatus.temporary,
+      ),
+      'sorrowful_maiden_ghost': SpriteAtlasContract(
+        id: 'sorrowful_maiden_ghost',
+        runtimePath: 'assets/images/enemies/sorrowful_maiden_ghost_128.png',
+        frameWidth: 128,
+        frameHeight: 128,
+        columns: 4,
+        rows: 4,
+        requiresTransparency: true,
+        status: ArtAssetStatus.temporary,
+      ),
+    };
+
 abstract final class ReplaceableArtCatalog {
-  static const atlases = <SpriteAtlasContract>[
+  static const List<SpriteAtlasContract> _bundledAtlases = <SpriteAtlasContract>[
     SpriteAtlasContract(
       id: 'exorcist_swordswoman_player',
       runtimePath: 'assets/images/player/exorcist_swordswoman_static_64.png',
@@ -398,6 +483,11 @@ abstract final class ReplaceableArtCatalog {
       status: ArtAssetStatus.temporary,
     ),
   ];
+
+  static final List<SpriteAtlasContract> atlases = List.unmodifiable([
+    ..._bundledAtlases,
+    ...missingEightVisualContracts.values,
+  ]);
 
   static SpriteAtlasContract byId(String id) {
     for (final contract in atlases) {
