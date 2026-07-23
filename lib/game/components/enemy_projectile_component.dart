@@ -34,8 +34,13 @@ class EnemyProjectileComponent extends PositionComponent {
 
   bool get isExpired => _age >= lifetime;
   bool get isSpent => _spent;
-  double get visualFootprint => 34;
+
+  /// The reviewed sheet's limiting nontransparent dimension is 52px per cell.
+  /// An 84px display box therefore keeps its visible danger footprint >= 34px.
+  double get visualBoxSize => 84;
+  double get minimumVisibleFootprint => 34;
   PositionComponent? _registryVisual;
+  PositionComponent? get registryVisual => _registryVisual;
   bool get usesRegistryVisual => _registryVisual != null;
   bool get startsImageLoadOnMount => false;
   bool get ownsDamageResolution => false;
@@ -62,7 +67,7 @@ class EnemyProjectileComponent extends PositionComponent {
     final visual = visualFactory!.create(_projectileVisualEvent(lifetime));
     visual
       ..position = center
-      ..scale = Vector2.all(visualFootprint / 128)
+      ..scale = Vector2.all(visualBoxSize / 128)
       ..angle = _velocityAngle;
     add(visual);
     _registryVisual = visual;
@@ -87,8 +92,8 @@ class EnemyProjectileComponent extends PositionComponent {
     if (usesRegistryVisual) return;
     final rect = Rect.fromCenter(
       center: Offset(size.x / 2, size.y / 2),
-      width: visualFootprint,
-      height: visualFootprint,
+      width: visualBoxSize,
+      height: visualBoxSize,
     );
     canvas.drawOval(rect, Paint()..color = const Color(0xff9f2b68));
     canvas.drawOval(

@@ -88,6 +88,8 @@ class EnemyHazardComponent extends PositionComponent {
   bool get isExpired => _elapsed >= durationSeconds;
   double get damageRadius => radius;
   double get visualRadius => radius + 12;
+  static const reviewedActiveDiameter = 116.0;
+  double get visualScale => visualRadius * 2 / reviewedActiveDiameter;
   bool _usesRegistryVisual = false;
   bool get usesRegistryVisual => _usesRegistryVisual;
   bool get startsImageLoadOnMount => false;
@@ -129,7 +131,7 @@ class EnemyHazardComponent extends PositionComponent {
       _enemyVisualEvent(effectId, durationSeconds),
     );
     visual.position = center;
-    visual.scale = Vector2.all(visualRadius * 2 / 128);
+    visual.scale = Vector2.all(visualScale);
     add(visual);
     _usesRegistryVisual = true;
   }

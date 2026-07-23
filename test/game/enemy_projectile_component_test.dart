@@ -1,6 +1,10 @@
+import 'dart:ui';
+
 import 'package:flame/components.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/components/enemy_projectile_component.dart';
+import 'package:pixel_survivor/game/components/projectile_vfx_component.dart';
+import 'package:pixel_survivor/game/content/combat_visual_factory.dart';
 import 'package:pixel_survivor/game/components/player_component.dart';
 
 void main() {
@@ -40,15 +44,40 @@ void main() {
     expect(projectile.isSpent, isTrue);
   });
 
-  test('sakkat projectile visual footprint does not alter its 10px hitbox', () {
+  test(
+    'sakkat projectile visible footprint does not alter its 10px hitbox',
+    () {
+      final projectile = EnemyProjectileComponent(
+        sourceId: 'sakkat_specter',
+        damage: 1,
+        position: Vector2.zero(),
+        velocity: Vector2.zero(),
+      );
+      expect(projectile.size, Vector2.all(10));
+      expect(projectile.minimumVisibleFootprint, greaterThanOrEqualTo(34));
+      expect(projectile.visualBoxSize, greaterThanOrEqualTo(84));
+      expect(projectile.ownsDamageResolution, isFalse);
+    },
+  );
+
+  test('sakkat projectile composes a centered cached registry child', () async {
+    final recorder = PictureRecorder();
+    final image = await recorder.endRecording().toImage(1, 1);
     final projectile = EnemyProjectileComponent(
       sourceId: 'sakkat_specter',
       damage: 1,
       position: Vector2.zero(),
-      velocity: Vector2.zero(),
+      velocity: Vector2(1, 0),
+      visualFactory: CombatVisualFactory(
+        images: {'projectiles/enemy/sakkat_spirit_projectile_128.png': image},
+      ),
     );
-    expect(projectile.size, Vector2.all(10));
-    expect(projectile.visualFootprint, greaterThanOrEqualTo(34));
-    expect(projectile.ownsDamageResolution, isFalse);
+    projectile.onMount();
+    expect(projectile.registryVisual, isA<ProjectileVfxComponent>());
+    expect(projectile.registryVisual!.position, projectile.center);
+    expect(
+      projectile.registryVisual!.scale.x,
+      closeTo(projectile.visualBoxSize / 128, .001),
+    );
   });
 }

@@ -51,6 +51,10 @@ void main() {
     );
     expect(hazard.damageRadius, hazard.radius);
     expect(hazard.visualRadius, greaterThanOrEqualTo(hazard.damageRadius + 12));
+    expect(
+      hazard.visualScale * EnemyHazardComponent.reviewedActiveDiameter,
+      greaterThanOrEqualTo(hazard.visualRadius * 2),
+    );
     expect(hazard.ownsDamageResolution, isFalse);
     expect(hazard.startsImageLoadOnMount, isFalse);
   });

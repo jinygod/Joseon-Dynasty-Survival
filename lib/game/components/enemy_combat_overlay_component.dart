@@ -23,6 +23,7 @@ class EnemyWarningOverlayComponent extends PositionComponent {
   final EnemyComponent enemy;
   final CombatVisualFactory? visualFactory;
   PositionComponent? _delegate;
+  PositionComponent? get registryVisual => _delegate;
   (EnemyBehaviorKind, int)? _delegateKey;
   double _visualRadius = 0;
   double _visualLength = 0;
@@ -31,6 +32,8 @@ class EnemyWarningOverlayComponent extends PositionComponent {
   bool get ownsDamageResolution => false;
   double get visualRadius => _visualRadius;
   double get visualLength => _visualLength;
+  static const radialActiveDiameter = 114.0;
+  static const lineActiveLength = 109.0;
 
   @override
   void update(double dt) {
@@ -81,12 +84,12 @@ class EnemyWarningOverlayComponent extends PositionComponent {
     if (radial) {
       visual
         ..position = center
-        ..scale = Vector2.all(_visualRadius * 2 / 128);
+        ..scale = Vector2.all(_visualRadius * 2 / radialActiveDiameter);
     } else {
       final direction = warning.direction;
       visual
         ..position = center + direction * (_visualLength / 2)
-        ..scale = Vector2(_visualLength / 128, 34 / 128)
+        ..scale = Vector2(_visualLength / lineActiveLength, 34 / 128)
         ..angle = math.atan2(direction.y, direction.x);
     }
     // The factory component has no image I/O; advance its presentation clock
@@ -163,6 +166,7 @@ class ShieldBlockEffectComponent extends PositionComponent {
   Vector2 get facingDirection => _facingDirection.clone();
   double get lifetime => _lifetime;
   PositionComponent? _registryVisual;
+  PositionComponent? get registryVisual => _registryVisual;
   bool get usesRegistryVisual => _registryVisual != null;
   bool get startsImageLoadOnMount => false;
   bool get ownsDamageResolution => false;
