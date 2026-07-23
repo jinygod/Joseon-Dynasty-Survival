@@ -248,6 +248,35 @@ git commit -m "feat: migrate player combat visuals to sprites"
 - Consumes: poison, shockwave, scream, telegraph, shield, and enemy projectile gameplay data.
 - Produces: image-backed enemy effects whose visible danger boundary never understates the gameplay area.
 
+**Locked enemy visual contracts:**
+
+| Effect ID | Category | Runtime asset key | Frames | Rotate |
+| --- | --- | --- | ---: | --- |
+| `enemy_poison_pool` | area | `vfx/enemy/poison_pool_128.png` | 8 | no |
+| `enemy_shockwave` | area | `vfx/enemy/shockwave_128.png` | 6 | no |
+| `enemy_spirit_scream` | area | `vfx/enemy/spirit_scream_128.png` | 6 | no |
+| `enemy_line_telegraph` | telegraph | `vfx/enemy/line_telegraph_128.png` | 6 | yes |
+| `enemy_ranged_telegraph` | telegraph | `vfx/enemy/ranged_telegraph_128.png` | 6 | yes |
+| `enemy_radial_telegraph` | telegraph | `vfx/enemy/radial_telegraph_128.png` | 8 | no |
+| `enemy_shield_block_flash` | status | `vfx/enemy/shield_block_flash_128.png` | 5 | yes |
+| `sakkat_spirit_projectile` | projectile | `projectiles/enemy/sakkat_spirit_projectile_128.png` | 4 | yes |
+
+All sheets use one horizontal row of 128x128 transparent RGBA cells,
+`generatedReview`, center anchors, priority offset zero, and full `0..1`
+layer spans. `EnemyHazardKind.warning` is unused and does not receive a
+separate asset. Line telegraphs cover dash, double-dash, dive, and thrust;
+ranged covers the Sakkat specter; radial is shared by shockwave and scream.
+
+Danger presentation scales are derived from gameplay geometry rather than
+added to the registry. With the current 24px player collision size, poison,
+shockwave, and scream render to at least `(damageRadius + 12) * 2`, or
+100px, 200px, and 264px respectively. Line telegraphs extend beyond their
+profile range by the enemy-plus-player collision radii and keep visible side
+and end caps. The Sakkat projectile visual is at least 34x34 while its 10px
+gameplay hitbox remains unchanged. Preparation edges stay readable on both
+the moonlit blue and plague olive stage palettes; normal rendering never
+removes the high-contrast danger boundary.
+
 - [ ] **Step 1: Write failing visual coverage and boundary tests**
 
 ```dart
