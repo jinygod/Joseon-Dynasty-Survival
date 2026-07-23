@@ -144,6 +144,123 @@ abstract final class AttackVisualRegistry {
     ),
   ];
 
+  static const _sealingSlashLayers = <AttackVisualLayerSpec>[
+    AttackVisualLayerSpec(
+      id: 'trail',
+      assetKey: 'vfx/player/sealing_slash_128.png',
+      frameSize: 128,
+      frameCount: 6,
+      anchor: Anchor.center,
+      priorityOffset: 0,
+      startFraction: 0,
+      endFraction: 1,
+    ),
+  ];
+
+  static const _windThunderFanLayers = <AttackVisualLayerSpec>[
+    AttackVisualLayerSpec(
+      id: 'effect',
+      assetKey: 'vfx/player/wind_thunder_fan_128.png',
+      frameSize: 128,
+      frameCount: 6,
+      anchor: Anchor.center,
+      priorityOffset: 0,
+      startFraction: 0,
+      endFraction: 1,
+    ),
+  ];
+
+  static const _singijeonVolleyLayers = <AttackVisualLayerSpec>[
+    AttackVisualLayerSpec(
+      id: 'effect',
+      assetKey: 'projectiles/player/singijeon_128.png',
+      frameSize: 128,
+      frameCount: 4,
+      anchor: Anchor.center,
+      priorityOffset: 0,
+      startFraction: 0,
+      endFraction: 1,
+    ),
+  ];
+
+  static const _jangseungWardLayers = <AttackVisualLayerSpec>[
+    AttackVisualLayerSpec(
+      id: 'effect',
+      assetKey: 'zones/player/jangseung_ward_128.png',
+      frameSize: 128,
+      frameCount: 8,
+      anchor: Anchor.center,
+      priorityOffset: 0,
+      startFraction: 0,
+      endFraction: 1,
+    ),
+  ];
+
+  static const _frostFlaskLayers = <AttackVisualLayerSpec>[
+    AttackVisualLayerSpec(
+      id: 'effect',
+      assetKey: 'zones/player/frost_field_128.png',
+      frameSize: 128,
+      frameCount: 8,
+      anchor: Anchor.center,
+      priorityOffset: 0,
+      startFraction: 0,
+      endFraction: 1,
+    ),
+  ];
+
+  static const _talismanAttachmentLayers = <AttackVisualLayerSpec>[
+    AttackVisualLayerSpec(
+      id: 'effect',
+      assetKey: 'vfx/player/talisman_attachment_128.png',
+      frameSize: 128,
+      frameCount: 4,
+      anchor: Anchor.center,
+      priorityOffset: 0,
+      startFraction: 0,
+      endFraction: 1,
+    ),
+  ];
+
+  static const _talismanTransferLayers = <AttackVisualLayerSpec>[
+    AttackVisualLayerSpec(
+      id: 'effect',
+      assetKey: 'vfx/player/talisman_transfer_128.png',
+      frameSize: 128,
+      frameCount: 6,
+      anchor: Anchor.center,
+      priorityOffset: 0,
+      startFraction: 0,
+      endFraction: 1,
+    ),
+  ];
+
+  static const _talismanExplosionLayers = <AttackVisualLayerSpec>[
+    AttackVisualLayerSpec(
+      id: 'effect',
+      assetKey: 'vfx/player/talisman_explosion_128.png',
+      frameSize: 128,
+      frameCount: 6,
+      anchor: Anchor.center,
+      priorityOffset: 0,
+      startFraction: 0,
+      endFraction: 1,
+    ),
+  ];
+
+  static const _talismanWardLayers = <AttackVisualLayerSpec>[
+    AttackVisualLayerSpec(
+      id: 'effect',
+      assetKey: 'zones/player/talisman_ward_128.png',
+      frameSize: 128,
+      frameCount: 8,
+      anchor: Anchor.center,
+      priorityOffset: 0,
+      startFraction: 0,
+      endFraction: 1,
+    ),
+  ];
+
   static const _specs = <String, AttackVisualSpec>{
     'hwando_slash': AttackVisualSpec(
       effectId: 'hwando_slash',
@@ -207,6 +324,76 @@ abstract final class AttackVisualRegistry {
       status: AttackVisualStatus.generatedReview,
       layers: _masterFinisherLayers,
       rotateWithDirection: true,
+    ),
+    'sealing_slash': AttackVisualSpec(
+      effectId: 'sealing_slash',
+      category: CombatVisualCategory.hwando,
+      status: AttackVisualStatus.generatedReview,
+      layers: _sealingSlashLayers,
+      rotateWithDirection: true,
+    ),
+    'wind_thunder_fan': AttackVisualSpec(
+      effectId: 'wind_thunder_fan',
+      category: CombatVisualCategory.area,
+      status: AttackVisualStatus.generatedReview,
+      layers: _windThunderFanLayers,
+      rotateWithDirection: true,
+    ),
+    'singijeon_volley': AttackVisualSpec(
+      effectId: 'singijeon_volley',
+      category: CombatVisualCategory.projectile,
+      status: AttackVisualStatus.generatedReview,
+      layers: _singijeonVolleyLayers,
+      rotateWithDirection: true,
+    ),
+    'jangseung_ward': AttackVisualSpec(
+      effectId: 'jangseung_ward',
+      category: CombatVisualCategory.area,
+      status: AttackVisualStatus.generatedReview,
+      layers: _jangseungWardLayers,
+      rotateWithDirection: false,
+    ),
+    'frost_flask': AttackVisualSpec(
+      effectId: 'frost_flask',
+      category: CombatVisualCategory.area,
+      status: AttackVisualStatus.generatedReview,
+      layers: _frostFlaskLayers,
+      rotateWithDirection: false,
+    ),
+    'talisman_attachment': AttackVisualSpec(
+      effectId: 'talisman_attachment',
+      category: CombatVisualCategory.status,
+      status: AttackVisualStatus.generatedReview,
+      layers: _talismanAttachmentLayers,
+      rotateWithDirection: false,
+    ),
+    'talisman_transfer': AttackVisualSpec(
+      effectId: 'talisman_transfer',
+      category: CombatVisualCategory.status,
+      status: AttackVisualStatus.generatedReview,
+      layers: _talismanTransferLayers,
+      rotateWithDirection: true,
+    ),
+    'talisman_explosion': AttackVisualSpec(
+      effectId: 'talisman_explosion',
+      category: CombatVisualCategory.area,
+      status: AttackVisualStatus.generatedReview,
+      layers: _talismanExplosionLayers,
+      rotateWithDirection: false,
+    ),
+    'talisman_small_ward': AttackVisualSpec(
+      effectId: 'talisman_small_ward',
+      category: CombatVisualCategory.area,
+      status: AttackVisualStatus.generatedReview,
+      layers: _talismanWardLayers,
+      rotateWithDirection: false,
+    ),
+    'talisman_master_ward': AttackVisualSpec(
+      effectId: 'talisman_master_ward',
+      category: CombatVisualCategory.area,
+      status: AttackVisualStatus.generatedReview,
+      layers: _talismanWardLayers,
+      rotateWithDirection: false,
     ),
   };
 

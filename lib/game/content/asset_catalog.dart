@@ -89,6 +89,18 @@ class AssetCatalog {
         'assets/images/vfx/hwando_master_finisher_trail_128.png',
     'hwando_master_finisher_impact_128':
         'assets/images/vfx/hwando_master_finisher_impact_128.png',
+    'sealing_slash_128': 'assets/images/vfx/player/sealing_slash_128.png',
+    'wind_thunder_fan_128': 'assets/images/vfx/player/wind_thunder_fan_128.png',
+    'singijeon_128': 'assets/images/projectiles/player/singijeon_128.png',
+    'jangseung_ward_128': 'assets/images/zones/player/jangseung_ward_128.png',
+    'frost_field_128': 'assets/images/zones/player/frost_field_128.png',
+    'talisman_attachment_128':
+        'assets/images/vfx/player/talisman_attachment_128.png',
+    'talisman_transfer_128':
+        'assets/images/vfx/player/talisman_transfer_128.png',
+    'talisman_explosion_128':
+        'assets/images/vfx/player/talisman_explosion_128.png',
+    'talisman_ward_128': 'assets/images/zones/player/talisman_ward_128.png',
     'weapon_effects_atlas': 'assets/images/effects/weapon_effects_atlas_64.png',
     'combat_effects_atlas': 'assets/images/effects/combat_effects_atlas_64.png',
   };
