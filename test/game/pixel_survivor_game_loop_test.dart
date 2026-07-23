@@ -25,6 +25,7 @@ import 'package:pixel_survivor/game/combat/attack_spec.dart';
 import 'package:pixel_survivor/game/content/augment_definitions.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
 import 'package:pixel_survivor/game/content/combat_effect_atlas.dart';
+import 'package:pixel_survivor/game/content/attack_visual_registry.dart';
 import 'package:pixel_survivor/game/content/ids.dart';
 import 'package:pixel_survivor/game/content/enemy_definitions.dart';
 import 'package:pixel_survivor/game/content/playtest_content_policy.dart';
@@ -48,6 +49,7 @@ void main() {
     return PixelSurvivorGame(
       playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
       onRunEnded: null,
+      loadVisualAssets: false,
     );
   }
 
@@ -93,6 +95,7 @@ void main() {
       playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
       onRunEnded: null,
       onAudioCue: audioCues.add,
+      loadVisualAssets: false,
     );
   }, gameSize: Vector2(960, 540));
   final masterGameTester = FlameTester<PixelSurvivorGame>(() {
@@ -101,6 +104,7 @@ void main() {
       playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
       onRunEnded: null,
       onAudioCue: audioCues.add,
+      loadVisualAssets: false,
     );
     for (var level = 0; level < 6; level += 1) {
       game.weaponSystem.upgrade(hwandoSlash, game.unlockedWeaponIds);
@@ -127,6 +131,7 @@ void main() {
     final game = PixelSurvivorGame(
       playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
       onRunEnded: null,
+      loadVisualAssets: false,
     )..augmentLevels[hawkEye] = 20;
     for (var level = 0; level < 6; level += 1) {
       game.weaponSystem.upgrade(hwandoSlash, game.unlockedWeaponIds);
@@ -146,6 +151,7 @@ void main() {
     () => PixelSurvivorGame(
       playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
       onRunEnded: null,
+      loadVisualAssets: false,
       performanceBudget: const GamePerformanceBudget(
         maxEnemies: 96,
         maxProjectiles: 1,
@@ -159,6 +165,7 @@ void main() {
     () => PixelSurvivorGame(
       playerSlot: const PlayerSlot(index: 0, characterId: mountainHunter),
       onRunEnded: null,
+      loadVisualAssets: false,
       performanceBudget: const GamePerformanceBudget(
         maxEnemies: 96,
         maxProjectiles: 1,
@@ -172,6 +179,7 @@ void main() {
     () => PixelSurvivorGame(
       playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
       onRunEnded: null,
+      loadVisualAssets: false,
       performanceBudget: const GamePerformanceBudget(
         maxEnemies: 96,
         maxProjectiles: 128,
@@ -496,6 +504,56 @@ void main() {
       final game = newGame();
 
       expect(() => game.activePlayers.clear(), throwsUnsupportedError);
+    });
+
+    test('preloads each combat visual asset before mounting players', () async {
+      final recorder = PictureRecorder();
+      Canvas(recorder).drawRect(const Rect.fromLTWH(0, 0, 1, 1), Paint());
+      final image = await recorder.endRecording().toImage(1, 1);
+      addTearDown(image.dispose);
+      final requestedKeys = <String>[];
+      var playersWereUnmountedDuringPreload = false;
+      late final PixelSurvivorGame game;
+      game = PixelSurvivorGame(
+        playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
+        onRunEnded: null,
+        preloadCombatVisualAssets: (keys) async {
+          playersWereUnmountedDuringPreload = game.activePlayers.isEmpty;
+          requestedKeys.addAll(keys);
+          return Map.unmodifiable({for (final key in keys) key: image});
+        },
+      );
+      game.onGameResize(Vector2(960, 540));
+
+      await game.onLoad();
+
+      expect(
+        requestedKeys.toSet(),
+        AttackVisualRegistry.requiredAssetKeys.toSet(),
+      );
+      expect(
+        requestedKeys,
+        hasLength(AttackVisualRegistry.requiredAssetKeys.length),
+      );
+      expect(playersWereUnmountedDuringPreload, isTrue);
+      expect(game.visualImages.keys, requestedKeys);
+      expect(() => game.visualImages.clear(), throwsUnsupportedError);
+    });
+
+    test('skips visual preloading when visual assets are disabled', () async {
+      final game = PixelSurvivorGame(
+        playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
+        onRunEnded: null,
+        loadVisualAssets: false,
+        preloadCombatVisualAssets: (_) async =>
+            throw StateError('preloader should not be called'),
+      );
+      game.onGameResize(Vector2(960, 540));
+
+      await game.onLoad();
+
+      expect(game.visualImages, isEmpty);
+      expect(() => game.visualImages.clear(), throwsUnsupportedError);
     });
 
     test('starts each run with all globally unlocked weapons and augments', () {

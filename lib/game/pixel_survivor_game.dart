@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:collection';
 import 'dart:math';
+import 'dart:ui' show Image;
 
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
@@ -33,7 +34,9 @@ import 'components/talisman_presentation_component.dart';
 import 'components/ward_aura_component.dart';
 import 'balance/meta_reward_balance.dart';
 import 'content/augment_definitions.dart';
+import 'content/attack_visual_registry.dart';
 import 'content/boss_definitions.dart';
+import 'content/combat_asset_preloader.dart';
 import 'content/character_definitions.dart';
 import 'content/combat_effect_atlas.dart';
 import 'content/enemy_definitions.dart';
@@ -67,6 +70,9 @@ import 'systems/wave_director.dart';
 import 'systems/weapon_system.dart';
 import 'systems/weapon_synergy_resolver.dart';
 
+typedef CombatVisualAssetPreloader =
+    Future<Map<String, Image>> Function(Iterable<String> keys);
+
 class PixelSurvivorGame extends FlameGame
     with KeyboardEvents
     implements GameHudSource, RewardCollectionHudSource, VisualAssetLoadPolicy {
@@ -89,6 +95,7 @@ class PixelSurvivorGame extends FlameGame
     this.performanceBudget = GamePerformanceBudget.standard,
     this.onPerformanceDiagnostic,
     this.loadVisualAssets = true,
+    this.preloadCombatVisualAssets,
     this.contentPolicy = const PlaytestContentPolicy(
       unlockAllBaseWeapons: false,
     ),
@@ -131,6 +138,7 @@ class PixelSurvivorGame extends FlameGame
   final GamePerformanceDiagnosticReporter? onPerformanceDiagnostic;
   @override
   final bool loadVisualAssets;
+  final CombatVisualAssetPreloader? preloadCombatVisualAssets;
   final PlaytestContentPolicy contentPolicy;
   final MetaRewardPolicy _metaRewardPolicy = const MetaRewardPolicy();
   final AugmentEffectResolver _augmentEffectResolver =
@@ -152,6 +160,7 @@ class PixelSurvivorGame extends FlameGame
   final Map<AugmentId, int> augmentLevels = {};
   final Map<EnemyComponent, WeaponId> _lastWeaponHitByEnemy = {};
   final Set<EnemyComponent> _recordedEnemyDefeats = {};
+  Map<String, Image> _visualImages = const {};
   final Map<EnemyComponent, bool> _pendingSpiritJadeDrops = {};
   final Map<EnemyComponent, TalismanAttachmentComponent>
   _talismanAttachmentComponents = {};
@@ -299,6 +308,7 @@ class PixelSurvivorGame extends FlameGame
 
   bool get isLevelUpPending => _pendingLevelUpChoices.isNotEmpty;
   List<PlayerComponent> get activePlayers => _activePlayersView;
+  Map<String, Image> get visualImages => _visualImages;
   List<LevelUpChoice> get pendingLevelUpChoices =>
       List.unmodifiable(_pendingLevelUpChoices);
   @override
@@ -349,6 +359,17 @@ class PixelSurvivorGame extends FlameGame
   @override
   Future<void> onLoad() async {
     await super.onLoad();
+    _visualImages = loadVisualAssets
+        ? Map.unmodifiable(
+            await (preloadCombatVisualAssets?.call(
+                  AttackVisualRegistry.requiredAssetKeys,
+                ) ??
+                CombatAssetPreloader.load(
+                  images,
+                  AttackVisualRegistry.requiredAssetKeys,
+                )),
+          )
+        : const {};
 
     camera.viewfinder.anchor = Anchor.center;
 
