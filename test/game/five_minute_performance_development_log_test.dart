@@ -205,9 +205,9 @@ void main() {
         log.lateMinimumSimulatedFps,
         closeTo(1000000 / frameStepMicros, 1e-12),
       );
-      expect(log.peakMountedComponentCount, 262);
-      expect(log.peakRetainedOwnerCount, 13);
-      expect(log.peakMemoryProxyComponents, 272);
+      expect(log.peakMountedComponentCount, 263);
+      expect(log.peakRetainedOwnerCount, 16);
+      expect(log.peakMemoryProxyComponents, 275);
       for (final kind in GamePopulationKind.values) {
         expect(log.peakCounts[kind], greaterThan(0), reason: kind.name);
         expect(
@@ -241,11 +241,11 @@ void main() {
       expect(json['lateAverageActiveEnemies'], 27.236944444444443);
       expect(json['lateMaximumActiveEnemies'], 51);
       expect(
-        json['lateAverageSimulatedFps'],
+        json['lateAverageLogicalFps'],
         closeTo(1000000 / frameStepMicros, 1e-9),
       );
       expect(
-        json['lateMinimumSimulatedFps'],
+        json['lateMinimumLogicalFps'],
         closeTo(1000000 / frameStepMicros, 1e-9),
       );
       expect(json['isWithinLateFrameBudget'], isTrue);
@@ -257,7 +257,9 @@ void main() {
       );
       expect(
         markdown,
-        contains('- Late average / minimum simulated FPS: 60.00 / 60.00'),
+        contains(
+          '- Late average / minimum logical FPS (fixed-dt): 60.00 / 60.00',
+        ),
       );
       expect(markdown, contains('- Late raw-frame budget result: PASS'));
     },

@@ -9,10 +9,10 @@
 - Late raw-frame samples: 7,200 after 180 simulated seconds
 - Late average / maximum active enemies: 27.24 / 51
 - Late average / minimum logical FPS (fixed-dt): 60.00 / 60.00 (minimum 55)
-- Peak host test-loop wall time for `game.update` plus lifecycle processing: 6318 microseconds (not frame or render time)
-- Peak mounted Flame components: 262
-- Peak retained production owners: 13 (limit 128)
-- Peak memory proxy (mounted components + retained owners): 272 (limit 512)
+- Peak host test-loop wall time for `game.update` plus lifecycle processing: 8126 microseconds (not frame or render time)
+- Peak mounted Flame components: 263
+- Peak retained production owners: 16 (limit 128)
+- Peak memory proxy (mounted components + retained owners): 275 (limit 512)
 - Population budget result: PASS
 - Memory-proxy budget result: PASS
 - Late raw-frame budget result: PASS
