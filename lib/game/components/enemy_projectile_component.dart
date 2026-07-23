@@ -1,9 +1,12 @@
 import 'dart:ui';
+import 'dart:math' as math;
 
 import 'package:flame/components.dart';
 
 import 'player_component.dart';
 import '../content/combat_visual_factory.dart';
+import '../combat/attack_spec.dart';
+import '../combat/attack_visual_event.dart';
 
 class EnemyProjectileComponent extends PositionComponent {
   EnemyProjectileComponent({
@@ -32,11 +35,8 @@ class EnemyProjectileComponent extends PositionComponent {
   bool get isExpired => _age >= lifetime;
   bool get isSpent => _spent;
   double get visualFootprint => 34;
-  bool get usesRegistryVisual =>
-      visualFactory?.images.containsKey(
-        'projectiles/enemy/sakkat_spirit_projectile_128.png',
-      ) ??
-      false;
+  PositionComponent? _registryVisual;
+  bool get usesRegistryVisual => _registryVisual != null;
   bool get startsImageLoadOnMount => false;
   bool get ownsDamageResolution => false;
 
@@ -52,17 +52,39 @@ class EnemyProjectileComponent extends PositionComponent {
   }
 
   @override
+  void onMount() {
+    super.onMount();
+    const key = 'projectiles/enemy/sakkat_spirit_projectile_128.png';
+    if (sourceId != 'sakkat_specter' ||
+        visualFactory?.images.containsKey(key) != true) {
+      return;
+    }
+    final visual = visualFactory!.create(_projectileVisualEvent(lifetime));
+    visual
+      ..position = center
+      ..scale = Vector2.all(visualFootprint / 128)
+      ..angle = _velocityAngle;
+    add(visual);
+    _registryVisual = visual;
+  }
+
+  double get _velocityAngle =>
+      velocity.length2 == 0 ? 0 : math.atan2(velocity.y, velocity.x);
+
+  @override
   void update(double dt) {
     super.update(dt);
     final safeDt = dt.isFinite && dt > 0 ? dt : 0.0;
     _age += safeDt;
     position.add(velocity * safeDt);
+    _registryVisual?.angle = _velocityAngle;
     if (isExpired || isSpent) removeFromParent();
   }
 
   @override
   void render(Canvas canvas) {
     super.render(canvas);
+    if (usesRegistryVisual) return;
     final rect = Rect.fromCenter(
       center: Offset(size.x / 2, size.y / 2),
       width: visualFootprint,
@@ -78,3 +100,28 @@ class EnemyProjectileComponent extends PositionComponent {
     );
   }
 }
+
+AttackVisualEvent _projectileVisualEvent(double duration) =>
+    AttackVisualEvent.fromAttack(
+      AttackInstance(
+        spec: AttackSpec(
+          id: 'sakkat_spirit_projectile',
+          shape: AttackShape.line,
+          damage: 0,
+          range: 0,
+          angleRadians: 0,
+          radius: 0,
+          width: 0,
+          windupSeconds: 0,
+          activeSeconds: duration,
+          lingerSeconds: 0,
+          knockback: 0,
+          slowFraction: 0,
+          traits: const {},
+          presentation: AttackPresentation.master,
+        ),
+        origin: Vector2.zero(),
+        direction: Vector2(1, 0),
+        sequenceIndex: 0,
+      ),
+    );

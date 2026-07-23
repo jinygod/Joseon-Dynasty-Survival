@@ -7,6 +7,9 @@ import '../content/ids.dart';
 import 'enemy_component.dart';
 import 'talisman_presentation_component.dart';
 import '../content/combat_visual_factory.dart';
+import '../content/actor_render_sizes.dart';
+import '../combat/attack_spec.dart';
+import '../combat/attack_visual_event.dart';
 
 class EnemyWarningOverlayComponent extends PositionComponent {
   EnemyWarningOverlayComponent({required this.enemy, this.visualFactory})
@@ -19,19 +22,98 @@ class EnemyWarningOverlayComponent extends PositionComponent {
 
   final EnemyComponent enemy;
   final CombatVisualFactory? visualFactory;
-  bool get usesRegistryVisual => false;
+  PositionComponent? _delegate;
+  (EnemyBehaviorKind, int)? _delegateKey;
+  double _visualRadius = 0;
+  double _visualLength = 0;
+  bool get usesRegistryVisual => _delegate != null;
   bool get startsImageLoadOnMount => false;
   bool get ownsDamageResolution => false;
+  double get visualRadius => _visualRadius;
+  double get visualLength => _visualLength;
 
   @override
   void update(double dt) {
     super.update(dt);
     position.setFrom(enemy.position);
     size.setFrom(enemy.size);
+    _syncWarningVisual();
+  }
+
+  void _syncWarningVisual() {
+    final warning = enemy.warningSnapshot;
+    if (warning == null) {
+      _removeDelegate();
+      return;
+    }
+    final effectId = switch (warning.kind) {
+      EnemyBehaviorKind.dash ||
+      EnemyBehaviorKind.doubleDash ||
+      EnemyBehaviorKind.dive ||
+      EnemyBehaviorKind.thrust => 'enemy_line_telegraph',
+      EnemyBehaviorKind.ranged => 'enemy_ranged_telegraph',
+      EnemyBehaviorKind.shockwave ||
+      EnemyBehaviorKind.scream => 'enemy_radial_telegraph',
+      _ => null,
+    };
+    final key = effectId == null ? null : (warning.kind, warning.phaseToken);
+    if (key == _delegateKey) {
+      return;
+    }
+    _removeDelegate();
+    if (effectId == null ||
+        visualFactory == null ||
+        visualFactory!.images.containsKey(_assetKey(effectId)) != true) {
+      return;
+    }
+    final radial = effectId == 'enemy_radial_telegraph';
+    _visualRadius = radial
+        ? warning.range + ActorRenderSizes.playerCollision / 2
+        : 0;
+    _visualLength = radial
+        ? 0
+        : warning.range +
+              enemy.size.x / 2 +
+              ActorRenderSizes.playerCollision / 2;
+    final visual = visualFactory!.create(
+      _overlayVisualEvent(effectId, warning.durationSeconds),
+    );
+    if (radial) {
+      visual
+        ..position = center
+        ..scale = Vector2.all(_visualRadius * 2 / 128);
+    } else {
+      final direction = warning.direction;
+      visual
+        ..position = center + direction * (_visualLength / 2)
+        ..scale = Vector2(_visualLength / 128, 34 / 128)
+        ..angle = math.atan2(direction.y, direction.x);
+    }
+    // The factory component has no image I/O; advance its presentation clock
+    // to the immutable snapshot progress before mounting it.
+    visual.update(warning.durationSeconds * warning.progress);
+    add(visual);
+    _delegate = visual;
+    _delegateKey = key;
+  }
+
+  String _assetKey(String effectId) => switch (effectId) {
+    'enemy_line_telegraph' => 'vfx/enemy/line_telegraph_128.png',
+    'enemy_ranged_telegraph' => 'vfx/enemy/ranged_telegraph_128.png',
+    _ => 'vfx/enemy/radial_telegraph_128.png',
+  };
+
+  void _removeDelegate() {
+    _delegate?.removeFromParent();
+    _delegate = null;
+    _delegateKey = null;
+    _visualRadius = 0;
+    _visualLength = 0;
   }
 
   @override
   void render(Canvas canvas) {
+    if (usesRegistryVisual) return;
     final warning = enemy.warningSnapshot;
     if (warning == null) return;
     final paint = Paint()
@@ -80,7 +162,8 @@ class ShieldBlockEffectComponent extends PositionComponent {
 
   Vector2 get facingDirection => _facingDirection.clone();
   double get lifetime => _lifetime;
-  bool get usesRegistryVisual => false;
+  PositionComponent? _registryVisual;
+  bool get usesRegistryVisual => _registryVisual != null;
   bool get startsImageLoadOnMount => false;
   bool get ownsDamageResolution => false;
 
@@ -96,7 +179,24 @@ class ShieldBlockEffectComponent extends PositionComponent {
   }
 
   @override
+  void onMount() {
+    super.onMount();
+    const key = 'vfx/enemy/shield_block_flash_128.png';
+    if (visualFactory?.images.containsKey(key) != true) return;
+    final visual = visualFactory!.create(
+      _overlayVisualEvent('enemy_shield_block_flash', _lifetime),
+    );
+    visual
+      ..position = center
+      ..scale = Vector2.all(size.x / 128)
+      ..angle = math.atan2(_facingDirection.y, _facingDirection.x);
+    add(visual);
+    _registryVisual = visual;
+  }
+
+  @override
   void render(Canvas canvas) {
+    if (usesRegistryVisual) return;
     final progress = (_age / _lifetime).clamp(0, 1).toDouble();
     final angle = math.atan2(_facingDirection.y, _facingDirection.x);
     canvas.drawArc(
@@ -112,6 +212,31 @@ class ShieldBlockEffectComponent extends PositionComponent {
     );
   }
 }
+
+AttackVisualEvent _overlayVisualEvent(String effectId, double duration) =>
+    AttackVisualEvent.fromAttack(
+      AttackInstance(
+        spec: AttackSpec(
+          id: effectId,
+          shape: AttackShape.circle,
+          damage: 0,
+          range: 0,
+          angleRadians: 0,
+          radius: 0,
+          width: 0,
+          windupSeconds: 0,
+          activeSeconds: duration,
+          lingerSeconds: 0,
+          knockback: 0,
+          slowFraction: 0,
+          traits: const {},
+          presentation: AttackPresentation.master,
+        ),
+        origin: Vector2.zero(),
+        direction: Vector2(1, 0),
+        sequenceIndex: 0,
+      ),
+    );
 
 Vector2 _unit(Vector2 direction) {
   if (direction.length2 == 0) return Vector2(1, 0);
