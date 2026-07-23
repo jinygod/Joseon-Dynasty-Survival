@@ -8,7 +8,10 @@ import '../content/stage_visual_spec.dart';
 /// Presentation-only static stage renderer. All batch contents are assembled
 /// once while loading and are never changed during a run.
 class StageTileBatchComponent extends Component {
-  StageTileBatchComponent({required this.layout, required this.images});
+  StageTileBatchComponent({required this.layout, required this.images})
+    : super(priority: stagePriority);
+
+  static const stagePriority = -100;
 
   final StageLayout layout;
   final Map<String, Image> images;

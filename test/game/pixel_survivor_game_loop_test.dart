@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'dart:ui';
+import 'dart:ui' as ui;
 
 import 'package:flame/components.dart';
 import 'package:flame_test/flame_test.dart';
@@ -19,6 +20,7 @@ import 'package:pixel_survivor/game/components/frost_field_component.dart';
 import 'package:pixel_survivor/game/components/five_color_ward_component.dart';
 import 'package:pixel_survivor/game/components/projectile_component.dart';
 import 'package:pixel_survivor/game/components/spirit_jade_component.dart';
+import 'package:pixel_survivor/game/components/stage_tile_batch_component.dart';
 import 'package:pixel_survivor/game/components/talisman_presentation_component.dart';
 import 'package:pixel_survivor/game/components/ward_aura_component.dart';
 import 'package:pixel_survivor/game/audio/audio_cue.dart';
@@ -32,6 +34,7 @@ import 'package:pixel_survivor/game/content/weapon_effect_atlas.dart';
 import 'package:pixel_survivor/game/content/enemy_definitions.dart';
 import 'package:pixel_survivor/game/content/playtest_content_policy.dart';
 import 'package:pixel_survivor/game/content/stage_definitions.dart';
+import 'package:pixel_survivor/game/content/stage_visual_spec.dart';
 import 'package:pixel_survivor/game/content/wave_definitions.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
 import 'package:pixel_survivor/game/models/player_slot.dart';
@@ -193,6 +196,138 @@ void main() {
   );
 
   group('PixelSurvivorGame run loop progression', () {
+    Future<ui.Image> stageTestImage() async {
+      final recorder = ui.PictureRecorder();
+      ui.Canvas(recorder).drawRect(
+        const ui.Rect.fromLTWH(0, 0, 512, 256),
+        ui.Paint()..color = const ui.Color(0xffffffff),
+      );
+      final picture = recorder.endRecording();
+      final image = await picture.toImage(512, 256);
+      picture.dispose();
+      addTearDown(image.dispose);
+      return image;
+    }
+
+    gameTester.testGameWidget(
+      'mounts one safe static stage batch before its player without assets',
+      verify: (game, _) async {
+        final stages = game.children
+            .whereType<StageTileBatchComponent>()
+            .toList();
+
+        expect(stages, hasLength(1));
+        expect(stages.single.stageId, moonlitAbandonedOffice);
+        expect(stages.single.priority, lessThan(0));
+        expect(stages.single.ownsCollision, isFalse);
+        expect(stages.single.layout.tiles, isNotEmpty);
+        expect(game.activePlayers, hasLength(1));
+      },
+    );
+
+    test(
+      'preloads only the selected stage atlases before mounting players',
+      () async {
+        final loadedKeys = <String>[];
+        late final PixelSurvivorGame game;
+        game = PixelSurvivorGame(
+          playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
+          onRunEnded: null,
+          stageId: plagueMarket,
+          visualAssetLoader: (key) async {
+            expect(game.activePlayers, isEmpty);
+            loadedKeys.add(key);
+            return stageTestImage();
+          },
+        );
+        game.onGameResize(Vector2(960, 540));
+
+        await game.onLoad();
+
+        final spec = stageVisualSpecFor(plagueMarket);
+        expect(loadedKeys.toSet(), {
+          ...AttackVisualRegistry.requiredAssetKeys,
+          WeaponEffectAtlas.assetKey,
+          spec.tileAssetKey,
+          spec.propAssetKey,
+        });
+        expect(loadedKeys, hasLength(loadedKeys.toSet().length));
+        expect(game.activePlayers, hasLength(1));
+      },
+    );
+
+    test('stage visual seed controls only the static layout', () async {
+      Future<PixelSurvivorGame> loadGame(int seed) async {
+        final game = PixelSurvivorGame(
+          playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
+          onRunEnded: null,
+          stageId: plagueMarket,
+          stageVisualSeed: seed,
+          random: Random(71),
+          loadVisualAssets: false,
+        );
+        game.onGameResize(Vector2(960, 540));
+        await game.onLoad();
+        return game;
+      }
+
+      final first = await loadGame(88);
+      final sameGame = await loadGame(88);
+      final different = await loadGame(89);
+      final firstStage = first.children
+          .whereType<StageTileBatchComponent>()
+          .single;
+      final sameStage = sameGame.children
+          .whereType<StageTileBatchComponent>()
+          .single;
+      final differentStage = different.children
+          .whereType<StageTileBatchComponent>()
+          .single;
+
+      expect(firstStage.layout.spec.stageId, plagueMarket);
+      expect(firstStage.layout.tiles, sameStage.layout.tiles);
+      expect(firstStage.layout.decorations, sameStage.layout.decorations);
+      expect(firstStage.layout.props, sameStage.layout.props);
+      expect(
+        firstStage.layout.tiles.map((tile) => tile.variant),
+        isNot(
+          orderedEquals(
+            differentStage.layout.tiles.map((tile) => tile.variant),
+          ),
+        ),
+      );
+      expect(
+        firstStage.layout.tiles.first.bounds,
+        const Rect.fromLTWH(0, 0, 128, 128),
+      );
+      expect(firstStage.placementBuildCount, 1);
+      first.update(1 / 60);
+      first.update(1 / 60);
+      first.onGameResize(Vector2(1280, 720));
+      expect(firstStage.placementBuildCount, 1);
+      expect(firstStage.batchBuildCount, 0);
+      expect(
+        first.children.whereType<StageTileBatchComponent>().single,
+        same(firstStage),
+      );
+
+      for (var frame = 0; frame < 40; frame += 1) {
+        first.update(.1);
+        different.update(.1);
+      }
+      expect(first.enemyCount, different.enemyCount);
+      expect(
+        first.children.whereType<EnemyComponent>().map(
+          (enemy) => enemy.position,
+        ),
+        orderedEquals(
+          different.children.whereType<EnemyComponent>().map(
+            (enemy) => enemy.position,
+          ),
+        ),
+      );
+    });
+
     test('synergy presentation uses a golden slash and five O-bang colors', () {
       expect(AttackEffectComponent.synergySlashColor, const Color(0xffffd166));
       expect(AttackEffectComponent.synergyFragmentColors, hasLength(5));
@@ -529,13 +664,16 @@ void main() {
 
       await game.onLoad();
 
+      final spec = stageVisualSpecFor(moonlitAbandonedOffice);
       expect(requestedKeys.toSet(), {
         ...AttackVisualRegistry.requiredAssetKeys,
         WeaponEffectAtlas.assetKey,
+        spec.tileAssetKey,
+        spec.propAssetKey,
       });
       expect(
         requestedKeys,
-        hasLength(AttackVisualRegistry.requiredAssetKeys.length + 1),
+        hasLength(AttackVisualRegistry.requiredAssetKeys.length + 3),
       );
       expect(playersWereUnmountedDuringPreload, isTrue);
       expect(game.visualImages.keys, requestedKeys);

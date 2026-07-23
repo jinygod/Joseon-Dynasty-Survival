@@ -15,6 +15,7 @@ void main() {
         playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
         random: Random(7),
         onRunEnded: null,
+        loadVisualAssets: false,
       );
       game.onGameResize(Vector2(960, 540));
       await game.onLoad();

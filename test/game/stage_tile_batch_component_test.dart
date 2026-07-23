@@ -67,6 +67,13 @@ void main() {
     expect(component.batchBuildCount, 1);
   });
 
+  test('stage batch is permanently below combat actors', () {
+    final component = StageTileBatchComponent(layout: layout, images: const {});
+
+    expect(component.priority, lessThan(0));
+    expect(component.ownsCollision, isFalse);
+  });
+
   test('missing decal image retains tile and prop batches', () async {
     final images = await imagesForAllAtlases()
       ..remove('decals.png');
