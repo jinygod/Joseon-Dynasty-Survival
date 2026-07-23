@@ -252,6 +252,8 @@ git commit -m "feat: define combat visual registry"
 
 ### Task 3: Preload Registry Assets Before Combat
 
+> Execution dependency: run Task 4 before this task so every registry key points to a reviewed, registered PNG before preloading is connected.
+
 **Files:**
 - Create: `lib/game/content/combat_asset_preloader.dart`
 - Modify: `lib/game/pixel_survivor_game.dart`
@@ -328,11 +330,16 @@ git commit -m "perf: preload combat visual assets"
 
 **Files:**
 - Create: `art_source/generated/hwando/`
-- Create: `assets/images/vfx/hwando/hwando_basic_128.png`
-- Create: `assets/images/vfx/hwando/hwando_master_circle_128.png`
-- Create: `assets/images/vfx/hwando/hwando_blade_wave_128.png`
-- Create: `assets/images/vfx/hwando/hwando_finisher_128.png`
-- Create: `assets/images/vfx/hwando/hwando_impact_128.png`
+- Create: `assets/images/vfx/hwando_slash_trail_128.png` (6×1 cells, 768×128)
+- Create: `assets/images/vfx/hwando_slash_impact_128.png` (5×1 cells, 640×128)
+- Create: `assets/images/vfx/hwando_blade_wave_trail_128.png` (6×1 cells, 768×128)
+- Create: `assets/images/vfx/hwando_blade_wave_impact_128.png` (5×1 cells, 640×128)
+- Create: `assets/images/vfx/hwando_master_circle_trail_128.png` (8×1 cells, 1024×128)
+- Create: `assets/images/vfx/hwando_master_circle_impact_128.png` (6×1 cells, 768×128)
+- Create: `assets/images/vfx/hwando_master_finisher_trail_128.png` (8×1 cells, 1024×128)
+- Create: `assets/images/vfx/hwando_master_finisher_impact_128.png` (6×1 cells, 768×128)
+- Modify: `lib/game/content/asset_catalog.dart`
+- Modify: `lib/game/content/sprite_atlas_contract.dart`
 - Modify: `docs/assets/asset-rights-ledger.csv`
 - Modify: `pubspec.yaml`
 - Test: `test/game/hwando_visual_asset_contract_test.dart`
@@ -361,11 +368,11 @@ Expected: failure naming the first absent Hwando PNG.
 
 - [ ] **Step 3: Generate original transparent artwork**
 
-Use the imagegen skill with the approved style: directional ink-and-gold sword trails, bold dark edge, 2–3 cel-shaded values, transparent background, no sword-wielding character, no letters or seals resembling readable text. Generate separate source images for basic slash, circular master slash, blade wave, finisher, and impact burst.
+Use the built-in imagegen path with the approved style: directional ink-and-gold sword trails, bold dark edge, 2–3 cel-shaded values, a perfectly flat `#00ff00` chroma-key background, no sword-wielding character, no letters or seals resembling readable text. Generate one source contact sheet for each of the eight registry layer keys, with the exact horizontal frame count above. Copy every selected source into `art_source/generated/hwando/`, remove the chroma key with the installed imagegen helper, then normalize to exact 128px cells.
 
 - [ ] **Step 4: Inspect and normalize**
 
-Inspect every source at original detail. Reject residual backgrounds, clipped alpha, text-like marks, inconsistent light direction, or commercial character resemblance. Normalize each accepted source to the exact registry grid with consistent center/pivot and save RGBA PNG files at the paths above.
+Inspect every source at original detail. Reject residual backgrounds, clipped alpha, text-like marks, inconsistent light direction, or commercial character resemblance. Normalize each accepted source to the exact registry grid with consistent center/pivot and save RGBA PNG files at the paths above. Add one `SpriteAtlasContract` per sheet with 128×128 cells, the exact column count above, one row, transparency required, and temporary status. Add the exact paths to `AssetCatalog.effects`; `assets/images/vfx/` is registered as a directory in `pubspec.yaml`.
 
 - [ ] **Step 5: Record provenance**
 
@@ -380,7 +387,7 @@ Expected: all files exist, have expected dimensions and RGBA color type, and hav
 - [ ] **Step 7: Commit**
 
 ```powershell
-git add art_source/generated/hwando assets/images/vfx/hwando docs/assets/asset-rights-ledger.csv pubspec.yaml test/game/hwando_visual_asset_contract_test.dart
+git add art_source/generated/hwando assets/images/vfx lib/game/content/asset_catalog.dart lib/game/content/sprite_atlas_contract.dart docs/assets/asset-rights-ledger.csv pubspec.yaml test/game/hwando_visual_asset_contract_test.dart
 git commit -m "art: add generated Hwando visual set"
 ```
 
