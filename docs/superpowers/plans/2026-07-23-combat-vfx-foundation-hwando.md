@@ -153,12 +153,11 @@ git commit -m "feat: define immutable attack visual events"
 
 **Files:**
 - Create: `lib/game/content/attack_visual_registry.dart`
-- Modify: `lib/game/content/sprite_atlas_contract.dart`
 - Test: `test/game/attack_visual_registry_test.dart`
 
 **Interfaces:**
 - Consumes: stable attack IDs and `AttackPresentation`.
-- Produces: `AttackVisualSpec`, `AttackVisualLayerSpec`, `AttackVisualStatus`, `AttackVisualRegistry.byId(String)`, and `AttackVisualRegistry.requiredAssetKeys`.
+- Produces: `AttackVisualSpec`, `AttackVisualLayerSpec`, `AttackVisualStatus`, `AttackVisualRegistry.byId(String)`, and `AttackVisualRegistry.requiredAssetKeys`. The registry may name future runtime paths before files exist, but the global PNG catalog is not extended until Task 4 creates those files.
 
 - [ ] **Step 1: Write the failing registry test**
 
@@ -234,20 +233,20 @@ class AttackVisualSpec {
 
 Define `CombatVisualCategory { hwando, projectile, area, telegraph, status }` in this registry file. Register separate Hwando entries for normal/left/right, blade wave, master circle, and finisher using the exact IDs emitted by `hwando_executor.dart`. Set their category to `hwando`. Do not add entries for other weapons in this task.
 
-- [ ] **Step 4: Add runtime contracts**
+- [ ] **Step 4: Keep absent files out of the global PNG catalog**
 
-Add one `SpriteAtlasContract` per normalized Hwando sheet with `frameWidth: 128`, `frameHeight: 128`, exact columns/rows from the reviewed export, `requiresTransparency: true`, and `status: ArtAssetStatus.temporary` until visual review is complete.
+Keep frame size, count, path, anchor, and layer timing in `AttackVisualLayerSpec`. Do not add absent Hwando files to `ReplaceableArtCatalog.atlases`; its existing test requires every registered file to exist. Task 4 creates the reviewed PNGs and adds their `SpriteAtlasContract` entries in the same commit.
 
 - [ ] **Step 5: Run focused tests**
 
-Run: `flutter test test/game/attack_visual_registry_test.dart test/game/sprite_atlas_contract_test.dart`
+Run: `flutter test test/game/attack_visual_registry_test.dart`
 
-Expected: all registry IDs resolve and every declared PNG contract is structurally valid once Task 4 supplies the files.
+Expected: all Hwando registry IDs resolve, unknown IDs throw `MissingAttackVisualException`, and required asset keys are deduplicated.
 
 - [ ] **Step 6: Commit**
 
 ```powershell
-git add lib/game/content/attack_visual_registry.dart lib/game/content/sprite_atlas_contract.dart test/game/attack_visual_registry_test.dart
+git add lib/game/content/attack_visual_registry.dart test/game/attack_visual_registry_test.dart
 git commit -m "feat: define combat visual registry"
 ```
 
