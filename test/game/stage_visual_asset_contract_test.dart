@@ -100,28 +100,111 @@ void main() {
     expect(pubspec, contains('    - assets/images/props/'));
   });
 
-  test('ledger records every generated source and runtime stage asset', () {
-    final rows = const LineSplitter()
-        .convert(File('docs/assets/asset-rights-ledger.csv').readAsStringSync())
-        .skip(1)
-        .map((line) => line.split(','))
-        .toList();
-    final joined = rows.map((row) => row.join(',')).join('\n');
-    for (final sourcePath in _sourcePaths) {
-      final hash = _sha256(sourcePath);
-      expect(joined, contains(sourcePath));
-      expect(joined, contains(hash));
+  test('ledger binds every stage source to its exact runtime record', () {
+    final rows = _LedgerRow.readAll('docs/assets/asset-rights-ledger.csv');
+    final expected = <String, _StageLedgerExpectation>{
+      'moonlit_office_tiles_128': const _StageLedgerExpectation(
+        runtimePath: 'assets/images/tiles/moonlit_office_tiles_128.png',
+        primarySourcePath:
+            'art_source/generated/stages/moonlit_office_tiles_source.png',
+        decalSourcePath:
+            'art_source/generated/stages/moonlit_office_decals_chroma_source.png',
+      ),
+      'plague_market_tiles_128': const _StageLedgerExpectation(
+        runtimePath: 'assets/images/tiles/plague_market_tiles_128.png',
+        primarySourcePath:
+            'art_source/generated/stages/plague_market_tiles_source.png',
+        decalSourcePath:
+            'art_source/generated/stages/plague_market_decals_chroma_source.png',
+      ),
+      'moonlit_office_props_128': const _StageLedgerExpectation(
+        runtimePath: 'assets/images/props/moonlit_office_props_128.png',
+        primarySourcePath:
+            'art_source/generated/stages/moonlit_office_props_chroma_source.png',
+      ),
+      'plague_market_props_128': const _StageLedgerExpectation(
+        runtimePath: 'assets/images/props/plague_market_props_128.png',
+        primarySourcePath:
+            'art_source/generated/stages/plague_market_props_chroma_source.png',
+      ),
+    };
+    final stageRows = rows
+        .where((row) => expected.containsKey(row['asset_id']))
+        .toList(growable: false);
+    expect(stageRows, hasLength(4));
+    expect(stageRows.map((row) => row['asset_id']).toSet(), expected.keys.toSet());
+
+    for (final row in stageRows) {
+      final assetId = row['asset_id']!;
+      final record = expected[assetId]!;
+      expect(row['runtime_path'], record.runtimePath, reason: assetId);
+      expect(row['evidence_path'], record.primarySourcePath, reason: assetId);
+      expect(row['prompt_path'], record.primarySourcePath, reason: assetId);
+      expect(row['source_file_sha256'], _sha256(record.primarySourcePath));
+      expect(row['acquisition_method'], 'ai_generated');
+      expect(row['creator_or_vendor'], 'OpenAI');
+      expect(row['provider_product_model'], 'OpenAI built-in image generation model-id-not-exposed');
+      expect(row['created_or_purchased_at'], '2026-07-23');
+      expect(row['terms_or_license_name'], 'OpenAI Terms of Use');
+      expect(row['human_edits'], contains('128px RGBA normalization'));
+      expect(row['status'], 'review');
+      expect(row['reviewer'], 'Codex');
+      expect(row['reviewed_at'], '2026-07-23');
+      expect(row['notes'], contains('runtime owner=StageVisualSpec'));
+      expect(row['notes'], contains('runtime status=temporary'));
+      expect(
+        row['notes'],
+        contains('runtime-sha256=${_sha256(record.runtimePath)}'),
+      );
+      final decalSourcePath = record.decalSourcePath;
+      if (decalSourcePath != null) {
+        expect(row['notes'], contains('decal source=$decalSourcePath'));
+        expect(row['notes'], contains('sha256=${_sha256(decalSourcePath)}'));
+      }
     }
-    for (final runtimePath in [
-      'assets/images/tiles/moonlit_office_tiles_128.png',
-      'assets/images/tiles/plague_market_tiles_128.png',
-      'assets/images/props/moonlit_office_props_128.png',
-      'assets/images/props/plague_market_props_128.png',
-    ]) {
-      expect(joined, contains(runtimePath));
-      expect(joined, contains(_sha256(runtimePath)));
+    for (final sourcePath in _sourcePaths) {
+      final primaryRows = stageRows
+          .where((row) => row['evidence_path'] == sourcePath)
+          .toList(growable: false);
+      final decalRows = stageRows
+          .where((row) => row['notes']!.contains('decal source=$sourcePath'))
+          .toList(growable: false);
+      expect(
+        primaryRows.length + decalRows.length,
+        1,
+        reason: 'source must be attributed to exactly one stage runtime row: $sourcePath',
+      );
     }
   });
+}
+
+class _StageLedgerExpectation {
+  const _StageLedgerExpectation({
+    required this.runtimePath,
+    required this.primarySourcePath,
+    this.decalSourcePath,
+  });
+
+  final String runtimePath;
+  final String primarySourcePath;
+  final String? decalSourcePath;
+}
+
+class _LedgerRow {
+  _LedgerRow(this._fields);
+
+  final Map<String, String> _fields;
+
+  String? operator [](String column) => _fields[column];
+
+  static List<_LedgerRow> readAll(String path) {
+    final lines = const LineSplitter().convert(File(path).readAsStringSync());
+    final columns = lines.first.split(',');
+    return [
+      for (final line in lines.skip(1))
+        _LedgerRow(Map<String, String>.fromIterables(columns, line.split(','))),
+    ];
+  }
 }
 
 String _sha256(String path) => _Sha256.hash(File(path).readAsBytesSync());
