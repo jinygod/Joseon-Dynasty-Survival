@@ -51,6 +51,14 @@ class HwandoVfxComponent extends PositionComponent {
 
   double get facingAngle => math.atan2(event.direction.y, event.direction.x);
 
+  double get progress {
+    final duration = event.duration;
+    if (!duration.isFinite || duration <= 0) return 1;
+    final value = _age / duration;
+    if (!value.isFinite) return value.isNegative ? 0 : 1;
+    return value.clamp(0, 1).toDouble();
+  }
+
   @override
   bool get isRemoving => super.isRemoving || (!isMounted && _expired);
 
@@ -68,7 +76,7 @@ class HwandoVfxComponent extends PositionComponent {
   @override
   void render(Canvas canvas) {
     super.render(canvas);
-    final progress = (_age / event.duration).clamp(0, 1).toDouble();
+    final progress = this.progress;
     for (final layer in _layers) {
       if (!_isActive(layer.spec, progress) || layer.sprites.isEmpty) continue;
       final localProgress = _localProgress(layer.spec, progress);

@@ -62,4 +62,59 @@ void main() {
     expect(component.isRemoving, isTrue);
     expect(expired, 1);
   });
+
+  test(
+    'Hwando VFX safely renders a zero-duration event at terminal progress',
+    () async {
+      final sheetRecorder = ui.PictureRecorder();
+      ui.Canvas(sheetRecorder).drawRect(
+        const ui.Rect.fromLTWH(0, 0, 768, 128),
+        ui.Paint()..color = const ui.Color(0xffffffff),
+      );
+      final sheet = await sheetRecorder.endRecording().toImage(768, 128);
+      addTearDown(sheet.dispose);
+      final zeroDurationAttack = AttackInstance(
+        spec: AttackSpec(
+          id: 'hwando_slash',
+          shape: AttackShape.sector,
+          damage: 10,
+          range: 80,
+          angleRadians: math.pi * .7,
+          radius: 0,
+          width: 0,
+          windupSeconds: 0,
+          activeSeconds: 0,
+          lingerSeconds: 0,
+          knockback: 10,
+          slowFraction: 0,
+          traits: const {AttackTrait.melee},
+          presentation: AttackPresentation.normal,
+        ),
+        origin: Vector2.zero(),
+        direction: Vector2(1, 0),
+        sequenceIndex: 0,
+      );
+      var expired = 0;
+      final event = AttackVisualEvent.fromAttack(zeroDurationAttack);
+      final component = HwandoVfxComponent(
+        event: event,
+        images: {
+          for (final layer in AttackVisualRegistry.byId(event.effectId).layers)
+            layer.assetKey: sheet,
+        },
+        onExpired: () => expired += 1,
+      );
+      final renderRecorder = ui.PictureRecorder();
+      final canvas = ui.Canvas(renderRecorder);
+
+      expect(component.progress, 1);
+      expect(() => component.render(canvas), returnsNormally);
+      component.update(0);
+      component.update(1);
+      expect(() => component.render(canvas), returnsNormally);
+
+      expect(component.isRemoving, isTrue);
+      expect(expired, 1);
+    },
+  );
 }
