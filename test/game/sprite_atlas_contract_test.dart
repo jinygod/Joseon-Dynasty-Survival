@@ -7,7 +7,7 @@ import 'package:pixel_survivor/game/content/sprite_atlas_contract.dart';
 
 void main() {
   test('replaceable atlases are temporary and registered in AssetCatalog', () {
-    expect(ReplaceableArtCatalog.atlases, hasLength(8));
+    expect(ReplaceableArtCatalog.atlases.length, greaterThanOrEqualTo(16));
 
     for (final contract in ReplaceableArtCatalog.atlases) {
       expect(contract.status, ArtAssetStatus.temporary, reason: contract.id);
