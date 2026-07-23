@@ -247,6 +247,7 @@ void main() {
       expect(game.bossSpawnCount, 1);
       expect(game.bossId, isNotNull);
       expect(game.performanceSnapshot.isWithinBudget, isTrue);
+      expect(game.debugPopulationIndexIsConsistent(), isTrue);
     },
   );
 

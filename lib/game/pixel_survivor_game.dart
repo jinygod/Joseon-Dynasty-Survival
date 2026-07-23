@@ -332,10 +332,8 @@ class PixelSurvivorGame extends FlameGame
   }
 
   @override
-  int get enemyCount => children
-      .whereType<EnemyComponent>()
-      .where((enemy) => !enemy.isDead)
-      .length;
+  int get enemyCount =>
+      _populationIndex.mountedEnemies.where((enemy) => !enemy.isDead).length;
 
   String get currentWeaponLabel {
     final labels = weaponLevelLabels;
@@ -407,9 +405,32 @@ class PixelSurvivorGame extends FlameGame
   }
 
   @override
+  FutureOr<void> add(Component component) {
+    final result = super.add(component);
+    if (children.contains(component) && !component.isRemoving) {
+      _populationIndex.register(component);
+    }
+    return result;
+  }
+
+  @override
   void remove(Component component) {
     super.remove(component);
-    _populationIndex.unregister(component);
+    _populationIndex.markRemoving(component);
+  }
+
+  @override
+  void removeAll(Iterable<Component> components) {
+    final removalTargets = components.toList(growable: false);
+    super.removeAll(removalTargets);
+    for (final component in removalTargets) {
+      _populationIndex.markRemoving(component);
+    }
+  }
+
+  @override
+  void removeWhere(bool Function(Component component) test) {
+    removeAll(children.where(test).toList(growable: false));
   }
 
   @override

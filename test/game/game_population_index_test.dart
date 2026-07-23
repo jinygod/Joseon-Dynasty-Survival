@@ -45,6 +45,9 @@ void main() {
   late EnemyComponent lifecycleTarget;
   late ProjectileComponent lifecycleFriendly;
   late EnemyProjectileComponent lifecycleHostile;
+  late List<Component> bulkRemovalTargets;
+  late ProjectileComponent expiringFriendly;
+  late EnemyProjectileComponent expiringHostile;
 
   test('tracks combat components by identity with idempotent removal', () {
     final index = GamePopulationIndex();
@@ -97,6 +100,35 @@ void main() {
     expect(index.enemyProjectiles, isEmpty);
   });
 
+  test('removal admission excludes an enemy until final unregistration', () {
+    final index = GamePopulationIndex();
+    final target = enemy('removal-admission');
+    index.register(target);
+
+    expect(index.markRemoving(target), isTrue);
+    expect(index.enemyCount, 0);
+    expect(index.enemies, isEmpty);
+    expect(index.mountedEnemies, <EnemyComponent>[target]);
+
+    expect(index.unregister(target), isTrue);
+    expect(index.mountedEnemies, isEmpty);
+  });
+
+  test('game disposal clears every indexed population', () async {
+    final game = PixelSurvivorGame(
+      playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
+      onRunEnded: null,
+      loadVisualAssets: false,
+    );
+    await game.add(enemy('dispose-target'));
+    expect(game.performanceSnapshot.counts[GamePopulationKind.enemy], 1);
+
+    game.onDispose();
+
+    expect(game.performanceSnapshot.counts[GamePopulationKind.enemy], 0);
+    expect(game.performanceSnapshot.counts[GamePopulationKind.projectile], 0);
+  });
+
   gameTester.testGameWidget(
     'game snapshot follows mounted combat lifecycle and dispose',
     setUp: (game, _) async {
@@ -130,6 +162,98 @@ void main() {
       expect(game.debugPopulationIndexIsConsistent(), isTrue);
       expect(game.performanceSnapshot.counts[GamePopulationKind.enemy], 0);
       expect(game.performanceSnapshot.counts[GamePopulationKind.projectile], 0);
+    },
+  );
+
+  gameTester.testGameWidget(
+    'removeAll excludes scheduled combat children before lifecycle processing',
+    setUp: (game, _) async {
+      bulkRemovalTargets = <Component>[
+        enemy('bulk-target'),
+        projectile()..position = Vector2(480, 270),
+        enemyProjectile()..position = Vector2(480, 270),
+      ];
+      for (final component in bulkRemovalTargets) {
+        await game.ensureAdd(component);
+      }
+    },
+    verify: (game, _) async {
+      game.removeAll(bulkRemovalTargets);
+
+      expect(game.debugPopulationIndexIsConsistent(), isTrue);
+      expect(game.performanceSnapshot.counts[GamePopulationKind.enemy], 0);
+      expect(game.performanceSnapshot.counts[GamePopulationKind.projectile], 0);
+    },
+  );
+
+  gameTester.testGameWidget(
+    'removeWhere excludes matching combat children before lifecycle processing',
+    setUp: (game, _) async {
+      await game.ensureAdd(enemy('remove-where-survivor'));
+      await game.ensureAdd(projectile()..position = Vector2(480, 270));
+      await game.ensureAdd(enemyProjectile()..position = Vector2(480, 270));
+    },
+    verify: (game, _) async {
+      game.removeWhere(
+        (component) =>
+            component is ProjectileComponent ||
+            component is EnemyProjectileComponent,
+      );
+
+      expect(game.debugPopulationIndexIsConsistent(), isTrue);
+      expect(game.performanceSnapshot.counts[GamePopulationKind.enemy], 1);
+      expect(game.performanceSnapshot.counts[GamePopulationKind.projectile], 0);
+    },
+  );
+
+  gameTester.testGameWidget(
+    'public live enemy count keeps an alive removing child until final removal',
+    setUp: (game, _) async {
+      lifecycleTarget = enemy('live-removing-target');
+      await game.ensureAdd(lifecycleTarget);
+    },
+    verify: (game, _) async {
+      lifecycleTarget.removeFromParent();
+
+      expect(game.performanceSnapshot.counts[GamePopulationKind.enemy], 0);
+      expect(game.enemyCount, 1);
+
+      game.processLifecycleEvents();
+      expect(game.enemyCount, 0);
+    },
+  );
+
+  gameTester.testGameWidget(
+    'friendly and hostile expiry unregisters before lifecycle processing',
+    setUp: (game, _) async {
+      expiringFriendly = ProjectileComponent(
+        weaponId: hwandoSlash,
+        damage: 1,
+        position: Vector2(480, 270),
+        velocity: Vector2.zero(),
+        lifetime: 0.01,
+      );
+      expiringHostile = EnemyProjectileComponent(
+        sourceId: 'expiry-test',
+        damage: 1,
+        position: Vector2(480, 270),
+        velocity: Vector2.zero(),
+        lifetime: 0.01,
+      );
+      await game.ensureAdd(expiringFriendly);
+      await game.ensureAdd(expiringHostile);
+    },
+    verify: (game, _) async {
+      expiringFriendly.update(0.02);
+      expiringHostile.update(0.02);
+
+      expect(expiringFriendly.isRemoving, isTrue);
+      expect(expiringHostile.isRemoving, isTrue);
+      expect(game.performanceSnapshot.counts[GamePopulationKind.projectile], 0);
+      expect(game.debugPopulationIndexIsConsistent(), isTrue);
+
+      game.processLifecycleEvents();
+      expect(game.debugPopulationIndexIsConsistent(), isTrue);
     },
   );
 }

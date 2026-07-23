@@ -30,6 +30,7 @@ void main() {
       expect(game.enemyCount, lessThanOrEqualTo(game.currentEnemyCap));
       expect(game.runOutcome, RunOutcome.inProgress);
       expect(game.weaponLevelLabels, isNotEmpty);
+      expect(game.debugPopulationIndexIsConsistent(), isTrue);
     },
   );
 
@@ -65,6 +66,8 @@ void main() {
       expect(first.runOutcome, second.runOutcome);
       expect(first.weaponLevelLabels, second.weaponLevelLabels);
       expect(first.weaponSystem.levels, second.weaponSystem.levels);
+      expect(first.debugPopulationIndexIsConsistent(), isTrue);
+      expect(second.debugPopulationIndexIsConsistent(), isTrue);
       expect(
         first.children
             .whereType<EnemyComponent>()

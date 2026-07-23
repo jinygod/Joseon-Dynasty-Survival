@@ -1414,6 +1414,7 @@ void main() {
           ),
           hasLength(1),
         );
+        expect(game.debugPopulationIndexIsConsistent(), isTrue);
         game.update(.05);
         expect(
           game.children.whereType<EnemyHazardComponent>().where(
@@ -1488,6 +1489,7 @@ void main() {
           game.performanceSnapshot.counts[GamePopulationKind.projectile],
           lessThanOrEqualTo(1),
         );
+        expect(game.debugPopulationIndexIsConsistent(), isTrue);
       },
     );
 
@@ -1516,6 +1518,7 @@ void main() {
           game.performanceSnapshot.counts[GamePopulationKind.projectile],
           1,
         );
+        expect(game.debugPopulationIndexIsConsistent(), isTrue);
       },
     );
 
@@ -1941,6 +1944,7 @@ void main() {
       expect(ended?.outcome, RunOutcome.victory);
       expect(ended?.bossDefeated, isTrue);
       expect(game.runOutcome, RunOutcome.victory);
+      expect(game.debugPopulationIndexIsConsistent(), isTrue);
     });
 
     test('run end callback fires once', () async {
