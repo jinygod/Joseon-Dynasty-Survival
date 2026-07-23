@@ -85,7 +85,10 @@ void main() {
     addTearDown(game.onDispose);
     await tester.pumpWidget(
       MaterialApp(
-        theme: ThemeData(splashFactory: NoSplash.splashFactory),
+        theme: ThemeData(
+          splashFactory: NoSplash.splashFactory,
+          useMaterial3: false,
+        ),
         routes: debugVfxGalleryRoutes(
           isDebug: true,
           galleryBuilder: (_) => VfxGalleryScreen(game: game),
@@ -99,6 +102,7 @@ void main() {
       ),
     );
 
+    expect(tester.takeException(), isNull);
     await tester.tap(find.byKey(const Key('vfx-gallery-entry')));
     await tester.pump();
     await tester.pump();

@@ -42,12 +42,16 @@ Widget? debugVfxGalleryEntry({required bool isDebug}) {
   return Positioned(
     top: 8,
     right: 8,
-    child: Builder(
-      builder: (context) => IconButton(
-        key: const Key('vfx-gallery-entry'),
-        tooltip: 'Open VFX gallery',
-        icon: const Icon(Icons.auto_awesome),
-        onPressed: () => Navigator.of(context).pushNamed('/debug/vfx-gallery'),
+    child: Material(
+      type: MaterialType.transparency,
+      child: Builder(
+        builder: (context) => IconButton(
+          key: const Key('vfx-gallery-entry'),
+          tooltip: 'Open VFX gallery',
+          icon: const Icon(Icons.auto_awesome),
+          onPressed: () =>
+              Navigator.of(context).pushNamed('/debug/vfx-gallery'),
+        ),
       ),
     ),
   );

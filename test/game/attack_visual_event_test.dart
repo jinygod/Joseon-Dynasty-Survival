@@ -19,7 +19,7 @@ void main() {
     lingerSeconds: .08,
     knockback: 10,
     slowFraction: 0,
-    traits: {AttackTrait.melee},
+    traits: const {AttackTrait.melee},
     presentation: AttackPresentation.normal,
   );
 

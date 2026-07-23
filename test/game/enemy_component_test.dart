@@ -193,7 +193,7 @@ void main() {
       expect(first.phaseToken, greaterThan(0));
       enemy.update(.02);
       expect(enemy.warningSnapshot!.phaseToken, first.phaseToken);
-      for (var i = 0; i < 7; i++) {
+      for (var i = 0; i < 6; i++) {
         enemy.update(.05);
       }
       expect(enemy.warningSnapshot!.phaseToken, greaterThan(first.phaseToken));
