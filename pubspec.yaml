@@ -41,6 +41,7 @@ dependencies:
   supabase_flutter: 2.16.0
 
 dev_dependencies:
+  crypto: ^3.0.7
   flutter_test:
     sdk: flutter
   flame_test: ^1.16.0

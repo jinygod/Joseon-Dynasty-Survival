@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/components/enemy_component.dart';
 import 'package:pixel_survivor/game/content/asset_catalog.dart';
@@ -17,41 +18,6 @@ void main() {
     'broken_jangseung_spirit',
     'sorrowful_maiden_ghost',
   };
-  const hashes = <String, (String, String)>{
-    'sakkat_specter': (
-      '45AA45512102B67C9E6682AAC4DA250950ACDF3A30727596F1DFF76BFB09517B',
-      '5604F6B3EABAE514234A3891E715588E33DC1ABF5F891710482DB50EBA2BEF34',
-    ),
-    'plague_crow': (
-      '0FA5596D40F2DF708A783891E4E4484A6BB8E0986CF600DC1A066742C74AEC80',
-      '4F78D7EBC0E440E739B735F3798D2BFD05E89243FD8F583F5630362BD34D215A',
-    ),
-    'spear_bandit': (
-      '7A77A188CA25D99DEB0B58EFCA6E230A5D97887C23BBF5581004D3B4C950ABB5',
-      '06C04864BDC8E7CAE7375756558E6DAA09A6952ACC0153A694D2308647312122',
-    ),
-    'rotten_herbalist': (
-      '5D44394EA69B0B58738A2DD41190A27BBCD50E6040F89182FE325DF247FA597C',
-      '41BB47D809A5F67706E405B121BD9E01328F53CC31C32DDCAB6B08114939C047',
-    ),
-    'grave_ember': (
-      'B15FC618E95E5EADA126EF0A768D7EA9728DA9137DAC6DB9854A8D08A413704D',
-      'EDCA3B7592B5FE8845F2D3B35CB284BB5FC3C86A9E1B862BDC9C71BE0DE5FDDA',
-    ),
-    'black_hat_assassin': (
-      '1121A178D1DE650AA3A9CA54942AA83A4449C1BF67BC492D87981E46BCAFF435',
-      'C642642511C65EBC3A8124D020AA5BCB3F80E45410363623F12E5C861E04BDC3',
-    ),
-    'broken_jangseung_spirit': (
-      '933467A779DED0C535B4BD3044B6515EE959E262FFD08075762F30EBDFC5D52C',
-      '92B057F8A2B69E256956607355362E98B20BBD6A35E9368B69BC27B105EE96D2',
-    ),
-    'sorrowful_maiden_ghost': (
-      '43DB700A55DE3C45B584A9CBEED8F181FC645858EC51E93EA1DFE26E1F245398',
-      '50AB409550310283B6025EEFD90563C9637D314B02431EDAF27F29AA28BDEA36',
-    ),
-  };
-
   test('missing enemy visual contracts are exactly the eight planned IDs', () {
     expect(missingEightVisualContracts.keys.toSet(), ids);
     expect(
@@ -61,23 +27,66 @@ void main() {
   });
 
   test('rights ledger binds each generated source to one reviewed runtime', () {
-    final rows = File('docs/assets/asset-rights-ledger.csv')
-        .readAsLinesSync()
+    final lines = File('docs/assets/asset-rights-ledger.csv').readAsLinesSync();
+    final headers = lines.first.split(',');
+    const expectedHeaders = [
+      'asset_id',
+      'runtime_path',
+      'category',
+      'acquisition_method',
+      'creator_or_vendor',
+      'provider_product_model',
+      'created_or_purchased_at',
+      'source_url',
+      'terms_or_license_name',
+      'terms_checked_at',
+      'evidence_path',
+      'source_file_sha256',
+      'prompt_path',
+      'input_rights_confirmed',
+      'human_edits',
+      'similarity_reviewed',
+      'trademark_reviewed',
+      'credit_required',
+      'credit_text',
+      'status',
+      'reviewer',
+      'reviewed_at',
+      'notes',
+    ];
+    expect(headers, expectedHeaders);
+    final rows = lines
         .skip(1)
-        .where((row) => ids.contains(row.split(',').first))
+        .map((line) => line.split(','))
+        .where((columns) => ids.contains(columns.first))
         .toList();
     expect(rows, hasLength(8));
     for (final id in ids) {
-      final row = rows.singleWhere((row) => row.startsWith('$id,'));
-      final (sourceHash, runtimeHash) = hashes[id]!;
-      expect(row, contains('assets/images/enemies/${id}_128.png'));
-      expect(row, contains('art_source/generated/enemies/${id}_source.png'));
-      expect(row, contains(sourceHash));
-      expect(row, contains('runtime-sha256=$runtimeHash'));
-      expect(row, contains('OpenAI built-in image generation'));
-      expect(row, contains('runtime owner=EnemySpriteSheet'));
-      expect(row, contains('runtime status=temporary'));
-      expect(row, contains('runtime use=enemy animation 4x4 128px'));
+      final columns = rows.singleWhere((columns) => columns.first == id);
+      expect(columns, hasLength(headers.length), reason: id);
+      final row = Map<String, String>.fromIterables(headers, columns);
+      final sourcePath = 'art_source/generated/enemies/${id}_source.png';
+      final runtimePath = 'assets/images/enemies/${id}_128.png';
+      final sourceHash = sha256
+          .convert(File(sourcePath).readAsBytesSync())
+          .toString()
+          .toUpperCase();
+      final runtimeHash = sha256
+          .convert(File(runtimePath).readAsBytesSync())
+          .toString()
+          .toUpperCase();
+      expect(row['runtime_path'], runtimePath);
+      expect(row['evidence_path'], sourcePath);
+      expect(row['source_file_sha256'], sourceHash);
+      expect(
+        row['provider_product_model'],
+        contains('OpenAI built-in image generation'),
+      );
+      expect(row['status'], 'review');
+      expect(row['notes'], contains('runtime-sha256=$runtimeHash'));
+      expect(row['notes'], contains('runtime owner=EnemySpriteSheet'));
+      expect(row['notes'], contains('runtime status=temporary'));
+      expect(row['notes'], contains('runtime use=enemy animation 4x4 128px'));
     }
   });
 
