@@ -254,11 +254,18 @@ class PixelSurvivorGame extends FlameGame
     rejected: _rejectedPopulations,
   );
 
-  int get performanceRetainedOwnerCount =>
-      _activePlayers.length +
-      _lastWeaponHitByEnemy.length +
-      _recordedEnemyDefeats.length +
-      _pendingSpiritJadeDrops.length;
+  Map<String, int> get performanceRetainedOwnerBreakdown => Map.unmodifiable({
+    'activePlayers': _activePlayers.length,
+    'lastWeaponHits': _lastWeaponHitByEnemy.length,
+    'recordedEnemyDefeats': _recordedEnemyDefeats.length,
+    'pendingSpiritJadeDrops': _pendingSpiritJadeDrops.length,
+    'talismanAttachments': _talismanAttachmentComponents.length,
+    'trackedRegistryAttackVisuals': _trackedRegistryAttackVisuals.length,
+  });
+
+  int get performanceRetainedOwnerCount => performanceRetainedOwnerBreakdown
+      .values
+      .fold(0, (sum, count) => sum + count);
 
   void applyAccessibilitySettings({
     required bool screenShakeEnabled,

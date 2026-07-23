@@ -274,4 +274,27 @@ void main() {
     }, returnsNormally);
     expect(game.performanceSnapshot.isWithinBudget, isTrue);
   });
+
+  constrainedGameTester.testGameWidget(
+    'retained owner accounting is complete, summed, and immutable',
+    verify: (game, _) async {
+      final breakdown = game.performanceRetainedOwnerBreakdown;
+
+      expect(breakdown.keys, {
+        'activePlayers',
+        'lastWeaponHits',
+        'recordedEnemyDefeats',
+        'pendingSpiritJadeDrops',
+        'talismanAttachments',
+        'trackedRegistryAttackVisuals',
+      });
+      expect(breakdown['activePlayers'], 1);
+      expect(breakdown['talismanAttachments'], 0);
+      expect(
+        breakdown.values.reduce((total, count) => total + count),
+        game.performanceRetainedOwnerCount,
+      );
+      expect(() => breakdown['activePlayers'] = 99, throwsUnsupportedError);
+    },
+  );
 }

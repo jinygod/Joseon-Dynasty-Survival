@@ -714,6 +714,20 @@ void main() {
           ),
           isEmpty,
         );
+        expect(
+          game.performanceRetainedOwnerBreakdown['trackedRegistryAttackVisuals'],
+          1,
+        );
+
+        for (var frame = 0; frame < 6; frame += 1) {
+          game.update(.05);
+        }
+
+        expect(game.children.whereType<HwandoVfxComponent>(), isEmpty);
+        expect(
+          game.performanceRetainedOwnerBreakdown['trackedRegistryAttackVisuals'],
+          0,
+        );
       },
     );
 
@@ -1033,12 +1047,20 @@ void main() {
             .whereType<TalismanAttachmentComponent>()
             .single;
         expect(mark.seal.target, same(target));
+        expect(
+          game.performanceRetainedOwnerBreakdown['talismanAttachments'],
+          1,
+        );
         target.removeFromParent();
         game.update(.05);
         game.processLifecycleEvents();
 
         expect(game.weaponSystem.attachedTalismans, isEmpty);
         expect(game.children.whereType<TalismanAttachmentComponent>(), isEmpty);
+        expect(
+          game.performanceRetainedOwnerBreakdown['talismanAttachments'],
+          0,
+        );
       },
     );
 
