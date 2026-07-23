@@ -18,7 +18,6 @@ import 'combat/attack_spec.dart';
 import 'combat/attack_visual_event.dart';
 import 'combat/talisman_damage.dart';
 import 'components/attack_effect_component.dart';
-import 'components/hwando_vfx_component.dart';
 import 'components/boss_component.dart';
 import 'components/combat_effect_component.dart';
 import 'components/damage_number_component.dart';
@@ -41,6 +40,7 @@ import 'content/boss_definitions.dart';
 import 'content/combat_asset_preloader.dart';
 import 'content/character_definitions.dart';
 import 'content/combat_effect_atlas.dart';
+import 'content/combat_visual_factory.dart';
 import 'content/enemy_definitions.dart';
 import 'content/ids.dart';
 import 'content/playtest_content_policy.dart';
@@ -165,6 +165,7 @@ class PixelSurvivorGame extends FlameGame
   final Map<EnemyComponent, bool> _pendingSpiritJadeDrops = {};
   final Map<EnemyComponent, TalismanAttachmentComponent>
   _talismanAttachmentComponents = {};
+  final Set<PositionComponent> _trackedRegistryAttackVisuals = {};
   int _spiritJadeDropSequence = 0;
   double? _rewardCollectionSecondsRemaining;
   int _pendingBossSpiritJade = 0;
@@ -717,6 +718,7 @@ class PixelSurvivorGame extends FlameGame
     for (final frostField in result.frostFields) {
       final activeFields = children.whereType<FrostFieldComponent>().toList();
       if (activeFields.length >= 3) activeFields.first.removeFromParent();
+      frostField.attachVisuals(_combatVisualFactory);
       add(frostField);
     }
     _addFiveColorWards(result.fiveColorWards);
@@ -743,6 +745,7 @@ class PixelSurvivorGame extends FlameGame
       }
       final retained = max(0, activeWards.length - overflow);
       for (final ward in matchingRequests.take(cap - retained)) {
+        ward.attachVisuals(_combatVisualFactory);
         add(ward);
       }
     }
@@ -760,7 +763,10 @@ class PixelSurvivorGame extends FlameGame
     }
     for (final entry in desired.entries) {
       if (_talismanAttachmentComponents.containsKey(entry.key)) continue;
-      final component = TalismanAttachmentComponent(seal: entry.value);
+      final component = TalismanAttachmentComponent(
+        seal: entry.value,
+        visualFactory: _combatVisualFactory,
+      );
       _talismanAttachmentComponents[entry.key] = component;
       add(component);
     }
@@ -773,6 +779,7 @@ class PixelSurvivorGame extends FlameGame
       add(
         TalismanTransferCueComponent(
           cue: cue,
+          visualFactory: _combatVisualFactory,
           onExpired: () {
             _combatEffectCount = max(0, _combatEffectCount - 1);
           },
@@ -782,6 +789,13 @@ class PixelSurvivorGame extends FlameGame
   }
 
   void _cleanupCombatPresentationOwners() {
+    for (final visual
+        in _trackedRegistryAttackVisuals
+            .where((item) => item.isRemoving)
+            .toList(growable: false)) {
+      _trackedRegistryAttackVisuals.remove(visual);
+      _combatEffectCount = max(0, _combatEffectCount - 1);
+    }
     for (final overlay
         in children
             .whereType<EnemyWarningOverlayComponent>()
@@ -900,31 +914,27 @@ class PixelSurvivorGame extends FlameGame
       return;
     }
     _combatEffectCount += 1;
-    void onExpired() {
-      _combatEffectCount = max(0, _combatEffectCount - 1);
-    }
-
-    if (_isHwandoEffect(attack.spec.id)) {
+    try {
+      final visual = _combatVisualFactory.create(
+        AttackVisualEvent.fromAttack(attack),
+      );
+      _trackedRegistryAttackVisuals.add(visual);
+      add(visual);
+      return;
+    } on MissingAttackVisualException {
       add(
-        HwandoVfxComponent(
-          event: AttackVisualEvent.fromAttack(attack),
-          images: _visualImages,
-          onExpired: onExpired,
+        AttackEffectComponent(
+          instance: attack,
+          onExpired: () {
+            _combatEffectCount = max(0, _combatEffectCount - 1);
+          },
         ),
       );
-      return;
     }
-    add(AttackEffectComponent(instance: attack, onExpired: onExpired));
   }
 
-  bool _isHwandoEffect(String effectId) {
-    try {
-      return AttackVisualRegistry.byId(effectId).category ==
-          CombatVisualCategory.hwando;
-    } on MissingAttackVisualException {
-      return false;
-    }
-  }
+  CombatVisualFactory get _combatVisualFactory =>
+      CombatVisualFactory(images: _visualImages);
 
   void _ensureWardAura(PlayerComponent player) {
     final level = weaponSystem.levelOf(jangseungWard);
@@ -940,6 +950,7 @@ class PixelSurvivorGame extends FlameGame
           return weaponLevelFor(jangseungWard, currentLevel).range *
               weaponSizeMultiplier;
         },
+        visualFactory: _combatVisualFactory,
       ),
     );
   }
@@ -1151,6 +1162,12 @@ class PixelSurvivorGame extends FlameGame
       return;
     }
     _projectileSlotsRemaining -= 1;
+    if (projectile case final ProjectileComponent playerProjectile) {
+      playerProjectile.attachVisuals(
+        visualFactory: _combatVisualFactory,
+        legacyEffectImage: _visualImages[WeaponEffectAtlas.assetKey],
+      );
+    }
     add(projectile);
   }
 

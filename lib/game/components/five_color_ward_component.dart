@@ -4,22 +4,30 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 
 import '../combat/attack_spec.dart';
+import '../combat/attack_visual_event.dart';
 import '../combat/talisman_damage.dart';
+import '../content/combat_visual_factory.dart';
+import '../content/attack_visual_registry.dart';
 import '../content/weapon_definitions.dart';
 import '../models/damage_event.dart';
 import 'enemy_component.dart';
 
 class FiveColorWardComponent extends PositionComponent {
-  FiveColorWardComponent({required this.attack, this.tickSeconds = .5})
-    : assert(attack.spec.shape == AttackShape.circle),
-      assert(attack.spec.radius > 0),
-      assert(attack.spec.lingerSeconds > 0),
-      assert(tickSeconds > 0),
-      super(
-        position: attack.origin,
-        size: Vector2.all(attack.spec.radius * 2),
-        anchor: Anchor.center,
-      );
+  FiveColorWardComponent({
+    required this.attack,
+    this.tickSeconds = .5,
+    CombatVisualFactory? visualFactory,
+  }) : assert(attack.spec.shape == AttackShape.circle),
+       assert(attack.spec.radius > 0),
+       assert(attack.spec.lingerSeconds > 0),
+       assert(tickSeconds > 0),
+       super(
+         position: attack.origin,
+         size: Vector2.all(attack.spec.radius * 2),
+         anchor: Anchor.center,
+       ) {
+    if (visualFactory != null) attachVisuals(visualFactory);
+  }
 
   final AttackInstance attack;
   final double tickSeconds;
@@ -32,6 +40,55 @@ class FiveColorWardComponent extends PositionComponent {
   double get durationSeconds => attack.spec.lingerSeconds;
   double get slowFraction => attack.spec.slowFraction;
   bool get isExpired => _elapsed >= durationSeconds;
+  String get visualEffectId =>
+      attack.spec.presentation == AttackPresentation.master
+      ? 'talisman_master_ward'
+      : 'talisman_small_ward';
+  bool get usesRegistryVisual => _usesRegistryVisual;
+  bool get startsImageLoadOnMount => false;
+
+  /// The registry presentation delegate never resolves damage.
+  bool get ownsDamageResolution => false;
+
+  /// Damage ticks remain owned by this gameplay component.
+  bool get gameplayOwnsDamageResolution => true;
+  bool _usesRegistryVisual = false;
+  bool _hasRegistrySprite = false;
+
+  void attachVisuals(CombatVisualFactory visualFactory) {
+    if (_usesRegistryVisual) return;
+    _usesRegistryVisual = true;
+    _hasRegistrySprite = AttackVisualRegistry.byId(
+      visualEffectId,
+    ).layers.any((layer) => visualFactory.images.containsKey(layer.assetKey));
+    add(
+      visualFactory.create(
+        AttackVisualEvent.fromAttack(
+          AttackInstance(
+            spec: AttackSpec(
+              id: visualEffectId,
+              shape: AttackShape.circle,
+              damage: 0,
+              range: 0,
+              angleRadians: 0,
+              radius: radius,
+              width: 0,
+              windupSeconds: 0,
+              activeSeconds: durationSeconds,
+              lingerSeconds: 0,
+              knockback: 0,
+              slowFraction: 0,
+              traits: const {},
+              presentation: attack.spec.presentation,
+            ),
+            origin: Vector2.zero(),
+            direction: attack.direction,
+            sequenceIndex: 0,
+          ),
+        ),
+      )..scale = Vector2.all(size.x / 128),
+    );
+  }
 
   bool containsEnemy(EnemyComponent enemy) {
     final hitRadius = radius + enemy.size.x / 2;
@@ -83,6 +140,7 @@ class FiveColorWardComponent extends PositionComponent {
 
   @override
   void render(Canvas canvas) {
+    if (_hasRegistrySprite) return;
     final center = Offset(radius, radius);
     final colors = <Color>[
       const Color(0xff3155a6),

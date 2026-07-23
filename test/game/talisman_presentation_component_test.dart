@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/components/enemy_component.dart';
 import 'package:pixel_survivor/game/components/talisman_presentation_component.dart';
 import 'package:pixel_survivor/game/systems/talisman_executor.dart';
+import 'package:pixel_survivor/game/content/combat_visual_factory.dart';
 
 void main() {
   test('attached talisman mark stays anchored above its target', () {
@@ -49,4 +50,46 @@ void main() {
     component.update(1);
     expect(expirations, 1);
   });
+
+  test(
+    'talisman delegates use cached registry visuals without owning damage',
+    () {
+      final target = EnemyComponent(
+        enemyId: 'marked',
+        maxHealth: 10,
+        moveSpeed: 0,
+        damage: 0,
+        position: Vector2.zero(),
+      );
+      final attachment = TalismanAttachmentComponent(
+        seal: AttachedTalisman(
+          target: target,
+          attachedAtSeconds: 0,
+          explodeAtSeconds: 1,
+          transferDepth: 0,
+          isCritical: false,
+        ),
+        visualFactory: const CombatVisualFactory(images: {}),
+      );
+      final cue = TalismanTransferCueComponent(
+        cue: TalismanTransferCue(
+          source: Vector2.zero(),
+          target: Vector2(10, 0),
+        ),
+        visualFactory: const CombatVisualFactory(images: {}),
+      );
+
+      expect(attachment.visualEffectId, 'talisman_attachment');
+      expect(attachment.usesRegistryVisual, isTrue);
+      expect(attachment.startsImageLoadOnMount, isFalse);
+      expect(attachment.ownsDamageResolution, isFalse);
+      expect(cue.visualEffectId, 'talisman_transfer');
+      expect(cue.usesRegistryVisual, isTrue);
+      expect(cue.startsImageLoadOnMount, isFalse);
+      expect(cue.ownsDamageResolution, isFalse);
+      final attachmentVisual = attachment.children.single;
+      attachmentVisual.update(.01);
+      expect(attachmentVisual.isRemoving, isFalse);
+    },
+  );
 }

@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui';
 
@@ -6,6 +5,11 @@ import 'package:flame/components.dart';
 
 import 'enemy_component.dart';
 import '../content/ids.dart';
+import '../combat/attack_spec.dart';
+import '../combat/attack_visual_event.dart';
+import '../content/combat_visual_factory.dart';
+import '../content/attack_visual_registry.dart';
+import '../content/weapon_definitions.dart';
 import '../content/weapon_effect_atlas.dart';
 
 class ProjectileComponent extends PositionComponent {
@@ -18,12 +22,19 @@ class ProjectileComponent extends PositionComponent {
     this.pierce = 0,
     this.knockback = 0,
     Vector2? size,
+    CombatVisualFactory? visualFactory,
+    Image? legacyEffectImage,
   }) : _remainingHits = pierce + 1,
        super(
          position: position,
          size: size ?? Vector2.all(8),
          anchor: Anchor.center,
-       );
+       ) {
+    _effectImage = legacyEffectImage;
+    if (visualFactory != null && weaponId == singijeonVolley) {
+      _attachRegistryVisual(visualFactory);
+    }
+  }
 
   final WeaponId weaponId;
   final double damage;
@@ -35,10 +46,64 @@ class ProjectileComponent extends PositionComponent {
   int _remainingHits;
   double _age = 0;
   Image? _effectImage;
+  bool _usesRegistryVisual = false;
+  bool _hasRegistrySprite = false;
 
   bool get isExpired => _age >= lifetime;
   bool get isSpent => _remainingHits <= 0;
   int get remainingPierces => (_remainingHits - 1).clamp(0, pierce).toInt();
+  bool get usesRegistryVisual => _usesRegistryVisual;
+  bool get startsImageLoadOnMount => false;
+
+  /// The registry presentation delegate never resolves damage.
+  bool get ownsDamageResolution => false;
+
+  /// This outer gameplay component continues to resolve projectile hits.
+  bool get gameplayOwnsDamageResolution => true;
+
+  void attachVisuals({
+    required CombatVisualFactory visualFactory,
+    Image? legacyEffectImage,
+  }) {
+    _effectImage ??= legacyEffectImage;
+    if (weaponId == singijeonVolley && !_usesRegistryVisual) {
+      _attachRegistryVisual(visualFactory);
+    }
+  }
+
+  void _attachRegistryVisual(CombatVisualFactory visualFactory) {
+    _usesRegistryVisual = true;
+    _hasRegistrySprite = AttackVisualRegistry.byId(
+      singijeonVolley,
+    ).layers.any((layer) => visualFactory.images.containsKey(layer.assetKey));
+    add(
+      visualFactory.create(
+        AttackVisualEvent.fromAttack(
+          AttackInstance(
+            spec: AttackSpec(
+              id: singijeonVolley,
+              shape: AttackShape.line,
+              damage: 0,
+              range: 0,
+              angleRadians: 0,
+              radius: 0,
+              width: 0,
+              windupSeconds: 0,
+              activeSeconds: lifetime,
+              lingerSeconds: 0,
+              knockback: 0,
+              slowFraction: 0,
+              traits: const {},
+              presentation: AttackPresentation.normal,
+            ),
+            origin: Vector2.zero(),
+            direction: velocity,
+            sequenceIndex: 0,
+          ),
+        ),
+      )..scale = Vector2.all(28 / 128),
+    );
+  }
 
   bool registerHit(EnemyComponent enemy) {
     if (isSpent || !_hitEnemies.add(enemy)) {
@@ -47,16 +112,6 @@ class ProjectileComponent extends PositionComponent {
 
     _remainingHits -= 1;
     return true;
-  }
-
-  @override
-  void onLoad() {
-    super.onLoad();
-    unawaited(_loadEffect());
-  }
-
-  Future<void> _loadEffect() async {
-    _effectImage = await WeaponEffectAtlas.load(this);
   }
 
   bool overlapsEnemy(EnemyComponent enemy) {
@@ -78,6 +133,8 @@ class ProjectileComponent extends PositionComponent {
   @override
   void render(Canvas canvas) {
     super.render(canvas);
+
+    if (_hasRegistrySprite) return;
 
     final image = _effectImage;
     final row = WeaponEffectAtlas.rowForWeapon(weaponId);

@@ -3,14 +3,65 @@ import 'dart:ui';
 
 import 'package:flame/components.dart';
 
+import '../combat/attack_spec.dart';
+import '../combat/attack_visual_event.dart';
+import '../content/combat_visual_factory.dart';
+import '../content/attack_visual_registry.dart';
+
 class WardAuraComponent extends PositionComponent {
   WardAuraComponent({
     required this.positionProvider,
     required this.radiusProvider,
-  }) : super(anchor: Anchor.center);
+    CombatVisualFactory? visualFactory,
+  }) : super(anchor: Anchor.center) {
+    if (visualFactory != null) attachVisuals(visualFactory);
+  }
 
   final Vector2 Function() positionProvider;
   final double Function() radiusProvider;
+  PositionComponent? _registryVisual;
+  bool _hasRegistrySprite = false;
+
+  String get visualEffectId => 'jangseung_ward';
+  bool get usesRegistryVisual => _registryVisual != null;
+  bool get startsImageLoadOnMount => false;
+
+  /// This aura is presentation-only and never resolves damage.
+  bool get ownsDamageResolution => false;
+
+  void attachVisuals(CombatVisualFactory visualFactory) {
+    if (_registryVisual != null) return;
+    final visual = visualFactory.create(
+      AttackVisualEvent.fromAttack(
+        AttackInstance(
+          spec: AttackSpec(
+            id: visualEffectId,
+            shape: AttackShape.circle,
+            damage: 0,
+            range: 0,
+            angleRadians: 0,
+            radius: 0,
+            width: 0,
+            windupSeconds: 0,
+            activeSeconds: double.maxFinite,
+            lingerSeconds: 0,
+            knockback: 0,
+            slowFraction: 0,
+            traits: const {},
+            presentation: AttackPresentation.normal,
+          ),
+          origin: Vector2.zero(),
+          direction: Vector2(1, 0),
+          sequenceIndex: 0,
+        ),
+      ),
+    );
+    _hasRegistrySprite = AttackVisualRegistry.byId(
+      visualEffectId,
+    ).layers.any((layer) => visualFactory.images.containsKey(layer.assetKey));
+    _registryVisual = visual;
+    add(visual);
+  }
 
   @override
   void update(double dt) {
@@ -18,10 +69,12 @@ class WardAuraComponent extends PositionComponent {
     position.setFrom(positionProvider());
     final diameter = radiusProvider() * 2;
     size.setValues(diameter, diameter);
+    _registryVisual?.scale = Vector2.all(diameter / 128);
   }
 
   @override
   void render(Canvas canvas) {
+    if (_hasRegistrySprite) return;
     final radius = size.x / 2;
     final center = Offset(radius, radius);
     final fill = Paint()..color = const Color(0x2239d98a);

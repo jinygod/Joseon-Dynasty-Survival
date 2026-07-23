@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/components/enemy_component.dart';
 import 'package:pixel_survivor/game/components/frost_field_component.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
+import 'package:pixel_survivor/game/content/combat_visual_factory.dart';
 
 void main() {
   EnemyComponent enemyAt(double x) => EnemyComponent(
@@ -56,5 +57,24 @@ void main() {
 
     expect(field.collectDamageEvents([enemy]), hasLength(3));
     expect(field.isExpired, isTrue);
+  });
+
+  test('uses a cached frost flask registry presentation', () {
+    final field = FrostFieldComponent(
+      weaponId: frostFlask,
+      damage: 3,
+      radius: 30,
+      durationSeconds: 1,
+      slowFraction: .2,
+      knockback: 0,
+      position: Vector2.zero(),
+      visualFactory: const CombatVisualFactory(images: {}),
+    );
+
+    expect(field.visualEffectId, 'frost_flask');
+    expect(field.usesRegistryVisual, isTrue);
+    expect(field.startsImageLoadOnMount, isFalse);
+    expect(field.ownsDamageResolution, isFalse);
+    expect(field.gameplayOwnsDamageResolution, isTrue);
   });
 }

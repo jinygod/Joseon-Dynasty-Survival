@@ -223,10 +223,10 @@ void main() {
         expect(game.combatNotice, '봉마참');
         expect(game.combatNoticeSecondsRemaining, inInclusiveRange(0, 1.2));
         expect(
-          game.children.whereType<AttackEffectComponent>().any(
+          game.children.whereType<HwandoVfxComponent>().any(
             (effect) =>
-                effect.instance.spec.id == sealingSlash &&
-                effect.instance.spec.presentation == AttackPresentation.synergy,
+                effect.event.effectId == sealingSlash &&
+                effect.event.presentation == AttackPresentation.synergy,
           ),
           isTrue,
         );
