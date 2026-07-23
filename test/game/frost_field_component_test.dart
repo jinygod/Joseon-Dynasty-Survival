@@ -76,5 +76,7 @@ void main() {
     expect(field.startsImageLoadOnMount, isFalse);
     expect(field.ownsDamageResolution, isFalse);
     expect(field.gameplayOwnsDamageResolution, isTrue);
+    expect(field.registryVisualLocalPosition, Vector2(30, 30));
+    expect(field.registryVisualScale, Vector2.all(60 / 128));
   });
 }

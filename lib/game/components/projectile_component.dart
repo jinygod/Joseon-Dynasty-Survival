@@ -48,6 +48,7 @@ class ProjectileComponent extends PositionComponent {
   Image? _effectImage;
   bool _usesRegistryVisual = false;
   bool _hasRegistrySprite = false;
+  PositionComponent? _registryVisual;
 
   bool get isExpired => _age >= lifetime;
   bool get isSpent => _remainingHits <= 0;
@@ -60,6 +61,8 @@ class ProjectileComponent extends PositionComponent {
 
   /// This outer gameplay component continues to resolve projectile hits.
   bool get gameplayOwnsDamageResolution => true;
+  Vector2? get registryVisualLocalPosition => _registryVisual?.position.clone();
+  Vector2? get registryVisualScale => _registryVisual?.scale.clone();
 
   void attachVisuals({
     required CombatVisualFactory visualFactory,
@@ -76,33 +79,36 @@ class ProjectileComponent extends PositionComponent {
     _hasRegistrySprite = AttackVisualRegistry.byId(
       singijeonVolley,
     ).layers.any((layer) => visualFactory.images.containsKey(layer.assetKey));
-    add(
-      visualFactory.create(
-        AttackVisualEvent.fromAttack(
-          AttackInstance(
-            spec: AttackSpec(
-              id: singijeonVolley,
-              shape: AttackShape.line,
-              damage: 0,
-              range: 0,
-              angleRadians: 0,
-              radius: 0,
-              width: 0,
-              windupSeconds: 0,
-              activeSeconds: lifetime,
-              lingerSeconds: 0,
-              knockback: 0,
-              slowFraction: 0,
-              traits: const {},
-              presentation: AttackPresentation.normal,
+    final visual =
+        visualFactory.create(
+            AttackVisualEvent.fromAttack(
+              AttackInstance(
+                spec: AttackSpec(
+                  id: singijeonVolley,
+                  shape: AttackShape.line,
+                  damage: 0,
+                  range: 0,
+                  angleRadians: 0,
+                  radius: 0,
+                  width: 0,
+                  windupSeconds: 0,
+                  activeSeconds: lifetime,
+                  lingerSeconds: 0,
+                  knockback: 0,
+                  slowFraction: 0,
+                  traits: const {},
+                  presentation: AttackPresentation.normal,
+                ),
+                origin: Vector2.zero(),
+                direction: velocity,
+                sequenceIndex: 0,
+              ),
             ),
-            origin: Vector2.zero(),
-            direction: velocity,
-            sequenceIndex: 0,
-          ),
-        ),
-      )..scale = Vector2.all(28 / 128),
-    );
+          )
+          ..position = size / 2
+          ..scale = Vector2.all(28 / 128);
+    _registryVisual = visual;
+    add(visual);
   }
 
   bool registerHit(EnemyComponent enemy) {

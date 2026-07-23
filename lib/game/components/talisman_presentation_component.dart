@@ -29,6 +29,7 @@ class TalismanAttachmentComponent extends PositionComponent {
   final AttachedTalisman seal;
   bool _usesRegistryVisual = false;
   bool _hasRegistrySprite = false;
+  PositionComponent? _registryVisual;
 
   String get visualEffectId => 'talisman_attachment';
   bool get usesRegistryVisual => _usesRegistryVisual;
@@ -36,6 +37,8 @@ class TalismanAttachmentComponent extends PositionComponent {
 
   /// Only the presentation child is described here; it never resolves damage.
   bool get ownsDamageResolution => false;
+  Vector2? get registryVisualLocalPosition => _registryVisual?.position.clone();
+  Vector2? get registryVisualScale => _registryVisual?.scale.clone();
 
   void attachVisuals(CombatVisualFactory visualFactory) {
     if (_usesRegistryVisual) return;
@@ -43,33 +46,36 @@ class TalismanAttachmentComponent extends PositionComponent {
     _hasRegistrySprite = AttackVisualRegistry.byId(
       visualEffectId,
     ).layers.any((layer) => visualFactory.images.containsKey(layer.assetKey));
-    add(
-      visualFactory.create(
-        AttackVisualEvent.fromAttack(
-          AttackInstance(
-            spec: AttackSpec(
-              id: visualEffectId,
-              shape: AttackShape.circle,
-              damage: 0,
-              range: 0,
-              angleRadians: 0,
-              radius: 0,
-              width: 0,
-              windupSeconds: 0,
-              activeSeconds: double.maxFinite,
-              lingerSeconds: 0,
-              knockback: 0,
-              slowFraction: 0,
-              traits: const {},
-              presentation: AttackPresentation.normal,
+    final visual =
+        visualFactory.create(
+            AttackVisualEvent.fromAttack(
+              AttackInstance(
+                spec: AttackSpec(
+                  id: visualEffectId,
+                  shape: AttackShape.circle,
+                  damage: 0,
+                  range: 0,
+                  angleRadians: 0,
+                  radius: 0,
+                  width: 0,
+                  windupSeconds: 0,
+                  activeSeconds: double.maxFinite,
+                  lingerSeconds: 0,
+                  knockback: 0,
+                  slowFraction: 0,
+                  traits: const {},
+                  presentation: AttackPresentation.normal,
+                ),
+                origin: Vector2.zero(),
+                direction: Vector2(1, 0),
+                sequenceIndex: 0,
+              ),
             ),
-            origin: Vector2.zero(),
-            direction: Vector2(1, 0),
-            sequenceIndex: 0,
-          ),
-        ),
-      )..scale = Vector2.all(size.x / 128),
-    );
+          )
+          ..position = size / 2
+          ..scale = Vector2.all(size.x / 128);
+    _registryVisual = visual;
+    add(visual);
   }
 
   @override
@@ -133,6 +139,7 @@ class TalismanTransferCueComponent extends PositionComponent {
   bool _expired = false;
   bool _usesRegistryVisual = false;
   bool _hasRegistrySprite = false;
+  PositionComponent? _registryVisual;
 
   Vector2 get source => _source.clone();
   Vector2 get target => _target.clone();
@@ -143,6 +150,8 @@ class TalismanTransferCueComponent extends PositionComponent {
 
   /// Only the presentation child is described here; it never resolves damage.
   bool get ownsDamageResolution => false;
+  Vector2? get registryVisualLocalPosition => _registryVisual?.position.clone();
+  Vector2? get registryVisualScale => _registryVisual?.scale.clone();
 
   void attachVisuals(CombatVisualFactory visualFactory) {
     if (_usesRegistryVisual) return;
@@ -151,39 +160,41 @@ class TalismanTransferCueComponent extends PositionComponent {
       visualEffectId,
     ).layers.any((layer) => visualFactory.images.containsKey(layer.assetKey));
     final delta = _target - _source;
-    add(
-      visualFactory.create(
-        AttackVisualEvent.fromAttack(
-          AttackInstance(
-            spec: AttackSpec(
-              id: visualEffectId,
-              shape: AttackShape.line,
-              damage: 0,
-              range: delta.length,
-              angleRadians: 0,
-              radius: 0,
-              width: 0,
-              windupSeconds: 0,
-              activeSeconds: _lifetime,
-              lingerSeconds: 0,
-              knockback: 0,
-              slowFraction: 0,
-              traits: const {},
-              presentation: AttackPresentation.normal,
-            ),
-            origin: Vector2.zero(),
-            direction: delta,
-            sequenceIndex: 0,
+    final visual = visualFactory.create(
+      AttackVisualEvent.fromAttack(
+        AttackInstance(
+          spec: AttackSpec(
+            id: visualEffectId,
+            shape: AttackShape.line,
+            damage: 0,
+            range: delta.length,
+            angleRadians: 0,
+            radius: 0,
+            width: 0,
+            windupSeconds: 0,
+            activeSeconds: _lifetime,
+            lingerSeconds: 0,
+            knockback: 0,
+            slowFraction: 0,
+            traits: const {},
+            presentation: AttackPresentation.normal,
           ),
+          origin: Vector2.zero(),
+          direction: delta,
+          sequenceIndex: 0,
         ),
-      )..scale = Vector2(delta.length / 128, delta.length / 128),
-    );
+      ),
+    )..scale = Vector2.all(28 / 128);
+    _registryVisual = visual;
+    add(visual);
   }
 
   @override
   void update(double dt) {
     super.update(dt);
     _age += dt;
+    final progress = (_age / _lifetime).clamp(0, 1).toDouble();
+    _registryVisual?.position = (_target - _source) * progress;
     if (!_expired && _age >= _lifetime) {
       _expired = true;
       onExpired?.call();

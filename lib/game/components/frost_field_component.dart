@@ -58,6 +58,9 @@ class FrostFieldComponent extends PositionComponent {
   bool get gameplayOwnsDamageResolution => true;
   bool _usesRegistryVisual = false;
   bool _hasRegistrySprite = false;
+  PositionComponent? _registryVisual;
+  Vector2? get registryVisualLocalPosition => _registryVisual?.position.clone();
+  Vector2? get registryVisualScale => _registryVisual?.scale.clone();
 
   void attachVisuals(CombatVisualFactory visualFactory) {
     if (_usesRegistryVisual) return;
@@ -65,33 +68,36 @@ class FrostFieldComponent extends PositionComponent {
     _hasRegistrySprite = AttackVisualRegistry.byId(
       visualEffectId,
     ).layers.any((layer) => visualFactory.images.containsKey(layer.assetKey));
-    add(
-      visualFactory.create(
-        AttackVisualEvent.fromAttack(
-          AttackInstance(
-            spec: AttackSpec(
-              id: visualEffectId,
-              shape: AttackShape.circle,
-              damage: 0,
-              range: 0,
-              angleRadians: 0,
-              radius: radius,
-              width: 0,
-              windupSeconds: 0,
-              activeSeconds: durationSeconds,
-              lingerSeconds: 0,
-              knockback: 0,
-              slowFraction: 0,
-              traits: const {},
-              presentation: AttackPresentation.normal,
+    final visual =
+        visualFactory.create(
+            AttackVisualEvent.fromAttack(
+              AttackInstance(
+                spec: AttackSpec(
+                  id: visualEffectId,
+                  shape: AttackShape.circle,
+                  damage: 0,
+                  range: 0,
+                  angleRadians: 0,
+                  radius: radius,
+                  width: 0,
+                  windupSeconds: 0,
+                  activeSeconds: durationSeconds,
+                  lingerSeconds: 0,
+                  knockback: 0,
+                  slowFraction: 0,
+                  traits: const {},
+                  presentation: AttackPresentation.normal,
+                ),
+                origin: Vector2.zero(),
+                direction: Vector2(1, 0),
+                sequenceIndex: 0,
+              ),
             ),
-            origin: Vector2.zero(),
-            direction: Vector2(1, 0),
-            sequenceIndex: 0,
-          ),
-        ),
-      )..scale = Vector2.all(size.x / 128),
-    );
+          )
+          ..position = size / 2
+          ..scale = Vector2.all(size.x / 128);
+    _registryVisual = visual;
+    add(visual);
   }
 
   bool containsEnemy(EnemyComponent enemy) {

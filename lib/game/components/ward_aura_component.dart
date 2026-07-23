@@ -28,6 +28,8 @@ class WardAuraComponent extends PositionComponent {
 
   /// This aura is presentation-only and never resolves damage.
   bool get ownsDamageResolution => false;
+  Vector2? get registryVisualLocalPosition => _registryVisual?.position.clone();
+  Vector2? get registryVisualScale => _registryVisual?.scale.clone();
 
   void attachVisuals(CombatVisualFactory visualFactory) {
     if (_registryVisual != null) return;
@@ -69,7 +71,9 @@ class WardAuraComponent extends PositionComponent {
     position.setFrom(positionProvider());
     final diameter = radiusProvider() * 2;
     size.setValues(diameter, diameter);
-    _registryVisual?.scale = Vector2.all(diameter / 128);
+    _registryVisual
+      ?..position = size / 2
+      ..scale = Vector2.all(diameter / 128);
   }
 
   @override

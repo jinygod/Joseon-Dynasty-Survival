@@ -20,6 +20,8 @@ void main() {
       expect(projectile.startsImageLoadOnMount, isFalse);
       expect(projectile.ownsDamageResolution, isFalse);
       expect(projectile.gameplayOwnsDamageResolution, isTrue);
+      expect(projectile.registryVisualLocalPosition, Vector2(4, 4));
+      expect(projectile.registryVisualScale, Vector2.all(28 / 128));
     },
   );
 }

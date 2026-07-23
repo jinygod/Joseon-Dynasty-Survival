@@ -83,10 +83,17 @@ void main() {
       expect(attachment.usesRegistryVisual, isTrue);
       expect(attachment.startsImageLoadOnMount, isFalse);
       expect(attachment.ownsDamageResolution, isFalse);
+      expect(attachment.registryVisualLocalPosition, Vector2(6, 8));
       expect(cue.visualEffectId, 'talisman_transfer');
       expect(cue.usesRegistryVisual, isTrue);
       expect(cue.startsImageLoadOnMount, isFalse);
       expect(cue.ownsDamageResolution, isFalse);
+      expect(cue.registryVisualLocalPosition, Vector2.zero());
+      expect(cue.registryVisualScale, Vector2.all(28 / 128));
+      cue.update(cue.lifetime / 2);
+      expect(cue.registryVisualLocalPosition, Vector2(5, 0));
+      cue.update(cue.lifetime / 2);
+      expect(cue.registryVisualLocalPosition, Vector2(10, 0));
       final attachmentVisual = attachment.children.single;
       attachmentVisual.update(.01);
       expect(attachmentVisual.isRemoving, isFalse);

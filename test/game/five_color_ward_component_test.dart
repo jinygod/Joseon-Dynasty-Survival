@@ -130,5 +130,7 @@ void main() {
     expect(ward.startsImageLoadOnMount, isFalse);
     expect(ward.ownsDamageResolution, isFalse);
     expect(ward.gameplayOwnsDamageResolution, isTrue);
+    expect(ward.registryVisualLocalPosition, Vector2(30, 30));
+    expect(ward.registryVisualScale, Vector2.all(60 / 128));
   });
 }

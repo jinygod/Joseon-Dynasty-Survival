@@ -65,8 +65,11 @@ flutter:
     - assets/images/weapons/
     - assets/images/effects/
     - assets/images/vfx/
+    - assets/images/vfx/player/
     - assets/images/projectiles/
+    - assets/images/projectiles/player/
     - assets/images/zones/
+    - assets/images/zones/player/
     - assets/images/stages/
     - assets/images/ui/
     - assets/audio/music/

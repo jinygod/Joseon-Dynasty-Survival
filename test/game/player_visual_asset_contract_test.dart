@@ -165,6 +165,18 @@ const runtimeSha256ByPath = <String, String>{
 };
 
 void main() {
+  test('pubspec bundles each nested player visual directory', () {
+    final pubspec = File('pubspec.yaml').readAsStringSync();
+
+    for (final directory in const [
+      'assets/images/vfx/player/',
+      'assets/images/projectiles/player/',
+      'assets/images/zones/player/',
+    ]) {
+      expect(pubspec, contains('- $directory'));
+    }
+  });
+
   test('player combat visual IDs match their exact visual contracts', () {
     expect(playerVisualContracts, hasLength(10));
     expect(
