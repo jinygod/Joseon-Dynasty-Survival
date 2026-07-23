@@ -88,7 +88,8 @@ class AssetCatalog {
   };
 
   static const lobby = <String, String>{
-    'government_office': 'assets/images/effects/combat_effects_atlas_64.png',
+    'government_office':
+        'assets/images/stages/joseon_moonlit_lobby_1536x2730.png',
   };
 
   static const player = <String, String>{

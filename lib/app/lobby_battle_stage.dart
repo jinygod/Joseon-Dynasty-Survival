@@ -55,7 +55,28 @@ class LobbyBattleStage extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              const CustomPaint(painter: _OfficeStagePainter()),
+              Image.asset(
+                AssetCatalog.lobby['government_office']!,
+                key: const Key('lobby-stage-background-image'),
+                fit: BoxFit.cover,
+                alignment: Alignment.topCenter,
+                filterQuality: FilterQuality.high,
+              ),
+              const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    stops: [0, 0.45, 0.72, 1],
+                    colors: [
+                      Color(0x26000000),
+                      Color(0x12000000),
+                      Color(0x52040a12),
+                      Color(0xa6040a12),
+                    ],
+                  ),
+                ),
+              ),
               LayoutBuilder(
                 builder: (context, constraints) {
                   if (constraints.maxHeight < 420) {
@@ -415,97 +436,6 @@ class _LobbyCharacterArt extends StatelessWidget {
       ),
     );
   }
-}
-
-class _OfficeStagePainter extends CustomPainter {
-  const _OfficeStagePainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final moonCenter = Offset(size.width * .78, size.height * .16);
-    canvas.drawCircle(
-      moonCenter,
-      size.shortestSide * .14,
-      Paint()..color = const Color(0x22ffe9a8),
-    );
-    canvas.drawCircle(
-      moonCenter,
-      size.shortestSide * .09,
-      Paint()..color = const Color(0xccffe8a1),
-    );
-
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset(size.width * .5, size.height * .77),
-        width: size.width * .62,
-        height: size.height * .1,
-      ),
-      Paint()..color = const Color(0x88000000),
-    );
-
-    final screenRect = Rect.fromLTWH(
-      size.width * .16,
-      size.height * .27,
-      size.width * .68,
-      size.height * .43,
-    );
-    canvas.drawRect(screenRect, Paint()..color = const Color(0x55fff4cf));
-    final timber = Paint()..color = const Color(0xff4d2b20);
-    canvas.drawRect(
-      Rect.fromLTWH(
-        size.width * .15,
-        size.height * .25,
-        size.width * .035,
-        size.height * .5,
-      ),
-      timber,
-    );
-    canvas.drawRect(
-      Rect.fromLTWH(
-        size.width * .815,
-        size.height * .25,
-        size.width * .035,
-        size.height * .5,
-      ),
-      timber,
-    );
-
-    final roofPath = Path()
-      ..moveTo(size.width * .06, size.height * .27)
-      ..lineTo(size.width * .5, size.height * .1)
-      ..lineTo(size.width * .94, size.height * .27)
-      ..lineTo(size.width * .87, size.height * .32)
-      ..lineTo(size.width * .13, size.height * .32)
-      ..close();
-    canvas.drawPath(roofPath, Paint()..color = const Color(0xff8f2d38));
-
-    final tilePaint = Paint()
-      ..color = const Color(0xffc06052)
-      ..strokeWidth = 2;
-    for (var i = 1; i < 9; i++) {
-      final fraction = i / 9;
-      canvas.drawLine(
-        Offset(size.width * (.06 + .44 * fraction), size.height * .27),
-        Offset(size.width * .5, size.height * .1),
-        tilePaint,
-      );
-      canvas.drawLine(
-        Offset(size.width * (.5 + .44 * fraction), size.height * .27),
-        Offset(size.width * .5, size.height * .1),
-        tilePaint,
-      );
-    }
-    canvas.drawLine(
-      Offset(size.width * .08, size.height * .29),
-      Offset(size.width * .92, size.height * .29),
-      Paint()
-        ..color = JoseonUiTheme.gold
-        ..strokeWidth = 3,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _OfficeStagePainter oldDelegate) => false;
 }
 
 String _clock(int totalSeconds) {
