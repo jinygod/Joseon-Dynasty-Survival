@@ -114,6 +114,7 @@ git commit -m "feat: add specialized combat visual components"
 - Create: `art_source/generated/player_vfx/`
 - Modify: `lib/game/content/attack_visual_registry.dart`
 - Modify: `lib/game/content/sprite_atlas_contract.dart`
+- Modify: `lib/game/content/asset_catalog.dart`
 - Modify: `docs/assets/asset-rights-ledger.csv`
 - Modify: `pubspec.yaml`
 - Test: `test/game/player_visual_asset_contract_test.dart`
@@ -121,6 +122,23 @@ git commit -m "feat: add specialized combat visual components"
 **Interfaces:**
 - Consumes: IDs for sealing slash, wind-thunder fan, singijeon, Jangseung ward, five-color ward, frost field, talisman attach/transfer.
 - Produces: normalized runtime sheets and ready registry contracts.
+
+Use these exact single-layer contracts:
+
+| Effect ID | Category | Runtime key | Frames | Rotation |
+| --- | --- | --- | ---: | --- |
+| `sealing_slash` | `hwando` | `vfx/player/sealing_slash_128.png` | 6 | yes |
+| `wind_thunder_fan` | `area` | `vfx/player/wind_thunder_fan_128.png` | 6 | yes |
+| `singijeon_volley` | `projectile` | `projectiles/player/singijeon_128.png` | 4 | yes |
+| `jangseung_ward` | `area` | `zones/player/jangseung_ward_128.png` | 8 | no |
+| `frost_flask` | `area` | `zones/player/frost_field_128.png` | 8 | no |
+| `talisman_attachment` | `status` | `vfx/player/talisman_attachment_128.png` | 4 | no |
+| `talisman_transfer` | `status` | `vfx/player/talisman_transfer_128.png` | 6 | yes |
+| `talisman_explosion` | `area` | `vfx/player/talisman_explosion_128.png` | 6 | no |
+| `talisman_small_ward` | `area` | `zones/player/talisman_ward_128.png` | 8 | no |
+| `talisman_master_ward` | `area` | `zones/player/talisman_ward_128.png` | 8 | no |
+
+`talisman_small_ward` and `talisman_master_ward` intentionally share the same authored sheet and differ later by gameplay radius and presentation scale. Every sheet uses 128×128 cells in one horizontal row.
 
 - [ ] **Step 1: Write the failing required-ID test**
 
@@ -142,11 +160,11 @@ Expected: failure names the first unregistered player visual ID.
 
 - [ ] **Step 3: Generate the asset batch**
 
-Use imagegen to create distinct transparent assets: sealing paper-cut slash, wind-and-lightning fan trail, Singijeon rocket and fire tail, carved Jangseung ward ring, five-color ward layers, frost field edge/crystals, talisman attachment, and transfer streak. Inspect at original resolution and reject text-like seals, clipped frames, opaque backgrounds, or effects that obscure actors.
+Use built-in imagegen on a flat removable chroma-key background to create the nine distinct sheets named above: sealing paper-cut slash, wind-and-lightning fan trail, Singijeon rocket and fire tail, carved Jangseung ward ring, frost-field edge/crystals, talisman attachment, transfer streak, talisman explosion, and five-color talisman ward. Inspect at original resolution and reject text-like seals, clipped/crossing frames, opaque backgrounds, or effects that obscure actors.
 
 - [ ] **Step 4: Normalize and register**
 
-Export to the three runtime directories by category. Add exact frame contracts, pivots, layers, loop flags, and start/end fractions. Record SHA-256 and provenance in the ledger.
+Export to the three runtime directories by category. Add the ten registry IDs, nine exact `SpriteAtlasContract` entries, `AssetCatalog.effects` paths, and `pubspec.yaml` directory entries for `assets/images/projectiles/` and `assets/images/zones/`. Use center anchors, full `0..1` layer spans, and the rotation values in the table. Record SHA-256 and provenance in the ledger.
 
 - [ ] **Step 5: Validate and commit**
 
@@ -155,7 +173,7 @@ Run: `flutter test test/game/player_visual_asset_contract_test.dart test/game/at
 Expected: every required player ID resolves to valid RGBA files with ledger records.
 
 ```powershell
-git add assets/images/vfx/player assets/images/projectiles/player assets/images/zones/player art_source/generated/player_vfx lib/game/content/attack_visual_registry.dart lib/game/content/sprite_atlas_contract.dart docs/assets/asset-rights-ledger.csv pubspec.yaml test/game/player_visual_asset_contract_test.dart
+git add assets/images/vfx/player assets/images/projectiles/player assets/images/zones/player art_source/generated/player_vfx lib/game/content/attack_visual_registry.dart lib/game/content/sprite_atlas_contract.dart lib/game/content/asset_catalog.dart docs/assets/asset-rights-ledger.csv pubspec.yaml test/game/player_visual_asset_contract_test.dart
 git commit -m "art: add player combat visual assets"
 ```
 
