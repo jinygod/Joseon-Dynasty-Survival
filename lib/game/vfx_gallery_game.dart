@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 
 import 'combat/attack_spec.dart';
 import 'combat/attack_visual_event.dart';
@@ -121,7 +122,13 @@ class VfxGalleryGame extends FlameGame {
   @override
   void onGameResize(Vector2 size) {
     super.onGameResize(size);
-    if (_ready) _restartComponent(publishStatus: false);
+    if (!_ready) return;
+    _restartComponent(publishStatus: false);
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (_disposed) return;
+      processLifecycleEvents();
+      _publishRestartStatus();
+    });
   }
 
   @override
@@ -222,12 +229,7 @@ class VfxGalleryGame extends FlameGame {
     _activeComponent = component;
     add(component);
     if (publishStatus) {
-      _setStatus(
-        status.value.copyWith(
-          currentFrame: 0,
-          activeProductionComponentCount: _liveProductionComponentCount,
-        ),
-      );
+      _publishRestartStatus();
     }
   }
 
@@ -314,6 +316,15 @@ class VfxGalleryGame extends FlameGame {
             children.contains(component)
         ? 1
         : 0;
+  }
+
+  void _publishRestartStatus() {
+    _setStatus(
+      status.value.copyWith(
+        currentFrame: 0,
+        activeProductionComponentCount: _liveProductionComponentCount,
+      ),
+    );
   }
 
   @override

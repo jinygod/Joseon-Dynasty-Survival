@@ -1,4 +1,5 @@
 import 'package:flame/components.dart';
+import 'dart:ui' as ui;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/content/attack_visual_registry.dart';
 import 'package:pixel_survivor/game/content/combat_visual_factory.dart';
@@ -96,4 +97,77 @@ void main() {
       expect(game.status.value.activeProductionComponentCount, 0);
     },
   );
+
+  test(
+    'production loader preloads every required asset for factory components',
+    () async {
+      final loaded = <String>[];
+      final image = await _solidImage();
+      addTearDown(image.dispose);
+      final game = VfxGalleryGame(
+        visualAssetLoader: (key) async {
+          loaded.add(key);
+          return image;
+        },
+      );
+      game.onGameResize(Vector2(960, 540));
+      await game.onLoad();
+      game.processLifecycleEvents();
+      addTearDown(game.onDispose);
+
+      expect(
+        loaded,
+        orderedEquals([...AttackVisualRegistry.requiredAssetKeys]..sort()),
+      );
+      expect(
+        game.factory.images.keys,
+        containsAll(AttackVisualRegistry.requiredAssetKeys),
+      );
+      expect(game.activeProductionComponent, isA<AreaVfxComponent>());
+    },
+  );
+
+  test(
+    'every registry effect replaces the live production component without accumulation',
+    () async {
+      final game = VfxGalleryGame(loadVisualAssets: false);
+      game.onGameResize(Vector2(960, 540));
+      await game.onLoad();
+      game.processLifecycleEvents();
+      addTearDown(game.onDispose);
+
+      for (final effectId in AttackVisualRegistry.effectIds) {
+        game.selectEffect(effectId);
+        game.processLifecycleEvents();
+        expect(game.activeProductionComponent, isNotNull);
+        expect(game.status.value.activeProductionComponentCount, 1);
+        expect(game.children.whereType<PositionComponent>(), hasLength(1));
+      }
+    },
+  );
+
+  test(
+    'loop restarts do not accumulate expired production components',
+    () async {
+      final game = VfxGalleryGame(loadVisualAssets: false);
+      game.onGameResize(Vector2(960, 540));
+      await game.onLoad();
+      game.processLifecycleEvents();
+      addTearDown(game.onDispose);
+
+      for (var cycle = 0; cycle < 3; cycle += 1) {
+        game.activeProductionComponent!.update(10);
+        game.update(0);
+        game.processLifecycleEvents();
+        expect(game.status.value.activeProductionComponentCount, 1);
+        expect(game.children.whereType<PositionComponent>(), hasLength(1));
+      }
+    },
+  );
+}
+
+Future<ui.Image> _solidImage() async {
+  final recorder = ui.PictureRecorder();
+  ui.Canvas(recorder).drawRect(const ui.Rect.fromLTWH(0, 0, 1, 1), ui.Paint());
+  return recorder.endRecording().toImage(1, 1);
 }
