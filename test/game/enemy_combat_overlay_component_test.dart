@@ -149,6 +149,10 @@ void main() {
       );
       overlay.update(0);
       expect(identical(overlay.registryVisual, first), isTrue);
+      enemy.update(.1);
+      overlay.update(0);
+      expect(overlay.registryVisual, isNull);
+      expect(overlay.children, isEmpty);
       for (var i = 0; i < 7; i++) {
         enemy.update(.05);
       }

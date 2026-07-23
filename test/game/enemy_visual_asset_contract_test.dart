@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:flame/components.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/content/asset_catalog.dart';
 import 'package:pixel_survivor/game/content/attack_visual_registry.dart';
@@ -77,11 +80,34 @@ void main() {
         expect(layer.id, 'effect');
         expect(layer.frameSize, 128);
         expect(layer.frameCount, entry.value.frames);
+        expect(layer.anchor, Anchor.center);
+        expect(layer.priorityOffset, 0);
         expect(layer.startFraction, 0);
         expect(layer.endFraction, 1);
         expect(AssetCatalog.effects[entry.key], entry.value.path);
         expect(atlas.runtimePath, entry.value.path);
+        expect(File(entry.value.path).existsSync(), isTrue);
       }
     },
   );
+
+  test('enemy runtime sheets have source and runtime ledger hashes', () {
+    final rows = File('docs/assets/asset-rights-ledger.csv').readAsLinesSync();
+    for (final id in [
+      'enemy_poison_pool_128',
+      'enemy_shockwave_128',
+      'enemy_spirit_scream_128',
+      'enemy_line_telegraph_128',
+      'enemy_ranged_telegraph_128',
+      'enemy_radial_telegraph_128',
+      'enemy_shield_block_flash_128',
+      'sakkat_spirit_projectile_128',
+    ]) {
+      final row = rows.singleWhere((line) => line.startsWith('$id,'));
+      final columns = row.split(',');
+      expect(columns[10], startsWith('art_source/generated/enemy_vfx/'));
+      expect(columns[11], matches(RegExp(r'^[A-F0-9]{64}$')));
+      expect(row, contains(RegExp(r'runtime-sha256=[A-F0-9]{64}')));
+    }
+  });
 }
