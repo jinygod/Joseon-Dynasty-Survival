@@ -82,6 +82,23 @@ void main() {
     expect(rejectedEnemies, 0);
   });
 
+  test('per-frame retained-owner scalar does not build the breakdown map', () {
+    final source = File(
+      'lib/game/pixel_survivor_game.dart',
+    ).readAsStringSync();
+    final getterStart = source.indexOf(
+      'int get performanceRetainedOwnerCount',
+    );
+    expect(getterStart, isNonNegative);
+    final getterEnd = source.indexOf(';', getterStart);
+    final getterSource = source.substring(getterStart, getterEnd + 1);
+
+    expect(
+      getterSource,
+      isNot(contains('performanceRetainedOwnerBreakdown')),
+    );
+  });
+
   testWidgets(
     'production game logs an actual five-minute lifecycle window',
     (tester) async {

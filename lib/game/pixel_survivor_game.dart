@@ -263,9 +263,13 @@ class PixelSurvivorGame extends FlameGame
     'trackedRegistryAttackVisuals': _trackedRegistryAttackVisuals.length,
   });
 
-  int get performanceRetainedOwnerCount => performanceRetainedOwnerBreakdown
-      .values
-      .fold(0, (sum, count) => sum + count);
+  int get performanceRetainedOwnerCount =>
+      _activePlayers.length +
+      _lastWeaponHitByEnemy.length +
+      _recordedEnemyDefeats.length +
+      _pendingSpiritJadeDrops.length +
+      _talismanAttachmentComponents.length +
+      _trackedRegistryAttackVisuals.length;
 
   void applyAccessibilitySettings({
     required bool screenShakeEnabled,
