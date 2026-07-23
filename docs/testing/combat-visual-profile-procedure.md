@@ -13,9 +13,7 @@ frame/render timing measurement.
 - Browser: Google Chrome, one normal-profile window, extensions disabled.
 - Flutter mode: web profile mode. Flutter web profile traces are recorded in
   Chrome DevTools, not Flutter DevTools.
-- Output directory: a fresh, run-specific directory under
-  `build/qa/combat-visual-profile/` (for example,
-  `build/qa/combat-visual-profile/2026-07-24T120000-seed3107/`).
+- Output directory: a fresh, run-specific directory created once per capture.
 
 The current interactive app has no supported runtime seed injection. Before
 calling a capture `seed 3107`, use a build that exposes the existing seeded
@@ -30,18 +28,28 @@ Flutter SDK or workspace path contains non-ASCII characters (see
 `docs/testing/local-playtest.md`). Then run:
 
 ```powershell
-New-Item -ItemType Directory -Force -Path build/qa/combat-visual-profile | Out-Null
+$runId = Get-Date -Format 'yyyy-MM-ddTHHmmss-seed3107'
+$runDirectory = Join-Path 'build/qa/combat-visual-profile' $runId
+New-Item -ItemType Directory -Force -Path $runDirectory | Out-Null
+$environmentPath = Join-Path $runDirectory 'environment.md'
+$warmRestartPath = Join-Path $runDirectory 'warm-restart.md'
+$coldTracePath = Join-Path $runDirectory 'cold-first-combat-trace.json'
+$observationsPath = Join-Path $runDirectory 'cold-first-combat-observations.json'
+$normalizedCapturePath = Join-Path $runDirectory 'normalized-capture.json'
+$profileJsonPath = Join-Path $runDirectory 'chrome-frame-profile.json'
+$profileMarkdownPath = Join-Path $runDirectory 'chrome-frame-profile.md'
+$notMeasuredPath = Join-Path $runDirectory 'chrome-frame-profile-not-measured.json'
 flutter pub get
 flutter run -d chrome --profile --dart-define=MOBILE_PREVIEW=false
 ```
 
-Record the following verbatim in
-`build/qa/combat-visual-profile/environment.md`: date/time and time zone,
+Keep this PowerShell session open so each later command uses the same existing
+`$runDirectory`. Record the following verbatim in `$environmentPath`: date/time and time zone,
 commit SHA, `flutter --version`, `chrome --version`, OS, CPU, RAM, display
 refresh rate, browser command line, browser profile/extension state, and the
 exact command above. If Flutter fails before the app starts with an
-`ink_sparkle.frag`/`impellerc` SIGSEGV, save the console output as
-`pre-app-environment-failure.log` and stop. This is a pre-app environment
+`ink_sparkle.frag`/`impellerc` SIGSEGV, save the console output to
+`Join-Path $runDirectory 'pre-app-environment-failure.log'` and stop. This is a pre-app environment
 failure, not an application performance result.
 
 ## Two-run sequence
@@ -51,14 +59,14 @@ steps. Run the exact `--not-measured` command in the next section instead.
 
 1. Launch the seeded scenario, enter combat, and allow 60.0 seconds of combat
    without recording. This is the warm restart run; save only its environment
-   record as `warm-restart.md`.
+   record at `$warmRestartPath`.
 2. Close Chrome completely, then relaunch the same `flutter run` profile-mode
    command with the same seed-3107 scenario.
 3. Enter combat for the first time. This is the cold first-combat run. Open
    Chrome DevTools > Performance, enable screenshots, and click Record exactly
    as the first combat input is issued.
 4. At 60.0 seconds, stop input, click Stop, and export the trace to
-   `build/qa/combat-visual-profile/cold-first-combat-trace.json`.
+   `$coldTracePath`.
 
 ## Measurements and export
 
@@ -75,7 +83,7 @@ document here: do not guess trace event names or infer these series from a
 trace. Create the required evidence immediately with:
 
 ```powershell
-dart run tool/combat_visual_profile_report.dart --not-measured "seed injection and profile instrumentation unavailable" --output build/qa/combat-visual-profile/2026-07-24T120000-seed3107
+dart run tool/combat_visual_profile_report.dart --not-measured "seed injection and profile instrumentation unavailable" --output $runDirectory
 ```
 
 This writes
@@ -86,7 +94,7 @@ When a future supported capture exporter produces the normalized JSON below,
 the end-to-end aggregation and artifact-writing command is:
 
 ```powershell
-dart run tool/combat_visual_profile_report.dart --input build/qa/combat-visual-profile/2026-07-24T120000-seed3107/normalized-capture.json --output build/qa/combat-visual-profile/2026-07-24T120000-seed3107
+dart run tool/combat_visual_profile_report.dart --input $normalizedCapturePath --output $runDirectory
 ```
 
 `normalized-capture.json` has this exact schema; every field is required and
@@ -115,7 +123,7 @@ the same mode is allowed and overwrites only that mode's own artifact files;
 use a new timestamped directory for every capture to preserve prior evidence.
 
 For a supported future capture, also record in
-`cold-first-combat-observations.json`:
+`$observationsPath`:
 
 - first image-load timestamp per named asset, in milliseconds from capture
   start;
