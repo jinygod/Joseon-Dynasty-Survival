@@ -51,9 +51,12 @@ class HwandoVfxComponent extends PositionComponent {
 
   double get facingAngle => math.atan2(event.direction.y, event.direction.x);
 
+  bool get _hasTerminalDuration =>
+      !event.duration.isFinite || event.duration <= 0;
+
   double get progress {
     final duration = event.duration;
-    if (!duration.isFinite || duration <= 0) return 1;
+    if (_hasTerminalDuration) return 1;
     final value = _age / duration;
     if (!value.isFinite) return value.isNegative ? 0 : 1;
     return value.clamp(0, 1).toDouble();
@@ -66,7 +69,7 @@ class HwandoVfxComponent extends PositionComponent {
   void update(double dt) {
     super.update(dt);
     _age += dt;
-    if (!_expired && _age >= event.duration) {
+    if (!_expired && (_hasTerminalDuration || _age >= event.duration)) {
       _expired = true;
       onExpired?.call();
       removeFromParent();

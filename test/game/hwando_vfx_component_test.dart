@@ -117,4 +117,56 @@ void main() {
       expect(expired, 1);
     },
   );
+
+  for (final invalidDuration in [double.nan, double.infinity]) {
+    test('Hwando VFX expires once for a non-finite duration', () async {
+      final sheetRecorder = ui.PictureRecorder();
+      ui.Canvas(sheetRecorder).drawRect(
+        const ui.Rect.fromLTWH(0, 0, 768, 128),
+        ui.Paint()..color = const ui.Color(0xffffffff),
+      );
+      final sheet = await sheetRecorder.endRecording().toImage(768, 128);
+      addTearDown(sheet.dispose);
+      final attack = AttackInstance(
+        spec: AttackSpec(
+          id: 'hwando_slash',
+          shape: AttackShape.sector,
+          damage: 10,
+          range: 80,
+          angleRadians: math.pi * .7,
+          radius: 0,
+          width: 0,
+          windupSeconds: invalidDuration,
+          activeSeconds: 0,
+          lingerSeconds: 0,
+          knockback: 10,
+          slowFraction: 0,
+          traits: const {AttackTrait.melee},
+          presentation: AttackPresentation.normal,
+        ),
+        origin: Vector2.zero(),
+        direction: Vector2(1, 0),
+        sequenceIndex: 0,
+      );
+      var expired = 0;
+      final event = AttackVisualEvent.fromAttack(attack);
+      final component = HwandoVfxComponent(
+        event: event,
+        images: {
+          for (final layer in AttackVisualRegistry.byId(event.effectId).layers)
+            layer.assetKey: sheet,
+        },
+        onExpired: () => expired += 1,
+      );
+      final renderRecorder = ui.PictureRecorder();
+      final canvas = ui.Canvas(renderRecorder);
+
+      expect(() => component.render(canvas), returnsNormally);
+      component.update(0);
+      component.update(1);
+
+      expect(component.isRemoving, isTrue);
+      expect(expired, 1);
+    });
+  }
 }
