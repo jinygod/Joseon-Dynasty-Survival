@@ -353,10 +353,30 @@ void main() {
         plagueRatSwarm,
         bandit,
         dokkaebi,
+        sakkatSpecter,
         vengefulSpirit,
+        plagueCrow,
+        spearBandit,
+        rottenHerbalist,
+        graveEmber,
+        blackHatAssassin,
+        brokenJangseungSpirit,
+        sorrowfulMaidenGhost,
         fallenGeneral,
       });
-      expect(EnemySpriteSheet.specs, isNot(contains(sakkatSpecter)));
+      for (final id in [
+        sakkatSpecter,
+        plagueCrow,
+        spearBandit,
+        rottenHerbalist,
+        graveEmber,
+        blackHatAssassin,
+        brokenJangseungSpirit,
+        sorrowfulMaidenGhost,
+      ]) {
+        expect(EnemySpriteSheet.specs[id]!.assetKey, 'enemies/${id}_128.png');
+        expect(EnemySpriteSheet.specs[id]!.frameSize, 128);
+      }
       expect(EnemySpriteSheet.specs[plagueRatSwarm]!.frameSize, 24);
       expect(EnemySpriteSheet.specs[fallenGeneral]!.frameSize, 64);
     });

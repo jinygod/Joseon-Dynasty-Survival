@@ -68,9 +68,41 @@ abstract final class EnemySpriteSheet {
       assetKey: 'monsters/dokkaebi_32.png',
       frameSize: 32,
     ),
+    sakkatSpecter: EnemySpriteSpec(
+      assetKey: 'enemies/sakkat_specter_128.png',
+      frameSize: 128,
+    ),
     vengefulSpirit: EnemySpriteSpec(
       assetKey: 'monsters/vengeful_spirit_32.png',
       frameSize: 32,
+    ),
+    plagueCrow: EnemySpriteSpec(
+      assetKey: 'enemies/plague_crow_128.png',
+      frameSize: 128,
+    ),
+    spearBandit: EnemySpriteSpec(
+      assetKey: 'enemies/spear_bandit_128.png',
+      frameSize: 128,
+    ),
+    rottenHerbalist: EnemySpriteSpec(
+      assetKey: 'enemies/rotten_herbalist_128.png',
+      frameSize: 128,
+    ),
+    graveEmber: EnemySpriteSpec(
+      assetKey: 'enemies/grave_ember_128.png',
+      frameSize: 128,
+    ),
+    blackHatAssassin: EnemySpriteSpec(
+      assetKey: 'enemies/black_hat_assassin_128.png',
+      frameSize: 128,
+    ),
+    brokenJangseungSpirit: EnemySpriteSpec(
+      assetKey: 'enemies/broken_jangseung_spirit_128.png',
+      frameSize: 128,
+    ),
+    sorrowfulMaidenGhost: EnemySpriteSpec(
+      assetKey: 'enemies/sorrowful_maiden_ghost_128.png',
+      frameSize: 128,
     ),
     fallenGeneral: EnemySpriteSpec(
       assetKey: 'monsters/fallen_general_64.png',
