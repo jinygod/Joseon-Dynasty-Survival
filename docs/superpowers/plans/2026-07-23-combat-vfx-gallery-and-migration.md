@@ -33,6 +33,7 @@
 
 **Files:**
 - Create: `lib/game/content/combat_visual_factory.dart`
+- Create: `lib/game/components/registry_vfx_component.dart`
 - Create: `lib/game/components/projectile_vfx_component.dart`
 - Create: `lib/game/components/area_vfx_component.dart`
 - Create: `lib/game/components/enemy_telegraph_vfx_component.dart`
@@ -41,7 +42,7 @@
 
 **Interfaces:**
 - Consumes: `AttackVisualEvent`, registry category, preloaded image map.
-- Produces: `CombatVisualFactory.create`, `ProjectileVfxComponent`, `AreaVfxComponent`, `EnemyTelegraphVfxComponent`, `StatusMarkerVfxComponent`.
+- Produces: `CombatVisualFactory.create`, testable `CombatVisualFactory.createFromSpec`, shared `RegistryVfxComponent`, `ProjectileVfxComponent`, `AreaVfxComponent`, `EnemyTelegraphVfxComponent`, `StatusMarkerVfxComponent`.
 
 - [ ] **Step 1: Write the failing dispatch test**
 
@@ -65,6 +66,13 @@ Expected: compilation fails for missing factory and components.
 ```dart
 PositionComponent create(AttackVisualEvent event) {
   final spec = AttackVisualRegistry.byId(event.effectId);
+  return createFromSpec(event, spec);
+}
+
+PositionComponent createFromSpec(
+  AttackVisualEvent event,
+  AttackVisualSpec spec,
+) {
   return switch (spec.category) {
     CombatVisualCategory.hwando => HwandoVfxComponent(
         event: event, images: images),
@@ -80,7 +88,7 @@ PositionComponent create(AttackVisualEvent event) {
 }
 ```
 
-Each component owns only animation age, rendering, child layers, and removal. Accept gameplay callbacks as injected functions; never query enemies to decide damage.
+`createFromSpec` is the seam for focused category tests before later tasks register real non-Hwando IDs; production calls `create(event)`. `RegistryVfxComponent` owns shared cached layers, finite progress, rendering, expiry, and exactly-once callback behavior. The four category classes remain thin named specializations and may override only category-specific transform/layer behavior. They never query enemies or decide damage.
 
 - [ ] **Step 4: Test lifetime cleanup**
 
@@ -93,7 +101,7 @@ Run: `flutter test test/game/combat_visual_factory_test.dart`
 Expected: all dispatch and lifecycle tests pass.
 
 ```powershell
-git add lib/game/content/combat_visual_factory.dart lib/game/components/projectile_vfx_component.dart lib/game/components/area_vfx_component.dart lib/game/components/enemy_telegraph_vfx_component.dart lib/game/components/status_marker_vfx_component.dart test/game/combat_visual_factory_test.dart
+git add lib/game/content/combat_visual_factory.dart lib/game/components/registry_vfx_component.dart lib/game/components/projectile_vfx_component.dart lib/game/components/area_vfx_component.dart lib/game/components/enemy_telegraph_vfx_component.dart lib/game/components/status_marker_vfx_component.dart test/game/combat_visual_factory_test.dart
 git commit -m "feat: add specialized combat visual components"
 ```
 
