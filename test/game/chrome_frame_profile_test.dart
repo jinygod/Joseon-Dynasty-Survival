@@ -34,6 +34,15 @@ void main() {
     expect(profile.p99Ms, 4);
   });
 
+  test('counts strict long-frame thresholds at their boundaries', () {
+    final profile = ChromeFrameProfile.fromMilliseconds(
+      frameDurationsMs: [33, 34, 50, 51],
+    );
+
+    expect(profile.framesOver33Ms, 3);
+    expect(profile.framesOver50Ms, 1);
+  });
+
   test('keeps copied duration inputs and optional maps immutable', () {
     final frames = <num>[8, 16];
     final imageLoads = <String, num>{'player': 12};

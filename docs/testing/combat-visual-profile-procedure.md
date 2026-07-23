@@ -44,6 +44,9 @@ failure, not an application performance result.
 
 ## Two-run sequence
 
+If the supported seed-3107 scenario is unavailable, do not perform these
+steps. Run the exact `--not-measured` command in the next section instead.
+
 1. Launch the seeded scenario, enter combat, and allow 60.0 seconds of combat
    without recording. This is the warm restart run; save only its environment
    record as `warm-restart.md`.
@@ -57,21 +60,61 @@ failure, not an application performance result.
 
 ## Measurements and export
 
-From the cold trace, export frame, build, and raster duration series separately
-in milliseconds. Feed them to `ChromeFrameProfile.fromMilliseconds`; it sorts
-each copied series independently, uses nearest-rank p50/p95/p99, and reports
-strict frame counts over 33 ms and 50 ms. Never merge build or raster samples
-into frame samples.
+With a future supported capture exporter, keep frame, build, and raster
+duration series separate in milliseconds. The artifact tool feeds them to
+`ChromeFrameProfile`, which sorts each copied series independently, uses
+nearest-rank p50/p95/p99, and reports strict frame counts over 33 ms and 50 ms.
+Never merge build or raster samples into frame samples.
 
-Also record in `cold-first-combat-observations.json`:
+The current app has neither a seed-3107 launcher nor instrumentation that
+exports named image-load/component events into a normalized capture. Therefore
+there is no truthful raw Chrome/Flutter DevTools trace conversion command to
+document here: do not guess trace event names or infer these series from a
+trace. Create the required evidence immediately with:
+
+```powershell
+dart run tool/combat_visual_profile_report.dart --not-measured "seed injection and profile instrumentation unavailable" --output build/qa/combat-visual-profile
+```
+
+This writes
+`build/qa/combat-visual-profile/chrome-frame-profile.not-measured.json` and
+does not create a made-up profile result.
+
+When a future supported capture exporter produces the normalized JSON below,
+the end-to-end aggregation and artifact-writing command is:
+
+```powershell
+dart run tool/combat_visual_profile_report.dart --input build/qa/combat-visual-profile/normalized-capture.json --output build/qa/combat-visual-profile
+```
+
+`normalized-capture.json` has this exact schema; every field is required and
+all duration values are milliseconds:
+
+```json
+{
+  "frameMs": [8.0],
+  "buildMs": [3.0],
+  "rasterMs": [4.0],
+  "imageLoadTimestampsMs": {"player": 12.0},
+  "componentCreateRates": {"enemy": 3.0},
+  "componentRemoveRates": {"enemy": 2.0}
+}
+```
+
+The command validates the schema, aggregates through `ChromeFrameProfile`, and
+writes `chrome-frame-profile.json` and `chrome-frame-profile.md`. It does not
+parse Chrome trace events itself, so no tool output may be claimed until a
+supported exporter supplies this normalized input.
+
+For a supported future capture, also record in
+`cold-first-combat-observations.json`:
 
 - first image-load timestamp per named asset, in milliseconds from capture
   start;
 - named component create and remove rates, in components per second;
 - whether each metric is `measured`, `not measured`, or `unavailable`, plus a
   concrete reason for the latter two;
-- the profile JSON and Markdown exports as
-  `chrome-frame-profile.json` and `chrome-frame-profile.md`.
+- the profile JSON and Markdown exports written by the tool.
 
 `not measured` means the app ran but the required instrumentation/export was
 not collected. `unavailable` means an external limitation prevented collection
