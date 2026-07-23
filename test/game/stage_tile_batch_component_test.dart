@@ -30,6 +30,16 @@ void main() {
     return result;
   }
 
+  Future<Map<String, ui.Image>> imagesForAllAtlases() async {
+    final tile = await image();
+    final decal = await image();
+    final prop = await image();
+    addTearDown(tile.dispose);
+    addTearDown(decal.dispose);
+    addTearDown(prop.dispose);
+    return {'tiles.png': tile, 'decals.png': decal, 'props.png': prop};
+  }
+
   test('stage batch does no per-frame allocation work', () async {
     final atlas = await image();
     addTearDown(atlas.dispose);
@@ -57,22 +67,27 @@ void main() {
     expect(component.batchBuildCount, 1);
   });
 
-  test(
-    'missing optional image skips only its corresponding decoration',
-    () async {
-      final atlas = await image();
-      addTearDown(atlas.dispose);
-      final component = StageTileBatchComponent(
-        layout: layout,
-        images: {'tiles.png': atlas},
-      );
+  test('missing decal image retains tile and prop batches', () async {
+    final images = await imagesForAllAtlases()
+      ..remove('decals.png');
+    final component = StageTileBatchComponent(layout: layout, images: images);
 
-      await component.onLoad();
+    await component.onLoad();
 
-      expect(component.batchBuildCount, 1);
-      expect(component.ownsCollision, isFalse);
-    },
-  );
+    expect(component.batchBuildCount, 2);
+    expect(component.ownsCollision, isFalse);
+  });
+
+  test('missing prop image retains tile and decal batches', () async {
+    final images = await imagesForAllAtlases()
+      ..remove('props.png');
+    final component = StageTileBatchComponent(layout: layout, images: images);
+
+    await component.onLoad();
+
+    expect(component.batchBuildCount, 2);
+    expect(component.ownsCollision, isFalse);
+  });
 
   test(
     'missing base tile image fails safely without building batches',

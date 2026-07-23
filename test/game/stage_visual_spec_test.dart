@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pixel_survivor/game/content/stage_definitions.dart';
 import 'package:pixel_survivor/game/content/stage_visual_spec.dart';
 
 void main() {
@@ -31,35 +32,61 @@ void main() {
     expect(a.decorations, isNot(b.decorations));
   });
 
-  test('tile coverage includes the full bounds', () {
+  test('tile grid covers the full bounds with every expected cell', () {
     final layout = StageLayout.build(spec, seed: 3107, bounds: bounds);
 
-    for (final point in <Offset>[
-      bounds.topLeft,
-      bounds.topRight - const Offset(.01, 0),
-      bounds.bottomLeft - const Offset(0, .01),
-      bounds.bottomRight - const Offset(.01, .01),
-    ]) {
-      expect(
-        layout.tiles.any((tile) => tile.bounds.contains(point)),
-        isTrue,
-        reason: 'expected $point to be covered',
-      );
-    }
+    final expectedPositions = <Offset>{
+      for (final x in [-128.0, 0.0, 128.0, 256.0])
+        for (final y in [-128.0, 0.0, 128.0]) Offset(x, y),
+    };
+
+    expect(layout.tiles, hasLength(expectedPositions.length));
+    expect(
+      layout.tiles.map((tile) => tile.position).toSet(),
+      expectedPositions,
+    );
+    expect(
+      layout.tiles
+          .singleWhere((tile) => tile.position == Offset.zero)
+          .bounds
+          .contains(const Offset(64, 64)),
+      isTrue,
+    );
   });
 
-  test('props remain within the edge band', () {
-    final layout = StageLayout.build(spec, seed: 3107, bounds: bounds);
+  test(
+    'sparse decals and props occupy deterministic non-vacuous placements',
+    () {
+      final layout = StageLayout.build(spec, seed: 3107, bounds: bounds);
 
-    for (final prop in layout.props) {
-      expect(
-        prop.position.dx <= bounds.left + spec.edgeBand ||
-            prop.position.dx >= bounds.right - spec.edgeBand ||
-            prop.position.dy <= bounds.top + spec.edgeBand ||
-            prop.position.dy >= bounds.bottom - spec.edgeBand,
-        isTrue,
-      );
-    }
+      expect(layout.decorations, isNotEmpty);
+      expect(layout.decorations.length, lessThan(layout.tiles.length));
+      expect(layout.props, isNotEmpty);
+      for (final prop in layout.props) {
+        expect(
+          prop.position.dx <= bounds.left + spec.edgeBand ||
+              prop.position.dx >= bounds.right - spec.edgeBand ||
+              prop.position.dy <= bounds.top + spec.edgeBand ||
+              prop.position.dy >= bounds.bottom - spec.edgeBand,
+          isTrue,
+        );
+      }
+    },
+  );
+
+  test('current stages resolve their permanent visual specifications', () {
+    final moonlit = stageVisualSpecFor(moonlitAbandonedOffice);
+    final plague = stageVisualSpecFor(plagueMarket);
+
+    expect(moonlit.stageId, moonlitAbandonedOffice);
+    expect(plague.stageId, plagueMarket);
+    expect(moonlit.seedSalt, isNot(plague.seedSalt));
+    expect(moonlit.tileVariants, inInclusiveRange(2, 4));
+    expect(plague.tileVariants, inInclusiveRange(2, 4));
+    expect(moonlit.tileAssetKey, 'stages/moonlit_office_tiles_128.png');
+    expect(moonlit.propAssetKey, 'stages/moonlit_office_props_128.png');
+    expect(plague.tileAssetKey, 'stages/plague_market_tiles_128.png');
+    expect(plague.propAssetKey, 'stages/plague_market_props_128.png');
   });
 
   test('placement collections are unmodifiable', () {
