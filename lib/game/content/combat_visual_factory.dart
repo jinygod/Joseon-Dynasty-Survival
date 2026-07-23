@@ -23,6 +23,7 @@ class CombatVisualFactory {
     AttackVisualEvent event,
     AttackVisualSpec spec,
   ) {
+    _validateEventAndSpec(event, spec);
     return switch (spec.category) {
       CombatVisualCategory.hwando =>
         HwandoVfxComponent(event: event, images: images),
@@ -35,5 +36,15 @@ class CombatVisualFactory {
       CombatVisualCategory.status =>
         StatusMarkerVfxComponent(event: event, spec: spec, images: images),
     };
+  }
+
+  void _validateEventAndSpec(AttackVisualEvent event, AttackVisualSpec spec) {
+    if (event.effectId != spec.effectId) {
+      throw ArgumentError.value(
+        event.effectId,
+        'event.effectId',
+        'must match spec.effectId (${spec.effectId})',
+      );
+    }
   }
 }

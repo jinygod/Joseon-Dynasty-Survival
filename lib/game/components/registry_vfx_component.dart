@@ -9,11 +9,14 @@ import 'talisman_presentation_component.dart';
 
 class RegistryVfxComponent extends PositionComponent {
   RegistryVfxComponent({
-    required this.event,
-    required this.spec,
+    required AttackVisualEvent event,
+    required AttackVisualSpec spec,
     required Map<String, Image> images,
+    required CombatVisualCategory expectedCategory,
     this.onExpired,
-  }) : super(
+  }) : event = _validatedEvent(event, spec, expectedCategory),
+       spec = spec,
+       super(
          position: event.origin,
          anchor: Anchor.center,
          priority: AttackPresentationPriority.attack,
@@ -49,6 +52,28 @@ class RegistryVfxComponent extends PositionComponent {
   double _age = 0;
   bool _expired = false;
 
+  static AttackVisualEvent _validatedEvent(
+    AttackVisualEvent event,
+    AttackVisualSpec spec,
+    CombatVisualCategory expectedCategory,
+  ) {
+    if (event.effectId != spec.effectId) {
+      throw ArgumentError.value(
+        event.effectId,
+        'event.effectId',
+        'must match spec.effectId (${spec.effectId})',
+      );
+    }
+    if (spec.category != expectedCategory) {
+      throw ArgumentError.value(
+        spec.category,
+        'spec.category',
+        'must be ${expectedCategory.name}',
+      );
+    }
+    return event;
+  }
+
   double get facingAngle => math.atan2(event.direction.y, event.direction.x);
 
   bool get _hasTerminalDuration =>
@@ -67,6 +92,7 @@ class RegistryVfxComponent extends PositionComponent {
 
   @override
   void update(double dt) {
+    if (!dt.isFinite) return;
     super.update(dt);
     _age += dt;
     if (!_expired && (_hasTerminalDuration || _age >= event.duration)) {
