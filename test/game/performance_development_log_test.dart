@@ -122,11 +122,17 @@ void main() {
     );
     expect(json['peakMemoryProxyComponents'], 45);
     expect(json['maxMemoryProxyComponents'], 64);
+    expect(json['lateAverageLogicalFps'], closeTo(60.0, 0.01));
+    expect(json['lateMinimumLogicalFps'], closeTo(60.0, 0.01));
+    expect(json.containsKey('lateAverageSimulatedFps'), isFalse);
 
     final markdown = PerformanceDevelopmentReporter.toMarkdown(log);
     expect(markdown, contains('300.000 simulated seconds'));
     expect(markdown, contains('18,000'));
-    expect(markdown, contains('Physical memory and device frame time'));
+    expect(markdown, contains('Physical memory and render timing'));
     expect(markdown, contains('game.update` plus lifecycle processing'));
+    expect(markdown, contains('logical FPS'));
+    expect(markdown, isNot(contains('device FPS')));
+    expect(markdown, contains('not frame or render time'));
   });
 }
