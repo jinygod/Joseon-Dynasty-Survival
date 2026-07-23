@@ -53,6 +53,7 @@ import 'content/weapon_level_definitions.dart';
 import 'content/weapon_effect_atlas.dart';
 import 'content/visual_asset_load_policy.dart';
 import 'game_performance_budget.dart';
+import 'performance/game_population_index.dart';
 import 'models/player_slot.dart';
 import 'models/damage_event.dart';
 import 'models/run_choice_record.dart';
@@ -170,6 +171,7 @@ class PixelSurvivorGame extends FlameGame
   final Map<EnemyComponent, TalismanAttachmentComponent>
   _talismanAttachmentComponents = {};
   final Set<PositionComponent> _trackedRegistryAttackVisuals = {};
+  final GamePopulationIndex _populationIndex = GamePopulationIndex();
   int _spiritJadeDropSequence = 0;
   double? _rewardCollectionSecondsRemaining;
   int _pendingBossSpiritJade = 0;
@@ -400,7 +402,25 @@ class PixelSurvivorGame extends FlameGame
       removeAll(children.toList(growable: false));
       processLifecycleEvents();
     }
+    _populationIndex.clear();
     super.onDispose();
+  }
+
+  @override
+  void remove(Component component) {
+    super.remove(component);
+    _populationIndex.unregister(component);
+  }
+
+  @override
+  void onChildrenChanged(Component child, ChildrenChangeType type) {
+    super.onChildrenChanged(child, type);
+    switch (type) {
+      case ChildrenChangeType.added:
+        _populationIndex.register(child);
+      case ChildrenChangeType.removed:
+        _populationIndex.unregister(child);
+    }
   }
 
   @override
@@ -1885,19 +1905,34 @@ class PixelSurvivorGame extends FlameGame
     }
   }
 
-  int get _enemyComponentCount => children
-      .whereType<EnemyComponent>()
-      .where((enemy) => !enemy.isRemoving)
-      .length;
+  int get _enemyComponentCount => _populationIndex.enemyCount;
 
-  int get _projectileComponentCount => children
-      .where(
-        (component) =>
-            (component is ProjectileComponent ||
-                component is EnemyProjectileComponent) &&
-            !component.isRemoving,
-      )
-      .length;
+  int get _projectileComponentCount => _populationIndex.projectileCount;
+
+  @visibleForTesting
+  bool debugPopulationIndexIsConsistent() {
+    final mountedEnemies = children.whereType<EnemyComponent>().where(
+      (enemy) => !enemy.isRemoving,
+    );
+    final mountedProjectiles = children.where(
+      (component) =>
+          (component is ProjectileComponent ||
+              component is EnemyProjectileComponent) &&
+          !component.isRemoving,
+    );
+    return mountedEnemies.length == _populationIndex.enemyCount &&
+        mountedEnemies.every(_populationIndex.enemies.contains) &&
+        mountedProjectiles.length == _populationIndex.projectileCount &&
+        mountedProjectiles.every(
+          (component) => switch (component) {
+            ProjectileComponent() =>
+              _populationIndex.playerProjectiles.contains(component),
+            EnemyProjectileComponent() =>
+              _populationIndex.enemyProjectiles.contains(component),
+            _ => false,
+          },
+        );
+  }
 
   AudioCue _attackCueFor(WeaponId weaponId) => switch (weaponId) {
     hwandoSlash => AudioCue.hwandoAttack,
