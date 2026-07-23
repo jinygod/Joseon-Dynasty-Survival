@@ -35,6 +35,17 @@ void main() {
     expect(AudioAssetCatalog.assets.keys.toSet(), AudioCue.values.toSet());
   });
 
+  test('asset catalog excludes missing superseded effect paths', () {
+    expect(
+      AssetCatalog.allPaths,
+      isNot(contains('assets/images/effects/healing_item_16.png')),
+    );
+    expect(
+      AssetCatalog.allPaths,
+      isNot(contains('assets/images/effects/hwando_slash_effect_64.png')),
+    );
+  });
+
   test('malformed injected catalog reports duplicates and bad references', () {
     const duplicateCharacter = CharacterDefinition(
       id: rookieConstable,

@@ -5,8 +5,8 @@
 The current normal Hwando route is image-backed. `HwandoVfxComponent` renders
 the registered trail and impact sprite frames, and the generic geometric
 `AttackEffectComponent` asserts that registered Hwando effects must not use
-it. The stale `hwando_slash_effect_64.png` catalog entry points to a file that
-does not exist; current Hwando art lives under `assets/images/vfx/hwando_*`.
+it. The stale catalog entry for the absent `hwando_slash_effect_64.png` file
+has been removed; current Hwando art lives under `assets/images/vfx/hwando_*`.
 
 The largest remaining art gap is the Flutter UI, not Hwando. The declared
 `assets/images/ui/` directory contains only `.gitkeep`, while most lobby,
@@ -48,9 +48,9 @@ flat cards, borders, and buttons.
 
 ## Safe cleanup and deferral
 
-- Safe candidate: remove the stale `AssetCatalog` entry for the missing
-  `assets/images/effects/hwando_slash_effect_64.png`; there is no file to
-  delete.
+- Completed safe cleanup: removed the stale `AssetCatalog` entries for the missing
+  `assets/images/effects/hwando_slash_effect_64.png` and
+  `assets/images/effects/healing_item_16.png`; there are no files to delete.
 - Keep both 64 px effect atlases. They remain connected to combat, pickup,
   warning, and temporary lobby paths.
 - Defer deletion of generic Canvas fallbacks. Most are not primary production
