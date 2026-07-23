@@ -1,9 +1,9 @@
 import 'package:flame/components.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/combat/attack_spec.dart';
-import 'package:pixel_survivor/game/combat/combat_visual_theme.dart';
 import 'package:pixel_survivor/game/components/enemy_component.dart';
 import 'package:pixel_survivor/game/components/five_color_ward_component.dart';
+import 'package:pixel_survivor/game/content/combat_visual_factory.dart';
 
 void main() {
   EnemyComponent enemyAt(double x) => EnemyComponent(
@@ -98,11 +98,39 @@ void main() {
     expect(events.every((event) => event.isCritical), isTrue);
   });
 
-  test('ward presentation uses bounded five-color alpha and attack radius', () {
-    final ward = FiveColorWardComponent(attack: attack(), tickSeconds: .5);
+  test('master ward selects a cached registry presentation', () {
+    final masterAttack = AttackInstance(
+      spec: AttackSpec(
+        id: 'talisman_ward',
+        shape: AttackShape.circle,
+        damage: 4,
+        range: 0,
+        angleRadians: 0,
+        radius: 30,
+        width: 0,
+        windupSeconds: 0,
+        activeSeconds: .1,
+        lingerSeconds: 1.5,
+        knockback: 2,
+        slowFraction: .25,
+        traits: const {AttackTrait.explosion},
+        presentation: AttackPresentation.master,
+      ),
+      origin: Vector2.zero(),
+      direction: Vector2(1, 0),
+      sequenceIndex: 0,
+    );
+    final ward = FiveColorWardComponent(
+      attack: masterAttack,
+      visualFactory: const CombatVisualFactory(images: {}),
+    );
 
-    expect(ward.radius, attack().spec.radius);
-    expect(ward.visualTheme, CombatVisualTheme.forAttack(attack()));
-    expect(ward.visualTheme.maxAlpha, lessThanOrEqualTo(.88));
+    expect(ward.visualEffectId, 'talisman_master_ward');
+    expect(ward.usesRegistryVisual, isTrue);
+    expect(ward.startsImageLoadOnMount, isFalse);
+    expect(ward.ownsDamageResolution, isFalse);
+    expect(ward.gameplayOwnsDamageResolution, isTrue);
+    expect(ward.registryVisualLocalPosition, Vector2(30, 30));
+    expect(ward.registryVisualScale, Vector2.all(60 / 128));
   });
 }

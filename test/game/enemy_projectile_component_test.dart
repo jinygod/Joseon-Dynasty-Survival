@@ -1,8 +1,10 @@
+import 'dart:ui';
+
 import 'package:flame/components.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'dart:typed_data';
-import 'dart:ui' as ui;
 import 'package:pixel_survivor/game/components/enemy_projectile_component.dart';
+import 'package:pixel_survivor/game/components/projectile_vfx_component.dart';
+import 'package:pixel_survivor/game/content/combat_visual_factory.dart';
 import 'package:pixel_survivor/game/components/player_component.dart';
 
 void main() {
@@ -43,29 +45,40 @@ void main() {
   });
 
   test(
-    'hostile projectile renders a bright outlined core with a tail',
-    () async {
+    'sakkat projectile visible footprint does not alter its 10px hitbox',
+    () {
       final projectile = EnemyProjectileComponent(
         sourceId: 'sakkat_specter',
-        damage: 7,
+        damage: 1,
         position: Vector2.zero(),
-        velocity: Vector2(-150, 0),
+        velocity: Vector2.zero(),
       );
-      final recorder = ui.PictureRecorder();
-      projectile.render(ui.Canvas(recorder));
-      final image = await recorder.endRecording().toImage(64, 32);
-      addTearDown(image.dispose);
-      final data = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
-
-      expect(_countVisiblePixels(data!), greaterThan(150));
+      expect(projectile.size, Vector2.all(10));
+      expect(projectile.minimumVisibleFootprint, greaterThanOrEqualTo(34));
+      expect(projectile.visualBoxSize, greaterThanOrEqualTo(84));
+      expect(projectile.ownsDamageResolution, isFalse);
     },
   );
-}
 
-int _countVisiblePixels(ByteData data) {
-  var count = 0;
-  for (var offset = 3; offset < data.lengthInBytes; offset += 4) {
-    if (data.getUint8(offset) > 0) count += 1;
-  }
-  return count;
+  test('sakkat projectile composes a centered cached registry child', () async {
+    final recorder = PictureRecorder();
+    Canvas(recorder).drawRect(const Rect.fromLTWH(0, 0, 1, 1), Paint());
+    final image = await recorder.endRecording().toImage(1, 1);
+    final projectile = EnemyProjectileComponent(
+      sourceId: 'sakkat_specter',
+      damage: 1,
+      position: Vector2.zero(),
+      velocity: Vector2(1, 0),
+      visualFactory: CombatVisualFactory(
+        images: {'projectiles/enemy/sakkat_spirit_projectile_128.png': image},
+      ),
+    );
+    projectile.onMount();
+    expect(projectile.registryVisual, isA<ProjectileVfxComponent>());
+    expect(projectile.registryVisual!.position, projectile.center);
+    expect(
+      projectile.registryVisual!.scale.x,
+      closeTo(projectile.visualBoxSize / 128, .001),
+    );
+  });
 }

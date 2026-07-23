@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:collection';
 import 'dart:math';
+import 'dart:ui' show Image;
 
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
@@ -15,6 +16,7 @@ import 'components/actor_shadow_component.dart';
 import 'audio/audio_cue.dart';
 import 'combat/attack_geometry.dart';
 import 'combat/attack_spec.dart';
+import 'combat/attack_visual_event.dart';
 import 'combat/talisman_damage.dart';
 import 'components/attack_effect_component.dart';
 import 'components/boss_component.dart';
@@ -37,19 +39,25 @@ import 'balance/meta_reward_balance.dart';
 import 'content/augment_definitions.dart';
 import 'content/actor_visual_spec.dart';
 import 'content/base_content_policy.dart';
+import 'content/attack_visual_registry.dart';
 import 'content/boss_definitions.dart';
+import 'content/combat_asset_preloader.dart';
 import 'content/character_definitions.dart';
 import 'content/combat_effect_atlas.dart';
+import 'content/combat_visual_factory.dart';
 import 'content/enemy_definitions.dart';
 import 'content/ids.dart';
 import 'content/playtest_content_policy.dart';
 import 'content/stage_definitions.dart';
+import 'content/stage_visual_spec.dart';
 import 'content/wave_definitions.dart';
 import 'content/weapon_definitions.dart';
 import 'content/weapon_level_definitions.dart';
 import 'content/weapon_visual_theme.dart';
+import 'content/weapon_effect_atlas.dart';
 import 'content/visual_asset_load_policy.dart';
 import 'game_performance_budget.dart';
+import 'performance/game_population_index.dart';
 import 'models/player_slot.dart';
 import 'models/damage_event.dart';
 import 'models/run_choice_record.dart';
@@ -96,6 +104,8 @@ class PixelSurvivorGame extends FlameGame
     this.performanceBudget = GamePerformanceBudget.standard,
     this.onPerformanceDiagnostic,
     this.loadVisualAssets = true,
+    this.visualAssetLoader,
+    this.stageVisualSeed = 0,
     this.contentPolicy = const PlaytestContentPolicy(
       unlockAllBaseWeapons: false,
     ),
@@ -138,7 +148,10 @@ class PixelSurvivorGame extends FlameGame
   final GamePerformanceDiagnosticReporter? onPerformanceDiagnostic;
   @override
   final bool loadVisualAssets;
+  @visibleForTesting
+  final Future<Image> Function(String key)? visualAssetLoader;
   final PlaytestContentPolicy contentPolicy;
+  final int stageVisualSeed;
   final MetaRewardPolicy _metaRewardPolicy = const MetaRewardPolicy();
   final AugmentEffectResolver _augmentEffectResolver =
       const AugmentEffectResolver();
@@ -159,9 +172,12 @@ class PixelSurvivorGame extends FlameGame
   final Map<AugmentId, int> augmentLevels = {};
   final Map<EnemyComponent, WeaponId> _lastWeaponHitByEnemy = {};
   final Set<EnemyComponent> _recordedEnemyDefeats = {};
+  Map<String, Image> _visualImages = const {};
   final Map<EnemyComponent, bool> _pendingSpiritJadeDrops = {};
   final Map<EnemyComponent, TalismanAttachmentComponent>
   _talismanAttachmentComponents = {};
+  final Set<PositionComponent> _trackedRegistryAttackVisuals = {};
+  final GamePopulationIndex _populationIndex = GamePopulationIndex();
   int _spiritJadeDropSequence = 0;
   double? _rewardCollectionSecondsRemaining;
   int _pendingBossSpiritJade = 0;
@@ -249,11 +265,22 @@ class PixelSurvivorGame extends FlameGame
     rejected: _rejectedPopulations,
   );
 
+  Map<String, int> get performanceRetainedOwnerBreakdown => Map.unmodifiable({
+    'activePlayers': _activePlayers.length,
+    'lastWeaponHits': _lastWeaponHitByEnemy.length,
+    'recordedEnemyDefeats': _recordedEnemyDefeats.length,
+    'pendingSpiritJadeDrops': _pendingSpiritJadeDrops.length,
+    'talismanAttachments': _talismanAttachmentComponents.length,
+    'trackedRegistryAttackVisuals': _trackedRegistryAttackVisuals.length,
+  });
+
   int get performanceRetainedOwnerCount =>
       _activePlayers.length +
       _lastWeaponHitByEnemy.length +
       _recordedEnemyDefeats.length +
-      _pendingSpiritJadeDrops.length;
+      _pendingSpiritJadeDrops.length +
+      _talismanAttachmentComponents.length +
+      _trackedRegistryAttackVisuals.length;
 
   void applyAccessibilitySettings({
     required bool screenShakeEnabled,
@@ -312,6 +339,7 @@ class PixelSurvivorGame extends FlameGame
   bool get isLevelUpPending => _pendingLevelUpChoices.isNotEmpty;
   int get pendingLevelChoiceCount => _pendingLevelChoiceCount;
   List<PlayerComponent> get activePlayers => _activePlayersView;
+  Map<String, Image> get visualImages => _visualImages;
   List<LevelUpChoice> get pendingLevelUpChoices =>
       List.unmodifiable(_pendingLevelUpChoices);
   @override
@@ -327,10 +355,8 @@ class PixelSurvivorGame extends FlameGame
   }
 
   @override
-  int get enemyCount => children
-      .whereType<EnemyComponent>()
-      .where((enemy) => !enemy.isDead)
-      .length;
+  int get enemyCount =>
+      _populationIndex.mountedEnemies.where((enemy) => !enemy.isDead).length;
 
   String get currentWeaponLabel {
     final labels = weaponLevelLabels;
@@ -362,6 +388,16 @@ class PixelSurvivorGame extends FlameGame
   @override
   Future<void> onLoad() async {
     await super.onLoad();
+    final stageVisualSpec = stageVisualSpecFor(stageId);
+    _visualImages = loadVisualAssets
+        ? await CombatAssetPreloader.loadWith([
+            ...AttackVisualRegistry.requiredAssetKeys,
+            WeaponEffectAtlas.assetKey,
+            stageVisualSpec.tileAssetKey,
+            if (stageVisualSpec.decalAssetKey case final decalKey?) decalKey,
+            if (stageVisualSpec.propAssetKey case final propKey?) propKey,
+          ], visualAssetLoader ?? images.load)
+        : const {};
 
     camera.viewfinder.anchor = Anchor.center;
 
@@ -377,7 +413,48 @@ class PixelSurvivorGame extends FlameGame
       removeAll(children.toList(growable: false));
       processLifecycleEvents();
     }
+    _populationIndex.clear();
     super.onDispose();
+  }
+
+  @override
+  FutureOr<void> add(Component component) {
+    final result = super.add(component);
+    if (children.contains(component) && !component.isRemoving) {
+      _populationIndex.register(component);
+    }
+    return result;
+  }
+
+  @override
+  void remove(Component component) {
+    super.remove(component);
+    _populationIndex.markRemoving(component);
+  }
+
+  @override
+  void removeAll(Iterable<Component> components) {
+    final removalTargets = components.toList(growable: false);
+    super.removeAll(removalTargets);
+    for (final component in removalTargets) {
+      _populationIndex.markRemoving(component);
+    }
+  }
+
+  @override
+  void removeWhere(bool Function(Component component) test) {
+    removeAll(children.where(test).toList(growable: false));
+  }
+
+  @override
+  void onChildrenChanged(Component child, ChildrenChangeType type) {
+    super.onChildrenChanged(child, type);
+    switch (type) {
+      case ChildrenChangeType.added:
+        _populationIndex.register(child);
+      case ChildrenChangeType.removed:
+        _populationIndex.unregister(child);
+    }
   }
 
   @override
@@ -679,7 +756,12 @@ class PixelSurvivorGame extends FlameGame
       );
     }
     add(enemy);
-    add(EnemyWarningOverlayComponent(enemy: enemy));
+    add(
+      EnemyWarningOverlayComponent(
+        enemy: enemy,
+        visualFactory: _combatVisualFactory,
+      ),
+    );
   }
 
   bool _usesRepresentativeEnemyShadow(EnemyId enemyId) => switch (enemyId) {
@@ -746,6 +828,7 @@ class PixelSurvivorGame extends FlameGame
     }
     for (final arc in result.meleeArcs) {
       if (arc.weaponId == hwandoSlash) continue;
+      arc.attachEffectImage(_visualImages[WeaponEffectAtlas.assetKey]);
       add(arc);
     }
     for (final areaAttack in result.areaAttacks) {
@@ -754,6 +837,7 @@ class PixelSurvivorGame extends FlameGame
     for (final frostField in result.frostFields) {
       final activeFields = children.whereType<FrostFieldComponent>().toList();
       if (activeFields.length >= 3) activeFields.first.removeFromParent();
+      frostField.attachVisuals(_combatVisualFactory);
       add(frostField);
     }
     _addFiveColorWards(result.fiveColorWards);
@@ -780,6 +864,7 @@ class PixelSurvivorGame extends FlameGame
       }
       final retained = max(0, activeWards.length - overflow);
       for (final ward in matchingRequests.take(cap - retained)) {
+        ward.attachVisuals(_combatVisualFactory);
         add(ward);
       }
     }
@@ -797,7 +882,10 @@ class PixelSurvivorGame extends FlameGame
     }
     for (final entry in desired.entries) {
       if (_talismanAttachmentComponents.containsKey(entry.key)) continue;
-      final component = TalismanAttachmentComponent(seal: entry.value);
+      final component = TalismanAttachmentComponent(
+        seal: entry.value,
+        visualFactory: _combatVisualFactory,
+      );
       _talismanAttachmentComponents[entry.key] = component;
       add(component);
       if (entry.value.transferDepth == 0) {
@@ -828,6 +916,7 @@ class PixelSurvivorGame extends FlameGame
     add(
       TalismanTransferCueComponent(
         cue: cue,
+        visualFactory: _combatVisualFactory,
         onExpired: () {
           _combatEffectCount = max(0, _combatEffectCount - 1);
         },
@@ -836,6 +925,13 @@ class PixelSurvivorGame extends FlameGame
   }
 
   void _cleanupCombatPresentationOwners() {
+    for (final visual
+        in _trackedRegistryAttackVisuals
+            .where((item) => item.isRemoving)
+            .toList(growable: false)) {
+      _trackedRegistryAttackVisuals.remove(visual);
+      _combatEffectCount = max(0, _combatEffectCount - 1);
+    }
     for (final overlay
         in children
             .whereType<EnemyWarningOverlayComponent>()
@@ -965,15 +1061,27 @@ class PixelSurvivorGame extends FlameGame
       return;
     }
     _combatEffectCount += 1;
-    add(
-      AttackEffectComponent(
-        instance: attack,
-        onExpired: () {
-          _combatEffectCount = max(0, _combatEffectCount - 1);
-        },
-      ),
-    );
+    try {
+      final visual = _combatVisualFactory.create(
+        AttackVisualEvent.fromAttack(attack),
+      );
+      _trackedRegistryAttackVisuals.add(visual);
+      add(visual);
+      return;
+    } on MissingAttackVisualException {
+      add(
+        AttackEffectComponent(
+          instance: attack,
+          onExpired: () {
+            _combatEffectCount = max(0, _combatEffectCount - 1);
+          },
+        ),
+      );
+    }
   }
+
+  CombatVisualFactory get _combatVisualFactory =>
+      CombatVisualFactory(images: _visualImages);
 
   void _ensureWardAura(PlayerComponent player) {
     final level = weaponSystem.levelOf(jangseungWard);
@@ -991,6 +1099,7 @@ class PixelSurvivorGame extends FlameGame
         },
         tierProvider: () =>
             combatVfxTierForLevel(weaponSystem.levelOf(jangseungWard)),
+        visualFactory: _combatVisualFactory,
       ),
     );
   }
@@ -1133,6 +1242,7 @@ class PixelSurvivorGame extends FlameGame
                 radius: request.range,
                 damage: enemy.damage * enemy.behaviorProfile.effectMultiplier,
                 sourceId: enemy.enemyId,
+                visualFactory: _combatVisualFactory,
               ),
             );
             break;
@@ -1143,6 +1253,7 @@ class PixelSurvivorGame extends FlameGame
                 radius: request.range,
                 damage: enemy.damage * enemy.behaviorProfile.effectMultiplier,
                 sourceId: enemy.enemyId,
+                visualFactory: _combatVisualFactory,
               ),
             );
             break;
@@ -1154,6 +1265,7 @@ class PixelSurvivorGame extends FlameGame
                 position: request.origin,
                 velocity:
                     request.direction * enemy.behaviorProfile.projectileSpeed,
+                visualFactory: _combatVisualFactory,
               ),
             );
             break;
@@ -1202,6 +1314,12 @@ class PixelSurvivorGame extends FlameGame
       return;
     }
     _projectileSlotsRemaining -= 1;
+    if (projectile case final ProjectileComponent playerProjectile) {
+      playerProjectile.attachVisuals(
+        visualFactory: _combatVisualFactory,
+        legacyEffectImage: _visualImages[WeaponEffectAtlas.assetKey],
+      );
+    }
     add(projectile);
   }
 
@@ -1421,6 +1539,7 @@ class PixelSurvivorGame extends FlameGame
       ShieldBlockEffectComponent(
         position: enemy.position.clone(),
         facingDirection: enemy.shieldDirection,
+        visualFactory: _combatVisualFactory,
         onExpired: () {
           _combatEffectCount = max(0, _combatEffectCount - 1);
         },
@@ -1512,6 +1631,7 @@ class PixelSurvivorGame extends FlameGame
             position: enemy.position.clone(),
             damage: enemy.damage * enemy.behaviorProfile.effectMultiplier,
             sourceId: enemy.enemyId,
+            visualFactory: _combatVisualFactory,
           ),
         );
       }
@@ -1920,19 +2040,34 @@ class PixelSurvivorGame extends FlameGame
     }
   }
 
-  int get _enemyComponentCount => children
-      .whereType<EnemyComponent>()
-      .where((enemy) => !enemy.isRemoving)
-      .length;
+  int get _enemyComponentCount => _populationIndex.enemyCount;
 
-  int get _projectileComponentCount => children
-      .where(
-        (component) =>
-            (component is ProjectileComponent ||
-                component is EnemyProjectileComponent) &&
-            !component.isRemoving,
-      )
-      .length;
+  int get _projectileComponentCount => _populationIndex.projectileCount;
+
+  @visibleForTesting
+  bool debugPopulationIndexIsConsistent() {
+    final mountedEnemies = children.whereType<EnemyComponent>().where(
+      (enemy) => !enemy.isRemoving,
+    );
+    final mountedProjectiles = children.where(
+      (component) =>
+          (component is ProjectileComponent ||
+              component is EnemyProjectileComponent) &&
+          !component.isRemoving,
+    );
+    return mountedEnemies.length == _populationIndex.enemyCount &&
+        mountedEnemies.every(_populationIndex.enemies.contains) &&
+        mountedProjectiles.length == _populationIndex.projectileCount &&
+        mountedProjectiles.every(
+          (component) => switch (component) {
+            ProjectileComponent() =>
+              _populationIndex.playerProjectiles.contains(component),
+            EnemyProjectileComponent() =>
+              _populationIndex.enemyProjectiles.contains(component),
+            _ => false,
+          },
+        );
+  }
 
   AudioCue _attackCueFor(WeaponId weaponId) => switch (weaponId) {
     hwandoSlash => AudioCue.hwandoAttack,

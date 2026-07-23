@@ -3,17 +3,22 @@ import 'dart:ui';
 
 import 'package:flame/components.dart';
 
+import '../combat/attack_spec.dart';
+import '../combat/attack_visual_event.dart';
 import '../combat/combat_vfx_primitives.dart';
-import '../content/weapon_definitions.dart';
-import '../content/weapon_visual_theme.dart';
+import '../content/combat_visual_factory.dart';
+import '../content/attack_visual_registry.dart';
 
 class WardAuraComponent extends PositionComponent {
   WardAuraComponent({
     required this.positionProvider,
     required this.radiusProvider,
     CombatVfxTier Function()? tierProvider,
+    CombatVisualFactory? visualFactory,
   }) : _tierProvider = tierProvider ?? _normalTier,
-       super(anchor: Anchor.center);
+       super(anchor: Anchor.center) {
+    if (visualFactory != null) attachVisuals(visualFactory);
+  }
 
   final Vector2 Function() positionProvider;
   final double Function() radiusProvider;
@@ -28,55 +33,85 @@ class WardAuraComponent extends PositionComponent {
     );
   }
 
+  PositionComponent? _registryVisual;
+  bool _hasRegistrySprite = false;
+
+  String get visualEffectId => 'jangseung_ward';
+  bool get usesRegistryVisual => _registryVisual != null;
+  bool get startsImageLoadOnMount => false;
+
+  /// This aura is presentation-only and never resolves damage.
+  bool get ownsDamageResolution => false;
+  Vector2? get registryVisualLocalPosition => _registryVisual?.position.clone();
+  Vector2? get registryVisualScale => _registryVisual?.scale.clone();
+
+  void attachVisuals(CombatVisualFactory visualFactory) {
+    if (_registryVisual != null) return;
+    final visual = visualFactory.create(
+      AttackVisualEvent.fromAttack(
+        AttackInstance(
+          spec: AttackSpec(
+            id: visualEffectId,
+            shape: AttackShape.circle,
+            damage: 0,
+            range: 0,
+            angleRadians: 0,
+            radius: 0,
+            width: 0,
+            windupSeconds: 0,
+            activeSeconds: double.maxFinite,
+            lingerSeconds: 0,
+            knockback: 0,
+            slowFraction: 0,
+            traits: const {},
+            presentation: AttackPresentation.normal,
+          ),
+          origin: Vector2.zero(),
+          direction: Vector2(1, 0),
+          sequenceIndex: 0,
+        ),
+      ),
+    );
+    _hasRegistrySprite = AttackVisualRegistry.byId(
+      visualEffectId,
+    ).layers.any((layer) => visualFactory.images.containsKey(layer.assetKey));
+    _registryVisual = visual;
+    add(visual);
+  }
+
+  static CombatVfxTier _normalTier() => CombatVfxTier.normal;
+
   @override
   void update(double dt) {
     super.update(dt);
     position.setFrom(positionProvider());
     final diameter = radiusProvider() * 2;
     size.setValues(diameter, diameter);
+    _registryVisual
+      ?..position = size / 2
+      ..scale = Vector2.all(diameter / 128);
   }
 
   @override
   void render(Canvas canvas) {
+    if (_hasRegistrySprite) return;
     final radius = size.x / 2;
     final center = Offset(radius, radius);
-    final theme = weaponVisualThemeFor(jangseungWard);
-    final tier = visualTier;
-    final fill = Paint()..color = theme.primary.withValues(alpha: .12);
+    final fill = Paint()..color = const Color(0x2239d98a);
+    final ring = Paint()
+      ..color = const Color(0xaa9bf6c7)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
     canvas.drawCircle(center, radius, fill);
-    CombatVfxPrimitives.drawRuneRing(
-      canvas,
-      center: center,
-      radius: radius * .96,
-      palette: theme.palette,
-      progress: .08,
-      count: tier == CombatVfxTier.master ? 12 : 8,
-    );
-    CombatVfxPrimitives.drawRuneRing(
-      canvas,
-      center: center,
-      radius: radius * .68,
-      palette: theme.palette,
-      progress: .28,
-      count: tier == CombatVfxTier.master ? 8 : 4,
-    );
-    for (final angle in guardianAngles) {
+    canvas.drawCircle(center, radius, ring);
+    canvas.drawCircle(center, radius * .68, ring);
+    for (var index = 0; index < 8; index += 1) {
+      final angle = index * .7853981634;
       final point = Offset(
         center.dx + radius * .82 * math.cos(angle),
         center.dy + radius * .82 * math.sin(angle),
       );
-      final path = Path()
-        ..moveTo(point.dx, point.dy - 4)
-        ..lineTo(point.dx + 3, point.dy + 3)
-        ..lineTo(point.dx, point.dy + 1)
-        ..lineTo(point.dx - 3, point.dy + 3)
-        ..close();
-      canvas.drawPath(
-        path,
-        Paint()..color = theme.accent.withValues(alpha: .7),
-      );
+      canvas.drawCircle(point, 3, ring);
     }
   }
 }
-
-CombatVfxTier _normalTier() => CombatVfxTier.normal;

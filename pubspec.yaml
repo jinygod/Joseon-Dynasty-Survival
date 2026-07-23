@@ -41,6 +41,7 @@ dependencies:
   supabase_flutter: 2.16.0
 
 dev_dependencies:
+  crypto: ^3.0.7
   flutter_test:
     sdk: flutter
   flame_test: ^1.16.0
@@ -63,9 +64,20 @@ flutter:
     - assets/images/player/exorcist_dosa_128.png
     - assets/images/characters/
     - assets/images/monsters/
+    - assets/images/enemies/
     - assets/images/weapons/
     - assets/images/effects/
+    - assets/images/vfx/
+    - assets/images/vfx/player/
+    - assets/images/vfx/enemy/
+    - assets/images/projectiles/
+    - assets/images/projectiles/player/
+    - assets/images/projectiles/enemy/
+    - assets/images/zones/
+    - assets/images/zones/player/
     - assets/images/stages/
+    - assets/images/tiles/
+    - assets/images/props/
     - assets/images/ui/
     - assets/audio/music/
     - assets/audio/sfx/

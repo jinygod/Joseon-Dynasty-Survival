@@ -1,10 +1,11 @@
-import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flame/components.dart';
 
-import '../combat/combat_vfx_primitives.dart';
 import 'player_component.dart';
+import '../combat/attack_spec.dart';
+import '../combat/attack_visual_event.dart';
+import '../content/combat_visual_factory.dart';
 
 enum EnemyHazardKind { poison, warning, shockwave, scream }
 
@@ -17,6 +18,7 @@ class EnemyHazardComponent extends PositionComponent {
     required this.tickIntervalSeconds,
     required this.sourceId,
     required Vector2 position,
+    this.visualFactory,
   }) : super(
          position: position,
          size: Vector2.all(radius * 2),
@@ -27,6 +29,7 @@ class EnemyHazardComponent extends PositionComponent {
     required Vector2 position,
     required double damage,
     required String sourceId,
+    CombatVisualFactory? visualFactory,
   }) => EnemyHazardComponent(
     kind: EnemyHazardKind.poison,
     radius: 38,
@@ -35,6 +38,7 @@ class EnemyHazardComponent extends PositionComponent {
     tickIntervalSeconds: .5,
     sourceId: sourceId,
     position: position,
+    visualFactory: visualFactory,
   );
 
   factory EnemyHazardComponent.shockwave({
@@ -42,6 +46,7 @@ class EnemyHazardComponent extends PositionComponent {
     required double radius,
     required double damage,
     required String sourceId,
+    CombatVisualFactory? visualFactory,
   }) => EnemyHazardComponent(
     kind: EnemyHazardKind.shockwave,
     radius: radius,
@@ -50,6 +55,7 @@ class EnemyHazardComponent extends PositionComponent {
     tickIntervalSeconds: double.infinity,
     sourceId: sourceId,
     position: position,
+    visualFactory: visualFactory,
   );
 
   factory EnemyHazardComponent.scream({
@@ -57,6 +63,7 @@ class EnemyHazardComponent extends PositionComponent {
     required double radius,
     required double damage,
     required String sourceId,
+    CombatVisualFactory? visualFactory,
   }) => EnemyHazardComponent(
     kind: EnemyHazardKind.scream,
     radius: radius,
@@ -65,6 +72,7 @@ class EnemyHazardComponent extends PositionComponent {
     tickIntervalSeconds: double.infinity,
     sourceId: sourceId,
     position: position,
+    visualFactory: visualFactory,
   );
 
   final EnemyHazardKind kind;
@@ -73,10 +81,19 @@ class EnemyHazardComponent extends PositionComponent {
   final double durationSeconds;
   final double tickIntervalSeconds;
   final String sourceId;
+  final CombatVisualFactory? visualFactory;
   final Map<PlayerComponent, double> _nextHitAt = {};
   double _elapsed = 0;
 
   bool get isExpired => _elapsed >= durationSeconds;
+  double get damageRadius => radius;
+  double get visualRadius => radius + 12;
+  static const reviewedActiveDiameter = 116.0;
+  double get visualScale => visualRadius * 2 / reviewedActiveDiameter;
+  bool _usesRegistryVisual = false;
+  bool get usesRegistryVisual => _usesRegistryVisual;
+  bool get startsImageLoadOnMount => false;
+  bool get ownsDamageResolution => false;
 
   bool containsPlayer(PlayerComponent player) {
     final hitRadius = radius + player.size.x / 2;
@@ -94,6 +111,32 @@ class EnemyHazardComponent extends PositionComponent {
   }
 
   @override
+  void onMount() {
+    super.onMount();
+    final effectId = switch (kind) {
+      EnemyHazardKind.poison => 'enemy_poison_pool',
+      EnemyHazardKind.shockwave => 'enemy_shockwave',
+      EnemyHazardKind.scream => 'enemy_spirit_scream',
+      EnemyHazardKind.warning => null,
+    };
+    if (effectId == null || visualFactory == null) return;
+    final spec = visualFactory!.images;
+    final key = switch (effectId) {
+      'enemy_poison_pool' => 'vfx/enemy/poison_pool_128.png',
+      'enemy_shockwave' => 'vfx/enemy/shockwave_128.png',
+      _ => 'vfx/enemy/spirit_scream_128.png',
+    };
+    if (!spec.containsKey(key)) return;
+    final visual = visualFactory!.create(
+      _enemyVisualEvent(effectId, durationSeconds),
+    );
+    visual.position = center;
+    visual.scale = Vector2.all(visualScale);
+    add(visual);
+    _usesRegistryVisual = true;
+  }
+
+  @override
   void update(double dt) {
     super.update(dt);
     if (dt.isFinite && dt > 0) _elapsed += dt;
@@ -102,146 +145,44 @@ class EnemyHazardComponent extends PositionComponent {
 
   @override
   void render(Canvas canvas) {
-    final center = Offset(radius, radius);
-    final progress = durationSeconds <= 0
-        ? 1.0
-        : (_elapsed / durationSeconds).clamp(0, 1).toDouble();
-    switch (kind) {
-      case EnemyHazardKind.poison:
-        _drawPoisonPuddle(canvas, center, progress);
-      case EnemyHazardKind.warning:
-        _drawWarningRing(canvas, center);
-      case EnemyHazardKind.shockwave:
-        _drawShockwave(canvas, center, progress);
-      case EnemyHazardKind.scream:
-        _drawScreamBands(canvas, center, progress);
-    }
-  }
-
-  void _drawPoisonPuddle(Canvas canvas, Offset center, double progress) {
-    const palette = CombatVfxPalette(
-      core: Color(0xffd9ff8a),
-      edge: Color(0xff6dbb4f),
-      accent: Color(0xffb2e35c),
-      smoke: Color(0xff274d37),
-    );
+    if (usesRegistryVisual) return;
+    final color = switch (kind) {
+      EnemyHazardKind.poison => const Color(0x663fa34d),
+      EnemyHazardKind.warning => const Color(0x66f4d35e),
+      EnemyHazardKind.shockwave => const Color(0x668cd3ff),
+      EnemyHazardKind.scream => const Color(0x668c5bd6),
+    };
     canvas.drawCircle(
-      center,
-      radius,
-      Paint()..color = palette.edge.withValues(alpha: .26),
-    );
-    for (var index = 0; index < 7; index += 1) {
-      final angle = math.pi * 2 * index / 7 + .21;
-      final lobeCenter =
-          center +
-          Offset(math.cos(angle), math.sin(angle)) *
-              radius *
-              (.38 + (index % 3) * .08);
-      canvas.drawCircle(
-        lobeCenter,
-        radius * (.21 + (index % 2) * .035),
-        Paint()..color = palette.smoke.withValues(alpha: .22),
-      );
-    }
-    for (var index = 0; index < 4; index += 1) {
-      final angle = math.pi * 2 * index / 4 + .62;
-      final bubble =
-          center +
-          Offset(math.cos(angle), math.sin(angle)) *
-              radius *
-              (.22 + index * .09);
-      canvas.drawCircle(
-        bubble,
-        radius * (.055 + index * .01),
-        Paint()
-          ..color = palette.core.withValues(alpha: .48 * (1 - progress * .35))
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.2,
-      );
-    }
-  }
-
-  void _drawWarningRing(Canvas canvas, Offset center) {
-    canvas.drawCircle(
-      center,
-      radius,
+      Offset(radius, radius),
+      visualRadius,
       Paint()
-        ..color = const Color(0xfff4d35e).withValues(alpha: .28)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2,
+        ..color = color
+        ..style = PaintingStyle.fill,
     );
-  }
-
-  void _drawShockwave(Canvas canvas, Offset center, double progress) {
-    const palette = CombatVfxPalette(
-      core: Color(0xffe4f7ff),
-      edge: Color(0xff65b6e9),
-      accent: Color(0xffb6ecff),
-      smoke: Color(0xff2d586c),
-    );
-    for (final factor in [.42, .7, 1.0]) {
-      canvas.drawCircle(
-        center,
-        radius * factor,
-        Paint()
-          ..color = palette.edge.withValues(
-            alpha: (.68 - factor * .28) * (1 - progress * .35),
-          )
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = factor == 1 ? 3 : 2,
-      );
-    }
-    CombatVfxPrimitives.drawRadialBurst(
-      canvas,
-      center: center,
-      radius: radius,
-      palette: palette,
-      progress: progress,
-      count: 8,
-    );
-  }
-
-  void _drawScreamBands(Canvas canvas, Offset center, double progress) {
-    const palette = CombatVfxPalette(
-      core: Color(0xffffebff),
-      edge: Color(0xffb16de3),
-      accent: Color(0xffffa8dc),
-      smoke: Color(0xff47235c),
-    );
-    for (var index = 0; index < 4; index += 1) {
-      final factor = .28 + index * .24;
-      final bandRadius = radius * factor;
-      final bandRect = Rect.fromCenter(
-        center: center,
-        width: bandRadius * 2,
-        height: bandRadius * (1.25 + index * .08),
-      );
-      canvas.drawArc(
-        bandRect,
-        -.72,
-        1.44,
-        false,
-        Paint()
-          ..color = (index.isEven ? palette.edge : palette.accent).withValues(
-            alpha: (.64 - index * .09) * (1 - progress * .42),
-          )
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.4
-          ..strokeCap = StrokeCap.round,
-      );
-      canvas.drawArc(
-        bandRect,
-        math.pi - .72,
-        1.44,
-        false,
-        Paint()
-          ..color = palette.core.withValues(
-            alpha: (.4 - index * .045) * (1 - progress * .42),
-          )
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.3
-          ..strokeCap = StrokeCap.round,
-      );
-    }
   }
 }
+
+AttackVisualEvent _enemyVisualEvent(String effectId, double duration) =>
+    AttackVisualEvent.fromAttack(
+      AttackInstance(
+        spec: AttackSpec(
+          id: effectId,
+          shape: AttackShape.circle,
+          damage: 0,
+          range: 0,
+          angleRadians: 0,
+          radius: 0,
+          width: 0,
+          windupSeconds: 0,
+          activeSeconds: duration,
+          lingerSeconds: 0,
+          knockback: 0,
+          slowFraction: 0,
+          traits: const {},
+          presentation: AttackPresentation.master,
+        ),
+        origin: Vector2.zero(),
+        direction: Vector2(1, 0),
+        sequenceIndex: 0,
+      ),
+    );

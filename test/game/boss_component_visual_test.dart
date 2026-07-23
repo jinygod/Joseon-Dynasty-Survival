@@ -25,4 +25,20 @@ void main() {
     boss.takeDamage(definition.enemy.maxHealth);
     expect(boss.visualState, EnemyAnimationState.death);
   });
+
+  test(
+    'boss warning snapshot keeps pattern duration and phase token stable',
+    () {
+      final boss = BossComponent.fromBossDefinition(
+        definition: maskedExecutionerBossDefinition,
+        targetPositionProvider: (_) => Vector2(1000, 0),
+      );
+      boss.update(.5);
+      final warning = boss.warningSnapshot!;
+      expect(warning.durationSeconds, .65);
+      expect(warning.phaseToken, greaterThan(0));
+      boss.update(.05);
+      expect(boss.warningSnapshot!.phaseToken, warning.phaseToken);
+    },
+  );
 }

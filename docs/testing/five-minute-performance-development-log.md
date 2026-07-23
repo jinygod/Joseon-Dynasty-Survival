@@ -8,11 +8,11 @@
 - Average / maximum active enemies: 15.68 / 51
 - Late raw-frame samples: 7,200 after 180 simulated seconds
 - Late average / maximum active enemies: 27.24 / 51
-- Late average / minimum simulated FPS: 60.00 / 60.00 (minimum 55)
-- Peak host test-loop wall time for `game.update` plus lifecycle processing: 6318 microseconds
-- Peak mounted Flame components: 262
-- Peak retained production owners: 13 (limit 128)
-- Peak memory proxy (mounted components + retained owners): 272 (limit 512)
+- Late average / minimum logical FPS (fixed-dt): 60.00 / 60.00 (minimum 55)
+- Peak host test-loop wall time for `game.update` plus lifecycle processing: 8126 microseconds (not frame or render time)
+- Peak mounted Flame components: 263
+- Peak retained production owners: 16 (limit 128)
+- Peak memory proxy (mounted components + retained owners): 275 (limit 512)
 - Population budget result: PASS
 - Memory-proxy budget result: PASS
 - Late raw-frame budget result: PASS
@@ -24,4 +24,4 @@
 | damageNumber | 24 | 24 |
 | combatEffect | 23 | 32 |
 
-Physical memory and device frame time are not measured by this deterministic host test. Mounted components plus owners retained by production game collections form a bounded leak/pressure proxy; profile-mode RSS, heap, and raster timing require the documented manual device procedure.
+This deterministic fixed-dt host result reports logical FPS only. Host wall time is test-loop update+lifecycle time, not frame or render time, and is not a mobile result. Physical memory and render timing are not measured here. Mounted components plus owners retained by production game collections form a bounded leak/pressure proxy; Chrome profile-mode frame, build, and raster timing require the documented procedure.

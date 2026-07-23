@@ -151,6 +151,14 @@ void main() {
       'assets/images/monsters/bandit_32.png': 32,
       'assets/images/monsters/dokkaebi_32.png': 32,
       'assets/images/monsters/vengeful_spirit_32.png': 32,
+      'assets/images/enemies/sakkat_specter_128.png': 128,
+      'assets/images/enemies/plague_crow_128.png': 128,
+      'assets/images/enemies/spear_bandit_128.png': 128,
+      'assets/images/enemies/rotten_herbalist_128.png': 128,
+      'assets/images/enemies/grave_ember_128.png': 128,
+      'assets/images/enemies/black_hat_assassin_128.png': 128,
+      'assets/images/enemies/broken_jangseung_spirit_128.png': 128,
+      'assets/images/enemies/sorrowful_maiden_ghost_128.png': 128,
     };
 
     for (final entry in expectedCells.entries) {

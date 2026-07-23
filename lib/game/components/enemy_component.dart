@@ -29,6 +29,8 @@ class EnemyWarningSnapshot {
     required this.range,
     required this.progress,
     Vector2? telegraphEndpoint,
+    required this.durationSeconds,
+    required this.phaseToken,
   }) : _direction = direction.clone(),
        _telegraphEndpoint = telegraphEndpoint?.clone();
 
@@ -37,6 +39,8 @@ class EnemyWarningSnapshot {
   final double range;
   final double progress;
   final Vector2? _telegraphEndpoint;
+  final double durationSeconds;
+  final int phaseToken;
 
   Vector2 get direction => _direction.clone();
   Vector2? get telegraphEndpoint => _telegraphEndpoint?.clone();
@@ -70,11 +74,11 @@ abstract final class EnemySpriteSheet {
       frameSize: 128,
     ),
     spearBandit: EnemySpriteSpec(
-      assetKey: 'monsters/bandit_128.png',
+      assetKey: 'enemies/spear_bandit_128.png',
       frameSize: 128,
     ),
     blackHatAssassin: EnemySpriteSpec(
-      assetKey: 'monsters/bandit_128.png',
+      assetKey: 'enemies/black_hat_assassin_128.png',
       frameSize: 128,
     ),
     maskedExecutioner: EnemySpriteSpec(
@@ -86,7 +90,7 @@ abstract final class EnemySpriteSheet {
       frameSize: 128,
     ),
     sakkatSpecter: EnemySpriteSpec(
-      assetKey: 'monsters/sakkat_specter_128.png',
+      assetKey: 'enemies/sakkat_specter_128.png',
       frameSize: 128,
     ),
     vengefulSpirit: EnemySpriteSpec(
@@ -94,19 +98,19 @@ abstract final class EnemySpriteSheet {
       frameSize: 128,
     ),
     graveEmber: EnemySpriteSpec(
-      assetKey: 'monsters/vengeful_spirit_128.png',
+      assetKey: 'enemies/grave_ember_128.png',
       frameSize: 128,
     ),
     sorrowfulMaidenGhost: EnemySpriteSpec(
-      assetKey: 'monsters/vengeful_spirit_128.png',
+      assetKey: 'enemies/sorrowful_maiden_ghost_128.png',
       frameSize: 128,
     ),
     plagueCrow: EnemySpriteSpec(
-      assetKey: 'monsters/plague_rat_swarm_128.png',
+      assetKey: 'enemies/plague_crow_128.png',
       frameSize: 128,
     ),
     rottenHerbalist: EnemySpriteSpec(
-      assetKey: 'monsters/plague_rat_swarm_128.png',
+      assetKey: 'enemies/rotten_herbalist_128.png',
       frameSize: 128,
     ),
     plagueMagistrate: EnemySpriteSpec(
@@ -114,7 +118,7 @@ abstract final class EnemySpriteSheet {
       frameSize: 128,
     ),
     brokenJangseungSpirit: EnemySpriteSpec(
-      assetKey: 'monsters/dokkaebi_128.png',
+      assetKey: 'enemies/broken_jangseung_spirit_128.png',
       frameSize: 128,
     ),
     fallenGeneral: EnemySpriteSpec(
@@ -218,6 +222,8 @@ class EnemyComponent
   late final EnemyBehaviorProfile _behaviorProfile;
   late final EnemyBehaviorController _behaviorController;
   final List<EnemyAttackRequest> _attackRequests = [];
+  EnemyBehaviorPhase _lastBehaviorPhase = EnemyBehaviorPhase.tracking;
+  int _warningPhaseToken = 0;
 
   static const _hitFlashSeconds = 0.18;
   static const _hitFlashColorFilter = ColorFilter.mode(
@@ -277,6 +283,8 @@ class EnemyComponent
       kind: _behaviorProfile.kind,
       direction: _behaviorController.lockedDirection,
       range: _behaviorProfile.range,
+      durationSeconds: _behaviorProfile.warningSeconds,
+      phaseToken: _warningPhaseToken,
       progress: _behaviorProfile.warningSeconds <= 0
           ? 1
           : (_behaviorController.phaseElapsed / _behaviorProfile.warningSeconds)
@@ -551,6 +559,11 @@ class EnemyComponent
         target: target,
         dashTravelDistance: _telegraphedDashDistance,
       );
+      if (_lastBehaviorPhase != EnemyBehaviorPhase.warning &&
+          _behaviorController.phase == EnemyBehaviorPhase.warning) {
+        _warningPhaseToken += 1;
+      }
+      _lastBehaviorPhase = _behaviorController.phase;
       final attack = result.attack;
       if (attack != null) {
         _attackTriggeredThisUpdate = true;

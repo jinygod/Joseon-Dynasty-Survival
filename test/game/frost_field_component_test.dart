@@ -1,9 +1,9 @@
 import 'package:flame/components.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pixel_survivor/game/combat/combat_vfx_primitives.dart';
 import 'package:pixel_survivor/game/components/enemy_component.dart';
 import 'package:pixel_survivor/game/components/frost_field_component.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
+import 'package:pixel_survivor/game/content/combat_visual_factory.dart';
 
 void main() {
   EnemyComponent enemyAt(double x) => EnemyComponent(
@@ -59,56 +59,24 @@ void main() {
     expect(field.isExpired, isTrue);
   });
 
-  test('visual tiers leave the hit radius unchanged', () {
-    FrostFieldComponent createField(CombatVfxTier tier) => FrostFieldComponent(
+  test('uses a cached frost flask registry presentation', () {
+    final field = FrostFieldComponent(
       weaponId: frostFlask,
-      damage: 4,
+      damage: 3,
       radius: 30,
-      durationSeconds: 2,
-      slowFraction: .25,
-      knockback: 12,
+      durationSeconds: 1,
+      slowFraction: .2,
+      knockback: 0,
       position: Vector2.zero(),
-      tier: tier,
+      visualFactory: const CombatVisualFactory(images: {}),
     );
-    final normalField = createField(CombatVfxTier.normal);
-    final masterField = createField(CombatVfxTier.master);
-    final edgeEnemy = enemyAt(35);
 
-    expect(masterField.visualTier, CombatVfxTier.master);
-    expect(normalField.pulseProgress, 0);
-    normalField.update(.125);
-    expect(normalField.pulseProgress, .25);
-    expect(masterField.radius, normalField.radius);
-    expect(
-      masterField.containsEnemy(edgeEnemy),
-      normalField.containsEnemy(edgeEnemy),
-    );
-  });
-
-  test('frost rune rotates slowly and deterministically from elapsed time', () {
-    FrostFieldComponent createField() => FrostFieldComponent(
-      weaponId: frostFlask,
-      damage: 4,
-      radius: 30,
-      durationSeconds: 10,
-      slowFraction: .25,
-      knockback: 12,
-      position: Vector2.zero(),
-    );
-    final singleStep = createField();
-    final partitioned = createField();
-
-    expect(singleStep.runeRotationRadians, 0);
-    singleStep.update(2);
-    partitioned
-      ..update(.75)
-      ..update(.75)
-      ..update(.5);
-
-    expect(singleStep.runeRotationRadians, closeTo(.30, 1e-10));
-    expect(partitioned.runeRotationRadians, singleStep.runeRotationRadians);
-    expect(singleStep.runeRotationRadians, lessThan(.4));
-    expect(singleStep.radius, 30);
-    expect(singleStep.size, Vector2.all(60));
+    expect(field.visualEffectId, 'frost_flask');
+    expect(field.usesRegistryVisual, isTrue);
+    expect(field.startsImageLoadOnMount, isFalse);
+    expect(field.ownsDamageResolution, isFalse);
+    expect(field.gameplayOwnsDamageResolution, isTrue);
+    expect(field.registryVisualLocalPosition, Vector2(30, 30));
+    expect(field.registryVisualScale, Vector2.all(60 / 128));
   });
 }

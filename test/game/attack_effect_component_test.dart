@@ -13,24 +13,11 @@ import 'package:pixel_survivor/game/content/weapon_definitions.dart';
 import 'package:pixel_survivor/game/content/weapon_visual_theme.dart';
 
 void main() {
-  test('attack presentation selects tier without changing frozen geometry', () {
-    final normal = AttackEffectComponent(
-      instance: _attack(AttackPresentation.normal),
-    );
-    final master = AttackEffectComponent(
-      instance: _attack(AttackPresentation.master),
-    );
-
-    expect(normal.visualTier, CombatVfxTier.normal);
-    expect(master.visualTier, CombatVfxTier.master);
-    expect(master.vfxFamily, WeaponVfxFamily.hwandoBlade);
-    expect(master.visualGeometry.range, normal.visualGeometry.range);
+  test('hwando attacks cannot use the legacy shape renderer', () {
     expect(
-      master.visualGeometry.angleRadians,
-      normal.visualGeometry.angleRadians,
+      () => AttackEffectComponent(instance: _attack(AttackPresentation.normal)),
+      throwsA(isA<AssertionError>()),
     );
-    expect(master.visualGeometry.width, normal.visualGeometry.width);
-    expect(normal.usesHwandoRaster, isTrue);
   });
 
   test('component tiers only alter bounded presentation metadata', () {

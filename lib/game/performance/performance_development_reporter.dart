@@ -24,8 +24,8 @@ class PerformanceDevelopmentReporter {
       'lateFrameSampleCount': log.lateFrameSampleCount,
       'lateAverageActiveEnemies': log.lateAverageActiveEnemies,
       'lateMaximumActiveEnemies': log.lateMaximumActiveEnemies,
-      'lateAverageSimulatedFps': log.lateAverageSimulatedFps,
-      'lateMinimumSimulatedFps': log.lateMinimumSimulatedFps,
+      'lateAverageLogicalFps': log.lateAverageSimulatedFps,
+      'lateMinimumLogicalFps': log.lateMinimumSimulatedFps,
       'peakFrameStepMicros': log.peakFrameStepMicros,
       'peakHostUpdateLifecycleWallMicros':
           log.peakHostUpdateLifecycleWallMicros,
@@ -66,8 +66,8 @@ class PerformanceDevelopmentReporter {
 - Average / maximum active enemies: ${log.averageActiveEnemies.toStringAsFixed(2)} / ${log.maximumActiveEnemies}
 - Late raw-frame samples: ${_withThousands(log.lateFrameSampleCount)} after ${GamePerformanceBudget.latePerformanceWindowStartSeconds.toStringAsFixed(0)} simulated seconds
 - Late average / maximum active enemies: ${log.lateAverageActiveEnemies.toStringAsFixed(2)} / ${log.lateMaximumActiveEnemies}
-- Late average / minimum simulated FPS: ${log.lateAverageSimulatedFps.toStringAsFixed(2)} / ${log.lateMinimumSimulatedFps.toStringAsFixed(2)} (minimum ${GamePerformanceBudget.minimumLateSimulatedFps.toStringAsFixed(0)})
-- Peak host test-loop wall time for `game.update` plus lifecycle processing: ${log.peakHostUpdateLifecycleWallMicros} microseconds
+- Late average / minimum logical FPS (fixed-dt): ${log.lateAverageSimulatedFps.toStringAsFixed(2)} / ${log.lateMinimumSimulatedFps.toStringAsFixed(2)} (minimum ${GamePerformanceBudget.minimumLateSimulatedFps.toStringAsFixed(0)})
+- Peak host test-loop wall time for `game.update` plus lifecycle processing: ${log.peakHostUpdateLifecycleWallMicros} microseconds (not frame or render time)
 - Peak mounted Flame components: ${log.peakMountedComponentCount}
 - Peak retained production owners: ${log.peakRetainedOwnerCount} (limit ${log.maxRetainedOwners})
 - Peak memory proxy (mounted components + retained owners): ${log.peakMemoryProxyComponents} (limit ${log.maxMemoryProxyComponents})
@@ -79,7 +79,7 @@ class PerformanceDevelopmentReporter {
 | --- | ---: | ---: |
 $rows
 
-Physical memory and device frame time are not measured by this deterministic host test. Mounted components plus owners retained by production game collections form a bounded leak/pressure proxy; profile-mode RSS, heap, and raster timing require the documented manual device procedure.
+This deterministic fixed-dt host result reports logical FPS only. Host wall time is test-loop update+lifecycle time, not frame or render time, and is not a mobile result. Physical memory and render timing are not measured here. Mounted components plus owners retained by production game collections form a bounded leak/pressure proxy; Chrome profile-mode frame, build, and raster timing require the documented procedure.
 ''';
   }
 }

@@ -1,10 +1,12 @@
-import 'dart:math' as math;
 import 'dart:ui';
+import 'dart:math' as math;
 
 import 'package:flame/components.dart';
 
-import '../combat/combat_vfx_primitives.dart';
 import 'player_component.dart';
+import '../content/combat_visual_factory.dart';
+import '../combat/attack_spec.dart';
+import '../combat/attack_visual_event.dart';
 
 class EnemyProjectileComponent extends PositionComponent {
   EnemyProjectileComponent({
@@ -14,6 +16,7 @@ class EnemyProjectileComponent extends PositionComponent {
     required Vector2 velocity,
     this.lifetime = 3,
     Vector2? size,
+    this.visualFactory,
   }) : velocity = velocity.clone(),
        super(
          position: position,
@@ -25,11 +28,22 @@ class EnemyProjectileComponent extends PositionComponent {
   final double damage;
   final Vector2 velocity;
   final double lifetime;
+  final CombatVisualFactory? visualFactory;
   double _age = 0;
   bool _spent = false;
 
   bool get isExpired => _age >= lifetime;
   bool get isSpent => _spent;
+
+  /// The reviewed sheet's limiting nontransparent dimension is 52px per cell.
+  /// An 84px display box therefore keeps its visible danger footprint >= 34px.
+  double get visualBoxSize => 84;
+  double get minimumVisibleFootprint => 34;
+  PositionComponent? _registryVisual;
+  PositionComponent? get registryVisual => _registryVisual;
+  bool get usesRegistryVisual => _registryVisual != null;
+  bool get startsImageLoadOnMount => false;
+  bool get ownsDamageResolution => false;
 
   bool overlapsPlayer(PlayerComponent player) {
     final radius = (size.x + player.size.x) / 2;
@@ -43,54 +57,76 @@ class EnemyProjectileComponent extends PositionComponent {
   }
 
   @override
+  void onMount() {
+    super.onMount();
+    const key = 'projectiles/enemy/sakkat_spirit_projectile_128.png';
+    if (sourceId != 'sakkat_specter' ||
+        visualFactory?.images.containsKey(key) != true) {
+      return;
+    }
+    final visual = visualFactory!.create(_projectileVisualEvent(lifetime));
+    visual
+      ..position = center
+      ..scale = Vector2.all(visualBoxSize / 128)
+      ..angle = _velocityAngle;
+    add(visual);
+    _registryVisual = visual;
+  }
+
+  double get _velocityAngle =>
+      velocity.length2 == 0 ? 0 : math.atan2(velocity.y, velocity.x);
+
+  @override
   void update(double dt) {
     super.update(dt);
     final safeDt = dt.isFinite && dt > 0 ? dt : 0.0;
     _age += safeDt;
     position.add(velocity * safeDt);
+    _registryVisual?.angle = _velocityAngle;
     if (isExpired || isSpent) removeFromParent();
   }
 
   @override
   void render(Canvas canvas) {
     super.render(canvas);
-    const palette = CombatVfxPalette(
-      core: Color(0xfffff3fb),
-      edge: Color(0xffff5ca8),
-      accent: Color(0xffffc2df),
-      smoke: Color(0xff5f2346),
+    if (usesRegistryVisual) return;
+    final rect = Rect.fromCenter(
+      center: Offset(size.x / 2, size.y / 2),
+      width: visualBoxSize,
+      height: visualBoxSize,
     );
-    final center = Offset(size.x / 2, size.y / 2);
-    final velocityLength = velocity.length;
-    final direction = velocityLength <= .001
-        ? const Offset(1, 0)
-        : Offset(velocity.x / velocityLength, velocity.y / velocityLength);
-    final tailEnd =
-        center - direction * math.min(22, 10 + velocityLength * .04);
-    CombatVfxPrimitives.drawTaperedTrail(
-      canvas,
-      start: center,
-      end: tailEnd,
-      startWidth: size.x * .52,
-      endWidth: size.x * .14,
-      palette: palette,
-      progress: _age / lifetime,
-      count: 2,
-    );
-    canvas.drawCircle(
-      center,
-      size.x * .5,
-      Paint()..color = palette.smoke.withValues(alpha: .92),
-    );
-    canvas.drawCircle(center, size.x * .37, Paint()..color = palette.edge);
-    canvas.drawCircle(center, size.x * .19, Paint()..color = palette.core);
-    canvas.drawCircle(
-      center,
-      size.x * .5,
+    canvas.drawOval(rect, Paint()..color = const Color(0xff9f2b68));
+    canvas.drawOval(
+      rect,
       Paint()
-        ..color = palette.accent
+        ..color = const Color(0xffff5ca8)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.4,
+        ..strokeWidth = 2,
     );
   }
 }
+
+AttackVisualEvent _projectileVisualEvent(double duration) =>
+    AttackVisualEvent.fromAttack(
+      AttackInstance(
+        spec: AttackSpec(
+          id: 'sakkat_spirit_projectile',
+          shape: AttackShape.line,
+          damage: 0,
+          range: 0,
+          angleRadians: 0,
+          radius: 0,
+          width: 0,
+          windupSeconds: 0,
+          activeSeconds: duration,
+          lingerSeconds: 0,
+          knockback: 0,
+          slowFraction: 0,
+          traits: const {},
+          presentation: AttackPresentation.master,
+        ),
+        origin: Vector2.zero(),
+        direction: Vector2(1, 0),
+        sequenceIndex: 0,
+      ),
+    );

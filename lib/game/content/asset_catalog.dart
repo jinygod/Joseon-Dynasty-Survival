@@ -23,18 +23,20 @@ class AssetCatalog {
     'plague_rat_swarm': 'assets/images/monsters/plague_rat_swarm_128.png',
     'bandit': 'assets/images/monsters/bandit_128.png',
     'dokkaebi': 'assets/images/monsters/dokkaebi_128.png',
-    'sakkat_specter': 'assets/images/monsters/sakkat_specter_128.png',
+    'sakkat_specter': 'assets/images/enemies/sakkat_specter_128.png',
     'vengeful_spirit': 'assets/images/monsters/vengeful_spirit_128.png',
-    'plague_crow': 'assets/images/monsters/plague_rat_swarm_128.png',
-    'spear_bandit': 'assets/images/monsters/bandit_128.png',
-    'rotten_herbalist': 'assets/images/monsters/plague_rat_swarm_128.png',
-    'grave_ember': 'assets/images/monsters/vengeful_spirit_128.png',
-    'black_hat_assassin': 'assets/images/monsters/bandit_128.png',
-    'broken_jangseung_spirit': 'assets/images/monsters/dokkaebi_128.png',
-    'sorrowful_maiden_ghost': 'assets/images/monsters/vengeful_spirit_128.png',
-    'fallen_general': 'assets/images/monsters/dokkaebi_128.png',
-    'plague_magistrate': 'assets/images/monsters/plague_rat_swarm_128.png',
-    'masked_executioner': 'assets/images/monsters/bandit_128.png',
+    'plague_crow': 'assets/images/enemies/plague_crow_128.png',
+    'spear_bandit': 'assets/images/enemies/spear_bandit_128.png',
+    'rotten_herbalist': 'assets/images/enemies/rotten_herbalist_128.png',
+    'grave_ember': 'assets/images/enemies/grave_ember_128.png',
+    'black_hat_assassin': 'assets/images/enemies/black_hat_assassin_128.png',
+    'broken_jangseung_spirit':
+        'assets/images/enemies/broken_jangseung_spirit_128.png',
+    'sorrowful_maiden_ghost':
+        'assets/images/enemies/sorrowful_maiden_ghost_128.png',
+    'fallen_general': 'assets/images/monsters/fallen_general_64.png',
+    'plague_magistrate': 'assets/images/monsters/fallen_general_64.png',
+    'masked_executioner': 'assets/images/monsters/fallen_general_64.png',
   };
 
   static const weapons = <String, String>{
@@ -72,21 +74,57 @@ class AssetCatalog {
   };
 
   static const effects = <String, String>{
+    'enemy_poison_pool': 'assets/images/vfx/enemy/poison_pool_128.png',
+    'enemy_shockwave': 'assets/images/vfx/enemy/shockwave_128.png',
+    'enemy_spirit_scream': 'assets/images/vfx/enemy/spirit_scream_128.png',
+    'enemy_line_telegraph': 'assets/images/vfx/enemy/line_telegraph_128.png',
+    'enemy_ranged_telegraph':
+        'assets/images/vfx/enemy/ranged_telegraph_128.png',
+    'enemy_radial_telegraph':
+        'assets/images/vfx/enemy/radial_telegraph_128.png',
+    'enemy_shield_block_flash':
+        'assets/images/vfx/enemy/shield_block_flash_128.png',
+    'sakkat_spirit_projectile':
+        'assets/images/projectiles/enemy/sakkat_spirit_projectile_128.png',
     'experience_gem': 'assets/images/effects/combat_effects_atlas_64.png',
     // Temporary art slot. Replace this path when the final spirit jade sprite lands.
     'spirit_jade': 'assets/images/effects/combat_effects_atlas_64.png',
-    'healing_item': 'assets/images/effects/healing_item_16.png',
-    'hwando_slash_effect': 'assets/images/effects/hwando_slash_effect_64.png',
     'hwando_slash_ribbon_hd':
         'assets/images/effects/hwando_slash_ribbon_512.png',
+    'hwando_slash_trail_128': 'assets/images/vfx/hwando_slash_trail_128.png',
+    'hwando_slash_impact_128': 'assets/images/vfx/hwando_slash_impact_128.png',
+    'hwando_blade_wave_trail_128':
+        'assets/images/vfx/hwando_blade_wave_trail_128.png',
+    'hwando_blade_wave_impact_128':
+        'assets/images/vfx/hwando_blade_wave_impact_128.png',
+    'hwando_master_circle_trail_128':
+        'assets/images/vfx/hwando_master_circle_trail_128.png',
+    'hwando_master_circle_impact_128':
+        'assets/images/vfx/hwando_master_circle_impact_128.png',
+    'hwando_master_finisher_trail_128':
+        'assets/images/vfx/hwando_master_finisher_trail_128.png',
+    'hwando_master_finisher_impact_128':
+        'assets/images/vfx/hwando_master_finisher_impact_128.png',
+    'sealing_slash_128': 'assets/images/vfx/player/sealing_slash_128.png',
+    'wind_thunder_fan_128': 'assets/images/vfx/player/wind_thunder_fan_128.png',
+    'singijeon_128': 'assets/images/projectiles/player/singijeon_128.png',
+    'jangseung_ward_128': 'assets/images/zones/player/jangseung_ward_128.png',
+    'frost_field_128': 'assets/images/zones/player/frost_field_128.png',
+    'talisman_attachment_128':
+        'assets/images/vfx/player/talisman_attachment_128.png',
+    'talisman_transfer_128':
+        'assets/images/vfx/player/talisman_transfer_128.png',
+    'talisman_explosion_128':
+        'assets/images/vfx/player/talisman_explosion_128.png',
+    'talisman_ward_128': 'assets/images/zones/player/talisman_ward_128.png',
     'weapon_effects_atlas': 'assets/images/effects/weapon_effects_atlas_64.png',
     'combat_effects_atlas': 'assets/images/effects/combat_effects_atlas_64.png',
   };
 
   static const stages = <String, String>{
     'moonlit_abandoned_office':
-        'assets/images/stages/joseon_courtyard_combat_1024x1824.png',
-    'plague_market': 'assets/images/effects/combat_effects_atlas_64.png',
+        'assets/images/tiles/moonlit_office_tiles_128.png',
+    'plague_market': 'assets/images/tiles/plague_market_tiles_128.png',
   };
 
   static const lobby = <String, String>{

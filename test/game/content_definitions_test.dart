@@ -57,7 +57,7 @@ void main() {
     expect(report.issues, isEmpty);
   });
 
-  test('sakkat specter is a registered normal spirit with fallback art', () {
+  test('sakkat specter is a registered normal spirit with authored art', () {
     final sakkat = enemyDefinitionFor(sakkatSpecter)!;
     expect(sakkat.rank, EnemyRank.normal);
     expect(sakkat.faction, EnemyFaction.spirit);

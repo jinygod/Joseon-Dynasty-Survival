@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui';
 
@@ -7,6 +6,11 @@ import 'package:flame/components.dart';
 import '../combat/combat_vfx_primitives.dart';
 import 'enemy_component.dart';
 import '../content/ids.dart';
+import '../combat/attack_spec.dart';
+import '../combat/attack_visual_event.dart';
+import '../content/combat_visual_factory.dart';
+import '../content/attack_visual_registry.dart';
+import '../content/weapon_definitions.dart';
 import '../content/weapon_effect_atlas.dart';
 import '../content/weapon_visual_theme.dart';
 
@@ -24,12 +28,19 @@ class ProjectileComponent extends PositionComponent {
     this.laneIndex = 0,
     this.tier = CombatVfxTier.normal,
     Vector2? size,
+    CombatVisualFactory? visualFactory,
+    Image? legacyEffectImage,
   }) : _remainingHits = pierce + 1,
        super(
          position: position,
          size: size ?? Vector2.all(8),
          anchor: Anchor.center,
-       );
+       ) {
+    _effectImage = legacyEffectImage;
+    if (visualFactory != null && weaponId == singijeonVolley) {
+      _attachRegistryVisual(visualFactory);
+    }
+  }
 
   final WeaponId weaponId;
   final double damage;
@@ -45,12 +56,72 @@ class ProjectileComponent extends PositionComponent {
   int _remainingHits;
   double _age = 0;
   Image? _effectImage;
+  bool _usesRegistryVisual = false;
+  bool _hasRegistrySprite = false;
+  PositionComponent? _registryVisual;
 
   bool get isExpired => _age >= lifetime;
   bool get isSpent => _remainingHits <= 0;
   int get remainingPierces => (_remainingHits - 1).clamp(0, pierce).toInt();
   CombatVfxTier get visualTier => tier;
   WeaponVfxFamily get vfxFamily => weaponVisualThemeFor(weaponId).family;
+  bool get usesRegistryVisual => _usesRegistryVisual;
+  bool get startsImageLoadOnMount => false;
+
+  /// The registry presentation delegate never resolves damage.
+  bool get ownsDamageResolution => false;
+
+  /// This outer gameplay component continues to resolve projectile hits.
+  bool get gameplayOwnsDamageResolution => true;
+  Vector2? get registryVisualLocalPosition => _registryVisual?.position.clone();
+  Vector2? get registryVisualScale => _registryVisual?.scale.clone();
+
+  void attachVisuals({
+    required CombatVisualFactory visualFactory,
+    Image? legacyEffectImage,
+  }) {
+    _effectImage ??= legacyEffectImage;
+    if (weaponId == singijeonVolley && !_usesRegistryVisual) {
+      _attachRegistryVisual(visualFactory);
+    }
+  }
+
+  void _attachRegistryVisual(CombatVisualFactory visualFactory) {
+    _usesRegistryVisual = true;
+    _hasRegistrySprite = AttackVisualRegistry.byId(
+      singijeonVolley,
+    ).layers.any((layer) => visualFactory.images.containsKey(layer.assetKey));
+    final visual =
+        visualFactory.create(
+            AttackVisualEvent.fromAttack(
+              AttackInstance(
+                spec: AttackSpec(
+                  id: singijeonVolley,
+                  shape: AttackShape.line,
+                  damage: 0,
+                  range: 0,
+                  angleRadians: 0,
+                  radius: 0,
+                  width: 0,
+                  windupSeconds: 0,
+                  activeSeconds: lifetime,
+                  lingerSeconds: 0,
+                  knockback: 0,
+                  slowFraction: 0,
+                  traits: const {},
+                  presentation: AttackPresentation.normal,
+                ),
+                origin: Vector2.zero(),
+                direction: velocity,
+                sequenceIndex: 0,
+              ),
+            ),
+          )
+          ..position = size / 2
+          ..scale = Vector2.all(28 / 128);
+    _registryVisual = visual;
+    add(visual);
+  }
 
   bool registerHit(EnemyComponent enemy) {
     if (isSpent || !_hitEnemies.add(enemy)) {
@@ -59,16 +130,6 @@ class ProjectileComponent extends PositionComponent {
 
     _remainingHits -= 1;
     return true;
-  }
-
-  @override
-  void onLoad() {
-    super.onLoad();
-    unawaited(_loadEffect());
-  }
-
-  Future<void> _loadEffect() async {
-    _effectImage = await WeaponEffectAtlas.load(this);
   }
 
   bool overlapsEnemy(EnemyComponent enemy) {
@@ -91,47 +152,14 @@ class ProjectileComponent extends PositionComponent {
   void render(Canvas canvas) {
     super.render(canvas);
 
-    final theme = weaponVisualThemeFor(weaponId);
-    final center = Offset(size.x / 2, size.y / 2);
-    final direction = velocity.length2 == 0
-        ? Vector2(1, 0)
-        : velocity.normalized();
-    final heading = math.atan2(direction.y, direction.x);
-    final scale = theme.scaleFor(tier);
-    final trailLength = size.x * (isMasterLead ? theme.masterScale : 1.5);
-    final trailEnd = center - Offset(direction.x, direction.y) * trailLength;
-    CombatVfxPrimitives.drawTaperedTrail(
-      canvas,
-      start: trailEnd,
-      end: center,
-      startWidth: math.max(1, theme.trailWidth * .18),
-      endWidth: math.max(2, theme.trailWidth * .72),
-      palette: theme.palette,
-      progress: (_age / lifetime).clamp(0, 1).toDouble(),
-      count: theme.trailCountFor(tier),
-      tier: tier,
-    );
-    if (theme.family == WeaponVfxFamily.singijeonRocket ||
-        theme.family == WeaponVfxFamily.matchlockShot) {
-      CombatVfxPrimitives.drawSmokePuff(
-        canvas,
-        center: trailEnd,
-        radius: math.max(4, size.x * .7),
-        palette: theme.palette,
-        progress: (_age / lifetime).clamp(0, 1).toDouble(),
-        count: tier == CombatVfxTier.master ? 5 : 3,
-      );
-    }
+    if (_hasRegistrySprite) return;
 
     final image = _effectImage;
     final row = WeaponEffectAtlas.rowForWeapon(weaponId);
     if (image != null && row != null) {
-      final visualExtent = isMasterLead
-          ? 52.0
-          : followUpIndex > 0
-          ? 36.0
-          : 28.0;
-      final visualSize = Vector2.all(visualExtent);
+      final visualSize = Vector2(28, 28);
+      final center = Offset(size.x / 2, size.y / 2);
+      final facingAngle = math.atan2(velocity.y, velocity.x);
       final sprite = WeaponEffectAtlas.sprite(
         image,
         row: row,
@@ -140,78 +168,23 @@ class ProjectileComponent extends PositionComponent {
       canvas
         ..save()
         ..translate(center.dx, center.dy)
-        ..rotate(heading);
+        ..rotate(facingAngle);
       sprite.render(
         canvas,
         position: Vector2(-visualSize.x / 2, -visualSize.y / 2),
         size: visualSize,
       );
       canvas.restore();
+      return;
     }
 
-    if (isMasterLead) {
-      canvas.drawCircle(
-        center,
-        size.x * .9,
-        Paint()..color = theme.primary.withValues(alpha: .22),
-      );
-    }
-    canvas.save();
-    canvas.translate(center.dx, center.dy);
-    canvas.rotate(heading);
-    final halfWidth = size.x * .5 * scale;
-    final halfHeight = size.y * .5 * scale;
-    final paint = Paint()..color = theme.primary.withValues(alpha: .92);
+    final paint = Paint()..color = const Color(0xfff2cc8f);
     final outlinePaint = Paint()
-      ..color = theme.accent.withValues(alpha: .95)
+      ..color = const Color(0xff2f1b25)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5;
-    final silhouette = switch (theme.family) {
-      WeaponVfxFamily.hawkFlight =>
-        Path()
-          ..moveTo(halfWidth, 0)
-          ..lineTo(-halfWidth, -halfHeight)
-          ..lineTo(-halfWidth * .35, 0)
-          ..lineTo(-halfWidth, halfHeight)
-          ..lineTo(0, halfHeight * .35)
-          ..close(),
-      WeaponVfxFamily.singijeonRocket =>
-        Path()
-          ..moveTo(halfWidth, 0)
-          ..lineTo(-halfWidth * .42, -halfHeight * .72)
-          ..lineTo(-halfWidth, -halfHeight)
-          ..lineTo(-halfWidth * .72, 0)
-          ..lineTo(-halfWidth, halfHeight)
-          ..lineTo(-halfWidth * .42, halfHeight * .72)
-          ..close(),
-      WeaponVfxFamily.matchlockShot =>
-        Path()
-          ..moveTo(halfWidth, 0)
-          ..quadraticBezierTo(halfWidth * .72, -halfHeight, 0, -halfHeight)
-          ..lineTo(-halfWidth, -halfHeight * .5)
-          ..lineTo(-halfWidth, halfHeight * .5)
-          ..lineTo(0, halfHeight)
-          ..quadraticBezierTo(halfWidth * .72, halfHeight, halfWidth, 0)
-          ..close(),
-      _ =>
-        Path()
-          ..moveTo(halfWidth, 0)
-          ..lineTo(0, -halfHeight)
-          ..lineTo(-halfWidth, 0)
-          ..lineTo(0, halfHeight)
-          ..close(),
-    };
-    canvas.drawPath(silhouette, paint);
-    canvas.drawPath(silhouette, outlinePaint);
-    if (theme.family == WeaponVfxFamily.gakgungArrow) {
-      canvas.drawLine(
-        Offset(-halfWidth, 0),
-        Offset(halfWidth, 0),
-        Paint()
-          ..color = theme.accent
-          ..strokeWidth = math.max(1, theme.trailWidth * .35),
-      );
-    }
-    canvas.restore();
+    final rect = Offset.zero & Size(size.x, size.y);
+    canvas.drawOval(rect, paint);
+    canvas.drawOval(rect, outlinePaint);
   }
 }

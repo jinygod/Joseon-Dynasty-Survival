@@ -91,6 +91,7 @@ class BossComponent extends EnemyComponent {
   double _chargeRemaining = 0;
   double _warningRemaining = 0;
   BossPatternDefinition? _warningPattern;
+  int _warningPhaseToken = 0;
   final Vector2 _chargeDirection = Vector2.zero();
 
   double get healthFraction =>
@@ -112,12 +113,16 @@ class BossComponent extends EnemyComponent {
         direction: _chargeDirection,
         range: 190,
         progress: 1 - (_warningRemaining / pattern.warningSeconds),
+        durationSeconds: pattern.warningSeconds,
+        phaseToken: _warningPhaseToken,
       ),
       BossPatternKind.summon => EnemyWarningSnapshot(
         kind: EnemyBehaviorKind.scream,
         direction: _chargeDirection,
         range: 72,
         progress: 1 - (_warningRemaining / pattern.warningSeconds),
+        durationSeconds: pattern.warningSeconds,
+        phaseToken: _warningPhaseToken,
       ),
       BossPatternKind.cone || BossPatternKind.radial => null,
     };
@@ -164,6 +169,7 @@ class BossComponent extends EnemyComponent {
       case BossActionType.chargeWarning:
       case BossActionType.coneWarning:
       case BossActionType.warning:
+        _warningPhaseToken += 1;
         _warningPattern = pattern;
         _warningRemaining = pattern.warningSeconds;
         _chargeDirection.setFrom(_directionToTarget());

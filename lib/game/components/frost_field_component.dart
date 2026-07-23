@@ -1,10 +1,13 @@
-import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flame/components.dart';
 
 import '../combat/combat_vfx_primitives.dart';
 import '../content/ids.dart';
+import '../combat/attack_spec.dart';
+import '../combat/attack_visual_event.dart';
+import '../content/combat_visual_factory.dart';
+import '../content/attack_visual_registry.dart';
 import '../models/damage_event.dart';
 import 'enemy_component.dart';
 
@@ -19,6 +22,7 @@ class FrostFieldComponent extends PositionComponent {
     required Vector2 position,
     this.tickSeconds = .5,
     this.tier = CombatVfxTier.normal,
+    CombatVisualFactory? visualFactory,
   }) : assert(damage >= 0),
        assert(radius > 0),
        assert(durationSeconds > 0),
@@ -28,7 +32,9 @@ class FrostFieldComponent extends PositionComponent {
          position: position,
          size: Vector2.all(radius * 2),
          anchor: Anchor.center,
-       );
+       ) {
+    if (visualFactory != null) attachVisuals(visualFactory);
+  }
 
   final WeaponId weaponId;
   final double damage;
@@ -38,33 +44,65 @@ class FrostFieldComponent extends PositionComponent {
   final double slowFraction;
   final double knockback;
   final CombatVfxTier tier;
+  CombatVfxTier get visualTier => tier;
 
   double _elapsed = 0;
   double _nextTick = 0;
   int _pendingTicks = 0;
 
   bool get isExpired => _elapsed >= durationSeconds;
+  String get visualEffectId => 'frost_flask';
+  bool get usesRegistryVisual => _usesRegistryVisual;
+  bool get startsImageLoadOnMount => false;
 
-  /// Presentation-only tier. Combat values remain unchanged by this value.
-  CombatVfxTier get visualTier => tier;
+  /// The registry presentation delegate never resolves damage.
+  bool get ownsDamageResolution => false;
 
-  /// Normalized time since the latest damage tick for the ice-sigil pulse.
-  double get pulseProgress => (_elapsed / tickSeconds) % 1;
+  /// Damage ticks remain owned by this gameplay component.
+  bool get gameplayOwnsDamageResolution => true;
+  bool _usesRegistryVisual = false;
+  bool _hasRegistrySprite = false;
+  PositionComponent? _registryVisual;
+  Vector2? get registryVisualLocalPosition => _registryVisual?.position.clone();
+  Vector2? get registryVisualScale => _registryVisual?.scale.clone();
 
-  /// Slow presentation-only rotation derived entirely from simulation time.
-  double get runeRotationRadians => _elapsed * .15;
-
-  int get visualLayerCount => switch (tier) {
-    CombatVfxTier.normal => 1,
-    CombatVfxTier.strong => 2,
-    CombatVfxTier.master => 3,
-  };
-
-  int get driftingSpeckCount => switch (tier) {
-    CombatVfxTier.normal => 4,
-    CombatVfxTier.strong => 6,
-    CombatVfxTier.master => 8,
-  };
+  void attachVisuals(CombatVisualFactory visualFactory) {
+    if (_usesRegistryVisual) return;
+    _usesRegistryVisual = true;
+    _hasRegistrySprite = AttackVisualRegistry.byId(
+      visualEffectId,
+    ).layers.any((layer) => visualFactory.images.containsKey(layer.assetKey));
+    final visual =
+        visualFactory.create(
+            AttackVisualEvent.fromAttack(
+              AttackInstance(
+                spec: AttackSpec(
+                  id: visualEffectId,
+                  shape: AttackShape.circle,
+                  damage: 0,
+                  range: 0,
+                  angleRadians: 0,
+                  radius: radius,
+                  width: 0,
+                  windupSeconds: 0,
+                  activeSeconds: durationSeconds,
+                  lingerSeconds: 0,
+                  knockback: 0,
+                  slowFraction: 0,
+                  traits: const {},
+                  presentation: AttackPresentation.normal,
+                ),
+                origin: Vector2.zero(),
+                direction: Vector2(1, 0),
+                sequenceIndex: 0,
+              ),
+            ),
+          )
+          ..position = size / 2
+          ..scale = Vector2.all(size.x / 128);
+    _registryVisual = visual;
+    add(visual);
+  }
 
   bool containsEnemy(EnemyComponent enemy) {
     final hitRadius = radius + enemy.size.x / 2;
@@ -104,138 +142,18 @@ class FrostFieldComponent extends PositionComponent {
 
   @override
   void render(Canvas canvas) {
+    if (_hasRegistrySprite) return;
     final center = Offset(radius, radius);
-    final pulse = 1 - pulseProgress;
-    const palette = CombatVfxPalette(
-      core: Color(0xffe0f7ff),
-      edge: Color(0xff7dd3fc),
-      accent: Color(0xffb9f3ff),
-      smoke: Color(0xff4cc9f0),
-    );
-
-    _drawIceFootprint(canvas, center, palette, pulse);
-    _drawSnowflakeRune(canvas, center, palette, pulse);
-    _drawCracks(canvas, center, palette, pulse);
-    CombatVfxPrimitives.drawCrystal(
-      canvas,
-      center: center,
-      radius: radius,
-      palette: palette,
-      progress: pulseProgress,
-      count: 8,
-    );
-    _drawDriftingSpecks(canvas, center, palette, pulse);
-  }
-
-  void _drawIceFootprint(
-    Canvas canvas,
-    Offset center,
-    CombatVfxPalette palette,
-    double pulse,
-  ) {
-    for (var layer = 0; layer < visualLayerCount; layer += 1) {
-      final fraction = 1 - layer * .11;
-      canvas.drawCircle(
-        center,
-        radius * fraction,
-        Paint()
-          ..color = palette.smoke.withValues(
-            alpha: (.16 + pulse * .10 - layer * .025).clamp(0, 1),
-          ),
-      );
-    }
+    canvas.drawCircle(center, radius, Paint()..color = const Color(0x554cc9f0));
     canvas.drawCircle(
       center,
-      radius * (.88 + pulse * .07),
+      radius,
       Paint()
-        ..color = palette.edge.withValues(alpha: .54 + pulse * .18)
+        ..color = const Color(0xccbde0fe)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = math.max(1.5, radius * .025),
+        ..strokeWidth = 2,
     );
   }
-
-  void _drawSnowflakeRune(
-    Canvas canvas,
-    Offset center,
-    CombatVfxPalette palette,
-    double pulse,
-  ) {
-    final paint = Paint()
-      ..color = palette.accent.withValues(alpha: .52 + pulse * .28)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = math.max(1, radius * .022)
-      ..strokeCap = StrokeCap.round;
-    for (var layer = 0; layer < visualLayerCount; layer += 1) {
-      final layerRadius = radius * (.62 - layer * .11);
-      final rotation = runeRotationRadians + (layer == 0 ? 0.0 : math.pi / 6);
-      for (var axis = 0; axis < 6; axis += 1) {
-        final angle = math.pi * 2 * axis / 6 + rotation;
-        final direction = _directionAt(angle);
-        final tangent = Offset(-direction.dy, direction.dx);
-        final end = center + direction * layerRadius;
-        final branchBase = center + direction * (layerRadius * .56);
-        final branchLength = layerRadius * .19;
-        canvas.drawLine(center, end, paint);
-        canvas.drawLine(
-          branchBase,
-          branchBase - direction * branchLength + tangent * branchLength,
-          paint,
-        );
-        canvas.drawLine(
-          branchBase,
-          branchBase - direction * branchLength - tangent * branchLength,
-          paint,
-        );
-      }
-    }
-  }
-
-  void _drawCracks(
-    Canvas canvas,
-    Offset center,
-    CombatVfxPalette palette,
-    double pulse,
-  ) {
-    const angles = [.21, 1.17, 2.32, 3.48, 4.44, 5.61];
-    final paint = Paint()
-      ..color = palette.core.withValues(alpha: .22 + pulse * .18)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = math.max(1, radius * .014)
-      ..strokeCap = StrokeCap.round;
-    for (var index = 0; index < angles.length; index += 1) {
-      final direction = _directionAt(angles[index]);
-      final tangent = Offset(-direction.dy, direction.dx);
-      final start = center + direction * (radius * (.12 + (index % 2) * .05));
-      final bend = center + direction * (radius * (.38 + (index % 3) * .04));
-      final end = center + direction * (radius * (.61 + (index % 2) * .07));
-      final branch = bend + tangent * (radius * .12);
-      canvas.drawLine(start, bend, paint);
-      canvas.drawLine(bend, end, paint);
-      canvas.drawLine(bend, branch, paint);
-    }
-  }
-
-  void _drawDriftingSpecks(
-    Canvas canvas,
-    Offset center,
-    CombatVfxPalette palette,
-    double pulse,
-  ) {
-    final samples = radialSamples(count: driftingSpeckCount);
-    for (var index = 0; index < samples.length; index += 1) {
-      final sample = samples[index];
-      final direction = _directionAt(sample.angle + pulseProgress * .42);
-      final distance = radius * (.22 + sample.distanceFactor * .53);
-      final point = center + direction * distance;
-      canvas.drawCircle(
-        point,
-        math.max(1, radius * (.018 + (index % 2) * .008)),
-        Paint()..color = palette.accent.withValues(alpha: .34 + pulse * .32),
-      );
-    }
-  }
-
-  Offset _directionAt(double angle) => Offset(math.cos(angle), math.sin(angle));
 
   Vector2 _directionTo(Vector2 target) {
     final direction = target - position;
