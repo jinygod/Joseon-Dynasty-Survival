@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pixel_survivor/app/compendium_screen.dart';
 import 'package:pixel_survivor/app/game_screen.dart';
 import 'package:pixel_survivor/app/lobby_controller.dart';
 import 'package:pixel_survivor/app/lobby_navigation_dock.dart';
 import 'package:pixel_survivor/app/lobby_screen.dart';
-import 'package:pixel_survivor/app/compendium_screen.dart';
+import 'package:pixel_survivor/app/settings_screen.dart';
 import 'package:pixel_survivor/game/audio/audio_settings.dart';
 import 'package:pixel_survivor/game/audio/audio_settings_controller.dart';
 import 'package:pixel_survivor/game/audio/audio_settings_repository.dart';
@@ -231,10 +232,12 @@ void main() {
       final lobby = LobbyController(
         store: _MemorySaveStore(SaveState.defaults()),
       );
+      final navigatorObserver = _RecordingNavigatorObserver();
       await lobby.load();
 
       await tester.pumpWidget(
         MaterialApp(
+          navigatorObservers: [navigatorObserver],
           home: LobbyScreen(
             controller: lobby,
             audioSettingsController: _audioController(),
@@ -249,21 +252,72 @@ void main() {
       expect(find.byKey(const Key('lobby-deploy-face')), findsOneWidget);
       expect(find.byKey(const Key('lobby-navigation-dock')), findsOneWidget);
 
+      final lobbyContext = tester.element(find.byType(LobbyScreen));
+      for (final key in const [
+        Key('lobby-settings'),
+        Key('lobby-stage'),
+        Key('lobby-character'),
+        Key('lobby-compendium'),
+        Key('lobby-records'),
+      ]) {
+        final finder = find.byKey(key);
+        final rect = tester.getRect(finder);
+        expect(rect.left, greaterThanOrEqualTo(0));
+        expect(rect.top, greaterThanOrEqualTo(0));
+        expect(rect.right, lessThanOrEqualTo(390));
+        expect(rect.bottom, lessThanOrEqualTo(844));
+
+        final pushesBeforeTap = navigatorObserver.pushCount;
+        await tester.tap(finder);
+        expect(navigatorObserver.pushCount, pushesBeforeTap + 1);
+        Navigator.of(lobbyContext).pop();
+        await tester.pumpAndSettle();
+      }
+
       await tester.ensureVisible(find.byKey(const Key('lobby-deploy')));
       await tester.pump();
-      for (final key in const [
-        'lobby-settings',
-        'lobby-stage',
-        'lobby-character',
-        'lobby-compendium',
-        'lobby-records',
-        'lobby-deploy',
-      ]) {
-        expect(find.byKey(Key(key)), findsOneWidget);
-      }
+      await tester.tap(find.byKey(const Key('lobby-deploy')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.byType(GameScreen), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('settings round trip preserves an unrelated lobby SnackBar', (
+    tester,
+  ) async {
+    final lobby = LobbyController(
+      store: _MemorySaveStore(SaveState.defaults()),
+    );
+    await lobby.load();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: LobbyScreen(
+          controller: lobby,
+          audioSettingsController: _audioController(),
+        ),
+      ),
+    );
+
+    ScaffoldMessenger.of(tester.element(find.byType(LobbyScreen))).showSnackBar(
+      const SnackBar(
+        key: Key('unrelated-lobby-snack'),
+        duration: Duration(minutes: 1),
+        content: Text('계정 동기화가 완료되었습니다.'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('unrelated-lobby-snack')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('lobby-settings')));
+    await tester.pumpAndSettle();
+    expect(find.byType(SettingsScreen), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('unrelated-lobby-snack')), findsOneWidget);
+  });
 
   testWidgets('lobby settings command meets the primary target size', (
     tester,
@@ -419,4 +473,14 @@ class _MemoryAudioStore implements AudioSettingsStore {
 
   @override
   Future<void> save(AudioSettings settings) async => value = settings;
+}
+
+class _RecordingNavigatorObserver extends NavigatorObserver {
+  int pushCount = 0;
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    pushCount += 1;
+    super.didPush(route, previousRoute);
+  }
 }

@@ -139,17 +139,16 @@ class _LobbyScreenState extends State<LobbyScreen> with WidgetsBindingObserver {
   Future<void> _openSettings() async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => SettingsScreen(
-          controller: widget.audioSettingsController,
-          resetProgress: widget.controller.resetProgress,
-          accountController: widget.accountController,
-          progressSyncController: widget.progressSyncController,
+        builder: (_) => ScaffoldMessenger(
+          child: SettingsScreen(
+            controller: widget.audioSettingsController,
+            resetProgress: widget.controller.resetProgress,
+            accountController: widget.accountController,
+            progressSyncController: widget.progressSyncController,
+          ),
         ),
       ),
     );
-    if (mounted) {
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    }
   }
 
   Future<void> _openCompendium() async {
