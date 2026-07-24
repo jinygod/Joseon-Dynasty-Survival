@@ -111,6 +111,7 @@ class _CompendiumCard extends StatelessWidget {
       title: entry.isUnlocked ? entry.name : '미확인 항목',
       description: _description,
       locked: !entry.isUnlocked,
+      semanticsLabel: entry.isUnlocked ? null : '잠긴 항목, 잠김',
       leading: entry.isUnlocked
           ? _UnlockedArtwork(entry: entry)
           : const _LockedSilhouette(),

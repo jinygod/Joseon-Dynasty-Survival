@@ -9,6 +9,7 @@ class JoseonCodexCard extends StatelessWidget {
     required this.locked,
     this.leading,
     this.trailing,
+    this.semanticsLabel,
     this.onTap,
   });
 
@@ -17,11 +18,12 @@ class JoseonCodexCard extends StatelessWidget {
   final bool locked;
   final Widget? leading;
   final Widget? trailing;
+  final String? semanticsLabel;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) => Semantics(
-    label: locked ? '잠긴 항목, 잠김' : title,
+    label: semanticsLabel ?? (locked ? '$title, 잠김' : title),
     enabled: !locked,
     button: onTap != null,
     excludeSemantics: true,
