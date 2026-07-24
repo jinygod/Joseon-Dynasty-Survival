@@ -77,6 +77,26 @@ void main() {
     expect(find.byType(SafeArea), findsWidgets);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('keeps record summaries in two compact columns', (tester) async {
+    tester.view.physicalSize = const Size(375, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      _app(
+        RecordsScreen(
+          state: SaveState.defaults(),
+          historyService: MetaHistoryService(loadHistory: () async => []),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('records-summary-grid')), findsOneWidget);
+    expect(find.byKey(const Key('record-summary-card')), findsNWidgets(5));
+  });
 }
 
 Widget _app(Widget home) => MaterialApp(

@@ -2,10 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../game/content/asset_catalog.dart';
 import '../game/models/compendium_entry.dart';
 import '../game/systems/compendium_service.dart';
 import '../game/systems/save_system.dart';
-import 'accessible_status_badge.dart';
+import 'joseon_codex_card.dart';
+import 'joseon_tab_bar.dart';
+import 'missing_asset_placeholder.dart';
 
 typedef CompendiumViewedCallback = Future<void> Function(Set<String> keys);
 
@@ -27,6 +30,7 @@ class CompendiumScreen extends StatefulWidget {
 
 class _CompendiumScreenState extends State<CompendiumScreen> {
   late final List<CompendiumEntry> _entries;
+  var _selectedSection = 0;
 
   @override
   void initState() {
@@ -42,30 +46,28 @@ class _CompendiumScreenState extends State<CompendiumScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: CompendiumSection.values.length,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('도감'),
-          bottom: const TabBar(
-            tabs: [
-              Tab(text: '인물'),
-              Tab(text: '무기'),
-              Tab(text: '증강'),
-            ],
-          ),
-        ),
-        body: SafeArea(
-          child: TabBarView(
-            children: [
-              for (final section in CompendiumSection.values)
-                _CompendiumList(
-                  entries: _entries
-                      .where((entry) => entry.section == section)
-                      .toList(),
-                ),
-            ],
-          ),
+    final section = CompendiumSection.values[_selectedSection];
+    return Scaffold(
+      appBar: AppBar(title: const Text('도감')),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: JoseonTabBar(
+                labels: const ['캐릭터', '무기', '증강'],
+                selectedIndex: _selectedSection,
+                onChanged: (index) => setState(() => _selectedSection = index),
+              ),
+            ),
+            Expanded(
+              child: _CompendiumList(
+                entries: _entries
+                    .where((entry) => entry.section == section)
+                    .toList(),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -79,10 +81,19 @@ class _CompendiumList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView.separated(
+    final textScale = MediaQuery.textScalerOf(context).textScaleFactor;
+    final useTwoColumns =
+        MediaQuery.sizeOf(context).width >= 375 && textScale <= 1.3;
+    return GridView.builder(
+      key: const Key('compendium-grid'),
       padding: const EdgeInsets.all(16),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: useTwoColumns ? 2 : 1,
+        mainAxisSpacing: 10,
+        crossAxisSpacing: 10,
+        mainAxisExtent: useTwoColumns ? 260 : 156,
+      ),
       itemCount: entries.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 10),
       itemBuilder: (context, index) => _CompendiumCard(entry: entries[index]),
     );
   }
@@ -94,87 +105,71 @@ class _CompendiumCard extends StatelessWidget {
   final CompendiumEntry entry;
 
   @override
+  Widget build(BuildContext context) => JoseonCodexCard(
+    title: entry.name,
+    description: _description,
+    locked: !entry.isUnlocked,
+    leading: entry.isUnlocked
+        ? _UnlockedArtwork(entry: entry)
+        : const _LockedSilhouette(),
+  );
+
+  String get _description {
+    final progress = entry.isUnlocked
+        ? ''
+        : '\n${entry.currentProgress} / ${entry.targetProgress}';
+    return '${entry.detail}\n\n해금 조건\n${entry.unlockCondition}$progress';
+  }
+}
+
+class _LockedSilhouette extends StatelessWidget {
+  const _LockedSilhouette();
+
+  @override
+  Widget build(BuildContext context) => const SizedBox(
+    key: Key('locked-silhouette'),
+    width: 44,
+    height: 64,
+    child: DecoratedBox(
+      decoration: BoxDecoration(
+        color: Color(0xff312b25),
+        borderRadius: BorderRadius.all(Radius.circular(8)),
+      ),
+      child: Icon(Icons.lock, color: Color(0xffffd66b)),
+    ),
+  );
+}
+
+class _UnlockedArtwork extends StatelessWidget {
+  const _UnlockedArtwork({required this.entry});
+
+  final CompendiumEntry entry;
+
+  @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                AccessibleStatusBadge(
-                  icon: entry.isUnlocked ? Icons.lock_open : Icons.lock_outline,
-                  label: entry.isUnlocked ? '해금됨' : '잠김',
-                  semanticsLabel: entry.isUnlocked ? '해금된 항목' : '잠긴 항목',
-                  foregroundColor: entry.isUnlocked
-                      ? colorScheme.primary
-                      : colorScheme.onSurface,
-                ),
-                if (entry.isNew)
-                  AccessibleStatusBadge(
-                    icon: Icons.new_releases_outlined,
-                    label: '새 항목',
-                    foregroundColor: colorScheme.onTertiaryContainer,
-                    backgroundColor: colorScheme.tertiaryContainer,
-                  ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Icon(
-                  entry.isUnlocked ? Icons.lock_open : Icons.lock_outline,
-                  color: entry.isUnlocked
-                      ? colorScheme.primary
-                      : colorScheme.outline,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    entry.name,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-                if (entry.isNew)
-                  const Chip(
-                    visualDensity: VisualDensity.compact,
-                    label: Text('새 항목'),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(entry.detail),
-            const SizedBox(height: 8),
-            Text(
-              entry.isUnlocked
-                  ? '해금 완료 · ${entry.unlockCondition}'
-                  : entry.unlockCondition,
-              style: TextStyle(
-                color: entry.isUnlocked
-                    ? colorScheme.primary
-                    : colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            if (!entry.isUnlocked) ...[
-              const SizedBox(height: 8),
-              LinearProgressIndicator(value: entry.progressFraction),
-              const SizedBox(height: 4),
-              Align(
-                alignment: Alignment.centerRight,
-                child: Text(
-                  '${entry.currentProgress} / ${entry.targetProgress}',
-                ),
-              ),
-            ],
-          ],
+    final assetPath = switch (entry.section) {
+      CompendiumSection.character => AssetCatalog.characters[entry.id],
+      CompendiumSection.weapon => AssetCatalog.weapons[entry.id],
+      CompendiumSection.augment => AssetCatalog.augments[entry.id],
+    };
+    if (assetPath == null) {
+      return SizedBox(
+        width: 44,
+        height: 64,
+        child: MissingAssetPlaceholder(assetKey: entry.id),
+      );
+    }
+    return SizedBox(
+      width: 44,
+      height: 64,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.asset(
+          assetPath,
+          key: const Key('unlocked-original-image'),
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) =>
+              MissingAssetPlaceholder(assetKey: entry.id),
         ),
       ),
     );

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../game/content/asset_catalog.dart';
 import '../game/content/character_definitions.dart';
 import '../game/models/meta_history.dart';
 import '../game/systems/meta_history_service.dart';
 import '../game/systems/save_system.dart';
+import 'joseon_codex_card.dart';
+import 'missing_asset_placeholder.dart';
 
 class RecordsScreen extends StatefulWidget {
   const RecordsScreen({required this.state, this.historyService, super.key});
@@ -52,6 +55,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Wrap(
+                key: const Key('records-summary-grid'),
                 spacing: 10,
                 runSpacing: 10,
                 children: [
@@ -63,12 +67,16 @@ class _RecordsScreenState extends State<RecordsScreen> {
               const _SectionTitle('캐릭터별 승리'),
               const SizedBox(height: 8),
               for (final character in characterDefinitions)
-                Card(
-                  child: ListTile(
-                    leading: const Icon(Icons.person_outline),
-                    title: Text(
-                      '${character.name} '
-                      '${widget.state.characterVictoryCounts[character.id] ?? 0}승',
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: JoseonCodexCard(
+                    title:
+                        '${character.name} ${widget.state.characterVictoryCounts[character.id] ?? 0}승',
+                    description: '',
+                    locked: false,
+                    leading: _CatalogThumbnail(
+                      assetPath: AssetCatalog.characters[character.id],
+                      assetKey: character.id,
                     ),
                   ),
                 ),
@@ -83,27 +91,26 @@ class _RecordsScreenState extends State<RecordsScreen> {
                   }
                   final usage = snapshot.data ?? const [];
                   if (usage.isEmpty) {
-                    return const Card(
-                      child: Padding(
-                        padding: EdgeInsets.all(20),
-                        child: Text(
-                          '아직 저장된 무기 사용 기록이 없습니다.',
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
+                    return const JoseonCodexCard(
+                      title: '아직 저장된 무기 사용 기록이 없습니다.',
+                      description: '',
+                      locked: false,
                     );
                   }
                   return Column(
                     children: [
                       for (final record in usage)
-                        Card(
-                          child: ListTile(
-                            leading: const Icon(Icons.auto_awesome),
-                            title: Text(record.weaponName),
-                            subtitle: Text(
-                              '사용 ${record.usageRuns}판 · '
-                              '처치 ${record.kills} · '
-                              '피해 ${_number(record.damage)}',
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: JoseonCodexCard(
+                            title: record.weaponName,
+                            description:
+                                '사용 ${record.usageRuns}판 · '
+                                '처치 ${record.kills} · 피해 ${_number(record.damage)}',
+                            locked: false,
+                            leading: _CatalogThumbnail(
+                              assetPath: AssetCatalog.weapons[record.weaponId],
+                              assetKey: record.weaponId,
                             ),
                           ),
                         ),
@@ -129,26 +136,37 @@ class _SummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
     return SizedBox(
-      width: width >= 800 ? 230 : (width - 42) / 2,
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            children: [
-              Icon(icon, color: const Color(0xff8f2d38)),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  label,
-                  style: const TextStyle(fontWeight: FontWeight.w800),
-                ),
-              ),
-            ],
-          ),
-        ),
+      width: width >= 375 ? (width - 42) / 2 : width - 32,
+      child: JoseonCodexCard(
+        key: const Key('record-summary-card'),
+        title: label,
+        description: '',
+        locked: false,
+        leading: Icon(icon, color: const Color(0xff8f2d38)),
       ),
     );
   }
+}
+
+class _CatalogThumbnail extends StatelessWidget {
+  const _CatalogThumbnail({required this.assetPath, required this.assetKey});
+
+  final String? assetPath;
+  final String assetKey;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: 36,
+    height: 36,
+    child: assetPath == null
+        ? MissingAssetPlaceholder(assetKey: assetKey)
+        : Image.asset(
+            assetPath!,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) =>
+                MissingAssetPlaceholder(assetKey: assetKey),
+          ),
+  );
 }
 
 class _SectionTitle extends StatelessWidget {

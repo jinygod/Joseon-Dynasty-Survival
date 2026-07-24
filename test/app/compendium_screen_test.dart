@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/app/compendium_screen.dart';
+import 'package:pixel_survivor/app/joseon_tab_bar.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
 import 'package:pixel_survivor/game/systems/save_system.dart';
@@ -21,7 +22,7 @@ void main() {
     await tester.pump();
 
     expect(find.byType(SafeArea), findsWidgets);
-    expect(find.byType(Tab), findsNWidgets(3));
+    expect(find.byType(JoseonTabBar), findsOneWidget);
     expect(find.text(characterDefinitions.first.name), findsOneWidget);
     expect(viewed, contains('character:$rookieConstable'));
     expect(viewed, contains('weapon:$hwandoSlash'));
@@ -39,7 +40,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byType(Tab).at(1));
+    await tester.tap(find.text('무기'));
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
       find.text(bombName),
@@ -65,6 +66,30 @@ void main() {
     await tester.pump();
 
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('locked codex entry hides original asset and shows condition', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(375, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      _app(
+        CompendiumScreen(
+          state: SaveState.defaults().copyWith(unlockedAugmentIds: const {}),
+        ),
+      ),
+    );
+    await tester.tap(find.text('증강'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(GridView), findsOneWidget);
+    expect(find.byKey(const Key('locked-silhouette')), findsWidgets);
+    expect(find.byKey(const Key('locked-original-image')), findsNothing);
+    expect(find.textContaining('해금 조건'), findsWidgets);
   });
 }
 
