@@ -132,73 +132,88 @@ class _CharacterCard extends StatelessWidget {
       semanticsLabel: definition.name,
       onTap: onTap,
       child: LayoutBuilder(
-        builder: (context, constraints) => Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SizedBox(
-              height: (constraints.maxHeight * .36).clamp(160.0, 220.0),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: assetPath == null
-                    ? MissingAssetPlaceholder(assetKey: definition.id)
-                    : Image.asset(
-                        assetPath,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) =>
-                            MissingAssetPlaceholder(assetKey: assetPath),
-                      ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              definition.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              _presentationRole(definition.id),
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '${definition.passiveName} · ${definition.passiveDescription}',
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 10),
-            Text(
-              '체력 ${stats.health}   공격 ${stats.attack}   이동 속도 ${stats.moveSpeed}',
-            ),
-            const SizedBox(height: 6),
-            Text(
-              '시작 무기 ${weapon.name}',
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
-            if (selected) const Text('선택됨'),
-            if (selected)
-              SizedBox(key: Key('character-selected-${definition.id}')),
-            if (!unlocked)
-              Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.lock,
-                      key: Key('character-lock-${definition.id}'),
-                    ),
-                    Text(
-                      unlockPresentation.condition,
-                      key: Key('character-unlock-condition-${definition.id}'),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                  ],
+        builder: (context, constraints) {
+          final compact = constraints.maxHeight < 360;
+          final content = Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                height: compact
+                    ? (constraints.maxHeight * .25).clamp(64.0, 96.0)
+                    : (constraints.maxHeight * .36).clamp(160.0, 220.0),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: assetPath == null
+                      ? MissingAssetPlaceholder(assetKey: definition.id)
+                      : Image.asset(
+                          assetPath,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) =>
+                              MissingAssetPlaceholder(assetKey: assetPath),
+                        ),
                 ),
               ),
-          ],
-        ),
+              const SizedBox(height: 12),
+              Text(
+                definition.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 23,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                _presentationRole(definition.id),
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '${definition.passiveName} · ${definition.passiveDescription}',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 10),
+              Text(
+                '체력 ${stats.health}   공격 ${stats.attack}   이동 속도 ${stats.moveSpeed}',
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '시작 무기 ${weapon.name}',
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              if (selected) const Text('선택됨'),
+              if (selected)
+                SizedBox(key: Key('character-selected-${definition.id}')),
+              if (!unlocked)
+                Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.lock,
+                        key: Key('character-lock-${definition.id}'),
+                      ),
+                      Text(
+                        unlockPresentation.condition,
+                        key: Key('character-unlock-condition-${definition.id}'),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          );
+          return compact
+              ? SingleChildScrollView(
+                  key: Key('character-card-scroll-${definition.id}'),
+                  child: content,
+                )
+              : content;
+        },
       ),
     );
   }
