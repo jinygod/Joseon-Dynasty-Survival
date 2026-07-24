@@ -75,6 +75,39 @@ class SpatialSpawnPlanner {
       }
     }
 
+    if (best == null) {
+      final bounds = request.worldBounds;
+      final insetLeft = bounds.left + 24;
+      final insetRight = bounds.right - 24;
+      final insetTop = bounds.top + 24;
+      final insetBottom = bounds.bottom - 24;
+      for (final candidate in <Vector2>[
+        Vector2(insetLeft, insetTop),
+        Vector2(insetRight, insetTop),
+        Vector2(insetRight, insetBottom),
+        Vector2(insetLeft, insetBottom),
+        Vector2(bounds.center.dx, insetTop),
+        Vector2(insetRight, bounds.center.dy),
+        Vector2(bounds.center.dx, insetBottom),
+        Vector2(insetLeft, bounds.center.dy),
+      ]) {
+        if (request.visibleRect.contains(candidate.toOffset()) ||
+            candidate.distanceTo(request.playerPosition) <
+                request.minDistance) {
+          continue;
+        }
+        final pressure = request.pressureFor?.call(candidate) ?? 0;
+        final direction = candidate - request.playerPosition;
+        if (direction.length2 > 0) direction.normalize();
+        final forwardBias = motion.length2 == 0 ? 0 : direction.dot(motion);
+        final score = pressure * 100 - forwardBias * 80;
+        if (score < bestScore) {
+          bestScore = score;
+          best = candidate;
+        }
+      }
+    }
+
     return best ??
         Vector2(request.worldBounds.center.dx, request.worldBounds.center.dy);
   }

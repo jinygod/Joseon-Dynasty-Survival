@@ -2013,6 +2013,26 @@ void main() {
     );
 
     gameTester.testGameWidget(
+      'pending experience mounts are not duplicated by same-frame syncs',
+      setUp: (game, _) async {
+        game.debugDropExperience(
+          4,
+          position: game.activePlayers.single.position + Vector2(100, 0),
+        );
+        game.update(0);
+        game.update(0);
+        game.processLifecycleEvents();
+      },
+      verify: (game, _) async {
+        expect(
+          game.worldChildrenOfType<ExperienceGemComponent>(),
+          hasLength(1),
+        );
+        expect(game.ownedExperience, 4);
+      },
+    );
+
+    gameTester.testGameWidget(
       'player death cancels an in-flight experience pickup without granting',
       setUp: (game, _) async {
         game.debugDropExperience(

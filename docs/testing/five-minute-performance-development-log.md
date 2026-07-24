@@ -37,7 +37,10 @@
 
 The finite-world scenario deliberately sustains more nearby enemies than the
 previous single-screen runtime. Sleeping enemies are stored as lightweight
-records and do not contribute mounted Flame components. Offscreen active
+records and do not contribute mounted Flame components. Sleep intentionally
+preserves identity, position, health fraction, rank, and deterministic state
+seed; transient slow, aura, attachment, and in-progress behavior phases restart
+when the enemy is restored. Offscreen active
 enemies release their shadow and warning-overlay components, and the
 experience-gem synchronizer prevents duplicate pending mounts while enforcing
 the configured 96-component active cap.

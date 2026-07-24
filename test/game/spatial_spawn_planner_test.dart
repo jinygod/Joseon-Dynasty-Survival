@@ -40,4 +40,28 @@ void main() {
 
     expect(planner.positionFor(request).x, greaterThan(1016));
   });
+
+  test(
+    'boundary fallback stays outside view when radial candidates are near',
+    () {
+      const planner = SpatialSpawnPlanner(seed: 3107);
+      final request = SpatialSpawnRequest(
+        visibleRect: const Rect.fromLTWH(300, 300, 400, 400),
+        worldBounds: const Rect.fromLTWH(0, 0, 1000, 1000),
+        playerPosition: Vector2(500, 500),
+        recentMotion: Vector2.zero(),
+        sequence: 19,
+        minDistance: 500,
+      );
+
+      final position = planner.positionFor(request);
+
+      expect(request.visibleRect.contains(position.toOffset()), isFalse);
+      expect(
+        position.distanceTo(request.playerPosition),
+        greaterThanOrEqualTo(500),
+      );
+      expect(request.worldBounds.contains(position.toOffset()), isTrue);
+    },
+  );
 }
