@@ -1,6 +1,10 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/app/records_screen.dart';
+import 'package:pixel_survivor/game/content/asset_catalog.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
 import 'package:pixel_survivor/game/models/run_outcome.dart';
@@ -37,8 +41,16 @@ void main() {
     expect(find.text('무기 사용 기록'), findsOneWidget);
     expect(find.text('환도 베기'), findsOneWidget);
     expect(find.text('사용 1판 · 처치 7 · 피해 20'), findsOneWidget);
+    final characterImage = tester.widget<Image>(find.byType(Image).first);
     final historyImage = tester.widget<Image>(find.byType(Image).last);
-    expect(historyImage.image, isA<AssetImage>());
+    expect(
+      (characterImage.image as AssetImage).assetName,
+      AssetCatalog.characters[rookieConstable],
+    );
+    expect(
+      (historyImage.image as AssetImage).assetName,
+      AssetCatalog.weapons[hwandoSlash],
+    );
   });
 
   testWidgets('shows a Korean empty state when telemetry is empty', (
@@ -105,6 +117,36 @@ void main() {
       2,
     );
     expect(find.byKey(const Key('record-summary-card')), findsNWidgets(5));
+    final value = tester.widget<Text>(
+      find.byKey(const Key('record-summary-value')).first,
+    );
+    final label = tester.widget<Text>(
+      find.byKey(const Key('record-summary-label')).first,
+    );
+    expect(value.style!.fontSize, greaterThan(label.style!.fontSize!));
+  });
+
+  testWidgets('uses the missing asset placeholder when catalog art fails', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      DefaultAssetBundle(
+        bundle: _FailingAssetBundle(),
+        child: _app(
+          RecordsScreen(
+            state: SaveState.defaults(),
+            historyService: MetaHistoryService(
+              loadHistory: () async => [
+                _run(kills: {hwandoSlash: 1}),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('missing-asset-hwando_slash')), findsOneWidget);
   });
 }
 
@@ -129,3 +171,9 @@ RunTelemetry _run({
   weaponKillCounts: kills,
   weaponDamageTotals: damage,
 );
+
+class _FailingAssetBundle extends CachingAssetBundle {
+  @override
+  Future<ByteData> load(String key) =>
+      Future<ByteData>.error(StateError('Missing test asset: $key'));
+}

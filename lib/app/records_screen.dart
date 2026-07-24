@@ -6,6 +6,7 @@ import '../game/models/meta_history.dart';
 import '../game/systems/meta_history_service.dart';
 import '../game/systems/save_system.dart';
 import 'joseon_codex_card.dart';
+import 'joseon_ui_theme.dart';
 import 'missing_asset_placeholder.dart';
 
 class RecordsScreen extends StatefulWidget {
@@ -61,7 +62,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
                 physics: const NeverScrollableScrollPhysics(),
                 mainAxisSpacing: 10,
                 crossAxisSpacing: 10,
-                mainAxisExtent: 92,
+                mainAxisExtent: 112,
                 children: [
                   for (final record in records)
                     _SummaryCard(icon: record.icon, label: record.label),
@@ -141,12 +142,52 @@ class _SummaryCard extends StatelessWidget {
     final splitAt = label.lastIndexOf(' ');
     final supportingLabel = label.substring(0, splitAt);
     final value = label.substring(splitAt + 1);
-    return JoseonCodexCard(
-      key: const Key('record-summary-card'),
-      title: value,
-      description: supportingLabel,
-      locked: false,
-      leading: Icon(icon, color: const Color(0xff8f2d38)),
+    return Semantics(
+      label: '$supportingLabel $value',
+      child: DecoratedBox(
+        key: const Key('record-summary-card'),
+        decoration: BoxDecoration(
+          color: JoseonUiTheme.ivory,
+          borderRadius: JoseonUiTheme.panelRadius,
+          border: Border.all(
+            color: JoseonUiTheme.unlocked,
+            width: JoseonUiTheme.panelBorderWidth,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(JoseonUiTheme.compactSpacing),
+          child: Row(
+            children: [
+              Icon(icon, color: const Color(0xff8f2d38)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      value,
+                      key: const Key('record-summary-value'),
+                      style: const TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    Text(
+                      supportingLabel,
+                      key: const Key('record-summary-label'),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
