@@ -42,6 +42,7 @@ import 'package:pixel_survivor/game/models/run_outcome.dart';
 import 'package:pixel_survivor/game/models/run_result.dart';
 import 'package:pixel_survivor/game/models/vector_input.dart';
 import 'package:pixel_survivor/game/pixel_survivor_game.dart';
+import 'package:pixel_survivor/game/world/combat_world.dart';
 import 'package:pixel_survivor/game/game_performance_budget.dart';
 import 'package:pixel_survivor/game/systems/level_up_system.dart';
 import 'package:pixel_survivor/game/systems/talisman_executor.dart';
@@ -52,6 +53,7 @@ void main() {
     return PixelSurvivorGame(
       playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
       onRunEnded: null,
+      loadVisualAssets: false,
     );
   }
 
@@ -90,6 +92,35 @@ void main() {
     newGame,
     gameSize: Vector2(960, 540),
   );
+  final ownershipGameTester = FlameTester<PixelSurvivorGame>(
+    () => PixelSurvivorGame(
+      playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
+      onRunEnded: null,
+      loadVisualAssets: false,
+    ),
+    gameSize: Vector2(960, 540),
+  );
+
+  ownershipGameTester.testGameWidget(
+    'actors and stage mount below CombatWorld',
+    setUp: (game, _) async {
+      await game.addWorldComponent(
+        EnemyComponent(
+          enemyId: 'ownership-target',
+          maxHealth: 1,
+          moveSpeed: 0,
+          damage: 0,
+          position: Vector2.zero(),
+        ),
+      );
+    },
+    verify: (game, _) async {
+      expect(game.world, isA<CombatWorld>());
+      expect(game.activePlayers.single.parent, same(game.world));
+      expect(game.worldChildrenOfType<EnemyComponent>(), isNotEmpty);
+      expect(game.children.whereType<EnemyComponent>(), isEmpty);
+    },
+  );
   final representativeStageGameTester = FlameTester<PixelSurvivorGame>(
     () => PixelSurvivorGame(
       playerSlot: const PlayerSlot(index: 0, characterId: exorcistDosa),
@@ -105,6 +136,7 @@ void main() {
       playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
       onRunEnded: null,
       onAudioCue: audioCues.add,
+      loadVisualAssets: false,
     );
   }, gameSize: Vector2(960, 540));
   final masterGameTester = FlameTester<PixelSurvivorGame>(() {
@@ -113,6 +145,7 @@ void main() {
       playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
       onRunEnded: null,
       onAudioCue: audioCues.add,
+      loadVisualAssets: false,
     );
     for (var level = 0; level < 6; level += 1) {
       game.weaponSystem.upgrade(hwandoSlash, game.unlockedWeaponIds);
@@ -139,6 +172,7 @@ void main() {
     final game = PixelSurvivorGame(
       playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
       onRunEnded: null,
+      loadVisualAssets: false,
     )..augmentLevels[hawkEye] = 20;
     for (var level = 0; level < 6; level += 1) {
       game.weaponSystem.upgrade(hwandoSlash, game.unlockedWeaponIds);
@@ -164,6 +198,7 @@ void main() {
         maxDamageNumbers: 24,
         maxCombatEffects: 32,
       ),
+      loadVisualAssets: false,
     ),
     gameSize: Vector2(960, 540),
   );
@@ -177,6 +212,7 @@ void main() {
         maxDamageNumbers: 24,
         maxCombatEffects: 32,
       ),
+      loadVisualAssets: false,
     ),
     gameSize: Vector2(960, 540),
   );
@@ -190,6 +226,7 @@ void main() {
         maxDamageNumbers: 24,
         maxCombatEffects: 1,
       ),
+      loadVisualAssets: false,
     ),
     gameSize: Vector2(960, 540),
   );
@@ -211,9 +248,12 @@ void main() {
       verify: (game, _) async {
         game.update(0);
 
-        expect(game.children.whereType<StageBackdropComponent>(), hasLength(1));
-        final shadows = game.children
-            .whereType<ActorShadowComponent>()
+        expect(
+          game.worldChildrenOfType<StageBackdropComponent>(),
+          hasLength(1),
+        );
+        final shadows = game
+            .worldChildrenOfType<ActorShadowComponent>()
             .toList();
         expect(shadows, hasLength(5));
         final targets = shadows.map((shadow) => shadow.target).toList();
@@ -348,7 +388,7 @@ void main() {
         expect(game.combatNotice, '봉마참');
         expect(game.combatNoticeSecondsRemaining, inInclusiveRange(0, 1.2));
         expect(
-          game.children.whereType<AttackEffectComponent>().any(
+          game.worldChildrenOfType<AttackEffectComponent>().any(
             (effect) =>
                 effect.instance.spec.id == sealingSlash &&
                 effect.instance.spec.presentation == AttackPresentation.synergy,
@@ -916,8 +956,8 @@ void main() {
         game.update(.05);
         game.update(.05);
 
-        expect(game.children.whereType<WardAuraComponent>(), hasLength(1));
-        expect(game.children.whereType<FrostFieldComponent>(), hasLength(1));
+        expect(game.worldChildrenOfType<WardAuraComponent>(), hasLength(1));
+        expect(game.worldChildrenOfType<FrostFieldComponent>(), hasLength(1));
 
         for (var cycle = 0; cycle < 4; cycle += 1) {
           for (var frame = 0; frame < 60; frame += 1) {
@@ -925,7 +965,7 @@ void main() {
           }
         }
         expect(
-          game.children.whereType<FrostFieldComponent>().length,
+          game.worldChildrenOfType<FrostFieldComponent>().length,
           lessThanOrEqualTo(3),
         );
       },
@@ -952,7 +992,7 @@ void main() {
         );
       },
       verify: (game, _) async {
-        final target = game.children.whereType<EnemyComponent>().singleWhere(
+        final target = game.worldChildrenOfType<EnemyComponent>().singleWhere(
           (enemy) => enemy.enemyId == bandit,
         );
         for (var frame = 0; frame < 30; frame += 1) {
@@ -995,7 +1035,7 @@ void main() {
       },
       verify: (game, _) async {
         game.update(.05);
-        final target = game.children.whereType<EnemyComponent>().singleWhere(
+        final target = game.worldChildrenOfType<EnemyComponent>().singleWhere(
           (enemy) => enemy.enemyId == bandit,
         );
 
@@ -1023,12 +1063,12 @@ void main() {
       verify: (game, _) async {
         game.update(.05);
         final target = game.weaponSystem.attachedTalismans.single.target;
-        final mark = game.children
-            .whereType<TalismanAttachmentComponent>()
+        final mark = game
+            .worldChildrenOfType<TalismanAttachmentComponent>()
             .single;
         expect(mark.seal.target, same(target));
-        final flight = game.children
-            .whereType<TalismanTransferCueComponent>()
+        final flight = game
+            .worldChildrenOfType<TalismanTransferCueComponent>()
             .single;
         expect(flight.source, game.activePlayers.single.position);
         expect(flight.target, target.position);
@@ -1037,7 +1077,10 @@ void main() {
         game.processLifecycleEvents();
 
         expect(game.weaponSystem.attachedTalismans, isEmpty);
-        expect(game.children.whereType<TalismanAttachmentComponent>(), isEmpty);
+        expect(
+          game.worldChildrenOfType<TalismanAttachmentComponent>(),
+          isEmpty,
+        );
       },
     );
 
@@ -1085,11 +1128,11 @@ void main() {
           isTrue,
         );
         expect(
-          game.children.whereType<TalismanTransferCueComponent>(),
+          game.worldChildrenOfType<TalismanTransferCueComponent>(),
           isNotEmpty,
         );
         expect(
-          game.children.whereType<TalismanAttachmentComponent>().length,
+          game.worldChildrenOfType<TalismanAttachmentComponent>().length,
           lessThanOrEqualTo(TalismanExecutor.maxAttachedSeals),
         );
       },
@@ -1122,7 +1165,7 @@ void main() {
         }
 
         expect(
-          game.children.whereType<TalismanTransferCueComponent>().length,
+          game.worldChildrenOfType<TalismanTransferCueComponent>().length,
           lessThanOrEqualTo(1),
         );
         expect(
@@ -1163,7 +1206,7 @@ void main() {
       },
       verify: (game, _) async {
         game.update(.05);
-        final targets = game.children.whereType<EnemyComponent>();
+        final targets = game.worldChildrenOfType<EnemyComponent>();
         final ordinary = targets.singleWhere(
           (enemy) => enemy.enemyId == bandit,
         );
@@ -1285,7 +1328,7 @@ void main() {
       verify: (game, _) async {
         for (var frame = 0; frame < 100; frame += 1) {
           game.update(.05);
-          final wards = game.children.whereType<FiveColorWardComponent>();
+          final wards = game.worldChildrenOfType<FiveColorWardComponent>();
           expect(
             wards
                 .where(
@@ -1341,8 +1384,8 @@ void main() {
       'hwando mastery enhances only sequence start and finish',
       verify: (game, _) async {
         game.update(0);
-        final effect = game.children.whereType<AttackEffectComponent>().single;
-        final enemies = game.children.whereType<EnemyComponent>().toList();
+        final effect = game.worldChildrenOfType<AttackEffectComponent>().single;
+        final enemies = game.worldChildrenOfType<EnemyComponent>().toList();
         final expected = enemies
             .where(
               (enemy) => AttackGeometry.contains(
@@ -1363,7 +1406,7 @@ void main() {
           effect.instance.spec.damage,
         );
         expect(
-          game.children.whereType<CombatEffectComponent>().single.kind,
+          game.worldChildrenOfType<CombatEffectComponent>().single.kind,
           CombatEffectKind.hit,
         );
         expect(game.combatHitStopRemaining, .035);
@@ -1396,8 +1439,8 @@ void main() {
       verify: (game, _) async {
         game.update(.05);
         game.update(0);
-        final attack = game.children.whereType<AttackEffectComponent>().single;
-        final enemy = game.children.whereType<EnemyComponent>().single;
+        final attack = game.worldChildrenOfType<AttackEffectComponent>().single;
+        final enemy = game.worldChildrenOfType<EnemyComponent>().single;
 
         expect(attack.instance.isCritical, isTrue);
         expect(
@@ -1405,7 +1448,7 @@ void main() {
           attack.instance.spec.damage * 2,
         );
         expect(
-          game.children.whereType<CombatEffectComponent>().single.kind,
+          game.worldChildrenOfType<CombatEffectComponent>().single.kind,
           CombatEffectKind.critical,
         );
       },
@@ -1423,14 +1466,14 @@ void main() {
       verify: (game, _) async {
         game.update(EnemySpriteSheet.deathDurationSeconds);
         expect(
-          game.children.whereType<EnemyHazardComponent>().where(
+          game.worldChildrenOfType<EnemyHazardComponent>().where(
             (hazard) => hazard.kind == EnemyHazardKind.poison,
           ),
           hasLength(1),
         );
         game.update(.05);
         expect(
-          game.children.whereType<EnemyHazardComponent>().where(
+          game.worldChildrenOfType<EnemyHazardComponent>().where(
             (hazard) => hazard.kind == EnemyHazardKind.poison,
           ),
           hasLength(1),
@@ -1449,7 +1492,7 @@ void main() {
       },
       verify: (game, _) async {
         game.update(.05);
-        final target = game.children.whereType<EnemyComponent>().singleWhere(
+        final target = game.worldChildrenOfType<EnemyComponent>().singleWhere(
           (enemy) => enemy.enemyId == bandit,
         );
         expect(target.environmentalHasteFraction, .2);
@@ -1473,7 +1516,7 @@ void main() {
           game.update(.05);
         }
         expect(player.currentHealth, lessThan(healthBefore));
-        expect(game.children.whereType<EnemyProjectileComponent>(), isEmpty);
+        expect(game.worldChildrenOfType<EnemyProjectileComponent>(), isEmpty);
       },
     );
 
@@ -1495,7 +1538,7 @@ void main() {
           game.update(.05);
         }
         expect(
-          game.children.whereType<EnemyProjectileComponent>().length,
+          game.worldChildrenOfType<EnemyProjectileComponent>().length,
           lessThanOrEqualTo(1),
         );
         expect(
@@ -1519,11 +1562,11 @@ void main() {
         game.update(.05);
         game.update(0);
 
-        final playerProjectiles = game.children
-            .whereType<ProjectileComponent>()
+        final playerProjectiles = game
+            .worldChildrenOfType<ProjectileComponent>()
             .length;
-        final hostileProjectiles = game.children
-            .whereType<EnemyProjectileComponent>()
+        final hostileProjectiles = game
+            .worldChildrenOfType<EnemyProjectileComponent>()
             .length;
         expect(playerProjectiles + hostileProjectiles, 1);
         expect(
@@ -1753,16 +1796,16 @@ void main() {
       );
       game.processLifecycleEvents();
 
-      final number = game.children.whereType<DamageNumberComponent>().single;
+      final number = game.worldChildrenOfType<DamageNumberComponent>().single;
       expect(enemy.currentHealth, 33);
       expect(number.damage, 5);
       expect(number.isCritical, isTrue);
       expect(game.currentRunResult().weaponDamageTotals[gakgungShot], 5);
       expect(
-        game.children.whereType<ShieldBlockEffectComponent>(),
+        game.worldChildrenOfType<ShieldBlockEffectComponent>(),
         hasLength(1),
       );
-      expect(game.children.whereType<CombatEffectComponent>(), isEmpty);
+      expect(game.worldChildrenOfType<CombatEffectComponent>(), isEmpty);
     });
 
     test(
@@ -1776,8 +1819,8 @@ void main() {
           position: Vector2(40, 40),
         );
         game.processLifecycleEvents();
-        final overlay = game.children
-            .whereType<EnemyWarningOverlayComponent>()
+        final overlay = game
+            .worldChildrenOfType<EnemyWarningOverlayComponent>()
             .singleWhere((item) => identical(item.enemy, enemy));
 
         expect(enemy.priority, lessThan(AttackPresentationPriority.attack));
@@ -1874,7 +1917,7 @@ void main() {
 
         expect(game.currentExperience, 2);
         expect(
-          game.children.whereType<ExperienceGemComponent>().single.size,
+          game.worldChildrenOfType<ExperienceGemComponent>().single.size,
           Vector2.all(20),
         );
       },

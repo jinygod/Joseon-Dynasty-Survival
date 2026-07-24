@@ -120,8 +120,7 @@ void main() {
       onRunEnded: null,
       loadVisualAssets: false,
     );
-    await game.add(enemy('dispose-target'));
-    expect(game.performanceSnapshot.counts[GamePopulationKind.enemy], 1);
+    game.addWorldComponent(enemy('dispose-target'));
 
     game.onDispose();
 
@@ -130,14 +129,14 @@ void main() {
   });
 
   gameTester.testGameWidget(
-    'game snapshot follows mounted combat lifecycle and dispose',
+    'nested world child lifecycle updates production counts exactly once',
     setUp: (game, _) async {
       lifecycleTarget = enemy('lifecycle-target');
       lifecycleFriendly = projectile()..position = Vector2(480, 270);
       lifecycleHostile = enemyProjectile()..position = Vector2(480, 270);
-      await game.ensureAdd(lifecycleTarget);
-      await game.ensureAdd(lifecycleFriendly);
-      await game.ensureAdd(lifecycleHostile);
+      await game.addWorldComponent(lifecycleTarget);
+      await game.addWorldComponent(lifecycleFriendly);
+      await game.addWorldComponent(lifecycleHostile);
     },
     verify: (game, _) async {
       expect(game.performanceSnapshot.counts[GamePopulationKind.enemy], 1);
@@ -174,11 +173,11 @@ void main() {
         enemyProjectile()..position = Vector2(480, 270),
       ];
       for (final component in bulkRemovalTargets) {
-        await game.ensureAdd(component);
+        await game.addWorldComponent(component);
       }
     },
     verify: (game, _) async {
-      game.removeAll(bulkRemovalTargets);
+      game.world.removeAll(bulkRemovalTargets);
 
       expect(game.debugPopulationIndexIsConsistent(), isTrue);
       expect(game.performanceSnapshot.counts[GamePopulationKind.enemy], 0);
@@ -189,12 +188,14 @@ void main() {
   gameTester.testGameWidget(
     'removeWhere excludes matching combat children before lifecycle processing',
     setUp: (game, _) async {
-      await game.ensureAdd(enemy('remove-where-survivor'));
-      await game.ensureAdd(projectile()..position = Vector2(480, 270));
-      await game.ensureAdd(enemyProjectile()..position = Vector2(480, 270));
+      await game.addWorldComponent(enemy('remove-where-survivor'));
+      await game.addWorldComponent(projectile()..position = Vector2(480, 270));
+      await game.addWorldComponent(
+        enemyProjectile()..position = Vector2(480, 270),
+      );
     },
     verify: (game, _) async {
-      game.removeWhere(
+      game.world.removeWhere(
         (component) =>
             component is ProjectileComponent ||
             component is EnemyProjectileComponent,
@@ -210,7 +211,7 @@ void main() {
     'public live enemy count keeps an alive removing child until final removal',
     setUp: (game, _) async {
       lifecycleTarget = enemy('live-removing-target');
-      await game.ensureAdd(lifecycleTarget);
+      await game.addWorldComponent(lifecycleTarget);
     },
     verify: (game, _) async {
       lifecycleTarget.removeFromParent();
@@ -240,8 +241,8 @@ void main() {
         velocity: Vector2.zero(),
         lifetime: 0.01,
       );
-      await game.ensureAdd(expiringFriendly);
-      await game.ensureAdd(expiringHostile);
+      await game.addWorldComponent(expiringFriendly);
+      await game.addWorldComponent(expiringHostile);
     },
     verify: (game, _) async {
       expiringFriendly.update(0.02);

@@ -82,8 +82,9 @@ import 'systems/wave_director.dart';
 import 'systems/talisman_executor.dart';
 import 'systems/weapon_system.dart';
 import 'systems/weapon_synergy_resolver.dart';
+import 'world/combat_world.dart';
 
-class PixelSurvivorGame extends FlameGame
+class PixelSurvivorGame extends FlameGame<CombatWorld>
     with KeyboardEvents
     implements GameHudSource, RewardCollectionHudSource, VisualAssetLoadPolicy {
   static const levelUpOverlayId = 'levelUp';
@@ -123,7 +124,11 @@ class PixelSurvivorGame extends FlameGame
        pickupIdPrefix =
            pickupIdPrefix ?? DateTime.now().microsecondsSinceEpoch.toString(),
        _rewardRoll = rewardRoll ?? Random().nextDouble,
-       _bossRoll = bossRoll ?? random?.nextDouble ?? Random().nextDouble {
+       _bossRoll = bossRoll ?? random?.nextDouble ?? Random().nextDouble,
+       super(world: CombatWorld()) {
+    world
+      ..onChildLifecycle = _onWorldChildrenChanged
+      ..onChildRemoving = _populationIndex.markRemoving;
     _combatFeedback = CombatFeedbackController(
       screenShakeEnabled: screenShakeEnabled,
     );
@@ -241,7 +246,7 @@ class PixelSurvivorGame extends FlameGame
   bool get isSpiritJadeSaveRetrying =>
       _rewardCollectionSecondsRemaining != null &&
       _rewardCollectionSecondsRemaining! <= 0 &&
-      children.whereType<SpiritJadeComponent>().any(
+      worldChildrenOfType<SpiritJadeComponent>().any(
         (jade) => jade.isBossDrop && !jade.isSaving && !jade.canRetry,
       );
   int get bossRequestCount => _bossRequestCount;
@@ -340,6 +345,25 @@ class PixelSurvivorGame extends FlameGame
   bool get isLevelUpPending => _pendingLevelUpChoices.isNotEmpty;
   int get pendingLevelChoiceCount => _pendingLevelChoiceCount;
   List<PlayerComponent> get activePlayers => _activePlayersView;
+  Iterable<T> worldChildrenOfType<T extends Component>() =>
+      world.worldComponents.whereType<T>();
+
+  FutureOr<void> addWorldComponent(Component component) {
+    final result = world.add(component);
+    if (world.worldComponents.contains(component) && !component.isRemoving) {
+      _populationIndex.register(component);
+    }
+    return result;
+  }
+
+  @override
+  FutureOr<void> add(Component component) {
+    if (component is CameraComponent || component is World) {
+      return super.add(component);
+    }
+    return addWorldComponent(component);
+  }
+
   Map<String, Image> get visualImages => _visualImages;
   List<LevelUpChoice> get pendingLevelUpChoices =>
       List.unmodifiable(_pendingLevelUpChoices);
@@ -405,7 +429,7 @@ class PixelSurvivorGame extends FlameGame
     camera.viewfinder.anchor = Anchor.center;
 
     if (stageId == plagueMarket) {
-      await add(
+      addWorldComponent(
         StageTileBatchComponent(
           layout: StageLayout.build(
             stageVisualSpec,
@@ -416,55 +440,28 @@ class PixelSurvivorGame extends FlameGame
         ),
       );
     } else {
-      add(StageBackdropComponent(viewportSize: size));
+      addWorldComponent(StageBackdropComponent(viewportSize: size));
     }
-    await _addActivePlayers();
+    _addActivePlayers();
     _addStartingAugments();
   }
 
   @override
   void onDispose() {
     processLifecycleEvents();
+    while (world.worldComponents.isNotEmpty) {
+      world.removeAll(world.worldComponents);
+      processLifecycleEvents();
+    }
     while (children.isNotEmpty) {
-      removeAll(children.toList(growable: false));
+      super.removeAll(children.toList(growable: false));
       processLifecycleEvents();
     }
     _populationIndex.clear();
     super.onDispose();
   }
 
-  @override
-  FutureOr<void> add(Component component) {
-    final result = super.add(component);
-    if (children.contains(component) && !component.isRemoving) {
-      _populationIndex.register(component);
-    }
-    return result;
-  }
-
-  @override
-  void remove(Component component) {
-    super.remove(component);
-    _populationIndex.markRemoving(component);
-  }
-
-  @override
-  void removeAll(Iterable<Component> components) {
-    final removalTargets = components.toList(growable: false);
-    super.removeAll(removalTargets);
-    for (final component in removalTargets) {
-      _populationIndex.markRemoving(component);
-    }
-  }
-
-  @override
-  void removeWhere(bool Function(Component component) test) {
-    removeAll(children.where(test).toList(growable: false));
-  }
-
-  @override
-  void onChildrenChanged(Component child, ChildrenChangeType type) {
-    super.onChildrenChanged(child, type);
+  void _onWorldChildrenChanged(Component child, ChildrenChangeType type) {
     switch (type) {
       case ChildrenChangeType.added:
         _populationIndex.register(child);
@@ -640,7 +637,7 @@ class PixelSurvivorGame extends FlameGame
     );
   }
 
-  Future<void> _addActivePlayers() async {
+  void _addActivePlayers() {
     final character = _characterDefinitionFor(playerSlot.characterId);
     final player = PlayerComponent(
       slotIndex: playerSlot.index,
@@ -656,13 +653,13 @@ class PixelSurvivorGame extends FlameGame
     }
 
     _activePlayers.add(player);
-    add(
+    addWorldComponent(
       ActorShadowComponent(
         target: player,
         width: playerVisualSpecFor(player.characterId).shadowWidth,
       ),
     );
-    await add(player);
+    addWorldComponent(player);
     _applyAugmentEffects();
   }
 
@@ -705,8 +702,7 @@ class PixelSurvivorGame extends FlameGame
   void _trySpawnPendingBoss() {
     if (!_bossSpawnPending || _bossSpawnCount > 0) return;
     if (_enemyComponentCount >= performanceBudget.maxEnemies) {
-      final nonBoss = children
-          .whereType<EnemyComponent>()
+      final nonBoss = worldChildrenOfType<EnemyComponent>()
           .where((enemy) => enemy is! BossComponent && !enemy.isRemoving)
           .firstOrNull;
       nonBoss?.removeFromParent();
@@ -718,8 +714,8 @@ class PixelSurvivorGame extends FlameGame
       definition: definition,
       position: Vector2(size.x / 2, -36),
       targetPositionProvider: _nearestActivePlayerPosition,
-      nearbyEnemiesProvider: () => children.whereType<EnemyComponent>(),
-      onAreaAttack: (attack) => add(attack),
+      nearbyEnemiesProvider: () => worldChildrenOfType<EnemyComponent>(),
+      onAreaAttack: addWorldComponent,
       onSummonEnemiesRequested: _summonBossMinions,
     );
     _bossSpawnPending = false;
@@ -755,13 +751,13 @@ class PixelSurvivorGame extends FlameGame
       _enemyDefinitionFor(enemyId),
       position: position,
       targetPositionProvider: _nearestActivePlayerPosition,
-      nearbyEnemiesProvider: () => children.whereType<EnemyComponent>(),
+      nearbyEnemiesProvider: () => worldChildrenOfType<EnemyComponent>(),
     );
   }
 
   void _addEnemyWithWarningOverlay(EnemyComponent enemy) {
     if (_usesRepresentativeEnemyShadow(enemy.enemyId)) {
-      add(
+      addWorldComponent(
         ActorShadowComponent(
           target: enemy,
           width: enemyVisualSpecFor(
@@ -771,8 +767,8 @@ class PixelSurvivorGame extends FlameGame
         ),
       );
     }
-    add(enemy);
-    add(
+    addWorldComponent(enemy);
+    addWorldComponent(
       EnemyWarningOverlayComponent(
         enemy: enemy,
         visualFactory: _combatVisualFactory,
@@ -797,7 +793,7 @@ class PixelSurvivorGame extends FlameGame
     final result = weaponSystem.tick(
       dt: dt,
       origin: player.position,
-      enemies: children.whereType<EnemyComponent>(),
+      enemies: worldChildrenOfType<EnemyComponent>(),
       damageMultiplier: weaponDamageMultiplier,
       attackSpeedMultiplier: attackSpeedMultiplier,
       criticalChance: criticalChance,
@@ -845,16 +841,16 @@ class PixelSurvivorGame extends FlameGame
     for (final arc in result.meleeArcs) {
       if (arc.weaponId == hwandoSlash) continue;
       arc.attachEffectImage(_visualImages[WeaponEffectAtlas.assetKey]);
-      add(arc);
+      addWorldComponent(arc);
     }
     for (final areaAttack in result.areaAttacks) {
-      add(areaAttack);
+      addWorldComponent(areaAttack);
     }
     for (final frostField in result.frostFields) {
-      final activeFields = children.whereType<FrostFieldComponent>().toList();
+      final activeFields = worldChildrenOfType<FrostFieldComponent>().toList();
       if (activeFields.length >= 3) activeFields.first.removeFromParent();
       frostField.attachVisuals(_combatVisualFactory);
-      add(frostField);
+      addWorldComponent(frostField);
     }
     _addFiveColorWards(result.fiveColorWards);
   }
@@ -865,8 +861,7 @@ class PixelSurvivorGame extends FlameGame
           .where((ward) => ward.attack.spec.presentation == presentation)
           .toList(growable: false);
       if (matchingRequests.isEmpty) continue;
-      final activeWards = children
-          .whereType<FiveColorWardComponent>()
+      final activeWards = worldChildrenOfType<FiveColorWardComponent>()
           .where((active) => !active.isRemoving)
           .where((active) => active.attack.spec.presentation == presentation)
           .toList();
@@ -881,7 +876,7 @@ class PixelSurvivorGame extends FlameGame
       final retained = max(0, activeWards.length - overflow);
       for (final ward in matchingRequests.take(cap - retained)) {
         ward.attachVisuals(_combatVisualFactory);
-        add(ward);
+        addWorldComponent(ward);
       }
     }
   }
@@ -903,7 +898,7 @@ class PixelSurvivorGame extends FlameGame
         visualFactory: _combatVisualFactory,
       );
       _talismanAttachmentComponents[entry.key] = component;
-      add(component);
+      addWorldComponent(component);
       if (entry.value.transferDepth == 0) {
         final player = _activePlayers
             .where((candidate) => candidate.isMounted && candidate.isAlive)
@@ -929,7 +924,7 @@ class PixelSurvivorGame extends FlameGame
       return;
     }
     _combatEffectCount += 1;
-    add(
+    addWorldComponent(
       TalismanTransferCueComponent(
         cue: cue,
         visualFactory: _combatVisualFactory,
@@ -949,8 +944,7 @@ class PixelSurvivorGame extends FlameGame
       _combatEffectCount = max(0, _combatEffectCount - 1);
     }
     for (final overlay
-        in children
-            .whereType<EnemyWarningOverlayComponent>()
+        in worldChildrenOfType<EnemyWarningOverlayComponent>()
             .where((item) => item.enemy.isDead || item.enemy.isRemoving)
             .toList(growable: false)) {
       overlay.removeFromParent();
@@ -967,7 +961,7 @@ class PixelSurvivorGame extends FlameGame
     final player = _activePlayers.where((item) => item.isAlive).firstOrNull;
     if (player == null) return;
     EnemyWarningOverlayComponent.rankByDistance(
-      children.whereType<EnemyWarningOverlayComponent>().where(
+      worldChildrenOfType<EnemyWarningOverlayComponent>().where(
         (overlay) => overlay.enemy.warningSnapshot != null,
       ),
       playerPosition: player.position,
@@ -976,8 +970,7 @@ class PixelSurvivorGame extends FlameGame
 
   void _resolveSharedAttack(AttackInstance attack) {
     _spawnAttackEffect(attack);
-    final enemies = children
-        .whereType<EnemyComponent>()
+    final enemies = worldChildrenOfType<EnemyComponent>()
         .where((enemy) => !enemy.isDead && !enemy.isRemoving)
         .toList(growable: false);
     final events = <DamageEvent>[];
@@ -1082,10 +1075,10 @@ class PixelSurvivorGame extends FlameGame
         AttackVisualEvent.fromAttack(attack),
       );
       _trackedRegistryAttackVisuals.add(visual);
-      add(visual);
+      addWorldComponent(visual);
       return;
     } on MissingAttackVisualException {
-      add(
+      addWorldComponent(
         AttackEffectComponent(
           instance: attack,
           onExpired: () {
@@ -1101,10 +1094,10 @@ class PixelSurvivorGame extends FlameGame
 
   void _ensureWardAura(PlayerComponent player) {
     final level = weaponSystem.levelOf(jangseungWard);
-    if (level == 0 || children.whereType<WardAuraComponent>().isNotEmpty) {
+    if (level == 0 || worldChildrenOfType<WardAuraComponent>().isNotEmpty) {
       return;
     }
-    add(
+    addWorldComponent(
       WardAuraComponent(
         positionProvider: () => player.position,
         radiusProvider: () {
@@ -1127,15 +1120,14 @@ class PixelSurvivorGame extends FlameGame
   }
 
   void _applyProjectileHits() {
-    final enemies = children
-        .whereType<EnemyComponent>()
+    final enemies = worldChildrenOfType<EnemyComponent>()
         .where((enemy) => !enemy.isDead)
         .toList(growable: false);
     if (enemies.isEmpty) {
       return;
     }
 
-    final projectiles = children.whereType<ProjectileComponent>().toList();
+    final projectiles = worldChildrenOfType<ProjectileComponent>().toList();
     for (final projectile in projectiles) {
       if (projectile.isExpired || _isProjectileOutsideBounds(projectile)) {
         projectile.removeFromParent();
@@ -1171,8 +1163,8 @@ class PixelSurvivorGame extends FlameGame
   }
 
   void _resolveAreaAttacks() {
-    final enemies = children.whereType<EnemyComponent>();
-    for (final attack in children.whereType<AreaAttackComponent>().toList()) {
+    final enemies = worldChildrenOfType<EnemyComponent>();
+    for (final attack in worldChildrenOfType<AreaAttackComponent>().toList()) {
       if (attack.isReady &&
           !attack.hasTriggered &&
           (attack.isBossAttack || attack.weaponId == thunderCrashBomb)) {
@@ -1202,12 +1194,11 @@ class PixelSurvivorGame extends FlameGame
   }
 
   void _resolveFrostFields() {
-    final enemies = children
-        .whereType<EnemyComponent>()
+    final enemies = worldChildrenOfType<EnemyComponent>()
         .where((enemy) => !enemy.isDead)
         .toList();
-    final fields = children.whereType<FrostFieldComponent>().toList();
-    final wards = children.whereType<FiveColorWardComponent>().toList();
+    final fields = worldChildrenOfType<FrostFieldComponent>().toList();
+    final wards = worldChildrenOfType<FiveColorWardComponent>().toList();
     for (final enemy in enemies) {
       var strongestSlow = 0.0;
       for (final field in fields) {
@@ -1233,7 +1224,7 @@ class PixelSurvivorGame extends FlameGame
   }
 
   void _resolveEnemyActions() {
-    for (final enemy in children.whereType<EnemyComponent>().where(
+    for (final enemy in worldChildrenOfType<EnemyComponent>().where(
       (enemy) => !enemy.isDead,
     )) {
       for (final request in enemy.drainAttackRequests()) {
@@ -1292,7 +1283,7 @@ class PixelSurvivorGame extends FlameGame
 
   void _resolveEnemyProjectiles() {
     for (final projectile
-        in children.whereType<EnemyProjectileComponent>().toList()) {
+        in worldChildrenOfType<EnemyProjectileComponent>().toList()) {
       if (projectile.isExpired ||
           projectile.isSpent ||
           _isPositionOutsideBounds(projectile.position)) {
@@ -1336,11 +1327,11 @@ class PixelSurvivorGame extends FlameGame
         legacyEffectImage: _visualImages[WeaponEffectAtlas.assetKey],
       );
     }
-    add(projectile);
+    addWorldComponent(projectile);
   }
 
   void _resolveEnemyHazards() {
-    for (final hazard in children.whereType<EnemyHazardComponent>().where(
+    for (final hazard in worldChildrenOfType<EnemyHazardComponent>().where(
       (hazard) => !hazard.isExpired,
     )) {
       for (final player in _activePlayers.where((player) => player.isAlive)) {
@@ -1359,8 +1350,7 @@ class PixelSurvivorGame extends FlameGame
   }
 
   void _resolveEnemyAuras() {
-    final enemies = children
-        .whereType<EnemyComponent>()
+    final enemies = worldChildrenOfType<EnemyComponent>()
         .where((enemy) => !enemy.isDead)
         .toList(growable: false);
     final hasteSources = enemies.where((enemy) => enemy.hasteAuraFraction > 0);
@@ -1423,8 +1413,7 @@ class PixelSurvivorGame extends FlameGame
   }
 
   void _addCappedHazard(EnemyHazardComponent hazard) {
-    final candidates = children
-        .whereType<EnemyHazardComponent>()
+    final candidates = worldChildrenOfType<EnemyHazardComponent>()
         .where(
           (item) => hazard.kind == EnemyHazardKind.poison
               ? item.kind == EnemyHazardKind.poison
@@ -1433,7 +1422,7 @@ class PixelSurvivorGame extends FlameGame
         .toList();
     final cap = hazard.kind == EnemyHazardKind.poison ? 12 : 24;
     if (candidates.length >= cap) candidates.first.removeFromParent();
-    add(hazard);
+    addWorldComponent(hazard);
   }
 
   void _applyDamageEvents(Iterable<DamageEvent> events) {
@@ -1520,7 +1509,7 @@ class PixelSurvivorGame extends FlameGame
       component: component,
       startedAtSeconds: _elapsedSeconds,
     );
-    add(component);
+    addWorldComponent(component);
   }
 
   void _spawnCombatEffect(
@@ -1533,7 +1522,7 @@ class PixelSurvivorGame extends FlameGame
       return;
     }
     _combatEffectCount += 1;
-    add(
+    addWorldComponent(
       CombatEffectComponent(
         kind: kind,
         position: position.clone(),
@@ -1551,7 +1540,7 @@ class PixelSurvivorGame extends FlameGame
       return;
     }
     _combatEffectCount += 1;
-    add(
+    addWorldComponent(
       ShieldBlockEffectComponent(
         position: enemy.position.clone(),
         facingDirection: enemy.shieldDirection,
@@ -1603,7 +1592,7 @@ class PixelSurvivorGame extends FlameGame
   }
 
   void _dropExperienceForDeadEnemies() {
-    final deadEnemies = children.whereType<EnemyComponent>().where(
+    final deadEnemies = worldChildrenOfType<EnemyComponent>().where(
       (enemy) => enemy.deathVisualComplete,
     );
     for (final enemy in deadEnemies.toList()) {
@@ -1621,15 +1610,14 @@ class PixelSurvivorGame extends FlameGame
   }
 
   void _addExperienceGem(EnemyComponent enemy) {
-    final gems = children
-        .whereType<ExperienceGemComponent>()
+    final gems = worldChildrenOfType<ExperienceGemComponent>()
         .where((gem) => !gem.isRemoving)
         .toList(growable: false);
     if (gems.length >= maxExperienceGemComponents) {
       gems.first.absorbExperience(enemy.experienceValue);
       return;
     }
-    add(
+    addWorldComponent(
       ExperienceGemComponent(
         experienceValue: enemy.experienceValue,
         position: enemy.position.clone(),
@@ -1638,7 +1626,7 @@ class PixelSurvivorGame extends FlameGame
   }
 
   void _recordNewEnemyDefeats() {
-    for (final enemy in children.whereType<EnemyComponent>().where(
+    for (final enemy in worldChildrenOfType<EnemyComponent>().where(
       (enemy) => enemy.isDead,
     )) {
       if (enemy.consumeDeathZone()) {
@@ -1700,7 +1688,7 @@ class PixelSurvivorGame extends FlameGame
     final isBossDrop = _enemyDefinitionFor(enemy.enemyId).isBoss;
     if (claimsFirstBossReward) firstBossRewardAvailable = false;
     if (isBossDrop) _pendingBossSpiritJade += 1;
-    add(
+    addWorldComponent(
       SpiritJadeComponent(
         pickup: SpiritJadePickup(
           pickupId: pickupId,
@@ -1728,8 +1716,7 @@ class PixelSurvivorGame extends FlameGame
       return;
     }
 
-    final enemies = children
-        .whereType<EnemyComponent>()
+    final enemies = worldChildrenOfType<EnemyComponent>()
         .where((enemy) => !enemy.isDead)
         .toList(growable: false);
     for (final enemy in enemies) {
@@ -1779,7 +1766,7 @@ class PixelSurvivorGame extends FlameGame
     if (_rewardCollectionSecondsRemaining != null) return;
     _rewardCollectionSecondsRemaining =
         MetaRewardBalance.bossRewardCollectionSeconds;
-    for (final component in children.toList()) {
+    for (final component in world.worldComponents) {
       if (component is EnemyComponent ||
           component is ProjectileComponent ||
           component is AreaAttackComponent) {
@@ -1797,7 +1784,7 @@ class PixelSurvivorGame extends FlameGame
     _rewardCollectionSecondsRemaining = max(0, remaining - dt);
     if (_rewardCollectionSecondsRemaining! > 0) return;
 
-    for (final jade in children.whereType<SpiritJadeComponent>().where(
+    for (final jade in worldChildrenOfType<SpiritJadeComponent>().where(
       (jade) => jade.isBossDrop && jade.canRetry,
     )) {
       unawaited(jade.tryCollect());
@@ -1816,7 +1803,7 @@ class PixelSurvivorGame extends FlameGame
       return;
     }
 
-    final gems = children.whereType<ExperienceGemComponent>().toList();
+    final gems = worldChildrenOfType<ExperienceGemComponent>().toList();
     for (final gem in gems) {
       final canPickup = alivePlayers.any(
         (player) => gem.canBePickedUpBy(
@@ -1838,7 +1825,7 @@ class PixelSurvivorGame extends FlameGame
         .toList(growable: false);
     if (alivePlayers.isEmpty) return;
 
-    for (final jade in children.whereType<SpiritJadeComponent>().toList()) {
+    for (final jade in worldChildrenOfType<SpiritJadeComponent>().toList()) {
       if (!jade.canRetry) continue;
       final canPickup = alivePlayers.any(
         (player) => jade.canBePickedUpBy(
@@ -2062,10 +2049,10 @@ class PixelSurvivorGame extends FlameGame
 
   @visibleForTesting
   bool debugPopulationIndexIsConsistent() {
-    final mountedEnemies = children.whereType<EnemyComponent>().where(
+    final mountedEnemies = worldChildrenOfType<EnemyComponent>().where(
       (enemy) => !enemy.isRemoving,
     );
-    final mountedProjectiles = children.where(
+    final mountedProjectiles = world.worldComponents.where(
       (component) =>
           (component is ProjectileComponent ||
               component is EnemyProjectileComponent) &&

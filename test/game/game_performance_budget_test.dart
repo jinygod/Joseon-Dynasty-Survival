@@ -29,6 +29,7 @@ void main() {
       onRunEnded: null,
       performanceBudget: constrainedBudget,
       onPerformanceDiagnostic: runtimeDiagnostics.add,
+      loadVisualAssets: false,
     ),
     gameSize: Vector2(960, 540),
   );
@@ -37,6 +38,7 @@ void main() {
       playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
       onRunEnded: null,
       performanceBudget: constrainedBudget,
+      loadVisualAssets: false,
     );
     for (var level = 0; level < 6; level += 1) {
       game.weaponSystem.upgrade(hwandoSlash, game.unlockedWeaponIds);
@@ -101,7 +103,7 @@ void main() {
       );
       game.update(0);
       expect(
-        game.children.whereType<DamageNumberComponent>().single.isEmphasized,
+        game.worldChildrenOfType<DamageNumberComponent>().single.isEmphasized,
         isFalse,
       );
 
@@ -117,7 +119,7 @@ void main() {
       );
       game.update(0);
       expect(
-        game.children.whereType<DamageNumberComponent>().where(
+        game.worldChildrenOfType<DamageNumberComponent>().where(
           (number) => number.isEmphasized,
         ),
         hasLength(1),
@@ -153,7 +155,7 @@ void main() {
       expect(_numbersFor(game, second), hasLength(1));
 
       for (final number
-          in game.children.whereType<DamageNumberComponent>().toList()) {
+          in game.worldChildrenOfType<DamageNumberComponent>().toList()) {
         number.update(.56);
       }
       game.processLifecycleEvents();
@@ -257,8 +259,8 @@ void main() {
       game.update(.05);
       game.update(0);
 
-      expect(game.children.whereType<AttackEffectComponent>(), hasLength(1));
-      expect(game.children.whereType<CombatEffectComponent>(), isEmpty);
+      expect(game.worldChildrenOfType<AttackEffectComponent>(), hasLength(1));
+      expect(game.worldChildrenOfType<CombatEffectComponent>(), isEmpty);
       expect(
         game.performanceSnapshot.counts[GamePopulationKind.combatEffect],
         1,
@@ -307,7 +309,7 @@ void main() {
         game.update(.05);
       }
 
-      final target = game.children.whereType<EnemyComponent>().firstWhere(
+      final target = game.worldChildrenOfType<EnemyComponent>().firstWhere(
         (enemy) => !enemy.isDead,
       );
       for (var hit = 0; hit < 3; hit += 1) {
@@ -325,13 +327,13 @@ void main() {
     },
     verify: (game, _) async {
       expect(
-        game.children.whereType<EnemyComponent>().where(
+        game.worldChildrenOfType<EnemyComponent>().where(
           (enemy) => !enemy.isDead,
         ),
         hasLength(constrainedBudget.maxEnemies),
       );
       expect(
-        game.children.whereType<ProjectileComponent>().where(
+        game.worldChildrenOfType<ProjectileComponent>().where(
           (projectile) => !projectile.isRemoving,
         ),
         hasLength(constrainedBudget.maxProjectiles),
@@ -340,7 +342,7 @@ void main() {
       expect(snapshot.isWithinBudget, isTrue);
       expect(snapshot.counts[GamePopulationKind.damageNumber], 1);
       expect(
-        game.children.whereType<DamageNumberComponent>().single.damage,
+        game.worldChildrenOfType<DamageNumberComponent>().single.damage,
         3,
         reason: 'same-target hits inside the 0.12 second window combine',
       );
@@ -361,7 +363,7 @@ void main() {
         }),
       );
 
-      final dyingEnemy = game.children.whereType<EnemyComponent>().first;
+      final dyingEnemy = game.worldChildrenOfType<EnemyComponent>().first;
       dyingEnemy.takeDamage(dyingEnemy.currentHealth);
       expect(
         game.performanceSnapshot.counts[GamePopulationKind.enemy],
@@ -491,6 +493,6 @@ void _advanceDamageTime(PixelSurvivorGame game, double seconds) {
 Iterable<DamageNumberComponent> _numbersFor(
   PixelSurvivorGame game,
   EnemyComponent target,
-) => game.children.whereType<DamageNumberComponent>().where(
+) => game.worldChildrenOfType<DamageNumberComponent>().where(
   (number) => number.position.x == target.position.x,
 );

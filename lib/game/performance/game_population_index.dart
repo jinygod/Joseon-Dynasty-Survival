@@ -6,7 +6,7 @@ import '../components/enemy_component.dart';
 import '../components/enemy_projectile_component.dart';
 import '../components/projectile_component.dart';
 
-/// Identity-backed index of the combat populations mounted directly on a game.
+/// Identity-backed index of combat populations mounted below the game world.
 class GamePopulationIndex {
   final HashSet<EnemyComponent> _mountedEnemies =
       HashSet<EnemyComponent>.identity();
