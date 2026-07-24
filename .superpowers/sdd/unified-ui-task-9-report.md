@@ -74,3 +74,9 @@ pause-menu implementation was removed.
 The Flame pause-screen test runner may require a clean, non-concurrent Flutter
 test process in this Windows environment. No gameplay, balance, save model, or
 unrelated UI files were modified.
+
+## Approved golden update
+
+Only `test/app/goldens/game_hud_16_9.png` was regenerated after visual approval.
+The filtered `game HUD 16:9 golden` case then passed without
+`--update-goldens`. Golden commit: `88a1097 test: update compact combat hud golden`.
