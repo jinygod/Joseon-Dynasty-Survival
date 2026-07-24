@@ -43,7 +43,7 @@ class JoseonSelectionCard extends StatelessWidget {
           child: Stack(
             children: [
               child,
-              if (selected)
+              if (selected && !locked)
                 const Positioned(
                   right: 0,
                   top: 0,

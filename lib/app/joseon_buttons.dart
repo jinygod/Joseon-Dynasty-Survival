@@ -20,6 +20,7 @@ class JoseonPrimaryButton extends StatelessWidget {
     leading: leading,
     backgroundColor: JoseonUiTheme.navy,
     foregroundColor: JoseonUiTheme.ivory,
+    borderColor: JoseonUiTheme.gold,
   );
 }
 

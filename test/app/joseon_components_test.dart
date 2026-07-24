@@ -59,6 +59,19 @@ void main() {
     expect(secondaryPressed, 1);
   });
 
+  testWidgets('primary button uses a visible gold border', (tester) async {
+    await tester.pumpWidget(
+      _app(const JoseonPrimaryButton(label: '시작', onPressed: null)),
+    );
+
+    final button = tester.widget<TextButton>(find.byType(TextButton));
+    final shape =
+        button.style!.shape!.resolve(<WidgetState>{})!
+            as RoundedRectangleBorder;
+    expect(shape.side.color, JoseonUiTheme.gold);
+    expect(shape.side.width, JoseonUiTheme.panelBorderWidth);
+  });
+
   testWidgets('tab bar reports the tapped tab index', (tester) async {
     var selectedIndex = -1;
     await tester.pumpWidget(
@@ -130,6 +143,33 @@ void main() {
     expect(lockedSelection.flagsCollection.isSelected, Tristate.isFalse);
     expect(lockedSelection.flagsCollection.isEnabled, Tristate.isFalse);
     expect(find.bySemanticsLabel('도감 항목, 잠김'), findsOneWidget);
+    semantics.dispose();
+  });
+
+  testWidgets('locked selected card hides the check and suppresses taps', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    var taps = 0;
+    await tester.pumpWidget(
+      _app(
+        JoseonSelectionCard(
+          selected: true,
+          locked: true,
+          semanticsLabel: '잠긴 부적',
+          onTap: () => taps++,
+          child: const Text('부적'),
+        ),
+      ),
+    );
+
+    await tester.tap(find.bySemanticsLabel('잠긴 부적'));
+    final lockedSelection = tester.getSemantics(find.bySemanticsLabel('잠긴 부적'));
+    expect(taps, 0);
+    expect(find.byKey(const Key('selection-check')), findsNothing);
+    expect(find.byIcon(Icons.lock), findsOneWidget);
+    expect(lockedSelection.flagsCollection.isSelected, Tristate.isTrue);
+    expect(lockedSelection.flagsCollection.isEnabled, Tristate.isFalse);
     semantics.dispose();
   });
 }

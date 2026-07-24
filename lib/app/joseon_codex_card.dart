@@ -19,7 +19,7 @@ class JoseonCodexCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Semantics(
-    label: locked ? '$title, 잠김' : title,
+    label: locked ? '$title, \uC7A0\uAE40' : title,
     enabled: !locked,
     button: onTap != null,
     excludeSemantics: true,
