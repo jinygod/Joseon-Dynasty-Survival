@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../game/content/asset_catalog.dart';
 import '../game/content/stage_definitions.dart';
+import 'joseon_buttons.dart';
+import 'joseon_scaffold.dart';
+import 'joseon_selection_card.dart';
+import 'missing_asset_placeholder.dart';
 
 class StageSelectScreen extends StatefulWidget {
   const StageSelectScreen({
@@ -9,18 +14,16 @@ class StageSelectScreen extends StatefulWidget {
     this.unlockedStageIds = const {moonlitAbandonedOffice},
     super.key,
   });
-
   final String initialStageId;
   final ValueChanged<String> onSelected;
   final Set<String> unlockedStageIds;
-
   @override
   State<StageSelectScreen> createState() => _StageSelectScreenState();
 }
 
 class _StageSelectScreenState extends State<StageSelectScreen> {
   late String _selectedStageId;
-
+  late PageController _pageController;
   @override
   void initState() {
     super.initState();
@@ -32,83 +35,69 @@ class _StageSelectScreenState extends State<StageSelectScreen> {
                   .map((stage) => stage.id)
                   .firstOrNull ??
               stageDefinitions.first.id;
+    _pageController = PageController(
+      initialPage: stageDefinitions.indexWhere(
+        (stage) => stage.id == _selectedStageId,
+      ),
+      viewportFraction: .88,
+    );
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final selected = stageDefinitionFor(_selectedStageId);
-    return Scaffold(
-      appBar: AppBar(title: const Text('스테이지 선택')),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 12, 24, 18),
-          child: Row(
-            children: [
-              Expanded(
-                flex: 3,
-                child: Row(
-                  children: [
-                    for (
-                      var index = 0;
-                      index < stageDefinitions.length;
-                      index++
-                    ) ...[
-                      if (index > 0) const SizedBox(width: 12),
-                      Expanded(
-                        child: _StageCard(
-                          stage: stageDefinitions[index],
-                          unlocked: widget.unlockedStageIds.contains(
-                            stageDefinitions[index].id,
-                          ),
-                          selected:
-                              stageDefinitions[index].id == _selectedStageId,
-                          onTap:
-                              widget.unlockedStageIds.contains(
-                                stageDefinitions[index].id,
-                              )
-                              ? () => setState(
-                                  () => _selectedStageId =
-                                      stageDefinitions[index].id,
-                                )
-                              : null,
-                        ),
-                      ),
-                    ],
-                  ],
+    final unlocked = widget.unlockedStageIds.contains(_selectedStageId);
+    return Material(
+      child: JoseonScaffold(
+        topBar: const Padding(
+          padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: Text(
+            '스테이지 선택',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
+          ),
+        ),
+        body: PageView.builder(
+          controller: _pageController,
+          itemCount: stageDefinitions.length,
+          onPageChanged: (index) =>
+              setState(() => _selectedStageId = stageDefinitions[index].id),
+          itemBuilder: (context, index) {
+            final stage = stageDefinitions[index];
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+              child: _StageCard(
+                stage: stage,
+                unlocked: widget.unlockedStageIds.contains(stage.id),
+                selected: _selectedStageId == stage.id,
+                onTap: () => _pageController.animateToPage(
+                  index,
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOut,
                 ),
               ),
-              const SizedBox(width: 20),
-              Expanded(
-                flex: 2,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _InfoRow(
-                      icon: Icons.speed,
-                      text: '난이도 ${selected.riskLabel}',
-                    ),
-                    const SizedBox(height: 12),
-                    _InfoRow(
-                      icon: Icons.timer_outlined,
-                      text: '생존 목표 ${_clock(selected.targetSeconds)}',
-                    ),
-                    const SizedBox(height: 12),
-                    _InfoRow(
-                      icon: Icons.warning_amber_rounded,
-                      text: '보스 출현 ${_clock(selected.bossArrivalSeconds)}',
-                    ),
-                    const SizedBox(height: 22),
-                    FilledButton.icon(
-                      key: const Key('stage-confirm'),
-                      onPressed: () => widget.onSelected(_selectedStageId),
-                      icon: const Icon(Icons.check),
-                      label: const Text('선택 완료'),
-                    ),
-                  ],
-                ),
+            );
+          },
+        ),
+        bottomBar: SizedBox(
+          height: 72,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: SizedBox(
+              height: 52,
+              width: double.infinity,
+              child: JoseonPrimaryButton(
+                key: const Key('stage-confirm'),
+                label: '선택 완료',
+                onPressed: unlocked
+                    ? () => widget.onSelected(_selectedStageId)
+                    : null,
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -123,96 +112,66 @@ class _StageCard extends StatelessWidget {
     required this.selected,
     required this.onTap,
   });
-
   final StageDefinition stage;
   final bool unlocked;
   final bool selected;
-  final VoidCallback? onTap;
-
+  final VoidCallback onTap;
   @override
   Widget build(BuildContext context) {
-    final icon = switch (stage.visualTheme) {
-      StageVisualTheme.moonlit => Icons.nightlight_round,
-      StageVisualTheme.plague => Icons.coronavirus_outlined,
-    };
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      color: Color(stage.backgroundColorValue),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: selected ? const Color(0xffffd66b) : const Color(0xff819081),
-          width: selected ? 3 : 1,
-        ),
-      ),
-      child: InkWell(
-        key: Key('stage-${stage.id}'),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 46, color: const Color(0xffffe6a7)),
-              const SizedBox(height: 10),
-              Text(
-                stage.name,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 21,
-                  fontWeight: FontWeight.w900,
+    final imagePath =
+        AssetCatalog.stagePresentation[stage.presentationImageKey];
+    return JoseonSelectionCard(
+      key: Key('stage-${stage.id}'),
+      selected: selected,
+      locked: !unlocked,
+      semanticsLabel: stage.name,
+      onTap: onTap,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: SizedBox(
+              height: 180,
+              child: AspectRatio(
+                aspectRatio: 16 / 9,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: imagePath == null
+                      ? MissingAssetPlaceholder(
+                          assetKey: stage.presentationImageKey,
+                        )
+                      : Image.asset(
+                          imagePath,
+                          key: Key('stage-illustration-${stage.id}'),
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => MissingAssetPlaceholder(
+                            assetKey: stage.presentationImageKey,
+                          ),
+                        ),
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                stage.description,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Color(0xffd6e2d8), fontSize: 12),
-              ),
-              if (!unlocked) ...[
-                const SizedBox(height: 8),
-                Icon(
-                  Icons.lock_outline,
-                  key: Key('stage-lock-${stage.id}'),
-                  color: Colors.white,
-                ),
-              ],
-            ],
+            ),
           ),
-        ),
+          const SizedBox(height: 12),
+          Text(
+            stage.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 6),
+          Text(stage.description, maxLines: 2, overflow: TextOverflow.ellipsis),
+          const SizedBox(height: 12),
+          Text(
+            '위험 ${stage.riskLabel}   목표 ${_clock(stage.targetSeconds)}   보스 ${_clock(stage.bossArrivalSeconds)}',
+          ),
+          if (!unlocked)
+            Center(child: Icon(Icons.lock, key: Key('stage-lock-${stage.id}'))),
+        ],
       ),
     );
   }
 }
 
-class _InfoRow extends StatelessWidget {
-  const _InfoRow({required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, color: const Color(0xff8f2d38)),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-String _clock(int totalSeconds) {
-  final minutes = totalSeconds ~/ 60;
-  final seconds = (totalSeconds % 60).toString().padLeft(2, '0');
-  return '$minutes:$seconds';
-}
+String _clock(int totalSeconds) =>
+    '${totalSeconds ~/ 60}:${(totalSeconds % 60).toString().padLeft(2, '0')}';

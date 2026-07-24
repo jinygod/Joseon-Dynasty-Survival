@@ -13,6 +13,7 @@ class StageDefinition {
     required this.visualTheme,
     required this.backgroundColorValue,
     required this.riskLabel,
+    required this.presentationImageKey,
   });
 
   final String id;
@@ -23,6 +24,7 @@ class StageDefinition {
   final StageVisualTheme visualTheme;
   final int backgroundColorValue;
   final String riskLabel;
+  final String presentationImageKey;
 }
 
 const stageDefinitions = <StageDefinition>[
@@ -32,6 +34,7 @@ const stageDefinitions = <StageDefinition>[
     description: '원혼과 요괴가 뒤엉킨 버려진 관아에서 살아남으세요.',
     targetSeconds: 300,
     bossArrivalSeconds: 270,
+    presentationImageKey: 'moonlit_abandoned_office_presentation',
     visualTheme: StageVisualTheme.moonlit,
     backgroundColorValue: 0xff1d3344,
     riskLabel: '표준',
@@ -42,6 +45,7 @@ const stageDefinitions = <StageDefinition>[
     description: '독기와 역병 괴물이 가득한 장터에서 거센 물량을 돌파하세요.',
     targetSeconds: 300,
     bossArrivalSeconds: 270,
+    presentationImageKey: 'plague_market_presentation',
     visualTheme: StageVisualTheme.plague,
     backgroundColorValue: 0xff3f4930,
     riskLabel: '위험',

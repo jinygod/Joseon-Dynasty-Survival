@@ -8,6 +8,7 @@ class AssetCatalog {
     ...augments.values,
     ...effects.values,
     ...stages.values,
+    ...stagePresentation.values,
     ...lobby.values,
     ...player.values,
   ]);
@@ -130,6 +131,13 @@ class AssetCatalog {
   static const lobby = <String, String>{
     'government_office':
         'assets/images/stages/joseon_moonlit_lobby_1536x2730.png',
+  };
+
+  static const stagePresentation = <String, String>{
+    'moonlit_abandoned_office_presentation':
+        'assets/images/stages/joseon_moonlit_lobby_1536x2730.png',
+    'plague_market_presentation':
+        'assets/images/stages/joseon_courtyard_combat_1024x1824.png',
   };
 
   static const player = <String, String>{

@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../game/content/asset_catalog.dart';
 import '../game/content/character_definitions.dart';
 import '../game/content/ids.dart';
 import '../game/content/weapon_definitions.dart';
-import 'accessible_status_badge.dart';
+import 'character_stat_presenter.dart';
+import 'joseon_buttons.dart';
+import 'joseon_scaffold.dart';
+import 'joseon_selection_card.dart';
+import 'missing_asset_placeholder.dart';
 
 class CharacterSelectScreen extends StatefulWidget {
   const CharacterSelectScreen({
@@ -12,17 +17,16 @@ class CharacterSelectScreen extends StatefulWidget {
     required this.onSelected,
     super.key,
   });
-
   final String initialCharacterId;
   final Set<String> unlockedCharacterIds;
   final ValueChanged<String> onSelected;
-
   @override
   State<CharacterSelectScreen> createState() => _CharacterSelectScreenState();
 }
 
 class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
   late String _selectedCharacterId;
+  late PageController _pageController;
 
   @override
   void initState() {
@@ -31,60 +35,70 @@ class _CharacterSelectScreenState extends State<CharacterSelectScreen> {
         widget.unlockedCharacterIds.contains(widget.initialCharacterId)
         ? widget.initialCharacterId
         : widget.unlockedCharacterIds.first;
+    _pageController = PageController(
+      initialPage: characterDefinitions.indexWhere(
+        (character) => character.id == _selectedCharacterId,
+      ),
+      viewportFraction: .88,
+    );
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('캐릭터 선택')),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
-          child: Column(
-            children: [
-              Expanded(
-                child: Row(
-                  children: [
-                    for (
-                      var index = 0;
-                      index < characterDefinitions.length;
-                      index++
-                    ) ...[
-                      if (index > 0) const SizedBox(width: 16),
-                      Expanded(
-                        child: _CharacterCard(
-                          definition: characterDefinitions[index],
-                          unlocked: widget.unlockedCharacterIds.contains(
-                            characterDefinitions[index].id,
-                          ),
-                          selected:
-                              _selectedCharacterId ==
-                              characterDefinitions[index].id,
-                          onTap: () {
-                            if (!widget.unlockedCharacterIds.contains(
-                              characterDefinitions[index].id,
-                            )) {
-                              return;
-                            }
-                            setState(() {
-                              _selectedCharacterId =
-                                  characterDefinitions[index].id;
-                            });
-                          },
-                        ),
-                      ),
-                    ],
-                  ],
+    final unlocked = widget.unlockedCharacterIds.contains(_selectedCharacterId);
+    return Material(
+      child: JoseonScaffold(
+        topBar: const Padding(
+          padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: Text(
+            '캐릭터 선택',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
+          ),
+        ),
+        body: PageView.builder(
+          controller: _pageController,
+          itemCount: characterDefinitions.length,
+          onPageChanged: (index) => setState(
+            () => _selectedCharacterId = characterDefinitions[index].id,
+          ),
+          itemBuilder: (context, index) {
+            final character = characterDefinitions[index];
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+              child: _CharacterCard(
+                definition: character,
+                unlocked: widget.unlockedCharacterIds.contains(character.id),
+                selected: _selectedCharacterId == character.id,
+                onTap: () => _pageController.animateToPage(
+                  index,
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOut,
                 ),
               ),
-              const SizedBox(height: 14),
-              FilledButton.icon(
+            );
+          },
+        ),
+        bottomBar: SizedBox(
+          height: 72,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: SizedBox(
+              height: 52,
+              width: double.infinity,
+              child: JoseonPrimaryButton(
                 key: const Key('character-confirm'),
-                onPressed: () => widget.onSelected(_selectedCharacterId),
-                icon: const Icon(Icons.check),
-                label: const Text('선택 완료'),
+                label: '선택 완료',
+                onPressed: unlocked
+                    ? () => widget.onSelected(_selectedCharacterId)
+                    : null,
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -99,133 +113,76 @@ class _CharacterCard extends StatelessWidget {
     required this.selected,
     required this.onTap,
   });
-
   final CharacterDefinition definition;
   final bool unlocked;
   final bool selected;
   final VoidCallback onTap;
-
   @override
   Widget build(BuildContext context) {
     final weapon = weaponDefinitions.firstWhere(
-      (candidate) => candidate.id == definition.startingWeaponId,
+      (weapon) => weapon.id == definition.startingWeaponId,
     );
-    return Semantics(
-      key: Key('character-semantics-${definition.id}'),
+    final stats = characterDisplayStats(definition);
+    final assetPath = AssetCatalog.characters[definition.id];
+    return JoseonSelectionCard(
+      key: Key('character-${definition.id}'),
       selected: selected,
-      enabled: unlocked,
-      button: true,
-      label: _localizedName(definition.id),
-      child: Card(
-        clipBehavior: Clip.antiAlias,
-        color: selected ? const Color(0xffffefc2) : null,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-          side: BorderSide(
-            color: selected ? const Color(0xff8f2d38) : Colors.transparent,
-            width: 3,
-          ),
-        ),
-        child: InkWell(
-          key: Key('character-${definition.id}'),
-          onTap: onTap,
-          child: Stack(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (selected) ...[
-                      const AccessibleStatusBadge(
-                        icon: Icons.check_circle_outline,
-                        label: '\uC120\uD0DD\uB428',
-                        semanticsLabel: '\uC120\uD0DD\uB41C \uCE90\uB9AD\uD130',
-                        foregroundColor: Color(0xff8f2d38),
-                        backgroundColor: Color(0xffffefc2),
+      locked: !unlocked,
+      semanticsLabel: definition.name,
+      onTap: onTap,
+      child: LayoutBuilder(
+        builder: (context, constraints) => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              height: (constraints.maxHeight * .36).clamp(160.0, 220.0),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: assetPath == null
+                    ? MissingAssetPlaceholder(assetKey: definition.id)
+                    : Image.asset(
+                        assetPath,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) =>
+                            MissingAssetPlaceholder(assetKey: definition.id),
                       ),
-                      const SizedBox(height: 6),
-                    ],
-                    Icon(
-                      _iconForCharacter(definition.id),
-                      size: 44,
-                      color: unlocked
-                          ? const Color(0xff8f2d38)
-                          : Colors.grey.shade500,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      _localizedName(definition.id),
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text('체력 ${definition.maxHealth.toInt()}'),
-                    Text('이동 속도 ${definition.moveSpeed.toInt()}'),
-                    Text('공격력 ${(definition.damageMultiplier * 100).round()}%'),
-                    Text('시작 무기 ${weapon.name}'),
-                    const SizedBox(height: 4),
-                    Text(
-                      definition.passiveName,
-                      style: const TextStyle(fontWeight: FontWeight.w800),
-                    ),
-                    Text(
-                      definition.passiveDescription,
-                      textAlign: TextAlign.center,
-                    ),
-                    if (selected)
-                      SizedBox(key: Key('character-selected-${definition.id}')),
-                  ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              definition.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '${definition.passiveName} · ${definition.passiveDescription}',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 10),
+            Text(
+              '체력 ${stats.health}   공격 ${stats.attack}   이동 속도 ${stats.moveSpeed}',
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '시작 무기 ${weapon.name}',
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            if (selected) const Text('선택됨'),
+            if (selected)
+              SizedBox(key: Key('character-selected-${definition.id}')),
+            if (!unlocked)
+              Center(
+                child: Icon(
+                  Icons.lock,
+                  key: Key('character-lock-${definition.id}'),
                 ),
               ),
-              if (!unlocked)
-                Positioned.fill(
-                  child: ColoredBox(
-                    color: Colors.black.withValues(alpha: 0.48),
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.lock,
-                            key: Key('character-lock-${definition.id}'),
-                            size: 40,
-                            color: Colors.white,
-                          ),
-                          const Text(
-                            '해금 필요',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
+          ],
         ),
       ),
     );
   }
 }
-
-String _localizedName(String id) {
-  return switch (id) {
-    rookieConstable => '신참 포졸',
-    exorcistDosa => '퇴마 도사',
-    mountainHunter => '산길 사냥꾼',
-    _ => id,
-  };
-}
-
-IconData _iconForCharacter(String id) => switch (id) {
-  rookieConstable => Icons.shield,
-  exorcistDosa => Icons.auto_awesome,
-  mountainHunter => Icons.track_changes,
-  _ => Icons.person,
-};
