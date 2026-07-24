@@ -26,12 +26,12 @@ class WorldChunkDescriptor {
 class WorldLayoutAnchor {
   const WorldLayoutAnchor({
     required this.position,
-    required this.chunk,
+    required this.coordinate,
     required this.layoutSeed,
   });
 
   final Offset position;
-  final WorldChunkCoordinate chunk;
+  final WorldChunkCoordinate coordinate;
   final int layoutSeed;
 }
 
@@ -175,7 +175,7 @@ List<WorldLayoutAnchor> _boundaryAnchors({
     final point = _pointOnEdge(bounds, edge, index, layoutSeed, worldBounds);
     return WorldLayoutAnchor(
       position: point,
-      chunk: coordinate,
+      coordinate: coordinate,
       layoutSeed: _mix32(layoutSeed, index, edge.index, 0),
     );
   });
@@ -240,7 +240,7 @@ List<WorldLayoutAnchor> _interiorAnchors({
     anchors.add(
       WorldLayoutAnchor(
         position: position,
-        chunk: coordinate,
+        coordinate: coordinate,
         layoutSeed: layoutSeed,
       ),
     );

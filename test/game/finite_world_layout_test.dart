@@ -65,7 +65,7 @@ void main() {
     final anchorPositions = <String>{};
 
     for (final anchor in layout.boundaryDecorationAnchors) {
-      final bounds = layout.chunkBounds[anchor.chunk]!;
+      final bounds = layout.chunkBounds[anchor.coordinate]!;
       expect(bounds.contains(anchor.position), isTrue);
       expect(
         anchor.position.dx,
@@ -80,9 +80,9 @@ void main() {
       ...layout.landmarkAnchors,
       ...layout.reservedChestAnchors,
     ]) {
-      final bounds = layout.chunkBounds[anchor.chunk]!;
-      expect(anchor.chunk.x, inInclusiveRange(1, 2));
-      expect(anchor.chunk.y, inInclusiveRange(1, 8));
+      final bounds = layout.chunkBounds[anchor.coordinate]!;
+      expect(anchor.coordinate.x, inInclusiveRange(1, 2));
+      expect(anchor.coordinate.y, inInclusiveRange(1, 8));
       expect(
         anchor.position.dx,
         inInclusiveRange(bounds.left + 64, bounds.right - 64),
