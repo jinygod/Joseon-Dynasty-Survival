@@ -1,8 +1,10 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/app/character_select_screen.dart';
+import 'package:pixel_survivor/game/content/asset_catalog.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
 
 void main() {
@@ -66,6 +68,29 @@ void main() {
   ) async {
     await pumpCharacterSelect(tester, size: const Size(430, 932));
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('missing logical portrait shows its debug asset key', (tester) async {
+    await tester.pumpWidget(
+      DefaultAssetBundle(
+        bundle: _FailingAssetBundle(),
+        child: _app(
+          CharacterSelectScreen(
+            initialCharacterId: rookieConstable,
+            unlockedCharacterIds: const {rookieConstable},
+            onSelected: (_) {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(
+        Key('missing-asset-${AssetCatalog.characterPortraits[rookieConstable]}'),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('character cards show their presentation-only role tag', (
@@ -142,4 +167,15 @@ void main() {
     await tester.tap(find.byKey(const Key('character-confirm')));
     expect(selected, rookieConstable);
   });
+}
+
+Widget _app(Widget home) => MaterialApp(
+  theme: ThemeData(splashFactory: NoSplash.splashFactory),
+  home: home,
+);
+
+class _FailingAssetBundle extends CachingAssetBundle {
+  @override
+  Future<ByteData> load(String key) =>
+      Future<ByteData>.error(StateError('Missing test asset: $key'));
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/app/compendium_screen.dart';
 import 'package:pixel_survivor/app/joseon_tab_bar.dart';
+import 'package:pixel_survivor/game/content/asset_catalog.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
 import 'package:pixel_survivor/game/models/compendium_entry.dart';
@@ -53,6 +54,20 @@ void main() {
     expect(find.text(bombName), findsOneWidget);
     expect(find.text('120 / 300'), findsNothing);
     expect(find.byIcon(Icons.lock_outline), findsNothing);
+  });
+
+  testWidgets('unlocked character missing portrait shows its logical asset key', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_app(CompendiumScreen(state: SaveState.defaults())));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(
+        Key('missing-asset-${AssetCatalog.characterPortraits[rookieConstable]}'),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('small phone can scroll without layout overflow', (tester) async {

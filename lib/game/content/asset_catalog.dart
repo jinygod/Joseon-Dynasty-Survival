@@ -3,6 +3,7 @@ class AssetCatalog {
 
   static final Set<String> allPaths = Set.unmodifiable([
     ...characters.values,
+    ...characterPortraits.values,
     ...monsters.values,
     ...weapons.values,
     ...augments.values,
@@ -18,6 +19,14 @@ class AssetCatalog {
     'exorcist_dosa': 'assets/images/player/exorcist_dosa_128.png',
     'mountain_hunter':
         'assets/images/player/exorcist_swordswoman_static_64.png',
+  };
+
+  static const characterPortraits = <String, String>{
+    'rookie_constable':
+        'assets/images/characters/rookie_constable_portrait.png',
+    'exorcist_dosa': 'assets/images/characters/exorcist_dosa_portrait.png',
+    'mountain_hunter':
+        'assets/images/characters/mountain_hunter_portrait.png',
   };
 
   static const monsters = <String, String>{

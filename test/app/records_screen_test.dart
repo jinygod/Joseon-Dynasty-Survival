@@ -45,7 +45,7 @@ void main() {
     final historyImage = tester.widget<Image>(find.byType(Image).last);
     expect(
       (characterImage.image as AssetImage).assetName,
-      AssetCatalog.characters[rookieConstable],
+      AssetCatalog.characterPortraits[rookieConstable],
     );
     expect(
       (historyImage.image as AssetImage).assetName,
@@ -147,6 +147,30 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('missing-asset-hwando_slash')), findsOneWidget);
+  });
+
+  testWidgets('missing character portrait exposes its logical asset key', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      DefaultAssetBundle(
+        bundle: _FailingAssetBundle(),
+        child: _app(
+          RecordsScreen(
+            state: SaveState.defaults(),
+            historyService: MetaHistoryService(loadHistory: () async => []),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(
+        Key('missing-asset-${AssetCatalog.characterPortraits[rookieConstable]}'),
+      ),
+      findsOneWidget,
+    );
   });
 }
 

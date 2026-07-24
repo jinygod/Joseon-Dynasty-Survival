@@ -188,6 +188,23 @@ void main() {
     }
   });
 
+  test('character portraits use distinct logical missing-art paths', () {
+    const portraits = {
+      'rookie_constable':
+          'assets/images/characters/rookie_constable_portrait.png',
+      'exorcist_dosa': 'assets/images/characters/exorcist_dosa_portrait.png',
+      'mountain_hunter':
+          'assets/images/characters/mountain_hunter_portrait.png',
+    };
+    expect(AssetCatalog.characterPortraits, portraits);
+    expect(portraits.values.toSet(), hasLength(3));
+    for (final path in portraits.values) {
+      expect(File(path).existsSync(), isFalse, reason: path);
+      expect(AssetCatalog.player.values, isNot(contains(path)));
+      expect(ReplaceableArtCatalog.atlases, isNot(contains(path)));
+    }
+  });
+
   test('player combat visual IDs match their exact visual contracts', () {
     expect(playerVisualContracts, hasLength(10));
     expect(

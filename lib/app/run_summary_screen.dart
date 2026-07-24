@@ -12,6 +12,7 @@ import '../game/systems/progression_system.dart';
 import '../game/systems/meta_progression_service.dart';
 import 'joseon_buttons.dart';
 import 'joseon_panel.dart';
+import 'weapon_star_rating.dart';
 
 typedef FeedbackSubmitted = Future<void> Function(RunFeedback feedback);
 typedef JsonAction = Future<bool> Function();
@@ -122,9 +123,10 @@ class _RunSummaryScreenState extends State<RunSummaryScreen> {
                     ),
                     const SizedBox(height: 8),
                     for (final weaponId in _weaponIds())
-                      _StatRow(
+                      _WeaponStatRow(
                         label: _displayName(weaponId),
-                        value: _weaponMetric(weaponId),
+                        level: widget.result.weaponLevels[weaponId] ?? 0,
+                        detail: _weaponMetric(weaponId),
                       ),
                   ],
                   const SizedBox(height: 24),
@@ -297,10 +299,9 @@ class _RunSummaryScreenState extends State<RunSummaryScreen> {
   }
 
   String _weaponMetric(String weaponId) {
-    final level = widget.result.weaponLevels[weaponId] ?? 0;
     final damage = (widget.result.weaponDamageTotals[weaponId] ?? 0).round();
     final kills = widget.result.weaponKillCounts[weaponId] ?? 0;
-    return AppStrings.weaponMetric(level: level, damage: damage, kills: kills);
+    return '피해 $damage · 처치 $kills';
   }
 
   bool get _canSubmitFeedback =>
@@ -431,6 +432,38 @@ class _StatRow extends StatelessWidget {
       ),
     );
   }
+}
+
+class _WeaponStatRow extends StatelessWidget {
+  const _WeaponStatRow({
+    required this.label,
+    required this.level,
+    required this.detail,
+  });
+
+  final String label;
+  final int level;
+  final String detail;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 6),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(child: Text(label)),
+        const SizedBox(width: 8),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            WeaponStarRating(level: level, compact: true),
+            const SizedBox(height: 2),
+            Text(detail, style: const TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
+      ],
+    ),
+  );
 }
 
 class _UnlockGroup extends StatelessWidget {

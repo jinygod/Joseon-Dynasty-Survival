@@ -157,7 +157,7 @@ class _UnlockedArtwork extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final assetPath = switch (entry.section) {
-      CompendiumSection.character => AssetCatalog.characters[entry.id],
+      CompendiumSection.character => AssetCatalog.characterPortraits[entry.id],
       CompendiumSection.weapon => AssetCatalog.weapons[entry.id],
       CompendiumSection.augment => AssetCatalog.augments[entry.id],
     };
@@ -181,7 +181,7 @@ class _UnlockedArtwork extends StatelessWidget {
               key: const Key('unlocked-original-image'),
               fit: BoxFit.cover,
               errorBuilder: (_, __, ___) =>
-                  MissingAssetPlaceholder(assetKey: entry.id),
+                  MissingAssetPlaceholder(assetKey: assetPath),
             ),
           ),
         ),

@@ -123,7 +123,7 @@ class _CharacterCard extends StatelessWidget {
       (weapon) => weapon.id == definition.startingWeaponId,
     );
     final stats = characterDisplayStats(definition);
-    final assetPath = AssetCatalog.characters[definition.id];
+    final assetPath = AssetCatalog.characterPortraits[definition.id];
     return JoseonSelectionCard(
       key: Key('character-${definition.id}'),
       selected: selected,
@@ -144,7 +144,7 @@ class _CharacterCard extends StatelessWidget {
                         assetPath,
                         fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) =>
-                            MissingAssetPlaceholder(assetKey: definition.id),
+                            MissingAssetPlaceholder(assetKey: assetPath),
                       ),
               ),
             ),

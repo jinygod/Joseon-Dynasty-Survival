@@ -14,25 +14,83 @@ import 'package:pixel_survivor/game/audio/audio_settings_controller.dart';
 import 'package:pixel_survivor/game/systems/save_system.dart';
 
 void main() {
-  test('missing-glyph border detector rejects medal-like dense masks', () {
-    expect(
-      _looksLikeMissingGlyphBox(
-        denseRows: const [0, 1, 16, 17],
-        denseColumns: const [0, 1, 16, 17],
-        width: 18,
-        height: 18,
+  testWidgets('missing-glyph detector distinguishes medal and tofu paths', (
+    tester,
+  ) async {
+    await tester.runAsync(_loadMaterialIconsFont);
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: RepaintBoundary(
+          key: Key('icon-evidence-root'),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.military_tech_outlined,
+                key: Key('medal-icon'),
+                color: Color(0xff2b251d),
+                size: 24,
+              ),
+              Icon(
+                IconData(0xf0000, fontFamily: 'MaterialIcons'),
+                key: Key('unsupported-icon'),
+                color: Color(0xff2b251d),
+                size: 24,
+              ),
+            ],
+          ),
+        ),
       ),
-      isTrue,
+    );
+    await tester.pump();
+    final pixels = await _captureRawPixels(
+      tester,
+      find.byKey(const Key('icon-evidence-root')),
+    );
+    final medal = _denseBandsForRect(
+      pixels: pixels.pixels,
+      imageWidth: pixels.width,
+      rect: tester.getRect(find.byKey(const Key('medal-icon'))),
     );
     expect(
       _looksLikeMissingGlyphBox(
-        denseRows: List<int>.generate(18, (index) => index),
-        denseColumns: List<int>.generate(18, (index) => index),
-        width: 18,
-        height: 18,
+        denseRows: medal.rows,
+        denseColumns: medal.columns,
+        width: medal.width,
+        height: medal.height,
       ),
       isFalse,
     );
+
+    final unsupported = _denseBandsForRect(
+      pixels: pixels.pixels,
+      imageWidth: pixels.width,
+      rect: tester.getRect(find.byKey(const Key('unsupported-icon'))),
+    );
+    final unsupportedLooksLikeTofu = _looksLikeMissingGlyphBox(
+      denseRows: unsupported.rows,
+      denseColumns: unsupported.columns,
+      width: unsupported.width,
+      height: unsupported.height,
+    );
+    if (unsupportedLooksLikeTofu) {
+      expect(unsupportedLooksLikeTofu, isTrue);
+    } else {
+      final syntheticTofu = _denseBandsForRect(
+        pixels: _thinTofuPixels(24),
+        imageWidth: 24,
+        rect: const Rect.fromLTWH(0, 0, 24, 24),
+      );
+      expect(
+        _looksLikeMissingGlyphBox(
+          denseRows: syntheticTofu.rows,
+          denseColumns: syntheticTofu.columns,
+          width: syntheticTofu.width,
+          height: syntheticTofu.height,
+        ),
+        isTrue,
+      );
+    }
   });
 
   for (final size in const [
@@ -102,14 +160,8 @@ Future<void> _expectLobbyVisualAssetsPainted(WidgetTester tester) async {
   final boundaryFinder = find.byKey(const Key('golden-root'));
   final boundary = tester.renderObject<RenderRepaintBoundary>(boundaryFinder);
   final boundaryRect = tester.getRect(boundaryFinder);
-  final rendered = await tester.runAsync(() async {
-    final image = await boundary.toImage(pixelRatio: 1);
-    final bytes = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
-    return (width: image.width, pixels: bytes?.buffer.asUint8List());
-  });
-  expect(rendered, isNotNull);
-  expect(rendered!.pixels, isNotNull);
-  final pixels = rendered.pixels!;
+  final rendered = await _captureRawPixels(tester, boundaryFinder);
+  final pixels = rendered.pixels;
 
   final iconFinder = find.byType(Icon);
   expect(iconFinder, findsWidgets);
@@ -119,36 +171,18 @@ Future<void> _expectLobbyVisualAssetsPainted(WidgetTester tester) async {
     final top = (rect.top - boundaryRect.top).floor();
     final width = rect.width.ceil();
     final height = rect.height.ceil();
-    final denseRows = <int>[];
-    for (var y = 0; y < height; y++) {
-      var inkPixels = 0;
-      for (var x = 0; x < width; x++) {
-        final pixel = ((top + y) * rendered.width + left + x) * 4;
-        if (_isJoseonInk(pixels, pixel)) {
-          inkPixels += 1;
-        }
-      }
-      if (inkPixels >= width * .6) {
-        denseRows.add(y);
-      }
-    }
-    final denseColumns = <int>[];
-    for (var x = 0; x < width; x++) {
-      var inkPixels = 0;
-      for (var y = 0; y < height; y++) {
-        final pixel = ((top + y) * rendered.width + left + x) * 4;
-        if (_isJoseonInk(pixels, pixel)) {
-          inkPixels += 1;
-        }
-      }
-      if (inkPixels >= height * .6) {
-        denseColumns.add(x);
-      }
-    }
+    final dense = _denseBandsInPixels(
+      pixels: pixels,
+      imageWidth: rendered.width,
+      left: left,
+      top: top,
+      width: width,
+      height: height,
+    );
     expect(
       _looksLikeMissingGlyphBox(
-        denseRows: denseRows,
-        denseColumns: denseColumns,
+        denseRows: dense.rows,
+        denseColumns: dense.columns,
         width: width,
         height: height,
       ),
@@ -186,6 +220,85 @@ Future<void> _expectLobbyVisualAssetsPainted(WidgetTester tester) async {
     greaterThan(20),
     reason: 'character image did not paint inside its medallion',
   );
+}
+
+Future<({int width, Uint8List pixels})> _captureRawPixels(
+  WidgetTester tester,
+  Finder finder,
+) async {
+  final boundary = tester.renderObject<RenderRepaintBoundary>(finder);
+  final rendered = await tester.runAsync(() async {
+    final image = await boundary.toImage(pixelRatio: 1);
+    final bytes = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+    return (width: image.width, pixels: bytes?.buffer.asUint8List());
+  });
+  expect(rendered, isNotNull);
+  expect(rendered!.pixels, isNotNull);
+  return (width: rendered.width, pixels: rendered.pixels!);
+}
+
+({int width, int height, List<int> rows, List<int> columns}) _denseBandsForRect({
+  required Uint8List pixels,
+  required int imageWidth,
+  required Rect rect,
+}) => _denseBandsInPixels(
+  pixels: pixels,
+  imageWidth: imageWidth,
+  left: rect.left.floor(),
+  top: rect.top.floor(),
+  width: rect.width.ceil(),
+  height: rect.height.ceil(),
+);
+
+({int width, int height, List<int> rows, List<int> columns})
+_denseBandsInPixels({
+  required Uint8List pixels,
+  required int imageWidth,
+  required int left,
+  required int top,
+  required int width,
+  required int height,
+}) {
+  final rows = <int>[];
+  for (var y = 0; y < height; y++) {
+    var inkPixels = 0;
+    for (var x = 0; x < width; x++) {
+      if (_isJoseonInk(pixels, ((top + y) * imageWidth + left + x) * 4)) {
+        inkPixels += 1;
+      }
+    }
+    if (inkPixels >= width * .6) rows.add(y);
+  }
+  final columns = <int>[];
+  for (var x = 0; x < width; x++) {
+    var inkPixels = 0;
+    for (var y = 0; y < height; y++) {
+      if (_isJoseonInk(pixels, ((top + y) * imageWidth + left + x) * 4)) {
+        inkPixels += 1;
+      }
+    }
+    if (inkPixels >= height * .6) columns.add(x);
+  }
+  return (width: width, height: height, rows: rows, columns: columns);
+}
+
+Uint8List _thinTofuPixels(int extent) {
+  final pixels = Uint8List(extent * extent * 4);
+  for (var index = 0; index < extent; index++) {
+    for (final offset in const [0, 1, 22, 23]) {
+      _setInk(pixels, extent, index, offset);
+      _setInk(pixels, extent, offset, index);
+    }
+  }
+  return pixels;
+}
+
+void _setInk(Uint8List pixels, int width, int x, int y) {
+  final pixel = (y * width + x) * 4;
+  pixels[pixel] = 43;
+  pixels[pixel + 1] = 37;
+  pixels[pixel + 2] = 29;
+  pixels[pixel + 3] = 255;
 }
 
 bool _looksLikeMissingGlyphBox({

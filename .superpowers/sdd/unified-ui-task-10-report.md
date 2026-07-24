@@ -6,6 +6,10 @@ Added deterministic portrait golden coverage for lobby, character select,
 stage select, locked compendium, records, pause, and run summary at 390x844,
 375x667, and 430x932. Updated player and stage asset contracts for the
 current catalog and the intentional stage-presentation `ASSET MISSING` state.
+Review follow-up adds distinct logical P0 character portrait paths without
+altering `AssetCatalog.player`, uses them only in character select, unlocked
+compendium cards, and records, and renders level 6 weapon results with the
+shared mastery star rating.
 
 ## RED / GREEN
 
@@ -19,6 +23,10 @@ current catalog and the intentional stage-presentation `ASSET MISSING` state.
 - GREEN (asset contracts):
   `D:\FlutterSdk\bin\flutter.bat test test/game/player_visual_asset_contract_test.dart test/game/stage_visual_asset_contract_test.dart`
   passed (12 tests).
+- GREEN (review follow-up): focused character select, compendium, records,
+  and run-summary tests passed (22 tests); the complete Task 10 goldens and
+  lobby evidence passed (22 tests); player/stage asset contracts passed
+  (13 tests).
 
 ## Generated and inspected images
 
@@ -41,20 +49,29 @@ All 21 images were individually inspected. Korean names, integer stats,
 and bottom actions are readable and unclipped; no browser-bottom overlap was
 observed. The locked compendium has silhouettes and no original art. Stage
 selection intentionally exposes a clear `ASSET MISSING` contract state.
-Run-summary level 6 is text-only and shows no erroneous sixth star.
+The nine impacted character-select, records, and run-summary images were
+regenerated and inspected. Character select and records visibly identify the
+missing logical portrait path rather than reusing battle art; records expands
+its debug-only placeholder so the full key remains readable. Run-summary
+level 6 shows exactly five teal stars plus `통달`, with damage and kills on a
+separate readable line and no sixth star.
 
 The original lobby icon check treated the solid portions of a valid
 `military_tech_outlined` medal as a missing glyph. The test-only check now
-requires thin dense edge bands on all four sides, and includes synthetic tofu
-and medal-mask evidence. No production UI code was changed.
+captures the actual medal and an unsupported Material icon through the raw
+pixel path, requires thin dense edge bands on all four sides, and falls back
+to a realistic raw-pixel thin tofu mask if the platform leaves unsupported
+glyphs blank.
 
 ## Risks
 
 Stage presentation artwork remains intentionally unavailable; the visible
 `ASSET MISSING` placeholder is now covered by both goldens and asset contract.
-The mobile character card still displays the approved sprite sheet rather
-than newly invented artwork.
+The P0 portrait PNGs remain intentionally absent. Debug UI exposes the full
+logical asset key; release builds retain the approved neutral placeholder.
 
 ## Commit
 
 `test: cover unified joseon mobile surfaces`
+
+Review follow-up commit: `fix: use logical character portrait placeholders`.

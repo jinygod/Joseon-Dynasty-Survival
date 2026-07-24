@@ -80,8 +80,10 @@ class _RecordsScreenState extends State<RecordsScreen> {
                     description: '',
                     locked: false,
                     leading: _CatalogThumbnail(
-                      assetPath: AssetCatalog.characters[character.id],
-                      assetKey: character.id,
+                      assetPath: AssetCatalog.characterPortraits[character.id],
+                      assetKey:
+                          AssetCatalog.characterPortraits[character.id] ??
+                              character.id,
                     ),
                   ),
                 ),
@@ -199,18 +201,21 @@ class _CatalogThumbnail extends StatelessWidget {
   final String assetKey;
 
   @override
-  Widget build(BuildContext context) => SizedBox(
-    width: 36,
-    height: 36,
-    child: assetPath == null
-        ? MissingAssetPlaceholder(assetKey: assetKey)
-        : Image.asset(
-            assetPath!,
-            fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) =>
-                MissingAssetPlaceholder(assetKey: assetKey),
-          ),
-  );
+  Widget build(BuildContext context) {
+    final isCharacterPortrait = assetPath?.contains('/characters/') ?? false;
+    return SizedBox(
+      width: isCharacterPortrait ? 200 : 36,
+      height: isCharacterPortrait ? 96 : 36,
+      child: assetPath == null
+          ? MissingAssetPlaceholder(assetKey: assetKey)
+          : Image.asset(
+              assetPath!,
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) =>
+                  MissingAssetPlaceholder(assetKey: assetKey),
+            ),
+    );
+  }
 }
 
 class _SectionTitle extends StatelessWidget {
