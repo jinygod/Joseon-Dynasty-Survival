@@ -362,6 +362,7 @@ git commit -m "feat: unify lobby and expose training progress"
 **Files:**
 - Modify: `lib/app/character_select_screen.dart`
 - Modify: `lib/app/stage_select_screen.dart`
+- Create: `lib/app/missing_asset_placeholder.dart`
 - Modify: `lib/game/content/asset_catalog.dart`
 - Modify: `lib/game/content/stage_definitions.dart` to add a required presentation image key to `StageDefinition`.
 - Test: `test/app/character_select_screen_test.dart`
@@ -370,6 +371,7 @@ git commit -m "feat: unify lobby and expose training progress"
 **Interfaces:**
 - Consumes: `JoseonScaffold`, `JoseonSelectionCard`, `JoseonPrimaryButton`, `characterDisplayStats`.
 - Preserves: `ValueChanged<String> onSelected` and existing initial/unlocked IDs.
+- Produces: `MissingAssetPlaceholder`, reused by later codex and records screens.
 
 - [ ] **Step 1: Write failing portrait interaction tests**
 
@@ -391,7 +393,7 @@ Expected: FAIL against the legacy horizontal rows.
 
 - [ ] **Step 3: Implement PageView cards and fixed actions**
 
-Use `PageView` with `viewportFraction` between 0.84 and 0.9. A locked page remains browseable but cannot be confirmed. Keep names to one line and passive descriptions to two lines. Stage cards contain their own illustration, details, and state rather than using a separate right-side panel.
+Use `PageView` with `viewportFraction: 0.88`. A locked page remains browseable but cannot be confirmed. Keep names to one line and passive descriptions to two lines. Stage cards contain their own 16:9 illustration slot, details, and state rather than using a separate right-side panel. Resolve a logical presentation key through a dedicated `AssetCatalog.stagePresentation` map. When the image is unavailable, use `MissingAssetPlaceholder`, which shows `ASSET MISSING` and the key in debug builds without substituting a Material stage icon or runtime tile atlas.
 
 - [ ] **Step 4: Run focused tests at three sizes**
 
@@ -402,7 +404,7 @@ Expected: PASS and no overflow exceptions.
 - [ ] **Step 5: Commit**
 
 ```powershell
-git add lib/app/character_select_screen.dart lib/app/stage_select_screen.dart lib/game/content/asset_catalog.dart lib/game/content/stage_definitions.dart test/app/character_select_screen_test.dart test/app/stage_select_screen_test.dart
+git add lib/app/character_select_screen.dart lib/app/stage_select_screen.dart lib/app/missing_asset_placeholder.dart lib/game/content/asset_catalog.dart lib/game/content/stage_definitions.dart test/app/character_select_screen_test.dart test/app/stage_select_screen_test.dart
 git commit -m "feat: rebuild mobile character and stage selection"
 ```
 
@@ -411,7 +413,7 @@ git commit -m "feat: rebuild mobile character and stage selection"
 **Files:**
 - Modify: `lib/app/compendium_screen.dart`
 - Modify: `lib/app/records_screen.dart`
-- Create: `lib/app/missing_asset_placeholder.dart`
+- Modify: `lib/app/missing_asset_placeholder.dart` only when codex/records require an additional presentation parameter.
 - Test: `test/app/compendium_screen_test.dart`
 - Test: `test/app/records_screen_test.dart`
 
