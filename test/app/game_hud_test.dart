@@ -23,7 +23,10 @@ void main() {
     expect(find.byKey(const Key('kill-count-icon')), findsOneWidget);
     expect(find.text('119'), findsOneWidget);
     expect(find.byType(WeaponStarRating), findsOneWidget);
-    expect(tester.widget<WeaponStarRating>(find.byType(WeaponStarRating)).level, 6);
+    expect(
+      tester.widget<WeaponStarRating>(find.byType(WeaponStarRating)).level,
+      6,
+    );
     expect(
       find.text(String.fromCharCodes(const [53685, 45804])),
       findsOneWidget,
@@ -140,7 +143,10 @@ void main() {
 
     expect(find.byKey(const Key('hud-health-bar')), findsNothing);
     expect(find.byType(WeaponStarRating), findsOneWidget);
-    expect(tester.widget<WeaponStarRating>(find.byType(WeaponStarRating)).level, 6);
+    expect(
+      tester.widget<WeaponStarRating>(find.byType(WeaponStarRating)).level,
+      6,
+    );
     expect(
       find.text(String.fromCharCodes(const [53685, 45804])),
       findsOneWidget,
@@ -148,11 +154,7 @@ void main() {
     expect(find.byKey(const Key('filled-star-5')), findsNothing);
   });
 
-  for (final size in const [
-    Size(375, 667),
-    Size(390, 844),
-    Size(430, 932),
-  ])
+  for (final size in const [Size(375, 667), Size(390, 844), Size(430, 932)]) {
     testWidgets('core-only HUD remains readable at $size', (tester) async {
       tester.view.physicalSize = size;
       tester.view.devicePixelRatio = 1;
@@ -180,6 +182,7 @@ void main() {
       );
       expect(tester.takeException(), isNull);
     });
+  }
 
   testWidgets('weapon slots expose name and level in the semantics tree', (
     tester,

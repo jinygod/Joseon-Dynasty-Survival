@@ -269,6 +269,7 @@ void main() {
           targetSeconds: 300,
           bossArrivalSeconds: 270,
           presentationImageKey: 'plague_market_presentation',
+          majorRewardLabel: 'Injected',
           visualTheme: StageVisualTheme.plague,
           backgroundColorValue: 0,
           riskLabel: 'Injected',

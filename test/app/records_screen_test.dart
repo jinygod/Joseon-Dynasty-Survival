@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -35,7 +33,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('4:00'), findsOneWidget);
-    expect(find.textContaining('\uCD5C\uACE0 \uB4F1\uAE09 \uBBF8\uC9D1\uACC4'), findsOneWidget);
+    expect(
+      find.textContaining('\uCD5C\uACE0 \uB4F1\uAE09 \uBBF8\uC9D1\uACC4'),
+      findsOneWidget,
+    );
     expect(find.text('최고 생존'), findsOneWidget);
     expect(find.text('신참 포졸 3승'), findsOneWidget);
     expect(find.text('퇴마 도사 0승'), findsOneWidget);
@@ -168,7 +169,9 @@ void main() {
 
     expect(
       find.byKey(
-        Key('missing-asset-${AssetCatalog.characterPortraits[rookieConstable]}'),
+        Key(
+          'missing-asset-${AssetCatalog.characterPortraits[rookieConstable]}',
+        ),
       ),
       findsOneWidget,
     );

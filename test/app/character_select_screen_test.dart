@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -78,10 +76,15 @@ void main() {
     await tester.drag(find.byType(PageView), const Offset(-320, 0));
     await tester.pumpAndSettle();
 
-    expect(find.text('\uBCF4\uC2A4 1\uD68C \uACA9\uD30C \uC2DC \uD574\uAE08'), findsOneWidget);
+    expect(
+      find.text('\uBCF4\uC2A4 1\uD68C \uACA9\uD30C \uC2DC \uD574\uAE08'),
+      findsOneWidget,
+    );
   });
 
-  testWidgets('missing logical portrait shows its debug asset key', (tester) async {
+  testWidgets('missing logical portrait shows its debug asset key', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       DefaultAssetBundle(
         bundle: _FailingAssetBundle(),
@@ -98,7 +101,9 @@ void main() {
 
     expect(
       find.byKey(
-        Key('missing-asset-${AssetCatalog.characterPortraits[rookieConstable]}'),
+        Key(
+          'missing-asset-${AssetCatalog.characterPortraits[rookieConstable]}',
+        ),
       ),
       findsOneWidget,
     );

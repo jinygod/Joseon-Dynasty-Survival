@@ -1,4 +1,3 @@
-import '../game/content/character_definitions.dart';
 import '../game/content/ids.dart';
 import '../game/content/weapon_level_definitions.dart';
 

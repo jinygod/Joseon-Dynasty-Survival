@@ -235,8 +235,8 @@ void main() {
         SaveState.defaults().copyWith(
           trainingProgress: const TrainingProgress(
             commonRanks: {'common.max_health': 2},
-            characterRanks: const {},
-            activeCoreTraitIds: const {},
+            characterRanks: {},
+            activeCoreTraitIds: {},
           ),
         ),
       ),

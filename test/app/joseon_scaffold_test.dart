@@ -74,7 +74,7 @@ Future<void> _pumpScaffold(
       },
       home: JoseonScaffold(
         topBar: const SizedBox(key: Key('top-bar'), height: 48),
-        body: ListView(children: [SizedBox(height: 1600)]),
+        body: ListView(children: const [SizedBox(height: 1600)]),
         bottomBar: const SizedBox(key: Key('fixed-action'), height: 48),
       ),
     ),

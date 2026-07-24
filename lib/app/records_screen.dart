@@ -31,7 +31,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final textScale = MediaQuery.textScalerOf(context).textScaleFactor;
+    final textScale = MediaQuery.textScalerOf(context).scale(1);
     final records = <({IconData icon, String label})>[
       (icon: Icons.sports_kabaddi, label: '누적 처치 ${widget.state.totalKills}'),
       (

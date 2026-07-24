@@ -93,27 +93,24 @@ void main() {
     }
   });
 
-  for (final size in const [
-    Size(390, 844),
-    Size(375, 667),
-    Size(430, 932),
-  ]) {
-    testWidgets('lobby mobile ${size.width.toInt()}x${size.height.toInt()} golden', (
-      tester,
-    ) async {
-      final controller = LobbyController(
-        store: _MemorySaveStore(SaveState.defaults()),
-      );
-      await controller.load();
-      await _expectMobileLobbyGolden(
-        tester,
-        size,
-        LobbyScreen(
-          controller: controller,
-          audioSettingsController: _audioController(),
-        ),
-      );
-    });
+  for (final size in const [Size(390, 844), Size(375, 667), Size(430, 932)]) {
+    testWidgets(
+      'lobby mobile ${size.width.toInt()}x${size.height.toInt()} golden',
+      (tester) async {
+        final controller = LobbyController(
+          store: _MemorySaveStore(SaveState.defaults()),
+        );
+        await controller.load();
+        await _expectMobileLobbyGolden(
+          tester,
+          size,
+          LobbyScreen(
+            controller: controller,
+            audioSettingsController: _audioController(),
+          ),
+        );
+      },
+    );
   }
 }
 
@@ -158,7 +155,6 @@ Future<void> _expectMobileLobbyGolden(
 
 Future<void> _expectLobbyVisualAssetsPainted(WidgetTester tester) async {
   final boundaryFinder = find.byKey(const Key('golden-root'));
-  final boundary = tester.renderObject<RenderRepaintBoundary>(boundaryFinder);
   final boundaryRect = tester.getRect(boundaryFinder);
   final rendered = await _captureRawPixels(tester, boundaryFinder);
   final pixels = rendered.pixels;
@@ -187,7 +183,8 @@ Future<void> _expectLobbyVisualAssetsPainted(WidgetTester tester) async {
         height: height,
       ),
       isFalse,
-      reason: 'Material icon ${(icon.widget as Icon).icon} painted as a '
+      reason:
+          'Material icon ${(icon.widget as Icon).icon} painted as a '
           'thin rectangular missing-glyph box',
     );
   }
@@ -237,7 +234,8 @@ Future<({int width, Uint8List pixels})> _captureRawPixels(
   return (width: rendered.width, pixels: rendered.pixels!);
 }
 
-({int width, int height, List<int> rows, List<int> columns}) _denseBandsForRect({
+({int width, int height, List<int> rows, List<int> columns})
+_denseBandsForRect({
   required Uint8List pixels,
   required int imageWidth,
   required Rect rect,

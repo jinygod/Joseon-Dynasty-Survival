@@ -14,7 +14,6 @@ import 'package:pixel_survivor/app/stage_select_screen.dart';
 import 'package:pixel_survivor/game/audio/audio_settings.dart';
 import 'package:pixel_survivor/game/audio/audio_settings_controller.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
-import 'package:pixel_survivor/game/content/ids.dart';
 import 'package:pixel_survivor/game/content/stage_definitions.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
 import 'package:pixel_survivor/game/models/run_outcome.dart';
@@ -30,11 +29,7 @@ void main() {
     await _loadMaterialIconsFont();
   });
 
-  for (final size in const [
-    Size(390, 844),
-    Size(375, 667),
-    Size(430, 932),
-  ]) {
+  for (final size in const [Size(390, 844), Size(375, 667), Size(430, 932)]) {
     final suffix = '${size.width.toInt()}x${size.height.toInt()}';
 
     testWidgets('character select $suffix', (tester) async {

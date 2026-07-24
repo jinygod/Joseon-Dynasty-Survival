@@ -167,8 +167,8 @@ class _StageCard extends StatelessWidget {
               '위험 ${stage.riskLabel}   목표 ${_clock(stage.targetSeconds)}   보스 ${_clock(stage.bossArrivalSeconds)}',
             ),
             const SizedBox(height: 8),
-            Text(StageDefinition.bestRecordUnavailableLabel),
-            Text(StageDefinition.clearStatusUnavailableLabel),
+            const Text(StageDefinition.bestRecordUnavailableLabel),
+            const Text(StageDefinition.clearStatusUnavailableLabel),
             Text(
               stage.majorRewardLabel,
               style: const TextStyle(fontWeight: FontWeight.w700),

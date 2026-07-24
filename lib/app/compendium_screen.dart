@@ -82,7 +82,7 @@ class _CompendiumList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textScale = MediaQuery.textScalerOf(context).textScaleFactor;
+    final textScale = MediaQuery.textScalerOf(context).scale(1);
     final useTwoColumns =
         MediaQuery.sizeOf(context).width >= 375 && textScale <= 1.3;
     return GridView.builder(
@@ -200,7 +200,7 @@ class _UnlockedArtwork extends StatelessWidget {
             right: -13,
             child: Semantics(
               label: '새 항목',
-              child: Text(
+              child: const Text(
                 'NEW',
                 key: Key('new-entry'),
                 style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900),
