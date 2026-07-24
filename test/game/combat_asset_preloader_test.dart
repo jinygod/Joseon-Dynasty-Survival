@@ -6,6 +6,13 @@ import 'package:pixel_survivor/game/content/combat_asset_preloader.dart';
 import 'package:pixel_survivor/game/content/weapon_effect_atlas.dart';
 
 void main() {
+  test('release Hwando contact art is part of the precombat cache', () {
+    expect(
+      AttackVisualRegistry.requiredAssetKeys,
+      contains('vfx/hwando/hwando_contact_128.png'),
+    );
+  });
+
   test(
     'preloader deduplicates registry keys into an immutable cache',
     () async {

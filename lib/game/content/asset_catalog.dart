@@ -25,8 +25,7 @@ class AssetCatalog {
     'rookie_constable':
         'assets/images/characters/rookie_constable_portrait.png',
     'exorcist_dosa': 'assets/images/characters/exorcist_dosa_portrait.png',
-    'mountain_hunter':
-        'assets/images/characters/mountain_hunter_portrait.png',
+    'mountain_hunter': 'assets/images/characters/mountain_hunter_portrait.png',
   };
 
   static const monsters = <String, String>{
@@ -103,6 +102,14 @@ class AssetCatalog {
         'assets/images/effects/hwando_slash_ribbon_512.png',
     'hwando_slash_trail_128': 'assets/images/vfx/hwando_slash_trail_128.png',
     'hwando_slash_impact_128': 'assets/images/vfx/hwando_slash_impact_128.png',
+    'hwando_release_windup_128':
+        'assets/images/vfx/hwando/hwando_windup_128.png',
+    'hwando_release_strike_128':
+        'assets/images/vfx/hwando/hwando_strike_128.png',
+    'hwando_release_recovery_128':
+        'assets/images/vfx/hwando/hwando_recovery_128.png',
+    'hwando_release_contact_128':
+        'assets/images/vfx/hwando/hwando_contact_128.png',
     'hwando_blade_wave_trail_128':
         'assets/images/vfx/hwando_blade_wave_trail_128.png',
     'hwando_blade_wave_impact_128':

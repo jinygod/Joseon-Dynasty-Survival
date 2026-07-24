@@ -1348,8 +1348,10 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
     }
   }
 
-  CombatVisualFactory get _combatVisualFactory =>
-      CombatVisualFactory(images: _visualImages);
+  CombatVisualFactory get _combatVisualFactory => CombatVisualFactory(
+    images: _visualImages,
+    allowMissingHwandoImages: !loadVisualAssets,
+  );
 
   void _ensureWardAura(PlayerComponent player) {
     final level = weaponSystem.levelOf(jangseungWard);

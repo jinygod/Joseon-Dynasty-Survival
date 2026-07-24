@@ -29,4 +29,31 @@ void main() {
       contains(RegExp(r'^\s*-\s+assets/images/vfx/\s*$', multiLine: true)),
     );
   });
+
+  test('release Hwando renderer has no primitive or legacy atlas fallback', () {
+    final source = File(
+      'lib/game/components/hwando_vfx_component.dart',
+    ).readAsStringSync();
+    final registry = File(
+      'lib/game/content/attack_visual_registry.dart',
+    ).readAsStringSync();
+
+    for (final forbidden in [
+      'drawCircle',
+      'drawRect',
+      'drawPath',
+      'weapon_effects_atlas',
+    ]) {
+      expect(source, isNot(contains(forbidden)), reason: forbidden);
+    }
+    expect(
+      AttackVisualRegistry.byId('hwando_slash').status,
+      AttackVisualStatus.ready,
+    );
+    expect(
+      AttackVisualRegistry.byId('hwando_slash').layers.map((layer) => layer.id),
+      ['windup', 'strike', 'recovery'],
+    );
+    expect(registry, contains('vfx/hwando/hwando_strike_128.png'));
+  });
 }

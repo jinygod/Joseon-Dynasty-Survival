@@ -68,6 +68,7 @@ flutter:
     - assets/images/weapons/
     - assets/images/effects/
     - assets/images/vfx/
+    - assets/images/vfx/hwando/
     - assets/images/vfx/player/
     - assets/images/vfx/enemy/
     - assets/images/projectiles/

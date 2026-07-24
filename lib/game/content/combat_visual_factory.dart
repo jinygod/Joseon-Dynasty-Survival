@@ -11,9 +11,13 @@ import '../components/status_marker_vfx_component.dart';
 import 'attack_visual_registry.dart';
 
 class CombatVisualFactory {
-  const CombatVisualFactory({required this.images});
+  const CombatVisualFactory({
+    required this.images,
+    this.allowMissingHwandoImages = false,
+  });
 
   final Map<String, Image> images;
+  final bool allowMissingHwandoImages;
 
   PositionComponent create(AttackVisualEvent event) {
     return createFromSpec(event, AttackVisualRegistry.byId(event.effectId));
@@ -28,6 +32,7 @@ class CombatVisualFactory {
       CombatVisualCategory.hwando => HwandoVfxComponent(
         event: event,
         images: images,
+        allowMissingImages: allowMissingHwandoImages,
       ),
       CombatVisualCategory.projectile => ProjectileVfxComponent(
         event: event,

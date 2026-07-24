@@ -70,7 +70,11 @@ class AttackPresentationContract {
     );
     return AttackPresentationContract._(
       effectId: attack.spec.id,
-      timing: attack.spec.timing,
+      timing: AttackTiming(
+        windupSeconds: _safeDuration(attack.spec.windupSeconds),
+        activeSeconds: _safeDuration(attack.spec.activeSeconds),
+        recoverySeconds: _safeDuration(attack.spec.recoverySeconds),
+      ),
       visualSector: visualSector,
       hitSector: visualSector.inset(hitInsetFraction),
     );
@@ -81,6 +85,8 @@ class AttackPresentationContract {
   final SectorGeometry visualSector;
   final SectorGeometry hitSector;
 }
+
+double _safeDuration(double value) => value.isFinite && value >= 0 ? value : 0;
 
 Vector2 _unit(Vector2 value) {
   if (value.length2 == 0) return Vector2(1, 0);

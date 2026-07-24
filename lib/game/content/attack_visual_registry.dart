@@ -54,25 +54,37 @@ class MissingAttackVisualException implements Exception {
 }
 
 abstract final class AttackVisualRegistry {
+  static const hwandoContactAssetKey = 'vfx/hwando/hwando_contact_128.png';
+
   static const _slashLayers = <AttackVisualLayerSpec>[
     AttackVisualLayerSpec(
-      id: 'trail',
-      assetKey: 'vfx/hwando_slash_trail_128.png',
+      id: 'windup',
+      assetKey: 'vfx/hwando/hwando_windup_128.png',
       frameSize: 128,
-      frameCount: 6,
+      frameCount: 4,
       anchor: Anchor.center,
       priorityOffset: 0,
       startFraction: 0,
-      endFraction: .75,
+      endFraction: .25,
     ),
     AttackVisualLayerSpec(
-      id: 'impact',
-      assetKey: 'vfx/hwando_slash_impact_128.png',
+      id: 'strike',
+      assetKey: 'vfx/hwando/hwando_strike_128.png',
       frameSize: 128,
-      frameCount: 5,
+      frameCount: 6,
       anchor: Anchor.center,
       priorityOffset: 1,
-      startFraction: .2,
+      startFraction: .25,
+      endFraction: .583333,
+    ),
+    AttackVisualLayerSpec(
+      id: 'recovery',
+      assetKey: 'vfx/hwando/hwando_recovery_128.png',
+      frameSize: 128,
+      frameCount: 4,
+      anchor: Anchor.center,
+      priorityOffset: 0,
+      startFraction: .583333,
       endFraction: 1,
     ),
   ];
@@ -323,21 +335,21 @@ abstract final class AttackVisualRegistry {
     'hwando_slash': AttackVisualSpec(
       effectId: 'hwando_slash',
       category: CombatVisualCategory.hwando,
-      status: AttackVisualStatus.generatedReview,
+      status: AttackVisualStatus.ready,
       layers: _slashLayers,
       rotateWithDirection: true,
     ),
     'hwando_slash_left': AttackVisualSpec(
       effectId: 'hwando_slash_left',
       category: CombatVisualCategory.hwando,
-      status: AttackVisualStatus.generatedReview,
+      status: AttackVisualStatus.ready,
       layers: _slashLayers,
       rotateWithDirection: true,
     ),
     'hwando_slash_right': AttackVisualSpec(
       effectId: 'hwando_slash_right',
       category: CombatVisualCategory.hwando,
-      status: AttackVisualStatus.generatedReview,
+      status: AttackVisualStatus.ready,
       layers: _slashLayers,
       rotateWithDirection: true,
     ),
@@ -351,21 +363,21 @@ abstract final class AttackVisualRegistry {
     'hwando_master_opener': AttackVisualSpec(
       effectId: 'hwando_master_opener',
       category: CombatVisualCategory.hwando,
-      status: AttackVisualStatus.generatedReview,
+      status: AttackVisualStatus.ready,
       layers: _slashLayers,
       rotateWithDirection: true,
     ),
     'hwando_master_left': AttackVisualSpec(
       effectId: 'hwando_master_left',
       category: CombatVisualCategory.hwando,
-      status: AttackVisualStatus.generatedReview,
+      status: AttackVisualStatus.ready,
       layers: _slashLayers,
       rotateWithDirection: true,
     ),
     'hwando_master_right': AttackVisualSpec(
       effectId: 'hwando_master_right',
       category: CombatVisualCategory.hwando,
-      status: AttackVisualStatus.generatedReview,
+      status: AttackVisualStatus.ready,
       layers: _slashLayers,
       rotateWithDirection: true,
     ),
@@ -480,12 +492,12 @@ abstract final class AttackVisualRegistry {
     ],
   );
 
-  static final List<String> requiredAssetKeys = List.unmodifiable(
-    _specs.values
+  static final List<String> requiredAssetKeys = List.unmodifiable({
+    ..._specs.values
         .expand((spec) => spec.layers)
-        .map((layer) => layer.assetKey)
-        .toSet(),
-  );
+        .map((layer) => layer.assetKey),
+    hwandoContactAssetKey,
+  });
 
   /// Stable, immutable IDs for tools that need to browse the production VFX.
   static final List<String> effectIds = List.unmodifiable(_specs.keys);

@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:flame/components.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pixel_survivor/game/combat/attack_timeline.dart';
 import 'package:pixel_survivor/game/combat/attack_spec.dart';
 import 'package:pixel_survivor/game/combat/attack_visual_event.dart';
 import 'package:pixel_survivor/game/components/hwando_vfx_component.dart';
@@ -21,6 +22,27 @@ void main() {
 
   tearDownAll(() => onePixelImage.dispose());
 
+  Future<Map<String, ui.Image>> phaseImages() async {
+    final result = <String, ui.Image>{};
+    for (final layer in AttackVisualRegistry.byId('hwando_slash').layers) {
+      final recorder = ui.PictureRecorder();
+      ui.Canvas(recorder).drawRect(
+        ui.Rect.fromLTWH(
+          0,
+          0,
+          layer.frameSize * layer.frameCount,
+          layer.frameSize,
+        ),
+        ui.Paint()..color = const ui.Color(0xffffffff),
+      );
+      result[layer.assetKey] = await recorder.endRecording().toImage(
+        (layer.frameSize * layer.frameCount).round(),
+        layer.frameSize.round(),
+      );
+    }
+    return result;
+  }
+
   final hwandoAttack = AttackInstance(
     spec: AttackSpec(
       id: 'hwando_slash',
@@ -30,9 +52,9 @@ void main() {
       angleRadians: math.pi * .7,
       radius: 0,
       width: 0,
-      windupSeconds: .05,
-      activeSeconds: .12,
-      lingerSeconds: .08,
+      windupSeconds: .06,
+      activeSeconds: .08,
+      lingerSeconds: .10,
       knockback: 10,
       slowFraction: 0,
       traits: const {AttackTrait.melee},
@@ -42,6 +64,46 @@ void main() {
     direction: Vector2(1, 0),
     sequenceIndex: 0,
   );
+
+  test(
+    'Hwando VFX follows authored phases and frozen visual geometry',
+    () async {
+      final images = await phaseImages();
+      addTearDown(() => images.values.forEach((image) => image.dispose()));
+      final upwardAttack = AttackInstance(
+        spec: hwandoAttack.spec,
+        origin: Vector2(10, 20),
+        direction: Vector2(0, 1),
+        sequenceIndex: 0,
+      );
+      final component = HwandoVfxComponent(
+        event: AttackVisualEvent.fromAttack(upwardAttack),
+        images: images,
+      );
+
+      expect(component.phase, AttackPhase.windup);
+      expect(component.visualRadius, 80);
+      expect(component.size, Vector2.all(160));
+      expect(component.facingAngle, closeTo(math.pi / 2, .0001));
+
+      component.update(.06);
+      expect(component.phase, AttackPhase.active);
+      component.update(.08);
+      expect(component.phase, AttackPhase.recovery);
+      component.update(.10);
+      expect(component.phase, AttackPhase.complete);
+    },
+  );
+
+  test('Hwando VFX requires every authored phase image up front', () {
+    expect(
+      () => HwandoVfxComponent(
+        event: AttackVisualEvent.fromAttack(hwandoAttack),
+        images: const {},
+      ),
+      throwsStateError,
+    );
+  });
 
   test('Hwando VFX freezes direction and expires once', () {
     var expired = 0;
