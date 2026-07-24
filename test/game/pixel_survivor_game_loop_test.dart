@@ -426,8 +426,15 @@ void main() {
     gameTester.testGameWidget(
       'kill streak expires after one low-FPS wall frame',
       setUp: (game, _) async {
-        final first = game.debugSpawnEnemy(bandit, position: Vector2(40, 40));
-        final second = game.debugSpawnEnemy(bandit, position: Vector2(60, 40));
+        final center = game.activePlayers.single.position;
+        final first = game.debugSpawnEnemy(
+          bandit,
+          position: center + Vector2(40, 40),
+        );
+        final second = game.debugSpawnEnemy(
+          bandit,
+          position: center + Vector2(60, 40),
+        );
         game.update(0);
         for (final enemy in [first, second]) {
           game.debugApplyDamageEvent(
@@ -446,6 +453,44 @@ void main() {
         expect(game.killStreak, 2);
         game.update(2);
         expect(game.killStreak, 0);
+      },
+    );
+
+    gameTester.testGameWidget(
+      'far normal enemies sleep and restore with conserved health',
+      setUp: (game, _) async {
+        final enemy = game.debugSpawnEnemy(
+          blackHatAssassin,
+          position: Vector2(100, 1200),
+        );
+        enemy.takeDamage(enemy.maxHealth / 2);
+        game.update(0);
+        game.processLifecycleEvents();
+      },
+      verify: (game, _) async {
+        expect(game.sleepingEnemyCount, 1);
+        expect(
+          game.worldChildrenOfType<EnemyComponent>().where(
+            (enemy) => enemy.enemyId == blackHatAssassin,
+          ),
+          isEmpty,
+        );
+
+        game.activePlayers.single.position.setValues(100, 1200);
+        for (
+          var frame = 0;
+          frame < 60 && game.sleepingEnemyCount > 0;
+          frame++
+        ) {
+          game.update(.05);
+          game.processLifecycleEvents();
+        }
+
+        final restored = game.worldChildrenOfType<EnemyComponent>().singleWhere(
+          (enemy) => enemy.enemyId == blackHatAssassin,
+        );
+        expect(game.sleepingEnemyCount, 0);
+        expect(restored.currentHealth / restored.maxHealth, closeTo(.5, .001));
       },
     );
 
@@ -977,7 +1022,7 @@ void main() {
     gameTester.testGameWidget(
       'ward collects its final tick at the exact expiration boundary',
       setUp: (game, _) async {
-        final position = Vector2(100, 100);
+        final position = game.activePlayers.single.position + Vector2(200, 200);
         await game.ensureAdd(
           EnemyComponent(
             enemyId: bandit,
@@ -1009,7 +1054,7 @@ void main() {
     gameTester.testGameWidget(
       'ward and frost apply only their strongest slow',
       setUp: (game, _) async {
-        final position = Vector2(100, 100);
+        final position = game.activePlayers.single.position + Vector2(200, 200);
         await game.ensureAdd(
           EnemyComponent(
             enemyId: bandit,

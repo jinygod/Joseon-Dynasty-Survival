@@ -74,7 +74,6 @@ import 'systems/enemy_aura_resolver.dart';
 import 'systems/enemy_behavior_controller.dart';
 import 'systems/run_progression_system.dart';
 import 'systems/run_stats_tracker.dart';
-import 'systems/spawn_ring_geometry.dart';
 import 'systems/combat_playtest_tracker.dart';
 import 'systems/wave_director.dart';
 import 'systems/talisman_executor.dart';
@@ -84,6 +83,9 @@ import 'world/combat_world.dart';
 import 'world/combat_camera_controller.dart';
 import 'world/finite_world_layout.dart';
 import 'world/stage_chunk_streamer.dart';
+import 'world/spatial_spawn_planner.dart';
+import 'world/world_activity_zone.dart';
+import 'world/world_chunk_repository.dart';
 import 'world/world_runtime_config.dart';
 
 class PixelSurvivorGame extends FlameGame<CombatWorld>
@@ -177,6 +179,15 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
   late final CombatFeedbackController _combatFeedback;
   late final CombatCameraController _cameraController;
   bool _cameraControllerReady = false;
+  late WorldActivityZones _activityZones;
+  late final WorldChunkRepository _chunkRepository = WorldChunkRepository(
+    chunkSize: worldConfig.chunkSize,
+  );
+  late final SpatialSpawnPlanner _spawnPlanner = SpatialSpawnPlanner(
+    seed: stageVisualSeed,
+  );
+  final Vector2 _recentPlayerMotion = Vector2.zero();
+  int _spatialSpawnSequence = 0;
   final List<PlayerComponent> _activePlayers = [];
   late final List<PlayerComponent> _activePlayersView = UnmodifiableListView(
     _activePlayers,
@@ -390,6 +401,7 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
   @override
   int get enemyCount =>
       _populationIndex.mountedEnemies.where((enemy) => !enemy.isDead).length;
+  int get sleepingEnemyCount => _chunkRepository.sleepingCount;
 
   String get currentWeaponLabel {
     final labels = weaponLevelLabels;
@@ -462,6 +474,12 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
     _cameraControllerReady = true;
     _cameraController.snapTo(worldConfig.worldSize / 2);
     _stageChunkStreamer.updateStreaming(camera.visibleWorldRect);
+    _activityZones = WorldActivityZones.fromVisibleRect(
+      camera.visibleWorldRect,
+      worldBounds: worldConfig.worldBounds,
+      hysteresis: worldConfig.zoneHysteresis,
+    );
+    _chunkRepository.markVisited(_activityZones.visibleRect);
     _addStartingAugments();
   }
 
@@ -552,6 +570,7 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
     _collectExperienceGems();
     _collectSpiritJade();
     _updateCamera(safeDt);
+    _updateEnemyActivityLifecycle();
   }
 
   void _advanceTime(double dt) {
@@ -769,10 +788,22 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
   }
 
   EnemyComponent _addEnemy(EnemyId enemyId, int spawnIndex) {
-    final offset = _spawnOffsetFor(spawnIndex);
+    final playerAnchor = _activePlayerAnchor();
+    final spawnSequence = _spatialSpawnSequence++;
+    final position = _spawnPlanner.positionFor(
+      SpatialSpawnRequest(
+        visibleRect: _activityZones.visibleRect,
+        worldBounds: worldConfig.worldBounds,
+        playerPosition: playerAnchor,
+        recentMotion: _recentPlayerMotion,
+        sequence: (spawnSequence * 31) ^ spawnIndex,
+        pressureFor: _chunkRepository.visitPressureAt,
+      ),
+    );
     final enemy = _createEnemy(
       enemyId,
-      _clampPointToWorld(_activePlayerAnchor() + offset),
+      _clampPointToWorld(position),
+      stateSeed: stageVisualSeed ^ spawnSequence,
     );
     _addEnemyWithWarningOverlay(enemy);
     return enemy;
@@ -791,10 +822,20 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
     );
   }
 
-  EnemyComponent _createEnemy(EnemyId enemyId, Vector2 position) {
+  EnemyComponent _createEnemy(
+    EnemyId enemyId,
+    Vector2 position, {
+    double? healthFraction,
+    int stateSeed = 0,
+  }) {
+    final definition = _enemyDefinitionFor(enemyId);
     return EnemyComponent.fromDefinition(
-      _enemyDefinitionFor(enemyId),
+      definition,
       position: position,
+      currentHealth: healthFraction == null
+          ? null
+          : (definition.maxHealth * healthFraction.clamp(.01, 1)).toDouble(),
+      stateSeed: stateSeed,
       targetPositionProvider: _nearestActivePlayerPosition,
       nearbyEnemiesProvider: () => worldChildrenOfType<EnemyComponent>(),
     );
@@ -1160,7 +1201,11 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
 
   void _updatePlayerMovement(double dt) {
     for (final player in _activePlayers.where((player) => player.isMounted)) {
+      final before = player.position.clone();
       player.applyInput(movementInput, dt, bounds: worldConfig.worldSize);
+      _recentPlayerMotion
+        ..scale(.82)
+        ..add((player.position - before) * .18);
     }
   }
 
@@ -1638,6 +1683,104 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
     if (_cameraControllerReady) {
       _cameraController.update(dt);
       _stageChunkStreamer.updateStreaming(camera.visibleWorldRect);
+    }
+  }
+
+  void _updateEnemyActivityLifecycle() {
+    if (!_cameraControllerReady) return;
+    _activityZones = WorldActivityZones.fromVisibleRect(
+      camera.visibleWorldRect,
+      worldBounds: worldConfig.worldBounds,
+      hysteresis: worldConfig.zoneHysteresis,
+    );
+    _chunkRepository.markVisited(_activityZones.visibleRect);
+
+    for (final enemy in worldChildrenOfType<EnemyComponent>().toList()) {
+      if (enemy is BossComponent || enemy.isDead || enemy.isRemoving) continue;
+      final tier = _activityZones.classify(
+        enemy.position,
+        previous: enemy.activityTier,
+      );
+      if (tier == WorldActivityTier.visible ||
+          tier == WorldActivityTier.active) {
+        enemy.setActivityTier(tier);
+        continue;
+      }
+      enemy.setActivityTier(tier);
+      if (tier == WorldActivityTier.sleeping) {
+        _chunkRepository.sleepEnemy(
+          SleepingEnemyRecord(
+            enemyId: enemy.enemyId,
+            position: enemy.position,
+            healthFraction: (enemy.currentHealth / enemy.maxHealth).clamp(0, 1),
+            rank: enemy.rank,
+            stateSeed: enemy.stateSeed,
+          ),
+        );
+      }
+      _removeEnemyPresentationOwners(enemy);
+      enemy.removeFromParent();
+    }
+
+    final restored = _chunkRepository.restoreEnemiesNear(
+      _activityZones.activeRect,
+    );
+    final capacity = max(
+      0,
+      min(_currentEnemyCap, performanceBudget.maxEnemies) -
+          _enemyComponentCount,
+    );
+    for (var index = 0; index < restored.length; index += 1) {
+      final record = restored[index];
+      if (index >= capacity) {
+        _chunkRepository.sleepEnemy(record);
+        continue;
+      }
+      final enemy = _createEnemy(
+        record.enemyId,
+        record.position,
+        healthFraction: record.healthFraction,
+        stateSeed: record.stateSeed,
+      );
+      enemy.setActivityTier(
+        _activityZones.classify(record.position) == WorldActivityTier.visible
+            ? WorldActivityTier.visible
+            : WorldActivityTier.active,
+      );
+      _addEnemyWithWarningOverlay(enemy);
+    }
+    _chunkRepository.recycleFarRecords(_activityZones.sleepingRect);
+    _retireTransientOutsideActiveZone();
+  }
+
+  void _removeEnemyPresentationOwners(EnemyComponent enemy) {
+    for (final shadow
+        in worldChildrenOfType<ActorShadowComponent>()
+            .where((item) => identical(item.target, enemy))
+            .toList()) {
+      shadow.removeFromParent();
+    }
+    for (final overlay
+        in worldChildrenOfType<EnemyWarningOverlayComponent>()
+            .where((item) => identical(item.enemy, enemy))
+            .toList()) {
+      overlay.removeFromParent();
+    }
+    _lastWeaponHitByEnemy.remove(enemy);
+    combatSystem.forget(enemy);
+  }
+
+  void _retireTransientOutsideActiveZone() {
+    for (final component in <PositionComponent>[
+      ...worldChildrenOfType<ProjectileComponent>(),
+      ...worldChildrenOfType<EnemyProjectileComponent>(),
+      ...worldChildrenOfType<EnemyHazardComponent>(),
+    ]) {
+      if (component.isRemoving ||
+          _activityZones.activeRect.contains(component.position.toOffset())) {
+        continue;
+      }
+      component.removeFromParent();
     }
   }
 
@@ -2194,12 +2337,6 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
     }
 
     return nearestPlayer?.position.clone();
-  }
-
-  Vector2 _spawnOffsetFor(int spawnIndex) {
-    final goldenAngle = pi * (3 - sqrt(5));
-    final angle = (spawnIndex * goldenAngle + _elapsedSeconds * .37) % (pi * 2);
-    return SpawnRingGeometry.offsetForAngle(size, angle);
   }
 
   bool _isProjectileOutsideBounds(ProjectileComponent projectile) {

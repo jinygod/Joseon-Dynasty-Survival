@@ -11,6 +11,7 @@ import 'package:pixel_survivor/game/content/ids.dart';
 import 'package:pixel_survivor/game/content/wave_definitions.dart';
 import 'package:pixel_survivor/game/models/damage_event.dart';
 import 'package:pixel_survivor/game/systems/enemy_behavior_controller.dart';
+import 'package:pixel_survivor/game/world/world_activity_zone.dart';
 
 void main() {
   group('EnemyComponent', () {
@@ -633,6 +634,31 @@ void main() {
       enemy.debugFace(Vector2(1, 0));
       expect(enemy.facesLeft, isFalse);
     });
+
+    test(
+      'active enemies use a bounded coarse update and sleeping enemies stop',
+      () {
+        final enemy = EnemyComponent(
+          enemyId: bandit,
+          maxHealth: 18,
+          moveSpeed: 100,
+          damage: 8,
+          targetPositionProvider: (_) => Vector2(100, 0),
+        );
+
+        enemy.setActivityTier(WorldActivityTier.active);
+        for (var index = 0; index < 4; index += 1) {
+          enemy.update(.01);
+        }
+        expect(enemy.position, Vector2.zero());
+
+        enemy.update(.01);
+        expect(enemy.position.x, closeTo(5, .001));
+        enemy.setActivityTier(WorldActivityTier.sleeping);
+        enemy.update(1);
+        expect(enemy.position.x, closeTo(5, .001));
+      },
+    );
   });
 }
 

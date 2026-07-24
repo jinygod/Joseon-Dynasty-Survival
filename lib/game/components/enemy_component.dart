@@ -17,6 +17,7 @@ import '../content/visual_asset_load_policy.dart';
 import '../systems/combat_feedback_tuning.dart';
 import '../systems/enemy_behavior_controller.dart';
 import '../models/damage_event.dart';
+import '../world/world_activity_zone.dart';
 import 'player_component.dart';
 
 typedef TargetPositionProvider = Vector2? Function(Vector2 enemyPosition);
@@ -168,6 +169,7 @@ class EnemyComponent
     this.experienceValue = 1,
     this.behaviorType = EnemyBehaviorType.chase,
     this.rank = EnemyRank.normal,
+    this.stateSeed = 0,
     EnemyBehaviorProfile? behaviorProfile,
     this.targetPositionProvider,
     this.nearbyEnemiesProvider,
@@ -193,6 +195,8 @@ class EnemyComponent
     TargetPositionProvider? targetPositionProvider,
     NearbyEnemiesProvider? nearbyEnemiesProvider,
     Vector2? position,
+    double? currentHealth,
+    int stateSeed = 0,
   }) {
     return EnemyComponent(
       enemyId: definition.id,
@@ -206,6 +210,8 @@ class EnemyComponent
       targetPositionProvider: targetPositionProvider,
       nearbyEnemiesProvider: nearbyEnemiesProvider,
       position: position,
+      currentHealth: currentHealth,
+      stateSeed: stateSeed,
     );
   }
 
@@ -217,6 +223,7 @@ class EnemyComponent
   final int experienceValue;
   final EnemyBehaviorType behaviorType;
   final EnemyRank rank;
+  final int stateSeed;
   final TargetPositionProvider? targetPositionProvider;
   final NearbyEnemiesProvider? nearbyEnemiesProvider;
   late final EnemyBehaviorProfile _behaviorProfile;
@@ -242,12 +249,15 @@ class EnemyComponent
   final Vector2 knockbackVelocity = Vector2.zero();
   final Vector2 facingDirection = Vector2(1, 0);
   EnemyAnimationState visualState = EnemyAnimationState.moving;
+  WorldActivityTier _activityTier = WorldActivityTier.visible;
+  double _activeUpdateAccumulator = 0;
 
   bool get deathVisualComplete =>
       isDead && _deathVisualElapsed >= EnemySpriteSheet.deathDurationSeconds;
 
   bool get isDead => currentHealth <= 0;
   bool get isElite => rank == EnemyRank.elite;
+  WorldActivityTier get activityTier => _activityTier;
   double get visualSize =>
       enemyVisualSpecFor(enemyId, fallbackRank: rank).visualSize;
   double get visualScale => visualSize / size.x;
@@ -306,6 +316,13 @@ class EnemyComponent
       throw ArgumentError.value(fraction, 'fraction', 'Must be from 0 to 0.8');
     }
     _environmentalHasteFraction = fraction;
+  }
+
+  void setActivityTier(WorldActivityTier tier) {
+    _activityTier = tier;
+    if (tier == WorldActivityTier.visible) {
+      _activeUpdateAccumulator = 0;
+    }
   }
 
   List<EnemyAttackRequest> drainAttackRequests() {
@@ -478,6 +495,14 @@ class EnemyComponent
 
   @override
   void update(double dt) {
+    if (_activityTier == WorldActivityTier.active) {
+      _activeUpdateAccumulator += dt;
+      if (_activeUpdateAccumulator < .05) return;
+      dt = math.min(_activeUpdateAccumulator, .05);
+      _activeUpdateAccumulator -= dt;
+    } else if (_activityTier != WorldActivityTier.visible) {
+      return;
+    }
     super.update(dt);
 
     if (isDead) {
@@ -675,6 +700,7 @@ class EnemyComponent
 
   @override
   void render(Canvas canvas) {
+    if (_activityTier != WorldActivityTier.visible) return;
     canvas.save();
     canvas.translate(size.x / 2, size.y);
     canvas.scale(visualScale);
