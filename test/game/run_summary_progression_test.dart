@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/app/run_summary_screen.dart';
+import 'package:pixel_survivor/app/weapon_star_rating.dart';
 import 'package:pixel_survivor/game/content/augment_definitions.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
 import 'package:pixel_survivor/game/content/stage_definitions.dart';
@@ -298,9 +299,13 @@ void main() {
     expect(find.text('승리'), findsOneWidget);
     expect(find.text('보스 처치'), findsOneWidget);
     expect(find.text('환도 베기'), findsOneWidget);
-    expect(find.textContaining('레벨 5'), findsOneWidget);
     expect(find.text('각궁 사격'), findsOneWidget);
-    expect(find.textContaining('레벨 3'), findsOneWidget);
+    expect(
+      tester
+          .widgetList<WeaponStarRating>(find.byType(WeaponStarRating))
+          .map((rating) => rating.level),
+      unorderedEquals([5, 3]),
+    );
   });
 
   testWidgets('defeat summary distinguishes an unfinished boss fight', (
@@ -358,9 +363,15 @@ void main() {
     );
 
     expect(find.text('환도 베기'), findsOneWidget);
-    expect(find.text('레벨 5 · 피해 1235 · 처치 42'), findsOneWidget);
+    expect(find.text('피해 1235 · 처치 42'), findsOneWidget);
     expect(find.text('각궁 사격'), findsOneWidget);
-    expect(find.text('레벨 3 · 피해 500 · 처치 10'), findsOneWidget);
+    expect(find.text('피해 500 · 처치 10'), findsOneWidget);
+    expect(
+      tester
+          .widgetList<WeaponStarRating>(find.byType(WeaponStarRating))
+          .map((rating) => rating.level),
+      unorderedEquals([5, 3]),
+    );
   });
 
   testWidgets('feedback requires structured answers and submits exact values', (
