@@ -15,6 +15,18 @@ import 'package:pixel_survivor/game/world/world_activity_zone.dart';
 
 void main() {
   group('EnemyComponent', () {
+    test('hurt radius stays ten percent inside the collision diameter', () {
+      final enemy = EnemyComponent(
+        enemyId: bandit,
+        maxHealth: 10,
+        moveSpeed: 0,
+        damage: 0,
+        size: Vector2.all(20),
+      );
+
+      expect(enemy.hurtRadius, 9);
+    });
+
     test('representative enemies keep collisions but use approved sizes', () {
       for (final entry in const {
         plagueRatSwarm: 32.0,

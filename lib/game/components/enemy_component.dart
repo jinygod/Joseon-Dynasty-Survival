@@ -261,6 +261,7 @@ class EnemyComponent
   double get visualSize =>
       enemyVisualSpecFor(enemyId, fallbackRank: rank).visualSize;
   double get visualScale => visualSize / size.x;
+  double get hurtRadius => size.x * .45;
   bool get isDashing =>
       _behaviorController.phase == EnemyBehaviorPhase.active &&
       (_behaviorProfile.kind == EnemyBehaviorKind.dash ||

@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import 'package:flame/components.dart';
 
 import 'attack_spec.dart';
+import 'attack_presentation_contract.dart';
+import 'combat_contact.dart';
 
 abstract final class AttackGeometry {
   static bool contains(
@@ -22,17 +24,52 @@ abstract final class AttackGeometry {
     Vector2 targetCenter,
     double targetRadius,
   ) {
-    final origin = attack.origin;
-    final direction = attack.direction;
+    return _sectorGeometryContains(
+      SectorGeometry(
+        origin: attack.origin,
+        direction: attack.direction,
+        radius: attack.spec.range,
+        angleRadians: attack.spec.angleRadians,
+      ),
+      targetCenter,
+      targetRadius,
+    );
+  }
+
+  static CombatContact? sectorContact(
+    SectorGeometry geometry,
+    Vector2 targetCenter,
+    double targetRadius,
+  ) {
+    if (!_sectorGeometryContains(geometry, targetCenter, targetRadius)) {
+      return null;
+    }
+    final origin = geometry.origin;
+    final towardTarget = targetCenter - origin;
+    if (towardTarget.length2 == 0) {
+      return CombatContact(point: origin, normal: geometry.direction);
+    }
+    final radialDirection = towardTarget.clone()..normalize();
+    final point = targetCenter - radialDirection * targetRadius;
+    return CombatContact(point: point, normal: radialDirection);
+  }
+
+  static bool _sectorGeometryContains(
+    SectorGeometry geometry,
+    Vector2 targetCenter,
+    double targetRadius,
+  ) {
+    final origin = geometry.origin;
+    final direction = geometry.direction;
     final dx = targetCenter.x - origin.x;
     final dy = targetCenter.y - origin.y;
     final distanceSquared = dx * dx + dy * dy;
-    final reach = attack.spec.range + targetRadius;
+    final reach = geometry.radius + targetRadius;
     if (distanceSquared > reach * reach) return false;
     if (distanceSquared <= targetRadius * targetRadius) return true;
 
     final forward = dx * direction.x + dy * direction.y;
-    final halfAngle = attack.spec.angleRadians / 2;
+    final halfAngle = geometry.angleRadians / 2;
     if (halfAngle >= math.pi) return true;
     final threshold = math.cos(halfAngle) * math.sqrt(distanceSquared);
     if (forward >= threshold) return true;
@@ -41,7 +78,7 @@ abstract final class AttackGeometry {
           origin: origin,
           direction: direction,
           angle: halfAngle,
-          range: attack.spec.range,
+          range: geometry.radius,
           targetCenter: targetCenter,
           targetRadius: targetRadius,
         ) ||
@@ -49,7 +86,7 @@ abstract final class AttackGeometry {
           origin: origin,
           direction: direction,
           angle: -halfAngle,
-          range: attack.spec.range,
+          range: geometry.radius,
           targetCenter: targetCenter,
           targetRadius: targetRadius,
         );
