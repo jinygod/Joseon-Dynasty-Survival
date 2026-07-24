@@ -402,8 +402,9 @@ class _PngRgba {
     for (var offset = 8; offset < bytes.length;) {
       final length = u32(offset);
       final type = utf8.decode(bytes.sublist(offset + 4, offset + 8));
-      if (type == 'IDAT')
+      if (type == 'IDAT') {
         idat.add(bytes.sublist(offset + 8, offset + 8 + length));
+      }
       offset += length + 12;
     }
     final raw = ZLibDecoder().convert(idat.toBytes());
@@ -466,10 +467,15 @@ class _PngCell {
   bool hasAtLeastPadding(int amount) {
     for (var y = 0; y < 128; y++) {
       for (var x = 0; x < 128; x++) {
-        if (x >= amount && x < 128 - amount && y >= amount && y < 128 - amount)
+        if (x >= amount &&
+            x < 128 - amount &&
+            y >= amount &&
+            y < 128 - amount) {
           continue;
-        if (png.pixels[((top + y) * png.width + left + x) * 4 + 3] != 0)
+        }
+        if (png.pixels[((top + y) * png.width + left + x) * 4 + 3] != 0) {
           return false;
+        }
       }
     }
     return true;
