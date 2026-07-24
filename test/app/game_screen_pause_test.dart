@@ -129,7 +129,11 @@ void main() {
     const slot = PlayerSlot(index: 0, characterId: exorcistDosa);
     await tester.pumpWidget(
       const MaterialApp(
-        home: GameScreen(playerSlot: slot, stageId: moonlitAbandonedOffice),
+        home: GameScreen(
+          playerSlot: slot,
+          stageId: moonlitAbandonedOffice,
+          loadVisualAssets: false,
+        ),
       ),
     );
     await _pumpUntil(
@@ -167,7 +171,12 @@ void main() {
     final preferences = await SharedPreferences.getInstance();
     final sessions = PlaytestSessionRepository(preferences: preferences);
     await tester.pumpWidget(
-      MaterialApp(home: GameScreen(playtestSessionRepository: sessions)),
+      MaterialApp(
+        home: GameScreen(
+          playtestSessionRepository: sessions,
+          loadVisualAssets: false,
+        ),
+      ),
     );
     await _pumpUntil(
       tester,
@@ -205,7 +214,9 @@ void main() {
     );
     await tester.pumpWidget(const SizedBox.shrink());
     store.release.complete(SaveState.defaults());
-    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 50)),
+    );
     await tester.pump();
 
     expect(game.firstBossRewardAvailable, isFalse);
@@ -283,5 +294,6 @@ PixelSurvivorGame _game() {
   return PixelSurvivorGame(
     playerSlot: const PlayerSlot(index: 0, characterId: 'rookie_constable'),
     onRunEnded: null,
+    loadVisualAssets: false,
   );
 }

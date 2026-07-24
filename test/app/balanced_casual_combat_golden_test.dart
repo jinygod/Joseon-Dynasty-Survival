@@ -7,16 +7,19 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/app/game_hud.dart';
 import 'package:pixel_survivor/game/combat/attack_spec.dart';
+import 'package:pixel_survivor/game/combat/attack_visual_event.dart';
 import 'package:pixel_survivor/game/combat/combat_vfx_primitives.dart';
-import 'package:pixel_survivor/game/components/attack_effect_component.dart';
 import 'package:pixel_survivor/game/components/enemy_component.dart';
 import 'package:pixel_survivor/game/components/enemy_hazard_component.dart';
 import 'package:pixel_survivor/game/components/experience_gem_component.dart';
 import 'package:pixel_survivor/game/components/five_color_ward_component.dart';
 import 'package:pixel_survivor/game/components/frost_field_component.dart';
+import 'package:pixel_survivor/game/components/hwando_vfx_component.dart';
 import 'package:pixel_survivor/game/components/player_component.dart';
 import 'package:pixel_survivor/game/components/projectile_component.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
+import 'package:pixel_survivor/game/content/attack_visual_registry.dart';
+import 'package:pixel_survivor/game/content/combat_visual_factory.dart';
 import 'package:pixel_survivor/game/content/enemy_definitions.dart';
 import 'package:pixel_survivor/game/content/weapon_definitions.dart';
 import 'package:pixel_survivor/game/models/player_slot.dart';
@@ -48,18 +51,18 @@ void main() {
     expect(fixture.game.weaponSystem.levelOf(hwandoSlash), 6);
     expect(fixture.game.weaponSystem.levelOf(talismanThrow), 6);
     expect(
-      fixture.game.children.whereType<FiveColorWardComponent>().length,
+      fixture.game.worldChildrenOfType<FiveColorWardComponent>().length,
       greaterThanOrEqualTo(2),
     );
     expect(
-      fixture.game.children.whereType<AttackEffectComponent>().any(
-        (effect) => effect.instance.spec.id == 'hwando_master_circle',
+      fixture.game.worldChildrenOfType<HwandoVfxComponent>().any(
+        (effect) => effect.event.effectId == 'hwando_master_circle',
       ),
       isTrue,
     );
     expect(
-      fixture.game.children.whereType<AttackEffectComponent>().any(
-        (effect) => effect.instance.spec.id == sealingSlash,
+      fixture.game.worldChildrenOfType<HwandoVfxComponent>().any(
+        (effect) => effect.event.effectId == sealingSlash,
       ),
       isTrue,
     );
@@ -102,11 +105,11 @@ void _expectReviewedSpectacleFrame(_CombatFixture fixture) {
   expect(fixture.game.enemyCount, greaterThanOrEqualTo(13));
   expect(fixture.enemyIds, contains(bandit));
   expect(fixture.enemyIds, containsAll(_priorMissingSpriteEnemyIds));
-  expect(fixture.game.children.whereType<FrostFieldComponent>(), isNotEmpty);
-  expect(fixture.game.children.whereType<ProjectileComponent>(), isNotEmpty);
-  expect(fixture.game.children.whereType<EnemyHazardComponent>(), isNotEmpty);
+  expect(fixture.game.worldChildrenOfType<FrostFieldComponent>(), isNotEmpty);
+  expect(fixture.game.worldChildrenOfType<ProjectileComponent>(), isNotEmpty);
+  expect(fixture.game.worldChildrenOfType<EnemyHazardComponent>(), isNotEmpty);
   expect(fixture.enemies.any((enemy) => enemy.warningSnapshot != null), isTrue);
-  final gems = fixture.game.children.whereType<ExperienceGemComponent>();
+  final gems = fixture.game.worldChildrenOfType<ExperienceGemComponent>();
   expect(gems, isNotEmpty);
   expect(gems.any((gem) => gem.visualScale > 1), isTrue);
 }
@@ -166,7 +169,16 @@ Future<_CombatFixture> _pumpCombatFixture(
     ),
   );
   await tester.pump();
-  await tester.pump(const Duration(milliseconds: 16));
+  for (
+    var attempt = 0;
+    attempt < 120 && game.activePlayers.isEmpty;
+    attempt++
+  ) {
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 10)),
+    );
+    await tester.pump(const Duration(milliseconds: 16));
+  }
   expect(game.activePlayers, hasLength(1));
   game.pauseEngine();
 
@@ -182,6 +194,7 @@ Future<_CombatFixture> _pumpCombatFixture(
 
   game.debugAdvanceTo(late ? 245 : 18);
   final positions = late ? _lateEnemyPositions() : _earlyEnemyPositions();
+  final viewportOrigin = game.activePlayers.single.position - Vector2(195, 422);
   final enemies = <EnemyComponent>[];
   for (var index = 0; index < positions.length; index += 1) {
     enemies.add(
@@ -189,7 +202,7 @@ Future<_CombatFixture> _pumpCombatFixture(
         _representativeEnemyIds.elementAt(
           index % _representativeEnemyIds.length,
         ),
-        position: positions[index],
+        position: viewportOrigin + positions[index],
       ),
     );
   }
@@ -228,7 +241,8 @@ Future<_CombatFixture> _pumpCombatFixture(
 }
 
 void _addReviewedCombatPresentation(PixelSurvivorGame game) {
-  game.add(
+  final viewportOrigin = game.activePlayers.single.position - Vector2(195, 422);
+  game.addWorldComponent(
     FrostFieldComponent(
       weaponId: frostFlask,
       damage: 0,
@@ -236,15 +250,15 @@ void _addReviewedCombatPresentation(PixelSurvivorGame game) {
       durationSeconds: 30,
       slowFraction: .25,
       knockback: 0,
-      position: Vector2(100, 410),
+      position: viewportOrigin + Vector2(100, 410),
       tier: CombatVfxTier.master,
     ),
   );
-  game.add(
+  game.addWorldComponent(
     ProjectileComponent(
       weaponId: singijeonVolley,
       damage: 0,
-      position: Vector2(145, 535),
+      position: viewportOrigin + Vector2(145, 535),
       velocity: Vector2(80, -18),
       lifetime: 30,
       pierce: 99,
@@ -253,18 +267,24 @@ void _addReviewedCombatPresentation(PixelSurvivorGame game) {
       size: Vector2.all(18),
     ),
   );
-  game.add(
+  game.addWorldComponent(
     EnemyHazardComponent.poison(
-      position: Vector2(295, 420),
+      position: viewportOrigin + Vector2(295, 420),
       damage: 0,
       sourceId: 'golden-poison-warning',
     ),
   );
-  game.add(
-    ExperienceGemComponent(experienceValue: 1, position: Vector2(78, 720)),
+  game.addWorldComponent(
+    ExperienceGemComponent(
+      experienceValue: 1,
+      position: viewportOrigin + Vector2(78, 720),
+    ),
   );
-  game.add(
-    ExperienceGemComponent(experienceValue: 64, position: Vector2(300, 710)),
+  game.addWorldComponent(
+    ExperienceGemComponent(
+      experienceValue: 64,
+      position: viewportOrigin + Vector2(300, 710),
+    ),
   );
 }
 
@@ -299,7 +319,7 @@ void _addLateMasteryPresentation(
   final masterCircle = hwandoAttacks.singleWhere(
     (attack) => attack.spec.id == 'hwando_master_circle',
   );
-  game.add(AttackEffectComponent(instance: masterCircle));
+  _addAttackVisual(game, masterCircle);
 
   final talisman = TalismanExecutor(random: Random(390844));
   final talismanResult = talisman.tick(
@@ -315,7 +335,7 @@ void _addLateMasteryPresentation(
   );
   expect(talismanResult.wards, hasLength(TalismanExecutor.maxMasterWards));
   for (final ward in talismanResult.wards) {
-    game.add(
+    game.addWorldComponent(
       FiveColorWardComponent(
         attack: ward.attack,
         tickSeconds: ward.tickSeconds,
@@ -337,7 +357,19 @@ void _addLateMasteryPresentation(
     now: 245,
     originatingAttackId: 2,
   );
-  game.add(AttackEffectComponent(instance: detonation.attack!));
+  _addAttackVisual(game, detonation.attack!);
+}
+
+void _addAttackVisual(PixelSurvivorGame game, AttackInstance attack) {
+  final event = AttackVisualEvent.fromAttack(attack);
+  final spec = AttackVisualRegistry.byId(event.effectId);
+  final images = {
+    for (final layer in spec.layers)
+      layer.assetKey: game.images.fromCache(layer.assetKey),
+  };
+  game.addWorldComponent(
+    CombatVisualFactory(images: images).createFromSpec(event, spec),
+  );
 }
 
 List<Vector2> _earlyEnemyPositions() => [

@@ -159,16 +159,12 @@ void main() {
 
     final boss = tester.getRect(find.byKey(const Key('boss-warning')));
     final status = tester.getRect(find.byKey(const Key('hud-status')));
-    final notice = tester.getRect(find.byKey(const Key('combat-notice')));
-    final streak = tester.getRect(find.byKey(const Key('kill-streak')));
     final weapons = tester.getRect(find.byKey(const Key('weapon-list')));
     expect(status.top, greaterThanOrEqualTo(boss.bottom));
-    expect(notice.top, greaterThanOrEqualTo(status.bottom));
-    expect(streak.top, greaterThanOrEqualTo(notice.bottom));
     expect(weapons.top, greaterThanOrEqualTo(status.top));
     expect(weapons.bottom, lessThanOrEqualTo(status.bottom));
     expect(status.height, lessThanOrEqualTo(92));
-    for (final rect in [boss, status, notice, streak, weapons]) {
+    for (final rect in [boss, status, weapons]) {
       expect(rect.left, greaterThanOrEqualTo(0));
       expect(rect.top, greaterThanOrEqualTo(0));
       expect(rect.right, lessThanOrEqualTo(390));

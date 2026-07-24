@@ -17,6 +17,7 @@ void main() {
     final game = PixelSurvivorGame(
       playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
       onRunEnded: null,
+      loadVisualAssets: false,
     );
     game.onGameResize(Vector2(960, 540));
     await tester.pumpWidget(

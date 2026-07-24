@@ -100,27 +100,19 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets(
-    'active combat notice and streak are accessibility live regions',
-    (tester) async {
-      final semantics = tester.ensureSemantics();
-      await tester.pumpWidget(
-        MaterialApp(home: GameHud(source: _ActiveHudSource())),
-      );
+  testWidgets('combat status summarizes essential values for accessibility', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    await tester.pumpWidget(
+      MaterialApp(home: GameHud(source: _ActiveHudSource())),
+    );
 
-      final notice = tester.widget<Semantics>(
-        find.byKey(const Key('combat-notice')),
-      );
-      final streak = tester.widget<Semantics>(
-        find.byKey(const Key('kill-streak')),
-      );
-      expect(notice.properties.liveRegion, isTrue);
-      expect(notice.properties.label, contains('봉마참'));
-      expect(streak.properties.liveRegion, isTrue);
-      expect(streak.properties.label, contains('7'));
-      semantics.dispose();
-    },
-  );
+    final status = tester.getSemantics(find.byKey(const Key('hud-status')));
+    expect(status.label, contains('123/456'));
+    expect(status.label, contains('999'));
+    semantics.dispose();
+  });
   testWidgets('portrait HUD remains compact at system text scale two', (
     tester,
   ) async {
@@ -149,8 +141,9 @@ void main() {
       tester.getRect(find.byKey(const Key('hud-status'))).height / 844,
       lessThanOrEqualTo(0.12),
     );
-    expect(find.byKey(const Key('hud-health-bar')), findsOneWidget);
     expect(find.byKey(const Key('hud-xp-bar')), findsOneWidget);
+    expect(find.byKey(const Key('weapon-list')), findsOneWidget);
+    expect(find.byKey(const Key('hud-pause')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

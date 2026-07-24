@@ -70,6 +70,7 @@ void main() {
       expect(find.byType(GameScreen), findsOneWidget);
       final firstGame = _activeGame(tester);
       await tester.runAsync(firstGame.ready);
+      await _pumpUntil(tester, () => firstGame.isMounted);
 
       expect(firstGame.gainExperience(11), isTrue);
       await tester.pump();
@@ -108,6 +109,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
       final retryGame = _activeGame(tester);
       await tester.runAsync(retryGame.ready);
+      await _pumpUntil(tester, () => retryGame.isMounted);
 
       expect(retryGame, isNot(same(firstGame)));
       expect(retryGame.playerLevel, 1);
@@ -115,6 +117,17 @@ void main() {
       expect(retryGame.isLevelUpPending, isFalse);
     },
   );
+}
+
+Future<void> _pumpUntil(WidgetTester tester, bool Function() condition) async {
+  for (var attempt = 0; attempt < 120; attempt++) {
+    if (condition()) return;
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 10)),
+    );
+    await tester.pump(const Duration(milliseconds: 16));
+  }
+  fail('Timed out waiting for mounted game');
 }
 
 PixelSurvivorGame _activeGame(WidgetTester tester) {

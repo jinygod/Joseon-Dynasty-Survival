@@ -50,6 +50,7 @@ class GameScreen extends StatefulWidget {
     this.metaProgressionService,
     this.playtestSessionRepository,
     this.syncProgress,
+    this.loadVisualAssets = true,
     super.key,
   });
 
@@ -67,6 +68,7 @@ class GameScreen extends StatefulWidget {
   final MetaProgressionService? metaProgressionService;
   final PlaytestSessionRepository? playtestSessionRepository;
   final Future<void> Function()? syncProgress;
+  final bool loadVisualAssets;
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -152,6 +154,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         ),
       ),
       isRepeatRun: ordinal > 1,
+      loadVisualAssets: widget.loadVisualAssets,
     );
     reservation?.confirm();
     _finishGameInitialization();
@@ -244,6 +247,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           metaProgressionService: _metaProgressionService,
           playtestSessionRepository: _playtestSessionRepository,
           syncProgress: widget.syncProgress,
+          loadVisualAssets: widget.loadVisualAssets,
         ),
       ),
     );
@@ -370,6 +374,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                     metaProgressionService: metaProgressionService,
                     playtestSessionRepository: _playtestSessionRepository,
                     syncProgress: syncProgress,
+                    loadVisualAssets: widget.loadVisualAssets,
                   ),
                 ),
               );
