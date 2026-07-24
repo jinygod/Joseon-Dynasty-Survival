@@ -29,6 +29,7 @@ void main() {
     tester,
   ) async {
     await pumpStageSelect(tester, size: const Size(390, 844));
+    await tester.pumpAndSettle();
 
     expect(find.byType(PageView), findsOneWidget);
     expect(
@@ -36,6 +37,15 @@ void main() {
       findsOneWidget,
     );
     expect(find.textContaining('5:00'), findsAtLeastNWidgets(1));
+    final illustration = tester.getRect(
+      find.byKey(const Key('stage-illustration-slot-moonlit_abandoned_office')),
+    );
+    expect(illustration.width / illustration.height, closeTo(16 / 9, .02));
+    expect(find.textContaining('ASSET MISSING'), findsAtLeastNWidgets(1));
+    expect(
+      find.textContaining('moonlit_abandoned_office_presentation'),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 

@@ -126,48 +126,52 @@ class _StageCard extends StatelessWidget {
       locked: !unlocked,
       semanticsLabel: stage.name,
       onTap: onTap,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Center(
-            child: SizedBox(
-              height: 180,
-              child: AspectRatio(
-                aspectRatio: 16 / 9,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: imagePath == null
-                      ? MissingAssetPlaceholder(
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AspectRatio(
+              key: Key('stage-illustration-slot-${stage.id}'),
+              aspectRatio: 16 / 9,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: imagePath == null
+                    ? MissingAssetPlaceholder(
+                        assetKey: stage.presentationImageKey,
+                      )
+                    : Image.asset(
+                        imagePath,
+                        key: Key('stage-illustration-${stage.id}'),
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => MissingAssetPlaceholder(
                           assetKey: stage.presentationImageKey,
-                        )
-                      : Image.asset(
-                          imagePath,
-                          key: Key('stage-illustration-${stage.id}'),
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => MissingAssetPlaceholder(
-                            assetKey: stage.presentationImageKey,
-                          ),
                         ),
-                ),
+                      ),
               ),
             ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            stage.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w900),
-          ),
-          const SizedBox(height: 6),
-          Text(stage.description, maxLines: 2, overflow: TextOverflow.ellipsis),
-          const SizedBox(height: 12),
-          Text(
-            '위험 ${stage.riskLabel}   목표 ${_clock(stage.targetSeconds)}   보스 ${_clock(stage.bossArrivalSeconds)}',
-          ),
-          if (!unlocked)
-            Center(child: Icon(Icons.lock, key: Key('stage-lock-${stage.id}'))),
-        ],
+            const SizedBox(height: 12),
+            Text(
+              stage.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              stage.description,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '위험 ${stage.riskLabel}   목표 ${_clock(stage.targetSeconds)}   보스 ${_clock(stage.bossArrivalSeconds)}',
+            ),
+            if (!unlocked)
+              Center(
+                child: Icon(Icons.lock, key: Key('stage-lock-${stage.id}')),
+              ),
+          ],
+        ),
       ),
     );
   }

@@ -157,6 +157,11 @@ class _CharacterCard extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
+              _presentationRole(definition.id),
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 4),
+            Text(
               '${definition.passiveName} · ${definition.passiveDescription}',
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -186,3 +191,10 @@ class _CharacterCard extends StatelessWidget {
     );
   }
 }
+
+String _presentationRole(String characterId) => switch (characterId) {
+  rookieConstable => '균형형',
+  exorcistDosa => '술법형',
+  mountainHunter => '기동형',
+  _ => '',
+};

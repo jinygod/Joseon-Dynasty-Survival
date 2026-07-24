@@ -19,6 +19,7 @@ void main() {
       MaterialApp(
         theme: ThemeData(splashFactory: NoSplash.splashFactory),
         home: CharacterSelectScreen(
+          key: ValueKey(initialCharacterId),
           initialCharacterId: initialCharacterId,
           unlockedCharacterIds: unlockedCharacterIds,
           onSelected: onSelected ?? (_) {},
@@ -65,6 +66,26 @@ void main() {
   ) async {
     await pumpCharacterSelect(tester, size: const Size(430, 932));
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('character cards show their presentation-only role tag', (
+    tester,
+  ) async {
+    for (final entry in const {
+      rookieConstable: '균형형',
+      exorcistDosa: '술법형',
+      mountainHunter: '기동형',
+    }.entries) {
+      await pumpCharacterSelect(
+        tester,
+        size: const Size(390, 844),
+        initialCharacterId: entry.key,
+        unlockedCharacterIds: characterDefinitions
+            .map((item) => item.id)
+            .toSet(),
+      );
+      expect(find.text(entry.value), findsOneWidget);
+    }
   });
 
   testWidgets('starts at saved character and returns the selected id', (
