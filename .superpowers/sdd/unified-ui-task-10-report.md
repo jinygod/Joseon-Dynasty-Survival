@@ -75,3 +75,21 @@ logical asset key; release builds retain the approved neutral placeholder.
 `test: cover unified joseon mobile surfaces`
 
 Review follow-up commit: `fix: use logical character portrait placeholders`.
+
+## Release golden font gate
+
+- RED: after loading the Joseon display/body fonts and MaterialIcons, the
+  existing release baselines differed as expected: lobby 12.63%, character
+  select 6.18%, stage select 3.58%, HUD 0.55%, pause 13.04%, and run summary
+  99.99%.
+- GREEN: `D:\FlutterSdk\bin\flutter.bat test --update-goldens test/app/release_surface_golden_test.dart`
+  passed, followed by the same command without `--update-goldens` (6 tests
+  passed).
+- Updated and individually inspected: `lobby_16_9.png`,
+  `character_select_16_9.png`, `stage_select_16_9.png`,
+  `game_hud_16_9.png`, `pause_menu_16_9.png`, and `run_summary_16_9.png`.
+- Korean text and Material icons render as glyphs, not tofu; character and
+  stage logical missing-art states are visible; HUD and result mastery show
+  five teal stars; pause actions and result actions fit without overflow.
+- The release fixture now includes a level-6 weapon result so the result
+  golden visibly covers five stars, `통달`, damage, and kills.

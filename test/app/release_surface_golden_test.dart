@@ -11,6 +11,7 @@ import 'package:pixel_survivor/app/character_select_screen.dart';
 import 'package:pixel_survivor/app/game_hud.dart';
 import 'package:pixel_survivor/app/game_hud_source.dart';
 import 'package:pixel_survivor/app/game_settings_repository.dart';
+import 'package:pixel_survivor/app/joseon_ui_theme.dart';
 import 'package:pixel_survivor/app/lobby_controller.dart';
 import 'package:pixel_survivor/app/lobby_screen.dart';
 import 'package:pixel_survivor/app/pause_menu_overlay.dart';
@@ -33,7 +34,11 @@ import 'package:pixel_survivor/game/systems/progression_system.dart';
 import 'package:pixel_survivor/game/systems/save_system.dart';
 
 void main() {
-  setUpAll(_loadDeterministicGoldenFont);
+  setUpAll(() async {
+    await _loadDeterministicGoldenFont();
+    await _loadBundledJoseonFonts();
+    await _loadMaterialIconsFont();
+  });
 
   testWidgets('lobby 16:9 golden', (tester) async {
     final controller = LobbyController(
@@ -177,20 +182,21 @@ Future<void> _expectGolden(
     tester.view.resetPhysicalSize();
     tester.view.resetDevicePixelRatio();
   });
+  final joseonTheme = JoseonUiTheme.create();
   await tester.pumpWidget(
     MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xff3fbf7f)),
-        splashFactory: NoSplash.splashFactory,
-        useMaterial3: false,
-        fontFamily: _goldenFontFamily,
+      theme: joseonTheme.copyWith(
+        textTheme: joseonTheme.textTheme.apply(
+          fontFamilyFallback: const [_goldenFontFamily],
+        ),
       ),
       home: RepaintBoundary(key: const Key('golden-root'), child: surface),
     ),
   );
   await tester.pump(const Duration(milliseconds: 100));
   expect(tester.takeException(), isNull);
+  _expectVisibleTextAndIconsAreConfigured(tester);
   await beforeCapture?.call(tester);
   await expectLater(
     find.byKey(const Key('golden-root')),
@@ -283,6 +289,59 @@ Future<void> _loadDeterministicGoldenFont() async {
   )..addFont(Future.value(ByteData.sublistView(bytes)))).load();
 }
 
+Future<void> _loadBundledJoseonFonts() async {
+  final displayBytes = await File(
+    'assets/fonts/SongMyung-Regular.ttf',
+  ).readAsBytes();
+  await (FontLoader(
+    JoseonUiTheme.displayFontFamily,
+  )..addFont(Future.value(ByteData.sublistView(displayBytes)))).load();
+  final bodyBytes = await File(
+    'assets/fonts/GowunBatang-Regular.ttf',
+  ).readAsBytes();
+  final boldBodyBytes = await File(
+    'assets/fonts/GowunBatang-Bold.ttf',
+  ).readAsBytes();
+  await (FontLoader(JoseonUiTheme.bodyFontFamily)
+        ..addFont(Future.value(ByteData.sublistView(bodyBytes)))
+        ..addFont(Future.value(ByteData.sublistView(boldBodyBytes))))
+      .load();
+}
+
+Future<void> _loadMaterialIconsFont() async {
+  var directory = File(Platform.resolvedExecutable).parent;
+  File? font;
+  while (directory.parent.path != directory.path) {
+    final candidate = File(
+      '${directory.path}${Platform.pathSeparator}cache'
+      '${Platform.pathSeparator}artifacts${Platform.pathSeparator}'
+      'material_fonts${Platform.pathSeparator}MaterialIcons-Regular.otf',
+    );
+    if (candidate.existsSync()) {
+      font = candidate;
+      break;
+    }
+    directory = directory.parent;
+  }
+  if (font == null) {
+    throw StateError('Flutter SDK Material Icons font is missing.');
+  }
+  final bytes = await font.readAsBytes();
+  await (FontLoader(
+    'MaterialIcons',
+  )..addFont(Future.value(ByteData.sublistView(bytes)))).load();
+}
+
+void _expectVisibleTextAndIconsAreConfigured(WidgetTester tester) {
+  for (final text in find.byType(Text).evaluate()) {
+    final value = (text.widget as Text).data;
+    expect(value, isNot(contains('\ufffd')));
+  }
+  for (final icon in find.byType(Icon).evaluate()) {
+    expect((icon.widget as Icon).icon?.fontFamily, 'MaterialIcons');
+  }
+}
+
 const _result = RunResult(
   outcome: RunOutcome.defeat,
   survivalSeconds: 247,
@@ -290,8 +349,9 @@ const _result = RunResult(
   level: 11,
   bossDefeated: false,
   wonWithLowHealth: false,
-  weaponKillCounts: {},
-  weaponLevels: {},
+  weaponKillCounts: {hwandoSlash: 87},
+  weaponLevels: {hwandoSlash: 6},
+  weaponDamageTotals: {hwandoSlash: 4200},
 );
 
 // Retained as a compact non-game HUD source for local golden diagnostics.
