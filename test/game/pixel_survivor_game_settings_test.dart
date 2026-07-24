@@ -6,14 +6,34 @@ import 'package:pixel_survivor/game/content/enemy_definitions.dart';
 import 'package:pixel_survivor/game/models/damage_event.dart';
 import 'package:pixel_survivor/game/models/player_slot.dart';
 import 'package:pixel_survivor/game/pixel_survivor_game.dart';
+import 'package:pixel_survivor/game/world/world_runtime_config.dart';
 
 void main() {
+  test('starts player and bounded camera at the world center with configured zoom',
+      () async {
+    final game = PixelSurvivorGame(
+      playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
+      onRunEnded: null,
+      loadVisualAssets: false,
+    );
+    game.onGameResize(Vector2(960, 540));
+    await game.onLoad();
+
+    expect(
+      game.camera.viewfinder.zoom,
+      closeTo(WorldRuntimeConfig.standard.cameraZoom, .000001),
+    );
+    expect(game.activePlayers.single.position, Vector2(1024, 2560));
+    expect(game.camera.viewfinder.position, Vector2(1024, 2560));
+  });
+
   test('disabled feedback suppresses numbers and shake', () async {
     final game = PixelSurvivorGame(
       playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
       onRunEnded: null,
       damageNumbersEnabled: false,
       screenShakeEnabled: false,
+      loadVisualAssets: false,
     );
     game.onGameResize(Vector2(960, 540));
     await game.onLoad();
@@ -44,6 +64,7 @@ void main() {
       final game = PixelSurvivorGame(
         playerSlot: const PlayerSlot(index: 0, characterId: rookieConstable),
         onRunEnded: null,
+        loadVisualAssets: false,
       );
       game.onGameResize(Vector2(960, 540));
       await game.onLoad();

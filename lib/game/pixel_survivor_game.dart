@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:collection';
 import 'dart:math';
-import 'dart:ui' show Image, Rect;
+import 'dart:ui' show Image;
 
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
@@ -83,6 +83,8 @@ import 'systems/talisman_executor.dart';
 import 'systems/weapon_system.dart';
 import 'systems/weapon_synergy_resolver.dart';
 import 'world/combat_world.dart';
+import 'world/combat_camera_controller.dart';
+import 'world/world_runtime_config.dart';
 
 class PixelSurvivorGame extends FlameGame<CombatWorld>
     with KeyboardEvents
@@ -168,7 +170,10 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
   final RunStatsTracker runStats;
   final WeaponSynergyResolver _weaponSynergyResolver = WeaponSynergyResolver();
   final CombatSystem combatSystem = CombatSystem();
+  final WorldRuntimeConfig worldConfig = WorldRuntimeConfig.standard;
   late final CombatFeedbackController _combatFeedback;
+  late final CombatCameraController _cameraController;
+  bool _cameraControllerReady = false;
   final List<PlayerComponent> _activePlayers = [];
   late final List<PlayerComponent> _activePlayersView = UnmodifiableListView(
     _activePlayers,
@@ -426,7 +431,9 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
           ], visualAssetLoader ?? images.load)
         : const {};
 
-    camera.viewfinder.anchor = Anchor.center;
+    camera.viewfinder
+      ..anchor = Anchor.center
+      ..zoom = worldConfig.cameraZoom;
 
     if (stageId == plagueMarket) {
       addWorldComponent(
@@ -434,7 +441,7 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
           layout: StageLayout.build(
             stageVisualSpec,
             seed: stageVisualSeed,
-            bounds: Rect.fromLTWH(0, 0, size.x, size.y),
+            bounds: worldConfig.worldBounds,
           ),
           images: _visualImages,
         ),
@@ -443,6 +450,15 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
       addWorldComponent(StageBackdropComponent(viewportSize: size));
     }
     _addActivePlayers();
+    _cameraController = CombatCameraController(
+      camera: camera,
+      config: worldConfig,
+      targetPosition: () => _activePlayers.first.position,
+      shakeOffset: () => _screenShakeOffset,
+      initialPosition: worldConfig.worldSize / 2,
+    );
+    _cameraControllerReady = true;
+    _cameraController.snapTo(worldConfig.worldSize / 2);
     _addStartingAugments();
   }
 
@@ -497,11 +513,13 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
     );
     if (_killStreakSecondsRemaining == 0) _killStreak = 0;
     if (_runOutcome != RunOutcome.inProgress || isLevelUpPending) {
+      _updateCamera(safeDt);
       return;
     }
 
     if (_rewardCollectionSecondsRemaining != null) {
       _updateRewardCollection(simulationDt);
+      _updateCamera(safeDt);
       return;
     }
 
@@ -509,7 +527,10 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
     // Hit-stop freezes combat, but the five-minute wave schedule follows wall
     // time so strong attacks cannot quietly reduce late-run enemy density.
     _spawnWaveEnemies(safeDt);
-    if (safeDt > 0 && simulationDt <= 0) return;
+    if (safeDt > 0 && simulationDt <= 0) {
+      _updateCamera(safeDt);
+      return;
+    }
 
     _updatePlayerMovement(simulationDt);
     _resetProjectileAdmissionBudget();
@@ -527,6 +548,7 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
     _applyEnemyContactDamage();
     _collectExperienceGems();
     _collectSpiritJade();
+    _updateCamera(safeDt);
   }
 
   void _advanceTime(double dt) {
@@ -644,7 +666,7 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
       characterId: playerSlot.characterId,
       maxHealth: character.maxHealth,
       moveSpeed: character.moveSpeed,
-      position: Vector2(size.x / 2, size.y / 2),
+      position: worldConfig.worldSize / 2,
     );
 
     unlockedWeaponIds.add(character.startingWeaponId);
@@ -1115,7 +1137,7 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
 
   void _updatePlayerMovement(double dt) {
     for (final player in _activePlayers.where((player) => player.isMounted)) {
-      player.applyInput(movementInput, dt, bounds: size);
+      player.applyInput(movementInput, dt, bounds: worldConfig.worldSize);
     }
   }
 
@@ -1561,7 +1583,6 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
   }
 
   void _updateScreenShake(double dt) {
-    camera.viewfinder.position.sub(_screenShakeOffset);
     _screenShakeOffset.setZero();
     if (!screenShakeEnabled) {
       _screenShakeRemaining = 0;
@@ -1581,14 +1602,17 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
       _screenShakeOffset.normalize();
       _screenShakeOffset.scale(CombatFeedbackTuning.maxScreenShakeMagnitude);
     }
-    camera.viewfinder.position.add(_screenShakeOffset);
   }
 
   void _clearScreenShake() {
-    camera.viewfinder.position.sub(_screenShakeOffset);
     _screenShakeOffset.setZero();
     _screenShakeRemaining = 0;
     _screenShakeMagnitude = 0;
+    if (_cameraControllerReady) _cameraController.update(0);
+  }
+
+  void _updateCamera(double dt) {
+    if (_cameraControllerReady) _cameraController.update(dt);
   }
 
   void _dropExperienceForDeadEnemies() {
