@@ -23,18 +23,28 @@ binding/mock store had been initialized, which produced no test progress.
 `game_screen_pause_test.dart` now initializes `TestWidgetsFlutterBinding` and
 sets mock preferences in `setUp`, matching `pause_menu_overlay_test.dart`.
 
+## Root QA follow-up
+
+Root's complete pause-screen run found one real failure in
+`game screen loads persisted audio settings`: `SwitchListTile` required a
+nearest `Material` below the shared `JoseonPanel` decoration. The settings
+toggle is now wrapped in a transparent `Material`, and the unreachable legacy
+pause-menu implementation was removed.
+
 ## Final results
 
 - PASS: `test/app/game_hud_test.dart`
 - PASS: `test/app/level_up_overlay_test.dart`
 - PASS: `test/app/run_summary_screen_test.dart`
-- `test/app/game_screen_pause_test.dart` was rerun after the test setup fix;
-  this environment still stopped during file loading before reporting a test
-  result, with no matching Task 9 runner left behind.
+- PASS: `test/app/game_screen_pause_test.dart` (11 tests)
+- PASS: all four Task 9 focused files, run sequentially to avoid concurrent
+  Flutter runner contention.
 
 ## Commits
 
 - `ac9a877 feat: unify combat hud and overlays`
+- `2b693ae test: initialize pause overlay preferences`
+- `fix: restore pause settings material context`
 
 ## Files
 

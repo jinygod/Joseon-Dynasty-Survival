@@ -82,44 +82,6 @@ class _PauseMenuOverlayState extends State<PauseMenuOverlay> {
     );
   }
 
-  Widget _buildLegacyMenu() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const Text(
-          '일시정지',
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900),
-        ),
-        const SizedBox(height: 24),
-        FilledButton(
-          key: const Key('pause-resume'),
-          onPressed: widget.onResume,
-          child: const Text('계속하기'),
-        ),
-        const SizedBox(height: 10),
-        OutlinedButton(
-          key: const Key('pause-restart'),
-          onPressed: widget.onRestart,
-          child: const Text('다시 시작'),
-        ),
-        const SizedBox(height: 10),
-        OutlinedButton(
-          key: const Key('pause-settings'),
-          onPressed: () => setState(() => _showSettings = true),
-          child: const Text('설정'),
-        ),
-        const SizedBox(height: 10),
-        TextButton(
-          key: const Key('pause-menu'),
-          onPressed: widget.onExitToMenu,
-          child: const Text('메인 메뉴'),
-        ),
-      ],
-    );
-  }
-
   Widget _buildSettings() {
     return ListenableBuilder(
       listenable: widget.settingsController,
@@ -153,7 +115,9 @@ class _PauseMenuOverlayState extends State<PauseMenuOverlay> {
                 unawaited(widget.settingsController.setSfxVolume(value));
               },
             ),
-            SwitchListTile(
+            Material(
+              color: Colors.transparent,
+              child: SwitchListTile(
               key: const Key('audio-vibration'),
               contentPadding: EdgeInsets.zero,
               title: const Text('진동'),
@@ -161,6 +125,7 @@ class _PauseMenuOverlayState extends State<PauseMenuOverlay> {
               onChanged: (value) {
                 unawaited(widget.settingsController.setVibrationEnabled(value));
               },
+              ),
             ),
             const SizedBox(height: 8),
             FilledButton.tonal(
