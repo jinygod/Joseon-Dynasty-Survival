@@ -225,6 +225,31 @@ void main() {
     expect(event.traits, {AttackTrait.projectile});
     expect(() => event.traits.clear(), throwsUnsupportedError);
   });
+
+  test('damage event defensively carries the actual contact point', () {
+    final point = Vector2(30, 40);
+    final event = DamageEvent(
+      target: EnemyComponent(
+        enemyId: 'contact_target',
+        maxHealth: 10,
+        moveSpeed: 0,
+        damage: 0,
+      ),
+      damage: 8,
+      knockback: 45,
+      direction: Vector2(1, 0),
+      weaponId: 'hwando_slash',
+      sourceId: 'hwando_slash',
+      traits: const {AttackTrait.melee},
+      contactPoint: point,
+    );
+
+    point.setZero();
+
+    expect(event.contactPoint, Vector2(30, 40));
+    event.contactPoint!.setZero();
+    expect(event.contactPoint, Vector2(30, 40));
+  });
 }
 
 AttackSpec _spec({

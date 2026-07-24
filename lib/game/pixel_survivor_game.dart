@@ -22,6 +22,7 @@ import 'combat/hwando_attack_queue.dart';
 import 'combat/talisman_damage.dart';
 import 'components/attack_effect_component.dart';
 import 'components/boss_component.dart';
+import 'components/hwando_contact_vfx_component.dart';
 import 'components/combat_effect_component.dart';
 import 'components/damage_number_component.dart';
 import 'components/enemy_component.dart';
@@ -1228,6 +1229,7 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
         ? talismanThrow
         : hwandoSlash;
     for (final enemy in enemies) {
+      Vector2? contactPoint;
       if (contract == null) {
         if (!AttackGeometry.contains(
           attack,
@@ -1243,6 +1245,7 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
           enemy.hurtRadius,
         );
         if (contact == null) continue;
+        contactPoint = contact.point;
       }
       final direction = enemy.position - attack.origin;
       if (direction.length2 > 0) direction.normalize();
@@ -1258,6 +1261,7 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
           sourceId: attack.spec.id,
           traits: attack.spec.traits,
           isCritical: attack.isCritical,
+          contactPoint: contactPoint,
         ),
       );
       if (weaponId == hwandoSlash &&
@@ -1277,7 +1281,10 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
         }
       }
     }
-    _applyDamageEvents(events);
+    final effectiveHitCount = _applyDamageEvents(events);
+    if (weaponId == hwandoSlash && contract != null && effectiveHitCount > 0) {
+      _combatFeedback.request(const CombatFeedbackRequest.hwandoHit());
+    }
     if (emitAudio) _emitSharedAttackAudio(attack);
     for (final synergyAttack in synergyAttacks) {
       _resolveSharedAttack(synergyAttack);
@@ -1690,7 +1697,8 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
     addWorldComponent(hazard);
   }
 
-  void _applyDamageEvents(Iterable<DamageEvent> events) {
+  int _applyDamageEvents(Iterable<DamageEvent> events) {
+    var effectiveHitCount = 0;
     for (final event in events) {
       if (event.target.isDead) continue;
       final healthBefore = event.target.currentHealth;
@@ -1699,6 +1707,7 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
       final wasBlocked = event.target.consumeBlockFeedback();
       event.target.takeDamage(resolvedDamage);
       final effectiveDamage = healthBefore - event.target.currentHealth;
+      if (effectiveDamage > 0) effectiveHitCount += 1;
       final weaponId = event.weaponId;
       if (weaponId != null && effectiveDamage > 0) {
         runStats.recordDamageSource(
@@ -1725,6 +1734,10 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
       );
       if (wasBlocked) {
         _spawnShieldBlockEffect(event.target);
+      } else if (event.weaponId == hwandoSlash &&
+          event.contactPoint != null &&
+          effectiveDamage > 0) {
+        _spawnHwandoContactEffect(event);
       } else {
         _spawnCombatEffect(
           event.isCritical ? CombatEffectKind.critical : CombatEffectKind.hit,
@@ -1734,6 +1747,7 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
       }
       if (event.isCritical) _emitAudio(AudioCue.criticalHit);
     }
+    return effectiveHitCount;
   }
 
   void _spawnDamageNumber(
@@ -1796,6 +1810,40 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
           _combatEffectCount = max(0, _combatEffectCount - 1);
         },
       ),
+    );
+  }
+
+  void _spawnHwandoContactEffect(DamageEvent event) {
+    if (_combatEffectCount >= performanceBudget.maxCombatEffects) {
+      _rejectPopulation(GamePopulationKind.combatEffect, 1);
+      return;
+    }
+    final contactPoint = event.contactPoint;
+    if (contactPoint == null) return;
+    final image = _visualImages[AttackVisualRegistry.hwandoContactAssetKey];
+    if (image == null && loadVisualAssets) {
+      throw StateError(
+        'Missing preloaded Hwando contact image: '
+        '${AttackVisualRegistry.hwandoContactAssetKey}',
+      );
+    }
+    _combatEffectCount += 1;
+    final onExpired = () {
+      _combatEffectCount = max(0, _combatEffectCount - 1);
+    };
+    addWorldComponent(
+      image == null
+          ? HwandoContactVfxComponent.withoutImageForTesting(
+              position: contactPoint,
+              direction: event.direction,
+              onExpired: onExpired,
+            )
+          : HwandoContactVfxComponent(
+              position: contactPoint,
+              direction: event.direction,
+              image: image,
+              onExpired: onExpired,
+            ),
     );
   }
 

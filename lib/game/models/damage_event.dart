@@ -13,8 +13,10 @@ class DamageEvent {
     this.weaponId,
     this.isCritical = false,
     this.sourceId,
+    Vector2? contactPoint,
     Set<AttackTrait> traits = const {},
-  }) : traits = Set<AttackTrait>.unmodifiable(traits);
+  }) : _contactPoint = contactPoint?.clone(),
+       traits = Set<AttackTrait>.unmodifiable(traits);
 
   final EnemyComponent target;
   final double damage;
@@ -23,5 +25,8 @@ class DamageEvent {
   final WeaponId? weaponId;
   final bool isCritical;
   final String? sourceId;
+  final Vector2? _contactPoint;
   final Set<AttackTrait> traits;
+
+  Vector2? get contactPoint => _contactPoint?.clone();
 }

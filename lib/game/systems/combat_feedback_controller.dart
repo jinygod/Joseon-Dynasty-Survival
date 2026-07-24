@@ -20,6 +20,11 @@ class CombatFeedbackRequest {
       shakeMagnitude = 0,
       presentation = AttackPresentation.strong;
 
+  const CombatFeedbackRequest.hwandoHit()
+    : hitStopSeconds = .030,
+      shakeMagnitude = 0,
+      presentation = AttackPresentation.normal;
+
   final double hitStopSeconds;
   final double shakeMagnitude;
   final AttackPresentation presentation;

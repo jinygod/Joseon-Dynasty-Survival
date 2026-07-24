@@ -17,6 +17,7 @@ import 'package:pixel_survivor/game/components/experience_gem_component.dart';
 import 'package:pixel_survivor/game/components/frost_field_component.dart';
 import 'package:pixel_survivor/game/components/five_color_ward_component.dart';
 import 'package:pixel_survivor/game/components/hwando_vfx_component.dart';
+import 'package:pixel_survivor/game/components/hwando_contact_vfx_component.dart';
 import 'package:pixel_survivor/game/components/projectile_component.dart';
 import 'package:pixel_survivor/game/components/player_component.dart';
 import 'package:pixel_survivor/game/components/spirit_jade_component.dart';
@@ -24,6 +25,7 @@ import 'package:pixel_survivor/game/components/stage_backdrop_component.dart';
 import 'package:pixel_survivor/game/components/talisman_presentation_component.dart';
 import 'package:pixel_survivor/game/components/ward_aura_component.dart';
 import 'package:pixel_survivor/game/audio/audio_cue.dart';
+import 'package:pixel_survivor/game/combat/attack_geometry.dart';
 import 'package:pixel_survivor/game/combat/attack_spec.dart';
 import 'package:pixel_survivor/game/content/augment_definitions.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
@@ -1184,7 +1186,11 @@ void main() {
         game.add(candidate);
         game.processLifecycleEvents();
         for (var frame = 0; frame < 12; frame += 1) {
+          if (game.combatHitStopRemaining > 0) {
+            game.update(game.combatHitStopRemaining);
+          }
           game.update(.05);
+          game.processLifecycleEvents();
         }
 
         expect(
@@ -1482,9 +1488,27 @@ void main() {
 
         game.update(.059);
         expect(enemy.currentHealth, fullHealth);
+        final genericEffectsBeforeStrike = game
+            .worldChildrenOfType<CombatEffectComponent>()
+            .toSet();
 
         game.update(.011);
+        game.processLifecycleEvents();
         expect(enemy.currentHealth, lessThan(fullHealth));
+        final contact = game
+            .worldChildrenOfType<HwandoContactVfxComponent>()
+            .single;
+        final expectedContact = AttackGeometry.sectorContact(
+          windup.contract!.hitSector,
+          enemy.position,
+          enemy.hurtRadius,
+        )!;
+        expect(contact.position, expectedContact.point);
+        expect(contact.position, isNot(enemy.position));
+        expect(
+          game.worldChildrenOfType<CombatEffectComponent>().toSet(),
+          genericEffectsBeforeStrike,
+        );
       },
     );
 
@@ -1512,13 +1536,9 @@ void main() {
           isTrue,
         );
         final hitEffects = game
-            .worldChildrenOfType<CombatEffectComponent>()
+            .worldChildrenOfType<HwandoContactVfxComponent>()
             .toList();
         expect(hitEffects, hasLength(2));
-        expect(
-          hitEffects.every((effect) => effect.kind == CombatEffectKind.hit),
-          isTrue,
-        );
         expect(game.combatHitStopRemaining, .035);
         var masteryFeedbackBeats = 1;
         game.update(game.combatHitStopRemaining);
@@ -1530,8 +1550,14 @@ void main() {
         ) {
           game.update(.05);
           if (game.combatHitStopRemaining > 0) {
-            expect(game.combatHitStopRemaining, .035);
-            masteryFeedbackBeats += 1;
+            final remaining = game.combatHitStopRemaining;
+            if (remaining == .035) {
+              masteryFeedbackBeats += 1;
+              if (masteryFeedbackBeats < 2) game.update(remaining);
+            } else {
+              expect(remaining, .030);
+              game.update(remaining);
+            }
           }
         }
 
@@ -1556,9 +1582,10 @@ void main() {
         expect(attack.event.isCritical, isTrue);
         expect(enemy.maxHealth - enemy.currentHealth, attack.event.damage * 2);
         expect(
-          game.worldChildrenOfType<CombatEffectComponent>().single.kind,
-          CombatEffectKind.critical,
+          game.worldChildrenOfType<HwandoContactVfxComponent>(),
+          hasLength(1),
         );
+        expect(game.worldChildrenOfType<CombatEffectComponent>(), isEmpty);
       },
     );
 

@@ -10,6 +10,7 @@ import '../systems/talisman_executor.dart';
 
 abstract final class AttackPresentationPriority {
   static const attack = 89;
+  static const impact = 90;
   static const attachment = 92;
   static const warning = 120;
 }

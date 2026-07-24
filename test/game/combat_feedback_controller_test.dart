@@ -40,6 +40,17 @@ void main() {
     expect(feedback.pendingShakeMagnitude, 0);
   });
 
+  test('Hwando contact requests thirty milliseconds without shake', () {
+    final feedback = CombatFeedbackController(screenShakeEnabled: true);
+
+    feedback.request(const CombatFeedbackRequest.hwandoHit());
+
+    expect(feedback.hitStopRemaining, .030);
+    expect(feedback.pendingShakeMagnitude, 0);
+    feedback.request(const CombatFeedbackRequest.hwandoHit());
+    expect(feedback.hitStopRemaining, .035);
+  });
+
   test('tick returns only time left after consuming capped hit stop', () {
     final feedback = CombatFeedbackController(screenShakeEnabled: true)
       ..request(const CombatFeedbackRequest.master());
