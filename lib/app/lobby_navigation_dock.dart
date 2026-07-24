@@ -12,7 +12,7 @@ class LobbyNavigationDock extends StatelessWidget {
     required this.onCharacterPressed,
     required this.onCompendiumPressed,
     required this.onRecordsPressed,
-    this.onTrainingPressed,
+    required this.onTrainingPressed,
     super.key,
   });
 
@@ -20,7 +20,7 @@ class LobbyNavigationDock extends StatelessWidget {
   final VoidCallback onCharacterPressed;
   final VoidCallback onCompendiumPressed;
   final VoidCallback onRecordsPressed;
-  final VoidCallback? onTrainingPressed;
+  final VoidCallback onTrainingPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -85,7 +85,7 @@ class LobbyNavigationDock extends StatelessWidget {
                         icon: Icons.self_improvement_outlined,
                         label: '\uC218\uB828',
                         medalColor: JoseonUiTheme.gold,
-                        onPressed: onTrainingPressed ?? () {},
+                        onPressed: onTrainingPressed,
                       ),
                     ],
                   ),

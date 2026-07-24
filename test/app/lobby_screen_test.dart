@@ -6,6 +6,7 @@ import 'package:pixel_survivor/app/lobby_controller.dart';
 import 'package:pixel_survivor/app/lobby_navigation_dock.dart';
 import 'package:pixel_survivor/app/lobby_screen.dart';
 import 'package:pixel_survivor/app/settings_screen.dart';
+import 'package:pixel_survivor/app/training_screen.dart';
 import 'package:pixel_survivor/game/audio/audio_settings.dart';
 import 'package:pixel_survivor/game/audio/audio_settings_controller.dart';
 import 'package:pixel_survivor/game/audio/audio_settings_repository.dart';
@@ -29,6 +30,7 @@ void main() {
             onCharacterPressed: () {},
             onCompendiumPressed: () {},
             onRecordsPressed: () {},
+            onTrainingPressed: () {},
           ),
         ),
       ),
@@ -39,6 +41,7 @@ void main() {
       'lobby-character',
       'lobby-compendium',
       'lobby-records',
+      'lobby-training-entry',
     ]) {
       final button = find.byKey(Key(key));
       expect(button, findsOneWidget);
@@ -54,40 +57,48 @@ void main() {
     }
   });
 
-  testWidgets('navigation dock keeps 64px primary buttons in a narrow parent', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: SizedBox(
-              width: 260,
-              child: LobbyNavigationDock(
-                onStagePressed: () {},
-                onCharacterPressed: () {},
-                onCompendiumPressed: () {},
-                onRecordsPressed: () {},
+  testWidgets(
+    'narrow navigation dock scrolls training entry into view and taps it',
+    (tester) async {
+      var trainingTaps = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 320,
+                child: LobbyNavigationDock(
+                  onStagePressed: () {},
+                  onCharacterPressed: () {},
+                  onCompendiumPressed: () {},
+                  onRecordsPressed: () {},
+                  onTrainingPressed: () => trainingTaps += 1,
+                ),
               ),
             ),
           ),
         ),
-      ),
-    );
-
-    for (final key in const [
-      'lobby-stage',
-      'lobby-character',
-      'lobby-compendium',
-      'lobby-records',
-    ]) {
-      expect(
-        tester.getSize(find.byKey(Key(key))).width,
-        greaterThanOrEqualTo(64),
       );
-    }
-    expect(tester.takeException(), isNull);
-  });
+
+      for (final key in const [
+        'lobby-stage',
+        'lobby-character',
+        'lobby-compendium',
+        'lobby-records',
+        'lobby-training-entry',
+      ]) {
+        expect(
+          tester.getSize(find.byKey(Key(key))).width,
+          greaterThanOrEqualTo(64),
+        );
+      }
+      final trainingEntry = find.byKey(const Key('lobby-training-entry'));
+      await tester.ensureVisible(trainingEntry);
+      await tester.tap(trainingEntry);
+      expect(trainingTaps, 1);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('navigation dock medals derive from their item colors', (
     tester,
@@ -100,6 +111,7 @@ void main() {
             onCharacterPressed: () {},
             onCompendiumPressed: () {},
             onRecordsPressed: () {},
+            onTrainingPressed: () {},
           ),
         ),
       ),
@@ -137,6 +149,7 @@ void main() {
             onCharacterPressed: () {},
             onCompendiumPressed: () {},
             onRecordsPressed: () {},
+            onTrainingPressed: () {},
           ),
         ),
       ),
@@ -205,12 +218,49 @@ void main() {
       expect(find.byKey(const Key('lobby-deploy')), findsOneWidget);
       expect(find.byKey(const Key('lobby-training-entry')), findsOneWidget);
       expect(
-        find.byKey(const Key('legacy-character-green-circle')),
-        findsNothing,
+        find.byKey(const Key('lobby-character-landing-plate')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('lobby-character-contact-shadow')),
+        findsOneWidget,
       );
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('lobby opens training with saved progress', (tester) async {
+    final lobby = LobbyController(
+      store: _MemorySaveStore(
+        SaveState.defaults().copyWith(
+          trainingProgress: const TrainingProgress(
+            commonRanks: {'common.max_health': 2},
+            characterRanks: const {},
+            activeCoreTraitIds: const {},
+          ),
+        ),
+      ),
+    );
+    await lobby.load();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: LobbyScreen(
+          controller: lobby,
+          audioSettingsController: _audioController(),
+        ),
+      ),
+    );
+
+    final trainingEntry = find.byKey(const Key('lobby-training-entry'));
+    await tester.ensureVisible(trainingEntry);
+    await tester.tap(trainingEntry);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TrainingScreen), findsOneWidget);
+    expect(find.byKey(const Key('training-screen')), findsOneWidget);
+    expect(find.text('common.max_health'), findsOneWidget);
+    expect(find.text('Rank 2'), findsOneWidget);
+  });
 
   testWidgets('390x844 lobby presents the command hierarchy without overflow', (
     tester,
