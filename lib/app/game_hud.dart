@@ -523,67 +523,6 @@ class _CoreWeaponRating extends StatelessWidget {
   }
 }
 
-class _WeaponSlot extends StatelessWidget {
-  const _WeaponSlot({required this.index, required this.label});
-
-  final int index;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final level = _levelFromLabel(label);
-    final style = _weaponMarkStyleForLabel(label);
-    final color = switch (style) {
-      _WeaponMarkStyle.hwando => const Color(0xffd9f7ff),
-      _WeaponMarkStyle.talisman => const Color(0xffffd6aa),
-      _WeaponMarkStyle.projectile => const Color(0xffe8c5ff),
-    };
-    return Semantics(
-      container: true,
-      label: label,
-      excludeSemantics: true,
-      child: SizedBox.square(
-        key: Key('hud-weapon-slot-$index'),
-        dimension: 24,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: const Color(0xff172633),
-            border: Border.all(color: color),
-            borderRadius: BorderRadius.circular(7),
-          ),
-          child: Stack(
-            children: [
-              Center(
-                child: CustomPaint(
-                  key: Key('hud-weapon-mark-$index-${style.name}'),
-                  size: const Size.square(17),
-                  painter: _WeaponMarkPainter(style: style, color: color),
-                ),
-              ),
-              Align(
-                alignment: Alignment.bottomRight,
-                child: Container(
-                  width: 13,
-                  height: 13,
-                  alignment: Alignment.center,
-                  decoration: const BoxDecoration(
-                    color: Color(0xff101820),
-                    shape: BoxShape.circle,
-                  ),
-                child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: WeaponStarRating(level: level),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 enum _WeaponMarkStyle { hwando, talisman, projectile }
 
 const _weaponMarkStyleById = <String, _WeaponMarkStyle>{

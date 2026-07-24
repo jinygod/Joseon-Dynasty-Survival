@@ -80,3 +80,9 @@ unrelated UI files were modified.
 Only `test/app/goldens/game_hud_16_9.png` was regenerated after visual approval.
 The filtered `game HUD 16:9 golden` case then passed without
 `--update-goldens`. Golden commit: `88a1097 test: update compact combat hud golden`.
+
+## Final cleanup
+
+Removed the unreachable legacy `_WeaponSlot` implementation while retaining the
+core weapon rating and weapon-identification helpers. `game_hud_test.dart` and
+the filtered HUD golden both pass.
