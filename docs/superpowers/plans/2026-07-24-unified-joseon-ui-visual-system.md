@@ -62,48 +62,43 @@
 
 ---
 
-### Task 1: Repair Korean presentation strings
+### Task 1: Protect canonical Korean presentation strings
 
 **Files:**
-- Modify: `lib/game/content/character_definitions.dart`
-- Modify: `lib/game/content/weapon_definitions.dart`
-- Modify: `lib/game/content/stage_definitions.dart`
-- Modify: `lib/app/character_select_screen.dart`
-- Modify: `lib/app/stage_select_screen.dart`
-- Test: `test/game/content_display_strings_test.dart`
+- Create: `test/game/content_display_strings_test.dart`
 
 **Interfaces:**
-- Consumes: existing IDs and definition constructors.
-- Produces: valid Korean `name`, `description`, `passiveName`, and `passiveDescription` strings for every later UI task.
+- Consumes: existing UTF-8 definition strings, which are already correct in source and browser rendering.
+- Produces: an exact-copy regression contract for the canonical Korean names and descriptions used by every later UI task.
 
-- [ ] **Step 1: Write a failing encoding regression test**
+- [ ] **Step 1: Write the exact-copy encoding regression test**
 
 ```dart
-test('player-facing content strings contain valid Korean and no mojibake', () {
-  final values = <String>[
-    ...characterDefinitions.expand(
-      (item) => [item.name, item.passiveName, item.passiveDescription],
-    ),
-    ...weaponDefinitions.map((item) => item.name),
-    ...stageDefinitions.expand((item) => [item.name, item.description]),
-  ];
-  for (final value in values) {
-    expect(value, isNot(contains('�')));
-    expect(value, isNot(matches(RegExp(r'[?][가-힣]'))));
-    expect(value, matches(RegExp(r'[가-힣]')));
-  }
+test('player-facing content keeps canonical Korean copy', () {
+  expect(
+    characterDefinitions.map((item) => item.name),
+    ['신참 포졸', '퇴마 도사', '산길 사냥꾼'],
+  );
+  expect(
+    weaponDefinitions.take(4).map((item) => item.name),
+    ['환도 베기', '각궁 사격', '부적 투척', '벽력진천뢰'],
+  );
+  expect(
+    stageDefinitions.map((item) => item.name),
+    ['달빛 폐관아', '역병 장터'],
+  );
 });
 ```
 
-- [ ] **Step 2: Run the test and confirm it fails**
+- [ ] **Step 2: Run the test and confirm the current UTF-8 source passes**
 
 Run: `D:\FlutterSdk\bin\flutter.bat test test/game/content_display_strings_test.dart`
 
-Expected: FAIL on the current mojibake strings.
+Expected: PASS. A failure means a real source regression; terminal-only mojibake is not evidence to rewrite source.
 
-- [ ] **Step 3: Restore canonical Korean copy**
+- [ ] **Step 3: Extend the test to passive and stage-description copy**
 
-Use the existing design docs and IDs to restore names such as `신참 포졸`, `퇴마 의사`, `설산 사냥꾼`, `환도 베기`, `각궁 사격`, and `부적 투척`. Do not change IDs, numeric fields, unlock rules, or level definitions.
+Assert the three passive names and descriptions, both stage descriptions, all twelve weapon names, and risk labels `표준` and `위험`. Read files explicitly as UTF-8 when diagnosing failures. Do not modify IDs, copy, numeric fields, unlock rules, or level definitions in this task.
 
 - [ ] **Step 4: Run the focused test**
 
@@ -114,8 +109,8 @@ Expected: PASS.
 - [ ] **Step 5: Commit**
 
 ```powershell
-git add lib/game/content/character_definitions.dart lib/game/content/weapon_definitions.dart lib/game/content/stage_definitions.dart lib/app/character_select_screen.dart lib/app/stage_select_screen.dart test/game/content_display_strings_test.dart
-git commit -m "fix: restore korean presentation strings"
+git add test/game/content_display_strings_test.dart
+git commit -m "test: protect korean presentation copy"
 ```
 
 ### Task 2: Add theme tokens and shared Joseon components
