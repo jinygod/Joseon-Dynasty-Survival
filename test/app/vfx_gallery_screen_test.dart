@@ -21,10 +21,15 @@ void main() {
       'vfx-speed-050',
       'vfx-speed-100',
       'vfx-loop-toggle',
+      'vfx-step',
       'vfx-background-moonlit',
       'vfx-background-plague',
+      'vfx-background-neutral',
       'vfx-actor-toggle',
+      'vfx-visual-bounds-toggle',
       'vfx-hitbox-toggle',
+      'vfx-hurtbox-toggle',
+      'vfx-contact-point-toggle',
       'vfx-anchor-toggle',
     ]) {
       expect(find.byKey(Key(key)), findsOneWidget);

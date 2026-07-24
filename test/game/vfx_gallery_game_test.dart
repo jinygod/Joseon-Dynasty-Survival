@@ -5,6 +5,7 @@ import 'package:pixel_survivor/game/content/attack_visual_registry.dart';
 import 'package:pixel_survivor/game/content/combat_visual_factory.dart';
 import 'package:pixel_survivor/game/components/area_vfx_component.dart';
 import 'package:pixel_survivor/game/components/registry_vfx_component.dart';
+import 'package:pixel_survivor/game/components/combat_geometry_debug_component.dart';
 import 'package:pixel_survivor/game/vfx_gallery_game.dart';
 
 void main() {
@@ -27,6 +28,35 @@ void main() {
       expect(game.children.whereType<AreaVfxComponent>(), hasLength(1));
     },
   );
+
+  test('Hwando gallery owns all four geometry toggles in debug mode', () async {
+    final game = VfxGalleryGame(loadVisualAssets: false);
+    game.onGameResize(Vector2(960, 540));
+    await game.onLoad();
+    game.processLifecycleEvents();
+    addTearDown(game.onDispose);
+
+    game.selectEffect('hwando_slash');
+    game.setShowVisualBounds(true);
+    game.setShowHitbox(true);
+    game.setShowHurtbox(true);
+    game.setShowContactPoint(true);
+    game.processLifecycleEvents();
+
+    expect(game.status.value.showVisualBounds, isTrue);
+    expect(game.status.value.showHitbox, isTrue);
+    expect(game.status.value.showHurtbox, isTrue);
+    expect(game.status.value.showContactPoint, isTrue);
+    expect(
+      game.children.whereType<CombatGeometryDebugComponent>(),
+      hasLength(1),
+    );
+
+    game.setLooping(false);
+    final frameBeforeStep = game.status.value.currentFrame;
+    game.step();
+    expect(game.status.value.currentFrame, greaterThan(frameBeforeStep));
+  });
 
   test(
     'gallery controls restart the selected production component safely',

@@ -67,6 +67,11 @@ class _VfxGalleryScreenState extends State<VfxGalleryScreen> {
                         selected: status.looping,
                         onSelected: _game.setLooping,
                       ),
+                      TextButton(
+                        key: const Key('vfx-step'),
+                        onPressed: _game.step,
+                        child: const Text('Step'),
+                      ),
                       ChoiceChip(
                         key: const Key('vfx-background-moonlit'),
                         label: const Text('Moonlit'),
@@ -82,6 +87,14 @@ class _VfxGalleryScreenState extends State<VfxGalleryScreen> {
                             status.background == VfxGalleryBackground.plague,
                         onSelected: (_) =>
                             _game.setBackground(VfxGalleryBackground.plague),
+                      ),
+                      ChoiceChip(
+                        key: const Key('vfx-background-neutral'),
+                        label: const Text('Light'),
+                        selected:
+                            status.background == VfxGalleryBackground.neutral,
+                        onSelected: (_) =>
+                            _game.setBackground(VfxGalleryBackground.neutral),
                       ),
                     ],
                   ),
@@ -104,10 +117,28 @@ class _VfxGalleryScreenState extends State<VfxGalleryScreen> {
                         onSelected: _game.setShowActorReference,
                       ),
                       FilterChip(
+                        key: const Key('vfx-visual-bounds-toggle'),
+                        label: const Text('Visual bounds'),
+                        selected: status.showVisualBounds,
+                        onSelected: _game.setShowVisualBounds,
+                      ),
+                      FilterChip(
                         key: const Key('vfx-hitbox-toggle'),
                         label: const Text('Hitbox'),
                         selected: status.showHitbox,
                         onSelected: _game.setShowHitbox,
+                      ),
+                      FilterChip(
+                        key: const Key('vfx-hurtbox-toggle'),
+                        label: const Text('Hurtbox'),
+                        selected: status.showHurtbox,
+                        onSelected: _game.setShowHurtbox,
+                      ),
+                      FilterChip(
+                        key: const Key('vfx-contact-point-toggle'),
+                        label: const Text('Contact'),
+                        selected: status.showContactPoint,
+                        onSelected: _game.setShowContactPoint,
                       ),
                       FilterChip(
                         key: const Key('vfx-anchor-toggle'),

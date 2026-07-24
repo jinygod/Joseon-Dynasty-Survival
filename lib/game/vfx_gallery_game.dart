@@ -6,8 +6,12 @@ import 'package:flame/game.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 
+import 'combat/attack_geometry.dart';
 import 'combat/attack_spec.dart';
+import 'combat/attack_timeline.dart';
 import 'combat/attack_visual_event.dart';
+import 'components/combat_geometry_debug_component.dart';
+import 'components/hwando_vfx_component.dart';
 import 'content/attack_visual_registry.dart';
 import 'content/combat_asset_preloader.dart';
 import 'content/combat_visual_factory.dart';
@@ -25,7 +29,10 @@ class VfxGalleryStatus {
     required this.looping,
     required this.background,
     required this.showActorReference,
+    required this.showVisualBounds,
     required this.showHitbox,
+    required this.showHurtbox,
+    required this.showContactPoint,
     required this.showAnchor,
   });
 
@@ -37,7 +44,10 @@ class VfxGalleryStatus {
   final bool looping;
   final VfxGalleryBackground background;
   final bool showActorReference;
+  final bool showVisualBounds;
   final bool showHitbox;
+  final bool showHurtbox;
+  final bool showContactPoint;
   final bool showAnchor;
 
   VfxGalleryStatus copyWith({
@@ -49,7 +59,10 @@ class VfxGalleryStatus {
     bool? looping,
     VfxGalleryBackground? background,
     bool? showActorReference,
+    bool? showVisualBounds,
     bool? showHitbox,
+    bool? showHurtbox,
+    bool? showContactPoint,
     bool? showAnchor,
   }) => VfxGalleryStatus(
     selectedEffectId: selectedEffectId ?? this.selectedEffectId,
@@ -61,7 +74,10 @@ class VfxGalleryStatus {
     looping: looping ?? this.looping,
     background: background ?? this.background,
     showActorReference: showActorReference ?? this.showActorReference,
+    showVisualBounds: showVisualBounds ?? this.showVisualBounds,
     showHitbox: showHitbox ?? this.showHitbox,
+    showHurtbox: showHurtbox ?? this.showHurtbox,
+    showContactPoint: showContactPoint ?? this.showContactPoint,
     showAnchor: showAnchor ?? this.showAnchor,
   );
 }
@@ -84,7 +100,10 @@ class VfxGalleryGame extends FlameGame {
            looping: true,
            background: VfxGalleryBackground.moonlit,
            showActorReference: false,
+           showVisualBounds: false,
            showHitbox: false,
+           showHurtbox: false,
+           showContactPoint: false,
            showAnchor: false,
          ),
        );
@@ -99,6 +118,8 @@ class VfxGalleryGame extends FlameGame {
 
   Map<String, Image> _images = const {};
   PositionComponent? _activeComponent;
+  CombatGeometryDebugComponent? _debugComponent;
+  AttackVisualEvent? _activeEvent;
   double _elapsed = 0;
   bool _ready = false;
   bool _disposed = false;
@@ -114,7 +135,10 @@ class VfxGalleryGame extends FlameGame {
                 visualAssetLoader ?? images.load,
               )
             : const {});
-    factory = CombatVisualFactory(images: _images);
+    factory = CombatVisualFactory(
+      images: _images,
+      allowMissingHwandoImages: !loadVisualAssets && _injectedImages == null,
+    );
     _ready = true;
     _restartComponent();
   }
@@ -158,6 +182,14 @@ class VfxGalleryGame extends FlameGame {
   void setLooping(bool looping) =>
       _setStatus(status.value.copyWith(looping: looping));
 
+  void step() {
+    setLooping(false);
+    final frames = AttackVisualRegistry.byId(
+      status.value.selectedEffectId,
+    ).layers.first.frameCount;
+    update(1 / frames / status.value.speed);
+  }
+
   void setBackground(VfxGalleryBackground background) {
     if (background == status.value.background) return;
     _setStatus(status.value.copyWith(background: background));
@@ -165,11 +197,17 @@ class VfxGalleryGame extends FlameGame {
   }
 
   void setShowActorReference(bool value) =>
-      _setStatus(status.value.copyWith(showActorReference: value));
+      _setGeometryStatus(status.value.copyWith(showActorReference: value));
+  void setShowVisualBounds(bool value) =>
+      _setGeometryStatus(status.value.copyWith(showVisualBounds: value));
   void setShowHitbox(bool value) =>
-      _setStatus(status.value.copyWith(showHitbox: value));
+      _setGeometryStatus(status.value.copyWith(showHitbox: value));
+  void setShowHurtbox(bool value) =>
+      _setGeometryStatus(status.value.copyWith(showHurtbox: value));
+  void setShowContactPoint(bool value) =>
+      _setGeometryStatus(status.value.copyWith(showContactPoint: value));
   void setShowAnchor(bool value) =>
-      _setStatus(status.value.copyWith(showAnchor: value));
+      _setGeometryStatus(status.value.copyWith(showAnchor: value));
 
   @override
   void update(double dt) {
@@ -187,50 +225,94 @@ class VfxGalleryGame extends FlameGame {
       return;
     }
     _elapsed += scaledDt;
+    _updateDebugTimeline();
     _publishFrame();
-  }
-
-  @override
-  void render(Canvas canvas) {
-    super.render(canvas);
-    final center = size / 2;
-    final guidePaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2
-      ..color = const Color(0xccf7e7a9);
-    if (status.value.showActorReference) {
-      canvas.drawCircle(center.toOffset(), 20, guidePaint);
-    }
-    if (status.value.showHitbox) {
-      canvas.drawRect(
-        Rect.fromCenter(center: center.toOffset(), width: 128, height: 72),
-        guidePaint,
-      );
-    }
-    if (status.value.showAnchor) {
-      canvas.drawLine(
-        Offset(center.x - 10, center.y),
-        Offset(center.x + 10, center.y),
-        guidePaint,
-      );
-      canvas.drawLine(
-        Offset(center.x, center.y - 10),
-        Offset(center.x, center.y + 10),
-        guidePaint,
-      );
-    }
   }
 
   void _restartComponent({bool publishStatus = true}) {
     if (!_ready) return;
     _activeComponent?.removeFromParent();
+    _debugComponent?.removeFromParent();
+    _debugComponent = null;
     _elapsed = 0;
-    final component = factory.create(_eventForSelection());
+    final event = _eventForSelection();
+    _activeEvent = event;
+    final component = factory.create(event);
     _activeComponent = component;
     add(component);
+    _syncDebugComponent();
     if (publishStatus) {
       _publishRestartStatus();
     }
+  }
+
+  void _setGeometryStatus(VfxGalleryStatus next) {
+    _setStatus(next);
+    _syncDebugComponent();
+  }
+
+  void _syncDebugComponent() {
+    if (!kDebugMode) return;
+    final value = status.value;
+    final anyVisible =
+        value.showActorReference ||
+        value.showVisualBounds ||
+        value.showHitbox ||
+        value.showHurtbox ||
+        value.showContactPoint ||
+        value.showAnchor;
+    final event = _activeEvent;
+    final contract = event?.presentationContract;
+    if (!anyVisible || contract == null) {
+      _debugComponent?.removeFromParent();
+      _debugComponent = null;
+      return;
+    }
+    var debug = _debugComponent;
+    if (debug == null || debug.contract != contract) {
+      _debugComponent?.removeFromParent();
+      final target =
+          contract.visualSector.origin +
+          contract.visualSector.direction * (contract.hitSector.radius * .75);
+      final contact = AttackGeometry.sectorContact(
+        contract.hitSector,
+        target,
+        12,
+      );
+      if (contact == null) return;
+      debug = CombatGeometryDebugComponent(
+        contract: contract,
+        targetCenter: target,
+        targetRadius: 12,
+        contact: contact,
+      );
+      _debugComponent = debug;
+      add(debug);
+    }
+    debug
+      ..showVisualBounds = value.showVisualBounds
+      ..showHitbox = value.showHitbox
+      ..showHurtbox = value.showHurtbox || value.showActorReference
+      ..showContactPoint = value.showContactPoint || value.showAnchor;
+    _updateDebugTimeline();
+  }
+
+  void _updateDebugTimeline() {
+    final debug = _debugComponent;
+    final component = _activeComponent;
+    if (debug == null || component is! HwandoVfxComponent) return;
+    debug.phase = component.phase;
+    final timing = debug.contract.timing;
+    final end = switch (component.phase) {
+      AttackPhase.windup => timing.windupSeconds,
+      AttackPhase.active => timing.activeEndsAt,
+      AttackPhase.recovery => timing.totalSeconds,
+      AttackPhase.complete => timing.totalSeconds,
+    };
+    debug.remainingMilliseconds = math.max(
+      0,
+      ((end - _elapsed) * 1000).round(),
+    );
   }
 
   AttackVisualEvent _eventForSelection() {
