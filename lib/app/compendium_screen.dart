@@ -91,7 +91,7 @@ class _CompendiumList extends StatelessWidget {
         crossAxisCount: useTwoColumns ? 2 : 1,
         mainAxisSpacing: 10,
         crossAxisSpacing: 10,
-        mainAxisExtent: useTwoColumns ? 260 : 156,
+        mainAxisExtent: useTwoColumns ? 260 : (textScale > 1.3 ? 240 : 156),
       ),
       itemCount: entries.length,
       itemBuilder: (context, index) => _CompendiumCard(entry: entries[index]),
@@ -105,16 +105,25 @@ class _CompendiumCard extends StatelessWidget {
   final CompendiumEntry entry;
 
   @override
-  Widget build(BuildContext context) => JoseonCodexCard(
-    title: entry.name,
-    description: _description,
-    locked: !entry.isUnlocked,
-    leading: entry.isUnlocked
-        ? _UnlockedArtwork(entry: entry)
-        : const _LockedSilhouette(),
-  );
+  Widget build(BuildContext context) {
+    final card = JoseonCodexCard(
+      title: entry.isUnlocked ? entry.name : '미확인 항목',
+      description: _description,
+      locked: !entry.isUnlocked,
+      leading: entry.isUnlocked
+          ? _UnlockedArtwork(entry: entry)
+          : const _LockedSilhouette(),
+    );
+    return entry.isUnlocked && entry.isNew
+        ? Semantics(label: '새 항목', child: card)
+        : card;
+  }
 
   String get _description {
+    if (!entry.isUnlocked) {
+      return '${entry.unlockCondition}\n'
+          '${entry.currentProgress} / ${entry.targetProgress}';
+    }
     final progress = entry.isUnlocked
         ? ''
         : '\n${entry.currentProgress} / ${entry.targetProgress}';
@@ -159,19 +168,37 @@ class _UnlockedArtwork extends StatelessWidget {
         child: MissingAssetPlaceholder(assetKey: entry.id),
       );
     }
-    return SizedBox(
-      width: 44,
-      height: 64,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Image.asset(
-          assetPath,
-          key: const Key('unlocked-original-image'),
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) =>
-              MissingAssetPlaceholder(assetKey: entry.id),
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        SizedBox(
+          width: 44,
+          height: 64,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.asset(
+              assetPath,
+              key: const Key('unlocked-original-image'),
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) =>
+                  MissingAssetPlaceholder(assetKey: entry.id),
+            ),
+          ),
         ),
-      ),
+        if (entry.isNew)
+          Positioned(
+            top: -7,
+            right: -13,
+            child: Semantics(
+              label: '새 항목',
+              child: Text(
+                'NEW',
+                key: Key('new-entry'),
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

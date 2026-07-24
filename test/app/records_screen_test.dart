@@ -9,7 +9,7 @@ import 'package:pixel_survivor/game/systems/meta_history_service.dart';
 import 'package:pixel_survivor/game/systems/save_system.dart';
 
 void main() {
-  testWidgets('shows best record character victories and weapon usage', (
+  testWidgets('shows best record character victories and catalog weapon art', (
     tester,
   ) async {
     final state = SaveState.defaults().copyWith(
@@ -30,13 +30,15 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('최고 생존 4:00'), findsOneWidget);
-    expect(find.text('캐릭터별 승리'), findsOneWidget);
+    expect(find.text('4:00'), findsOneWidget);
+    expect(find.text('최고 생존'), findsOneWidget);
     expect(find.text('신참 포졸 3승'), findsOneWidget);
     expect(find.text('퇴마 도사 0승'), findsOneWidget);
     expect(find.text('무기 사용 기록'), findsOneWidget);
     expect(find.text('환도 베기'), findsOneWidget);
     expect(find.text('사용 1판 · 처치 7 · 피해 20'), findsOneWidget);
+    final historyImage = tester.widget<Image>(find.byType(Image).last);
+    expect(historyImage.image, isA<AssetImage>());
   });
 
   testWidgets('shows a Korean empty state when telemetry is empty', (
@@ -94,7 +96,14 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('records-summary-grid')), findsOneWidget);
+    final grid = tester.widget<GridView>(
+      find.byKey(const Key('records-summary-grid')),
+    );
+    expect(
+      (grid.gridDelegate as SliverGridDelegateWithFixedCrossAxisCount)
+          .crossAxisCount,
+      2,
+    );
     expect(find.byKey(const Key('record-summary-card')), findsNWidgets(5));
   });
 }

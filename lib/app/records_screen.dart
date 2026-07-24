@@ -54,10 +54,14 @@ class _RecordsScreenState extends State<RecordsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Wrap(
+              GridView.count(
                 key: const Key('records-summary-grid'),
-                spacing: 10,
-                runSpacing: 10,
+                crossAxisCount: 2,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+                mainAxisExtent: 92,
                 children: [
                   for (final record in records)
                     _SummaryCard(icon: record.icon, label: record.label),
@@ -134,16 +138,15 @@ class _SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
-    return SizedBox(
-      width: width >= 375 ? (width - 42) / 2 : width - 32,
-      child: JoseonCodexCard(
-        key: const Key('record-summary-card'),
-        title: label,
-        description: '',
-        locked: false,
-        leading: Icon(icon, color: const Color(0xff8f2d38)),
-      ),
+    final splitAt = label.lastIndexOf(' ');
+    final supportingLabel = label.substring(0, splitAt);
+    final value = label.substring(splitAt + 1);
+    return JoseonCodexCard(
+      key: const Key('record-summary-card'),
+      title: value,
+      description: supportingLabel,
+      locked: false,
+      leading: Icon(icon, color: const Color(0xff8f2d38)),
     );
   }
 }
