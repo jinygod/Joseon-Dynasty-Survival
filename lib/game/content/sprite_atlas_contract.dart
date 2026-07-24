@@ -207,7 +207,7 @@ abstract final class ReplaceableArtCatalog {
     ),
     SpriteAtlasContract(
       id: 'sakkat_specter_balanced_casual',
-      runtimePath: 'assets/images/monsters/sakkat_specter_128.png',
+      runtimePath: 'assets/images/enemies/sakkat_specter_128.png',
       frameWidth: 128,
       frameHeight: 128,
       columns: 4,

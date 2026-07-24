@@ -92,7 +92,7 @@ void main() {
 
 AttackInstance _attack(AttackPresentation presentation) => AttackInstance(
   spec: AttackSpec(
-    id: 'hwando_test',
+    id: 'hwando_slash',
     shape: AttackShape.sector,
     damage: 99,
     range: 84,

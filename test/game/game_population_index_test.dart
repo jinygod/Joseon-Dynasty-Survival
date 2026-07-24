@@ -131,9 +131,11 @@ void main() {
   gameTester.testGameWidget(
     'nested world child lifecycle updates production counts exactly once',
     setUp: (game, _) async {
-      lifecycleTarget = enemy('lifecycle-target');
-      lifecycleFriendly = projectile()..position = Vector2(480, 270);
-      lifecycleHostile = enemyProjectile()..position = Vector2(480, 270);
+      final origin = game.worldConfig.worldSize / 2;
+      final projectileOrigin = origin + Vector2(200, 0);
+      lifecycleTarget = enemy('lifecycle-target')..position = origin.clone();
+      lifecycleFriendly = projectile()..position = projectileOrigin.clone();
+      lifecycleHostile = enemyProjectile()..position = projectileOrigin.clone();
       await game.addWorldComponent(lifecycleTarget);
       await game.addWorldComponent(lifecycleFriendly);
       await game.addWorldComponent(lifecycleHostile);
@@ -167,10 +169,11 @@ void main() {
   gameTester.testGameWidget(
     'removeAll excludes scheduled combat children before lifecycle processing',
     setUp: (game, _) async {
+      final origin = game.worldConfig.worldSize / 2;
       bulkRemovalTargets = <Component>[
-        enemy('bulk-target'),
-        projectile()..position = Vector2(480, 270),
-        enemyProjectile()..position = Vector2(480, 270),
+        enemy('bulk-target')..position = origin.clone(),
+        projectile()..position = origin.clone(),
+        enemyProjectile()..position = origin.clone(),
       ];
       for (final component in bulkRemovalTargets) {
         await game.addWorldComponent(component);
@@ -188,10 +191,13 @@ void main() {
   gameTester.testGameWidget(
     'removeWhere excludes matching combat children before lifecycle processing',
     setUp: (game, _) async {
-      await game.addWorldComponent(enemy('remove-where-survivor'));
-      await game.addWorldComponent(projectile()..position = Vector2(480, 270));
+      final origin = game.worldConfig.worldSize / 2;
       await game.addWorldComponent(
-        enemyProjectile()..position = Vector2(480, 270),
+        enemy('remove-where-survivor')..position = origin.clone(),
+      );
+      await game.addWorldComponent(projectile()..position = origin.clone());
+      await game.addWorldComponent(
+        enemyProjectile()..position = origin.clone(),
       );
     },
     verify: (game, _) async {
@@ -210,7 +216,8 @@ void main() {
   gameTester.testGameWidget(
     'public live enemy count keeps an alive removing child until final removal',
     setUp: (game, _) async {
-      lifecycleTarget = enemy('live-removing-target');
+      lifecycleTarget = enemy('live-removing-target')
+        ..position = game.worldConfig.worldSize / 2;
       await game.addWorldComponent(lifecycleTarget);
     },
     verify: (game, _) async {

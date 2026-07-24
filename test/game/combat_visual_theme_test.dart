@@ -6,7 +6,6 @@ import 'package:flame/components.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/combat/attack_spec.dart';
 import 'package:pixel_survivor/game/combat/combat_visual_theme.dart';
-import 'package:pixel_survivor/game/components/attack_effect_component.dart';
 import 'package:pixel_survivor/game/systems/weapon_synergy_resolver.dart';
 
 void main() {
@@ -77,17 +76,17 @@ void main() {
         lingerSeconds: .12,
         presentation: AttackPresentation.master,
       );
-      final effect = AttackEffectComponent(instance: attack);
+      final geometry = AttackVisualGeometry.fromAttack(attack);
 
       origin.setValues(300, 300);
       direction.setValues(-1, 0);
 
-      expect(effect.visualGeometry.origin, Vector2(12, 18));
-      expect(effect.visualGeometry.direction, Vector2(0, 1));
-      expect(effect.visualGeometry.range, 96);
-      expect(effect.visualGeometry.angleRadians, math.pi);
-      expect(effect.visualGeometry.activeSeconds, .08);
-      expect(effect.visualGeometry.lingerSeconds, .12);
+      expect(geometry.origin, Vector2(12, 18));
+      expect(geometry.direction, Vector2(0, 1));
+      expect(geometry.range, 96);
+      expect(geometry.angleRadians, math.pi);
+      expect(geometry.activeSeconds, .08);
+      expect(geometry.lingerSeconds, .12);
     },
   );
 
@@ -97,9 +96,9 @@ void main() {
       shape: AttackShape.sector,
       damage: 999,
     );
-    final effect = AttackEffectComponent(instance: attack);
+    final geometry = AttackVisualGeometry.fromAttack(attack);
 
-    expect(effect.visualGeometry.toString(), isNot(contains('999')));
+    expect(geometry.toString(), isNot(contains('999')));
     expect(
       CombatVisualTheme.forAttack(attack).toString(),
       isNot(contains('999')),
