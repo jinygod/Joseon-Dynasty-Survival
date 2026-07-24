@@ -41,11 +41,12 @@ class StageTileBatchComponent extends Component {
       StageAtlasKind.decal => 1,
       StageAtlasKind.prop => variant ~/ 4,
     };
+    final pixelCellSize = cellSize.roundToDouble();
     return Rect.fromLTWH(
-      (variant % 4) * cellSize,
-      row * cellSize,
-      cellSize,
-      cellSize,
+      ((variant % 4) * pixelCellSize).roundToDouble(),
+      (row * pixelCellSize).roundToDouble(),
+      pixelCellSize,
+      pixelCellSize,
     );
   }
 
@@ -120,7 +121,10 @@ class StageTileBatchComponent extends Component {
           variant: placement.variant,
           cellSize: placement.size,
         ),
-        offset: Vector2(placement.position.dx, placement.position.dy),
+        offset: Vector2(
+          placement.position.dx.roundToDouble(),
+          placement.position.dy.roundToDouble(),
+        ),
       );
     }
     if (batch.isEmpty) return;

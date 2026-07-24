@@ -145,4 +145,15 @@ void main() {
       const ui.Rect.fromLTWH(384, 128, 128, 128),
     );
   });
+
+  test('atlas source cells snap fractional cell sizes to physical pixels', () {
+    expect(
+      StageTileBatchComponent.sourceRectFor(
+        kind: StageAtlasKind.tile,
+        variant: 3,
+        cellSize: 127.6,
+      ),
+      const ui.Rect.fromLTWH(384, 0, 128, 128),
+    );
+  });
 }

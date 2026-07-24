@@ -14,7 +14,7 @@ class StageVisualSpec {
     required this.tileAssetKey,
     this.decalAssetKey,
     this.propAssetKey,
-    this.tileVariants = 2,
+    this.tileVariants = 4,
     this.decalVariants = 4,
     this.propVariants = 8,
     this.atlasColumns = 4,
@@ -154,15 +154,33 @@ class StageLayout {
 
     for (var y = top; y < bounds.bottom; y += size) {
       for (var x = left; x < bounds.right; x += size) {
-        final position = Offset(x, y);
+        final position = _pixelOffset(x, y);
         tiles.add(
           StageTilePlacement(
             position: position,
             size: size,
-            variant: random.nextInt(spec.tileVariants),
+            variant: _baseVariantFor(
+              seed: seed,
+              salt: spec.seedSalt,
+              cellX: (x / size).round(),
+              cellY: (y / size).round(),
+              variantCount: spec.tileVariants,
+            ),
           ),
         );
-        if (spec.decalAssetKey != null && random.nextDouble() < .18) {
+        if (spec.decalAssetKey != null &&
+            _shouldPlaceDecal(
+              choice: _chunkMix(
+                seed,
+                spec.seedSalt,
+                (x / size).round(),
+                (y / size).round(),
+              ),
+              position: position,
+              tileSize: size,
+              bounds: bounds,
+              edgeBand: spec.edgeBand,
+            )) {
           decals.add(
             StageDecorationPlacement(
               kind: StageDecorationKind.decal,
@@ -268,10 +286,14 @@ class StageLayout {
         final cellX = (x / tileSize).round();
         final cellY = (y / tileSize).round();
         final choice = _chunkMix(seed, spec.seedSalt, cellX, cellY);
-        final tileVariant =
-            (cellX + cellY + _chunkMix(seed, spec.seedSalt, 0, 0)) %
-            spec.tileVariants;
-        final position = Offset(x, y);
+        final tileVariant = _baseVariantFor(
+          seed: seed,
+          salt: spec.seedSalt,
+          cellX: cellX,
+          cellY: cellY,
+          variantCount: spec.tileVariants,
+        );
+        final position = _pixelOffset(x, y);
         tiles.add(
           StageTilePlacement(
             position: position,
@@ -279,7 +301,14 @@ class StageLayout {
             variant: tileVariant,
           ),
         );
-        if (spec.decalAssetKey != null && choice % 7 == 0) {
+        if (spec.decalAssetKey != null &&
+            _shouldPlaceDecal(
+              choice: choice,
+              position: position,
+              tileSize: tileSize,
+              bounds: bounds,
+              edgeBand: spec.edgeBand,
+            )) {
           decals.add(
             StageDecorationPlacement(
               kind: StageDecorationKind.decal,
@@ -345,6 +374,47 @@ class StageLayout {
       props: props,
     );
   }
+}
+
+Offset _pixelOffset(double x, double y) =>
+    Offset(x.roundToDouble(), y.roundToDouble());
+
+int _baseVariantFor({
+  required int seed,
+  required int salt,
+  required int cellX,
+  required int cellY,
+  required int variantCount,
+}) {
+  var mixed =
+      (seed ^ salt ^ (cellX * 0x1f123bb5) ^ (cellY * 0x5f356495)) & 0xffffffff;
+  mixed ^= mixed >> 16;
+  mixed = (mixed * 0x7feb352d) & 0xffffffff;
+  mixed ^= mixed >> 15;
+  mixed = (mixed * 0x846ca68b) & 0xffffffff;
+  mixed ^= mixed >> 16;
+  return (mixed & 0x7fffffff) % variantCount;
+}
+
+bool _shouldPlaceDecal({
+  required int choice,
+  required Offset position,
+  required double tileSize,
+  required Rect bounds,
+  required double edgeBand,
+}) {
+  final center = position + Offset(tileSize / 2, tileSize / 2);
+  final isEdge =
+      center.dx <= bounds.left + edgeBand ||
+      center.dx >= bounds.right - edgeBand ||
+      center.dy <= bounds.top + edgeBand ||
+      center.dy >= bounds.bottom - edgeBand;
+  // Landmarks are infrequent, deterministic clusters that can receive a
+  // decal even away from the perimeter. The central budget remains below 8%.
+  final isLandmark = choice % 29 == 0;
+  if (isEdge) return choice % 5 == 0 || isLandmark;
+  if (isLandmark) return true;
+  return choice % 64 == 0;
 }
 
 bool _isBoundaryCell(Offset position, double size, Rect chunk, Rect world) {

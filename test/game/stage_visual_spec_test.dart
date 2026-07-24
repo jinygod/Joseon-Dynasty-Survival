@@ -80,41 +80,62 @@ void main() {
     }
   });
 
-  test('chunk tiles use different variants across every shared edge', () {
+  test('center keeps sparse decals and base variants are reproducible', () {
     const worldBounds = Rect.fromLTWH(0, 0, 2048, 5120);
-    for (var seed = 0; seed < 16; seed += 1) {
-      final left = StageLayout.buildChunk(
-        spec,
-        seed: seed,
-        coordinate: const WorldChunkCoordinate(1, 1),
-        chunkSize: 512,
-        worldBounds: worldBounds,
-      );
-      final right = StageLayout.buildChunk(
-        spec,
-        seed: seed,
-        coordinate: const WorldChunkCoordinate(2, 1),
-        chunkSize: 512,
-        worldBounds: worldBounds,
-      );
-      final below = StageLayout.buildChunk(
-        spec,
-        seed: seed,
-        coordinate: const WorldChunkCoordinate(1, 2),
-        chunkSize: 512,
-        worldBounds: worldBounds,
-      );
-      final variants = {
-        for (final tile in [...left.tiles, ...right.tiles, ...below.tiles])
-          tile.position: tile.variant,
-      };
-      for (final tile in left.tiles) {
-        final horizontal = variants[tile.position + const Offset(128, 0)];
-        final vertical = variants[tile.position + const Offset(0, 128)];
-        if (horizontal != null) expect(tile.variant, isNot(horizontal));
-        if (vertical != null) expect(tile.variant, isNot(vertical));
-      }
-    }
+    final first = StageLayout.buildChunk(
+      spec,
+      seed: 104729,
+      coordinate: const WorldChunkCoordinate(1, 2),
+      chunkSize: 1024,
+      worldBounds: worldBounds,
+    );
+    final second = StageLayout.buildChunk(
+      spec,
+      seed: 104729,
+      coordinate: const WorldChunkCoordinate(1, 2),
+      chunkSize: 1024,
+      worldBounds: worldBounds,
+    );
+    final center = first.tiles.where((tile) {
+      final tileCenter = tile.position + const Offset(64, 64);
+      return tileCenter.dx > first.bounds.left + spec.edgeBand &&
+          tileCenter.dx < first.bounds.right - spec.edgeBand &&
+          tileCenter.dy > first.bounds.top + spec.edgeBand &&
+          tileCenter.dy < first.bounds.bottom - spec.edgeBand;
+    });
+    final centerPositions = center.map((tile) => tile.position).toSet();
+    final centerDecals = first.decorations.where(
+      (decal) => centerPositions.contains(decal.position),
+    );
+
+    expect(first, isNot(same(second)));
+    expect(first.tiles, second.tiles);
+    expect(first.decorations, second.decorations);
+    expect(centerDecals.length / center.length, lessThan(.08));
+    expect(first.tiles.map((tile) => tile.variant).toSet(), hasLength(4));
+  });
+
+  test('chunk base variants avoid a repeating checkerboard', () {
+    const worldBounds = Rect.fromLTWH(0, 0, 2048, 5120);
+    final layout = StageLayout.buildChunk(
+      spec,
+      seed: 104729,
+      coordinate: const WorldChunkCoordinate(1, 2),
+      chunkSize: 1024,
+      worldBounds: worldBounds,
+    );
+    final variants = {
+      for (final tile in layout.tiles) tile.position: tile.variant,
+    };
+
+    final firstFour = [
+      for (var x = 1024.0; x < 1536.0; x += 128) variants[Offset(x, 2048)],
+    ];
+    final nextFour = [
+      for (var x = 1536.0; x < 2048.0; x += 128) variants[Offset(x, 2048)],
+    ];
+
+    expect(firstFour, isNot(nextFour));
   });
 
   test('chunk building rejects non-positive or non-finite chunk sizes', () {

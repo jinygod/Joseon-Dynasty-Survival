@@ -137,31 +137,35 @@ class StageBackdropComponent extends PositionComponent {
 
   void _drawGroundImage(Canvas canvas, Image image) {
     final sourceSize = Size(image.width.toDouble(), image.height.toDouble());
-    final targetAspect = size.x / size.y;
-    final sourceAspect = sourceSize.width / sourceSize.height;
-    late final Rect source;
-    if (sourceAspect > targetAspect) {
-      final width = sourceSize.height * targetAspect;
-      source = Rect.fromLTWH(
-        (sourceSize.width - width) / 2,
-        0,
-        width,
-        sourceSize.height,
-      );
-    } else {
-      final height = sourceSize.width / targetAspect;
-      source = Rect.fromLTWH(
-        0,
-        (sourceSize.height - height) / 2,
-        sourceSize.width,
-        height,
-      );
-    }
+    final source = groundImageSourceRectFor(sourceSize);
     canvas.drawImageRect(
       image,
       source,
-      Offset.zero & size.toSize(),
+      Offset.zero & Size(size.x.roundToDouble(), size.y.roundToDouble()),
       _groundImagePaint,
+    );
+  }
+
+  /// Pixel-aligned source crop avoids sampling seams at fractional camera zoom.
+  Rect groundImageSourceRectFor(Size sourceSize) {
+    if (size.x <= 0 || size.y <= 0) return Rect.zero;
+    final targetAspect = size.x / size.y;
+    final sourceAspect = sourceSize.width / sourceSize.height;
+    if (sourceAspect > targetAspect) {
+      final width = sourceSize.height * targetAspect;
+      return Rect.fromLTRB(
+        ((sourceSize.width - width) / 2).roundToDouble(),
+        0,
+        ((sourceSize.width + width) / 2).roundToDouble(),
+        sourceSize.height.roundToDouble(),
+      );
+    }
+    final height = sourceSize.width / targetAspect;
+    return Rect.fromLTRB(
+      0,
+      ((sourceSize.height - height) / 2).roundToDouble(),
+      sourceSize.width.roundToDouble(),
+      ((sourceSize.height + height) / 2).roundToDouble(),
     );
   }
 

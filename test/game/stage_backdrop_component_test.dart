@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flame/components.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/components/actor_shadow_component.dart';
@@ -37,6 +39,15 @@ void main() {
 
     expect(first.decorations, hasLength(lessThanOrEqualTo(40)));
     expect(first.decorations, second.decorations);
+  });
+
+  test('ground image crop snaps source bounds to whole pixels', () {
+    final backdrop = StageBackdropComponent(viewportSize: Vector2(390, 844));
+
+    expect(
+      backdrop.groundImageSourceRectFor(const Size(1024, 1824)),
+      const Rect.fromLTWH(91, 0, 842, 1824),
+    );
   });
 
   test('decorative stone lines remain quieter than combat warning lanes', () {
