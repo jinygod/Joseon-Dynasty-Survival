@@ -177,6 +177,17 @@ void main() {
     }
   });
 
+  test('player catalog names the actual bundled player sheets', () {
+    expect(AssetCatalog.player, {
+      'rookie_constable_player':
+          'assets/images/player/exorcist_dosa_128.png',
+      'exorcist_dosa_atlas': 'assets/images/player/exorcist_dosa_128.png',
+    });
+    for (final path in AssetCatalog.player.values.toSet()) {
+      expect(File(path).existsSync(), isTrue, reason: path);
+    }
+  });
+
   test('player combat visual IDs match their exact visual contracts', () {
     expect(playerVisualContracts, hasLength(10));
     expect(

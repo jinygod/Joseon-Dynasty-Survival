@@ -14,27 +14,65 @@ import 'package:pixel_survivor/game/audio/audio_settings_controller.dart';
 import 'package:pixel_survivor/game/systems/save_system.dart';
 
 void main() {
-  testWidgets('lobby mobile 390x844 golden', (tester) async {
-    final controller = LobbyController(
-      store: _MemorySaveStore(SaveState.defaults()),
-    );
-    await controller.load();
-    await _expectMobileLobbyGolden(
-      tester,
-      LobbyScreen(
-        controller: controller,
-        audioSettingsController: _audioController(),
+  test('missing-glyph border detector rejects medal-like dense masks', () {
+    expect(
+      _looksLikeMissingGlyphBox(
+        denseRows: const [0, 1, 16, 17],
+        denseColumns: const [0, 1, 16, 17],
+        width: 18,
+        height: 18,
       ),
+      isTrue,
+    );
+    expect(
+      _looksLikeMissingGlyphBox(
+        denseRows: List<int>.generate(18, (index) => index),
+        denseColumns: List<int>.generate(18, (index) => index),
+        width: 18,
+        height: 18,
+      ),
+      isFalse,
     );
   });
+
+  for (final size in const [
+    Size(390, 844),
+    Size(375, 667),
+    Size(430, 932),
+  ]) {
+    testWidgets('lobby mobile ${size.width.toInt()}x${size.height.toInt()} golden', (
+      tester,
+    ) async {
+      final controller = LobbyController(
+        store: _MemorySaveStore(SaveState.defaults()),
+      );
+      await controller.load();
+      await _expectMobileLobbyGolden(
+        tester,
+        size,
+        LobbyScreen(
+          controller: controller,
+          audioSettingsController: _audioController(),
+        ),
+      );
+    });
+  }
 }
 
-Future<void> _expectMobileLobbyGolden(WidgetTester tester, Widget lobby) async {
+Future<void> _expectMobileLobbyGolden(
+  WidgetTester tester,
+  Size size,
+  Widget lobby,
+) async {
   tester.view.devicePixelRatio = 1;
-  tester.view.physicalSize = const Size(390, 844);
+  tester.view.physicalSize = size;
   addTearDown(() {
     tester.view.resetPhysicalSize();
     tester.view.resetDevicePixelRatio();
+  });
+  await tester.runAsync(() async {
+    await _loadBundledJoseonFonts();
+    await _loadMaterialIconsFont();
   });
   await tester.pumpWidget(
     MaterialApp(
@@ -43,10 +81,6 @@ Future<void> _expectMobileLobbyGolden(WidgetTester tester, Widget lobby) async {
       home: RepaintBoundary(key: const Key('golden-root'), child: lobby),
     ),
   );
-  await tester.runAsync(() async {
-    await _loadBundledJoseonFonts();
-    await _loadMaterialIconsFont();
-  });
   for (var attempt = 0; attempt < 3; attempt++) {
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 100)),
@@ -57,7 +91,9 @@ Future<void> _expectMobileLobbyGolden(WidgetTester tester, Widget lobby) async {
   await _expectLobbyVisualAssetsPainted(tester);
   await expectLater(
     find.byKey(const Key('golden-root')),
-    matchesGoldenFile('goldens/lobby_mobile_390x844.png'),
+    matchesGoldenFile(
+      'goldens/lobby_mobile_${size.width.toInt()}x${size.height.toInt()}.png',
+    ),
   );
   await tester.pumpWidget(const SizedBox.shrink());
 }
@@ -110,9 +146,15 @@ Future<void> _expectLobbyVisualAssetsPainted(WidgetTester tester) async {
       }
     }
     expect(
-      denseRows.length + denseColumns.length,
-      lessThan(6),
-      reason: 'Material icon painted as a missing-glyph box',
+      _looksLikeMissingGlyphBox(
+        denseRows: denseRows,
+        denseColumns: denseColumns,
+        width: width,
+        height: height,
+      ),
+      isFalse,
+      reason: 'Material icon ${(icon.widget as Icon).icon} painted as a '
+          'thin rectangular missing-glyph box',
     );
   }
 
@@ -144,6 +186,39 @@ Future<void> _expectLobbyVisualAssetsPainted(WidgetTester tester) async {
     greaterThan(20),
     reason: 'character image did not paint inside its medallion',
   );
+}
+
+bool _looksLikeMissingGlyphBox({
+  required List<int> denseRows,
+  required List<int> denseColumns,
+  required int width,
+  required int height,
+}) {
+  const maxBorderThickness = 4;
+  return _hasThinOpposingEdgeBands(denseRows, height, maxBorderThickness) &&
+      _hasThinOpposingEdgeBands(denseColumns, width, maxBorderThickness);
+}
+
+bool _hasThinOpposingEdgeBands(
+  List<int> denseIndices,
+  int extent,
+  int maxThickness,
+) {
+  if (denseIndices.isEmpty || extent < maxThickness * 2 + 1) return false;
+  final dense = denseIndices.toSet();
+  var leadingThickness = 0;
+  while (leadingThickness < extent && dense.contains(leadingThickness)) {
+    leadingThickness += 1;
+  }
+  var trailingThickness = 0;
+  while (trailingThickness < extent &&
+      dense.contains(extent - 1 - trailingThickness)) {
+    trailingThickness += 1;
+  }
+  return leadingThickness > 0 &&
+      leadingThickness <= maxThickness &&
+      trailingThickness > 0 &&
+      trailingThickness <= maxThickness;
 }
 
 bool _isJoseonInk(Uint8List pixels, int pixel) =>

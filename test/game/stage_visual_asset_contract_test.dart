@@ -121,6 +121,22 @@ void main() {
     expect(pubspec, contains('    - assets/images/props/'));
   });
 
+  test('stage presentation catalog uses approved explicit missing-art states', () {
+    expect(AssetCatalog.stagePresentation, {
+      'moonlit_abandoned_office_presentation':
+          'assets/images/stages/moonlit_office_card.png',
+      'plague_market_presentation':
+          'assets/images/stages/plague_market_card.png',
+    });
+    for (final path in AssetCatalog.stagePresentation.values) {
+      expect(
+        File(path).existsSync(),
+        isFalse,
+        reason: '$path intentionally renders the ASSET MISSING debug state',
+      );
+    }
+  });
+
   test('ledger binds every stage source to its exact runtime record', () {
     final rows = _LedgerRow.readAll('docs/assets/asset-rights-ledger.csv');
     final expected = <String, _StageLedgerExpectation>{
