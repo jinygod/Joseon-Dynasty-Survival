@@ -3,6 +3,7 @@ import 'dart:math';
 import 'dart:ui';
 
 import 'stage_definitions.dart';
+import '../world/world_chunk_coordinate.dart';
 
 /// Static art choices for one stage. The salt is a permanent, explicit part of
 /// the stage contract so layouts never depend on a runtime string hash.
@@ -104,6 +105,8 @@ class StageDecorationPlacement {
   final double size;
   final int variant;
 
+  Rect get bounds => Rect.fromLTWH(position.dx, position.dy, size, size);
+
   @override
   bool operator ==(Object other) =>
       other is StageDecorationPlacement &&
@@ -120,6 +123,8 @@ class StageDecorationPlacement {
 class StageLayout {
   StageLayout._({
     required this.spec,
+    required this.bounds,
+    this.coordinate,
     required List<StageTilePlacement> tiles,
     required List<StageDecorationPlacement> decorations,
     required List<StageDecorationPlacement> props,
@@ -128,6 +133,8 @@ class StageLayout {
        props = UnmodifiableListView(props);
 
   final StageVisualSpec spec;
+  final Rect bounds;
+  final WorldChunkCoordinate? coordinate;
   final UnmodifiableListView<StageTilePlacement> tiles;
   final UnmodifiableListView<StageDecorationPlacement> decorations;
   final UnmodifiableListView<StageDecorationPlacement> props;
@@ -205,9 +212,130 @@ class StageLayout {
 
     return StageLayout._(
       spec: spec,
+      bounds: bounds,
       tiles: tiles,
       decorations: decals,
       props: props,
     );
   }
+
+  /// Builds the static art for exactly one world-aligned chunk.  The random
+  /// choices use explicit integer mixing so they remain stable across runs.
+  static StageLayout buildChunk(
+    StageVisualSpec spec, {
+    required int seed,
+    required WorldChunkCoordinate coordinate,
+    required double chunkSize,
+    required Rect worldBounds,
+  }) {
+    final requested = Rect.fromLTWH(
+      coordinate.x * chunkSize,
+      coordinate.y * chunkSize,
+      chunkSize,
+      chunkSize,
+    );
+    final bounds = requested.intersect(worldBounds);
+    final tiles = <StageTilePlacement>[];
+    final decals = <StageDecorationPlacement>[];
+    final props = <StageDecorationPlacement>[];
+    if (bounds.isEmpty) {
+      return StageLayout._(
+        spec: spec,
+        bounds: bounds,
+        coordinate: coordinate,
+        tiles: tiles,
+        decorations: decals,
+        props: props,
+      );
+    }
+    final tileSize = spec.tileSize;
+    final left = (bounds.left / tileSize).ceil() * tileSize;
+    final top = (bounds.top / tileSize).ceil() * tileSize;
+    final isBoundary = requested.left <= worldBounds.left ||
+        requested.top <= worldBounds.top ||
+        requested.right >= worldBounds.right ||
+        requested.bottom >= worldBounds.bottom;
+    for (var y = top; y + tileSize <= bounds.bottom; y += tileSize) {
+      for (var x = left; x + tileSize <= bounds.right; x += tileSize) {
+        final cellX = (x / tileSize).round();
+        final cellY = (y / tileSize).round();
+        final choice = _chunkMix(seed, spec.seedSalt, cellX, cellY);
+        final position = Offset(x, y);
+        tiles.add(StageTilePlacement(
+          position: position,
+          size: tileSize,
+          variant: choice % spec.tileVariants,
+        ));
+        if (spec.decalAssetKey != null && choice % 7 == 0) {
+          decals.add(StageDecorationPlacement(
+            kind: StageDecorationKind.decal,
+            position: position,
+            size: tileSize,
+            variant: (choice ~/ 7) % spec.decalVariants,
+          ));
+        }
+        if (spec.propAssetKey != null &&
+            isBoundary &&
+            _isBoundaryCell(position, tileSize, requested, worldBounds) &&
+            choice % 2 == 0) {
+          props.add(StageDecorationPlacement(
+            kind: StageDecorationKind.prop,
+            position: position,
+            size: tileSize,
+            variant: (choice ~/ 11) % spec.propVariants,
+          ));
+        }
+      }
+    }
+    if (spec.decalAssetKey != null && decals.isEmpty && tiles.isNotEmpty) {
+      final tile = tiles[_chunkMix(seed, spec.seedSalt, coordinate.x, coordinate.y) % tiles.length];
+      decals.add(StageDecorationPlacement(
+        kind: StageDecorationKind.decal,
+        position: tile.position,
+        size: tile.size,
+        variant: tile.variant % spec.decalVariants,
+      ));
+    }
+    if (spec.propAssetKey != null && isBoundary && props.isEmpty) {
+      final edgeTiles = tiles.where(
+        (tile) => _isBoundaryCell(tile.position, tile.size, requested, worldBounds),
+      );
+      if (edgeTiles.isNotEmpty) {
+        final tile = edgeTiles.first;
+        props.add(StageDecorationPlacement(
+          kind: StageDecorationKind.prop,
+          position: tile.position,
+          size: tile.size,
+          variant: _chunkMix(seed, spec.seedSalt, coordinate.x, coordinate.y) %
+              spec.propVariants,
+        ));
+      }
+    }
+    return StageLayout._(
+      spec: spec,
+      bounds: bounds,
+      coordinate: coordinate,
+      tiles: tiles,
+      decorations: decals,
+      props: props,
+    );
+  }
+}
+
+bool _isBoundaryCell(Offset position, double size, Rect chunk, Rect world) {
+  final center = position + Offset(size / 2, size / 2);
+  return (chunk.left <= world.left && center.dx <= chunk.left + size) ||
+      (chunk.top <= world.top && center.dy <= chunk.top + size) ||
+      (chunk.right >= world.right && center.dx >= chunk.right - size) ||
+      (chunk.bottom >= world.bottom && center.dy >= chunk.bottom - size);
+}
+
+int _chunkMix(int seed, int salt, int x, int y) {
+  var value = (seed ^ salt ^ 0x9e3779b9) & 0xffffffff;
+  for (final part in [x, y, 0x43484b34]) {
+    value = (value ^ part) & 0xffffffff;
+    value = (value * 0x85ebca6b) & 0xffffffff;
+    value ^= value >> 16;
+  }
+  return value & 0x7fffffff;
 }

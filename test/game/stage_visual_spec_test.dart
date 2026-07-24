@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/content/stage_definitions.dart';
 import 'package:pixel_survivor/game/content/stage_visual_spec.dart';
+import 'package:pixel_survivor/game/world/world_chunk_coordinate.dart';
 
 void main() {
   const bounds = Rect.fromLTWH(-64, -64, 384, 256);
@@ -20,6 +21,57 @@ void main() {
 
     expect(a.tiles, b.tiles);
     expect(a.decorations, b.decorations);
+  });
+
+  test('same seed and coordinate produce identical chunk placements', () {
+    const worldBounds = Rect.fromLTWH(0, 0, 2048, 5120);
+    final first = StageLayout.buildChunk(
+      spec,
+      seed: 3107,
+      coordinate: const WorldChunkCoordinate(2, 5),
+      chunkSize: 512,
+      worldBounds: worldBounds,
+    );
+    final second = StageLayout.buildChunk(
+      spec,
+      seed: 3107,
+      coordinate: const WorldChunkCoordinate(2, 5),
+      chunkSize: 512,
+      worldBounds: worldBounds,
+    );
+
+    expect(first.tiles, second.tiles);
+    expect(first.props, second.props);
+    expect(first.tiles, hasLength(16));
+    expect(first.bounds, const Rect.fromLTWH(1024, 2560, 512, 512));
+  });
+
+  test('boundary chunks have more props than center chunks', () {
+    const worldBounds = Rect.fromLTWH(0, 0, 2048, 5120);
+    final edge = StageLayout.buildChunk(
+      spec,
+      seed: 3107,
+      coordinate: const WorldChunkCoordinate(0, 5),
+      chunkSize: 512,
+      worldBounds: worldBounds,
+    );
+    final center = StageLayout.buildChunk(
+      spec,
+      seed: 3107,
+      coordinate: const WorldChunkCoordinate(2, 5),
+      chunkSize: 512,
+      worldBounds: worldBounds,
+    );
+
+    expect(edge.props.length, greaterThan(center.props.length));
+    for (final placement in edge.tiles) {
+      expect(edge.bounds.contains(placement.position + const Offset(1, 1)), isTrue);
+      expect(worldBounds.overlaps(placement.bounds), isTrue);
+    }
+    for (final placement in edge.props) {
+      expect(edge.bounds.contains(placement.position + const Offset(1, 1)), isTrue);
+      expect(worldBounds.overlaps(placement.bounds), isTrue);
+    }
   });
 
   test('different seeds vary optional placements while retaining coverage', () {

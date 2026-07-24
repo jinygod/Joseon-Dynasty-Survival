@@ -4,6 +4,7 @@ import 'package:flame/components.dart';
 import 'package:flame/sprite.dart';
 
 import '../content/stage_visual_spec.dart';
+import '../world/world_chunk_coordinate.dart';
 
 /// Presentation-only static stage renderer. All batch contents are assembled
 /// once while loading and are never changed during a run.
@@ -21,8 +22,12 @@ class StageTileBatchComponent extends Component {
   int _batchBuildCount = 0;
 
   String get stageId => layout.spec.stageId;
+  WorldChunkCoordinate? get coordinate => layout.coordinate;
+  Rect get bounds => layout.bounds;
   int get placementBuildCount => _placementBuildCount;
   int get batchBuildCount => _batchBuildCount;
+  int get placementCount =>
+      layout.tiles.length + layout.decorations.length + layout.props.length;
   bool get ownsCollision => false;
 
   /// Exact source-cell mapping for the fixed 4x2 stage atlases.
@@ -106,6 +111,9 @@ class StageTileBatchComponent extends Component {
     if (image == null) return;
     final batch = SpriteBatch(image);
     for (final placement in placements) {
+      if (!bounds.contains(placement.position + const Offset(0.1, 0.1))) {
+        continue;
+      }
       batch.add(
         source: sourceRectFor(
           kind: placement.kind,

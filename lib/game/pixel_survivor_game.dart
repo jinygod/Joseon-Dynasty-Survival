@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:collection';
 import 'dart:math';
-import 'dart:ui' show Image;
+import 'dart:ui' show Color, Image;
 
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
@@ -32,10 +32,8 @@ import 'components/five_color_ward_component.dart';
 import 'components/player_component.dart';
 import 'components/projectile_component.dart';
 import 'components/spirit_jade_component.dart';
-import 'components/stage_tile_batch_component.dart';
 import 'components/talisman_presentation_component.dart';
 import 'components/ward_aura_component.dart';
-import 'components/stage_backdrop_component.dart';
 import 'balance/meta_reward_balance.dart';
 import 'content/augment_definitions.dart';
 import 'content/actor_visual_spec.dart';
@@ -84,6 +82,8 @@ import 'systems/weapon_system.dart';
 import 'systems/weapon_synergy_resolver.dart';
 import 'world/combat_world.dart';
 import 'world/combat_camera_controller.dart';
+import 'world/finite_world_layout.dart';
+import 'world/stage_chunk_streamer.dart';
 import 'world/world_runtime_config.dart';
 
 class PixelSurvivorGame extends FlameGame<CombatWorld>
@@ -91,6 +91,7 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
     implements GameHudSource, RewardCollectionHudSource, VisualAssetLoadPolicy {
   static const levelUpOverlayId = 'levelUp';
   static const maxExperienceGemComponents = 128;
+  static const _combatBackgroundColor = Color(0xfff1d7ab);
 
   PixelSurvivorGame({
     required this.playerSlot,
@@ -171,6 +172,8 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
   final WeaponSynergyResolver _weaponSynergyResolver = WeaponSynergyResolver();
   final CombatSystem combatSystem = CombatSystem();
   final WorldRuntimeConfig worldConfig = WorldRuntimeConfig.standard;
+  late final FiniteWorldLayout _stageWorldLayout;
+  late final StageChunkStreamer _stageChunkStreamer;
   late final CombatFeedbackController _combatFeedback;
   late final CombatCameraController _cameraController;
   bool _cameraControllerReady = false;
@@ -404,7 +407,7 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
   ];
 
   @override
-  Color backgroundColor() => warmHanjiBeige;
+  Color backgroundColor() => _combatBackgroundColor;
 
   @override
   KeyEventResult onKeyEvent(
@@ -423,10 +426,10 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
         ? await CombatAssetPreloader.loadWith([
             ...AttackVisualRegistry.requiredAssetKeys,
             WeaponEffectAtlas.assetKey,
-            if (stageId == plagueMarket) ...[
-              stageVisualSpec.tileAssetKey,
-              if (stageVisualSpec.decalAssetKey case final decalKey?) decalKey,
-              if (stageVisualSpec.propAssetKey case final propKey?) propKey,
+            for (final spec in stageVisualSpecs.values) ...[
+              spec.tileAssetKey,
+              if (spec.decalAssetKey case final decalKey?) decalKey,
+              if (spec.propAssetKey case final propKey?) propKey,
             ],
           ], visualAssetLoader ?? images.load)
         : const {};
@@ -435,20 +438,19 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
       ..anchor = Anchor.center
       ..zoom = worldConfig.cameraZoom;
 
-    if (stageId == plagueMarket) {
-      addWorldComponent(
-        StageTileBatchComponent(
-          layout: StageLayout.build(
-            stageVisualSpec,
-            seed: stageVisualSeed,
-            bounds: worldConfig.worldBounds,
-          ),
-          images: _visualImages,
-        ),
-      );
-    } else {
-      addWorldComponent(StageBackdropComponent(viewportSize: size));
-    }
+    _stageWorldLayout = FiniteWorldLayout.generate(
+      stageId: stageId,
+      seed: stageVisualSeed,
+      config: worldConfig,
+    );
+    _stageChunkStreamer = StageChunkStreamer(
+      layout: _stageWorldLayout,
+      spec: stageVisualSpec,
+      seed: stageVisualSeed,
+      images: _visualImages,
+      chunkSize: worldConfig.chunkSize,
+    );
+    addWorldComponent(_stageChunkStreamer);
     _addActivePlayers();
     _cameraController = CombatCameraController(
       camera: camera,
@@ -459,6 +461,7 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
     );
     _cameraControllerReady = true;
     _cameraController.snapTo(worldConfig.worldSize / 2);
+    _stageChunkStreamer.updateStreaming(camera.visibleWorldRect);
     _addStartingAugments();
   }
 
@@ -1632,7 +1635,10 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
   }
 
   void _updateCamera(double dt) {
-    if (_cameraControllerReady) _cameraController.update(dt);
+    if (_cameraControllerReady) {
+      _cameraController.update(dt);
+      _stageChunkStreamer.updateStreaming(camera.visibleWorldRect);
+    }
   }
 
   void _dropExperienceForDeadEnemies() {
