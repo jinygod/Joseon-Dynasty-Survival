@@ -19,6 +19,8 @@ class AttackVisualEvent {
           attack.spec.activeSeconds +
           attack.spec.lingerSeconds,
       presentation = attack.spec.presentation,
+      damage = attack.spec.damage,
+      isCritical = attack.isCritical,
       sequenceIndex = attack.sequenceIndex;
 
   final String effectId;
@@ -32,6 +34,8 @@ class AttackVisualEvent {
   final double impactAt;
   final double duration;
   final AttackPresentation presentation;
+  final double damage;
+  final bool isCritical;
   final int sequenceIndex;
 
   Vector2 get origin => _origin.clone();

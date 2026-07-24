@@ -16,6 +16,7 @@ import 'package:pixel_survivor/game/components/enemy_projectile_component.dart';
 import 'package:pixel_survivor/game/components/experience_gem_component.dart';
 import 'package:pixel_survivor/game/components/frost_field_component.dart';
 import 'package:pixel_survivor/game/components/five_color_ward_component.dart';
+import 'package:pixel_survivor/game/components/hwando_vfx_component.dart';
 import 'package:pixel_survivor/game/components/projectile_component.dart';
 import 'package:pixel_survivor/game/components/player_component.dart';
 import 'package:pixel_survivor/game/components/spirit_jade_component.dart';
@@ -23,7 +24,6 @@ import 'package:pixel_survivor/game/components/stage_backdrop_component.dart';
 import 'package:pixel_survivor/game/components/talisman_presentation_component.dart';
 import 'package:pixel_survivor/game/components/ward_aura_component.dart';
 import 'package:pixel_survivor/game/audio/audio_cue.dart';
-import 'package:pixel_survivor/game/combat/attack_geometry.dart';
 import 'package:pixel_survivor/game/combat/attack_spec.dart';
 import 'package:pixel_survivor/game/content/augment_definitions.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
@@ -168,11 +168,12 @@ void main() {
     for (var level = 0; level < 6; level += 1) {
       game.weaponSystem.upgrade(hwandoSlash, game.unlockedWeaponIds);
     }
-    for (final position in [
-      Vector2(448, 300),
-      Vector2(400, 348),
-      Vector2(352, 300),
-      Vector2(520, 420),
+    final center = game.worldConfig.worldSize / 2;
+    for (final offset in [
+      Vector2(-32, 0),
+      Vector2(-80, 48),
+      Vector2(-128, 0),
+      Vector2(40, 120),
     ]) {
       game.add(
         EnemyComponent(
@@ -180,7 +181,7 @@ void main() {
           maxHealth: 10000,
           moveSpeed: 0,
           damage: 0,
-          position: position,
+          position: center + offset,
         ),
       );
     }
@@ -201,7 +202,7 @@ void main() {
         maxHealth: 10000,
         moveSpeed: 0,
         damage: 0,
-        position: Vector2(448, 300),
+        position: game.worldConfig.worldSize / 2 + Vector2(-32, 0),
       ),
     );
     return game;
@@ -408,10 +409,10 @@ void main() {
         expect(game.combatNotice, '봉마참');
         expect(game.combatNoticeSecondsRemaining, inInclusiveRange(0, 1.2));
         expect(
-          game.worldChildrenOfType<AttackEffectComponent>().any(
+          game.worldChildrenOfType<HwandoVfxComponent>().any(
             (effect) =>
-                effect.instance.spec.id == sealingSlash &&
-                effect.instance.spec.presentation == AttackPresentation.synergy,
+                effect.event.effectId == sealingSlash &&
+                effect.event.presentation == AttackPresentation.synergy,
           ),
           isTrue,
         );
@@ -1449,30 +1450,29 @@ void main() {
       'hwando mastery enhances only sequence start and finish',
       verify: (game, _) async {
         game.update(0);
-        final effect = game.worldChildrenOfType<AttackEffectComponent>().single;
+        final effect = game.worldChildrenOfType<HwandoVfxComponent>().single;
         final enemies = game.worldChildrenOfType<EnemyComponent>().toList();
-        final expected = enemies
-            .where(
-              (enemy) => AttackGeometry.contains(
-                effect.instance,
-                enemy.position,
-                enemy.size.x / 2,
-              ),
-            )
-            .toSet();
         final damaged = enemies
             .where((enemy) => enemy.currentHealth < enemy.maxHealth)
             .toSet();
 
-        expect(damaged, expected);
-        expect(effect.instance.isCritical, isFalse);
+        expect(damaged, hasLength(2));
+        expect(effect.event.effectId, 'hwando_master_opener');
+        expect(effect.event.isCritical, isFalse);
         expect(
-          damaged.single.maxHealth - damaged.single.currentHealth,
-          effect.instance.spec.damage,
+          damaged.every(
+            (enemy) =>
+                enemy.maxHealth - enemy.currentHealth == effect.event.damage,
+          ),
+          isTrue,
         );
+        final hitEffects = game
+            .worldChildrenOfType<CombatEffectComponent>()
+            .toList();
+        expect(hitEffects, hasLength(2));
         expect(
-          game.worldChildrenOfType<CombatEffectComponent>().single.kind,
-          CombatEffectKind.hit,
+          hitEffects.every((effect) => effect.kind == CombatEffectKind.hit),
+          isTrue,
         );
         expect(game.combatHitStopRemaining, .035);
         var masteryFeedbackBeats = 1;
@@ -1504,14 +1504,11 @@ void main() {
       verify: (game, _) async {
         game.update(.05);
         game.update(0);
-        final attack = game.worldChildrenOfType<AttackEffectComponent>().single;
+        final attack = game.worldChildrenOfType<HwandoVfxComponent>().single;
         final enemy = game.worldChildrenOfType<EnemyComponent>().single;
 
-        expect(attack.instance.isCritical, isTrue);
-        expect(
-          enemy.maxHealth - enemy.currentHealth,
-          attack.instance.spec.damage * 2,
-        );
+        expect(attack.event.isCritical, isTrue);
+        expect(enemy.maxHealth - enemy.currentHealth, attack.event.damage * 2);
         expect(
           game.worldChildrenOfType<CombatEffectComponent>().single.kind,
           CombatEffectKind.critical,

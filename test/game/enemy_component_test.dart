@@ -441,7 +441,7 @@ void main() {
       );
       expect(
         EnemySpriteSheet.specs[sakkatSpecter]!.assetKey,
-        'monsters/sakkat_specter_128.png',
+        'enemies/sakkat_specter_128.png',
       );
       expect(
         EnemySpriteSheet.specs[dokkaebi]!.assetKey,

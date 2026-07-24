@@ -2,7 +2,7 @@ import 'package:flame/components.dart';
 import 'package:flame_test/flame_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/components/enemy_component.dart';
-import 'package:pixel_survivor/game/components/attack_effect_component.dart';
+import 'package:pixel_survivor/game/components/hwando_vfx_component.dart';
 import 'package:pixel_survivor/game/combat/attack_spec.dart';
 import 'package:pixel_survivor/game/components/combat_effect_component.dart';
 import 'package:pixel_survivor/game/components/damage_number_component.dart';
@@ -49,7 +49,7 @@ void main() {
         maxHealth: 10000,
         moveSpeed: 0,
         damage: 0,
-        position: Vector2(448, 300),
+        position: game.worldConfig.worldSize / 2 + Vector2(-32, 0),
       ),
     );
     return game;
@@ -259,7 +259,7 @@ void main() {
       game.update(.05);
       game.update(0);
 
-      expect(game.worldChildrenOfType<AttackEffectComponent>(), hasLength(1));
+      expect(game.worldChildrenOfType<HwandoVfxComponent>(), hasLength(1));
       expect(game.worldChildrenOfType<CombatEffectComponent>(), isEmpty);
       expect(
         game.performanceSnapshot.counts[GamePopulationKind.combatEffect],
@@ -300,7 +300,7 @@ void main() {
         ProjectileComponent(
           weaponId: gakgungShot,
           damage: 1,
-          position: Vector2(10, 10),
+          position: origin + Vector2(10, 10),
           velocity: Vector2.zero(),
           lifetime: 100,
         ),

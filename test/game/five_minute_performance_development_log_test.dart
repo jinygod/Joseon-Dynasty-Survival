@@ -139,7 +139,7 @@ void main() {
         final stopwatch = Stopwatch()..start();
         game.update(frameStepSeconds);
         game.processLifecycleEvents();
-        for (final boss in game.children.whereType<BossComponent>()) {
+        for (final boss in game.worldChildrenOfType<BossComponent>()) {
           boss.currentHealth = 1000000000;
         }
         stopwatch.stop();
@@ -180,13 +180,13 @@ void main() {
       expect(game.elapsedSeconds, closeTo(300, 0.001));
       expect(log.sampleCount, frameCount ~/ observationIntervalFrames);
       expect(log.peakFrameStepMicros, frameStepMicros);
-      expect(log.averageActiveEnemies, closeTo(27.596666666666668, 1e-12));
-      expect(log.maximumActiveEnemies, 93);
+      expect(log.averageActiveEnemies, closeTo(26.662, 1e-12));
+      expect(log.maximumActiveEnemies, 86);
       expect(log.lateFrameSampleCount, 7200);
-      expect(log.lateAverageActiveEnemies, closeTo(53.02430555555556, 1e-12));
+      expect(log.lateAverageActiveEnemies, closeTo(49.440416666666664, 1e-12));
       expect(log.lateAverageActiveEnemies, greaterThanOrEqualTo(30));
       expect(log.lateAverageActiveEnemies, lessThanOrEqualTo(60));
-      expect(log.lateMaximumActiveEnemies, 93);
+      expect(log.lateMaximumActiveEnemies, 86);
       expect(
         log.lateAverageSimulatedFps,
         closeTo(1000000 / frameStepMicros, 1e-9),
@@ -195,9 +195,9 @@ void main() {
         log.lateMinimumSimulatedFps,
         closeTo(1000000 / frameStepMicros, 1e-12),
       );
-      expect(log.peakMountedComponentCount, 447);
-      expect(log.peakRetainedOwnerCount, 44);
-      expect(log.peakMemoryProxyComponents, 478);
+      expect(log.peakMountedComponentCount, 363);
+      expect(log.peakRetainedOwnerCount, 30);
+      expect(log.peakMemoryProxyComponents, 383);
       for (final kind in GamePopulationKind.values) {
         expect(log.peakCounts[kind], greaterThan(0), reason: kind.name);
         expect(
@@ -207,10 +207,10 @@ void main() {
         );
       }
       expect(log.peakCounts, {
-        GamePopulationKind.enemy: 93,
-        GamePopulationKind.projectile: 26,
+        GamePopulationKind.enemy: 86,
+        GamePopulationKind.projectile: 19,
         GamePopulationKind.damageNumber: 24,
-        GamePopulationKind.combatEffect: 24,
+        GamePopulationKind.combatEffect: 27,
       });
       expect(log.budgetViolationSamples, 0);
       expect(log.memoryProxyViolationSamples, 0);
@@ -218,7 +218,7 @@ void main() {
       expect(log.isWithinMemoryProxyBudget, isTrue);
       expect(log.isWithinLateFrameBudget, isTrue);
       expect(
-        game.children.whereType<ExperienceGemComponent>().length,
+        game.worldChildrenOfType<ExperienceGemComponent>().length,
         lessThanOrEqualTo(PixelSurvivorGame.maxExperienceGemComponents),
       );
       expect(artifacts.keys, {
@@ -228,16 +228,16 @@ void main() {
       final json =
           jsonDecode(artifacts['production-high-risk-performance-log.json']!)
               as Map<String, dynamic>;
-      expect(json['averageActiveEnemies'], 27.596666666666668);
-      expect(json['maximumActiveEnemies'], 93);
-      expect(json['lateAverageActiveEnemies'], 53.02430555555556);
-      expect(json['lateMaximumActiveEnemies'], 93);
+      expect(json['averageActiveEnemies'], 26.662);
+      expect(json['maximumActiveEnemies'], 86);
+      expect(json['lateAverageActiveEnemies'], 49.440416666666664);
+      expect(json['lateMaximumActiveEnemies'], 86);
       expect(
-        json['lateAverageSimulatedFps'],
+        json['lateAverageLogicalFps'],
         closeTo(1000000 / frameStepMicros, 1e-9),
       );
       expect(
-        json['lateMinimumSimulatedFps'],
+        json['lateMinimumLogicalFps'],
         closeTo(1000000 / frameStepMicros, 1e-9),
       );
       expect(json['isWithinLateFrameBudget'], isTrue);
@@ -245,11 +245,13 @@ void main() {
       final markdown = artifacts['production-high-risk-performance-log.md']!;
       expect(
         markdown,
-        contains('- Average / maximum active enemies: 27.60 / 93'),
+        contains('- Average / maximum active enemies: 26.66 / 86'),
       );
       expect(
         markdown,
-        contains('- Late average / minimum simulated FPS: 60.00 / 60.00'),
+        contains(
+          '- Late average / minimum logical FPS (fixed-dt): 60.00 / 60.00',
+        ),
       );
       expect(markdown, contains('- Late raw-frame budget result: PASS'));
     },

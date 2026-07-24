@@ -200,6 +200,7 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
         maxActiveGems: worldConfig.maxActiveExperienceGems,
         chunkSize: worldConfig.chunkSize,
       );
+  final Set<int> _pendingExperienceGemRecordIds = {};
   final Vector2 _recentPlayerMotion = Vector2.zero();
   int _spatialSpawnSequence = 0;
   double _experienceMergeCooldown = 0;
@@ -227,6 +228,8 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
   final Map<EnemyComponent, bool> _pendingSpiritJadeDrops = {};
   final Map<EnemyComponent, TalismanAttachmentComponent>
   _talismanAttachmentComponents = {};
+  final Map<EnemyComponent, ActorShadowComponent> _enemyShadows = {};
+  final Map<EnemyComponent, EnemyWarningOverlayComponent> _enemyOverlays = {};
   final Set<PositionComponent> _trackedRegistryAttackVisuals = {};
   final GamePopulationIndex _populationIndex = GamePopulationIndex();
   int _spiritJadeDropSequence = 0;
@@ -965,23 +968,23 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
 
   void _addEnemyWithWarningOverlay(EnemyComponent enemy) {
     if (_usesRepresentativeEnemyShadow(enemy.enemyId)) {
-      addWorldComponent(
-        ActorShadowComponent(
-          target: enemy,
-          width: enemyVisualSpecFor(
-            enemy.enemyId,
-            fallbackRank: enemy.rank,
-          ).shadowWidth,
-        ),
+      final shadow = ActorShadowComponent(
+        target: enemy,
+        width: enemyVisualSpecFor(
+          enemy.enemyId,
+          fallbackRank: enemy.rank,
+        ).shadowWidth,
       );
+      _enemyShadows[enemy] = shadow;
+      addWorldComponent(shadow);
     }
     addWorldComponent(enemy);
-    addWorldComponent(
-      EnemyWarningOverlayComponent(
-        enemy: enemy,
-        visualFactory: _combatVisualFactory,
-      ),
+    final overlay = EnemyWarningOverlayComponent(
+      enemy: enemy,
+      visualFactory: _combatVisualFactory,
     );
+    _enemyOverlays[enemy] = overlay;
+    addWorldComponent(overlay);
   }
 
   bool _usesRepresentativeEnemyShadow(EnemyId enemyId) => switch (enemyId) {
@@ -1155,6 +1158,8 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
         in worldChildrenOfType<EnemyWarningOverlayComponent>()
             .where((item) => item.enemy.isDead || item.enemy.isRemoving)
             .toList(growable: false)) {
+      _enemyOverlays.remove(overlay.enemy);
+      _enemyShadows.remove(overlay.enemy)?.removeFromParent();
       overlay.removeFromParent();
     }
     final staleTargets = _talismanAttachmentComponents.keys
@@ -1826,6 +1831,11 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
       if (tier == WorldActivityTier.visible ||
           tier == WorldActivityTier.active) {
         enemy.setActivityTier(tier);
+        if (tier == WorldActivityTier.visible) {
+          _ensureEnemyPresentationOwners(enemy);
+        } else {
+          _removeEnemyVisualOwners(enemy);
+        }
         continue;
       }
       enemy.setActivityTier(tier);
@@ -1876,20 +1886,39 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
   }
 
   void _removeEnemyPresentationOwners(EnemyComponent enemy) {
-    for (final shadow
-        in worldChildrenOfType<ActorShadowComponent>()
-            .where((item) => identical(item.target, enemy))
-            .toList()) {
-      shadow.removeFromParent();
-    }
-    for (final overlay
-        in worldChildrenOfType<EnemyWarningOverlayComponent>()
-            .where((item) => identical(item.enemy, enemy))
-            .toList()) {
-      overlay.removeFromParent();
-    }
+    _removeEnemyVisualOwners(enemy);
     _lastWeaponHitByEnemy.remove(enemy);
     combatSystem.forget(enemy);
+  }
+
+  void _removeEnemyVisualOwners(EnemyComponent enemy) {
+    _enemyShadows.remove(enemy)?.removeFromParent();
+    _enemyOverlays.remove(enemy)?.removeFromParent();
+  }
+
+  void _ensureEnemyPresentationOwners(EnemyComponent enemy) {
+    final shadow = _enemyShadows[enemy];
+    if (_usesRepresentativeEnemyShadow(enemy.enemyId) &&
+        (shadow == null || shadow.isRemoving || shadow.parent == null)) {
+      final replacement = ActorShadowComponent(
+        target: enemy,
+        width: enemyVisualSpecFor(
+          enemy.enemyId,
+          fallbackRank: enemy.rank,
+        ).shadowWidth,
+      );
+      _enemyShadows[enemy] = replacement;
+      addWorldComponent(replacement);
+    }
+    final overlay = _enemyOverlays[enemy];
+    if (overlay == null || overlay.isRemoving || overlay.parent == null) {
+      final replacement = EnemyWarningOverlayComponent(
+        enemy: enemy,
+        visualFactory: _combatVisualFactory,
+      );
+      _enemyOverlays[enemy] = replacement;
+      addWorldComponent(replacement);
+    }
   }
 
   void _retireTransientOutsideActiveZone() {
@@ -2210,8 +2239,12 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
         gem.position.setFrom(record.position);
       }
     }
+    _pendingExperienceGemRecordIds.removeAll(componentsById.keys);
     for (final record in recordsById.values) {
-      if (componentsById.containsKey(record.id)) continue;
+      if (componentsById.containsKey(record.id) ||
+          !_pendingExperienceGemRecordIds.add(record.id)) {
+        continue;
+      }
       addWorldComponent(
         ExperienceGemComponent(
           experienceValue: record.value,
