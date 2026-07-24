@@ -34,6 +34,9 @@ import 'components/projectile_component.dart';
 import 'components/spirit_jade_component.dart';
 import 'components/talisman_presentation_component.dart';
 import 'components/ward_aura_component.dart';
+import 'components/world_debug_renderer.dart';
+import 'components/registry_vfx_component.dart';
+import 'components/hwando_vfx_component.dart';
 import 'balance/meta_reward_balance.dart';
 import 'content/augment_definitions.dart';
 import 'content/actor_visual_spec.dart';
@@ -87,11 +90,16 @@ import 'world/stage_chunk_streamer.dart';
 import 'world/spatial_spawn_planner.dart';
 import 'world/world_activity_zone.dart';
 import 'world/world_chunk_repository.dart';
+import 'world/world_debug_snapshot.dart';
 import 'world/world_runtime_config.dart';
 
 class PixelSurvivorGame extends FlameGame<CombatWorld>
     with KeyboardEvents
-    implements GameHudSource, RewardCollectionHudSource, VisualAssetLoadPolicy {
+    implements
+        GameHudSource,
+        RewardCollectionHudSource,
+        VisualAssetLoadPolicy,
+        WorldDebugSource {
   static const levelUpOverlayId = 'levelUp';
   static const maxExperienceGemComponents = 96;
   static const _combatBackgroundColor = Color(0xfff1d7ab);
@@ -196,6 +204,16 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
   int _spatialSpawnSequence = 0;
   double _experienceMergeCooldown = 0;
   double _experienceAudioCooldown = 0;
+  final ListQueue<double> _debugFrameTimesMs = ListQueue<double>();
+  bool _worldDebugVisible = false;
+  late final WorldDebugRenderer _worldDebugRenderer = WorldDebugRenderer(
+    source: this,
+  );
+  double _debugRateWindow = 0;
+  int _debugCreatesInWindow = 0;
+  int _debugRemovesInWindow = 0;
+  double _debugCreatesPerSecond = 0;
+  double _debugRemovesPerSecond = 0;
   final List<PlayerComponent> _activePlayers = [];
   late final List<PlayerComponent> _activePlayersView = UnmodifiableListView(
     _activePlayers,
@@ -415,6 +433,8 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
   int get ownedExperience => _experienceGemCoordinator.totalOwnedExperience;
   int get grantedCoordinatedExperience =>
       _experienceGemCoordinator.grantedExperience;
+  @override
+  bool get worldDebugVisible => kDebugMode && _worldDebugVisible;
 
   String get currentWeaponLabel {
     final labels = weaponLevelLabels;
@@ -516,8 +536,10 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
     switch (type) {
       case ChildrenChangeType.added:
         _populationIndex.register(child);
+        _debugCreatesInWindow += 1;
       case ChildrenChangeType.removed:
         _populationIndex.unregister(child);
+        _debugRemovesInWindow += 1;
     }
   }
 
@@ -531,6 +553,7 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
       );
     }
     final wallFrameDt = dt.isFinite && dt > 0 ? dt : 0.0;
+    _recordDebugFrame(wallFrameDt);
     final safeDt = wallFrameDt.clamp(0, 0.05).toDouble();
     _experienceAudioCooldown = max(0.0, _experienceAudioCooldown - safeDt);
     final simulationDt = _combatFeedback.tick(safeDt);
@@ -591,6 +614,89 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
 
   void _advanceTime(double dt) {
     _elapsedSeconds += dt;
+  }
+
+  void _recordDebugFrame(double dt) {
+    if (dt <= 0) return;
+    _debugFrameTimesMs.addLast(dt * 1000);
+    while (_debugFrameTimesMs.length > 240) {
+      _debugFrameTimesMs.removeFirst();
+    }
+    _debugRateWindow += dt;
+    if (_debugRateWindow < 1) return;
+    _debugCreatesPerSecond = _debugCreatesInWindow / _debugRateWindow;
+    _debugRemovesPerSecond = _debugRemovesInWindow / _debugRateWindow;
+    _debugRateWindow = 0;
+    _debugCreatesInWindow = 0;
+    _debugRemovesInWindow = 0;
+  }
+
+  @override
+  void setWorldDebugVisible(bool visible) {
+    _worldDebugVisible = kDebugMode && visible;
+    if (!isMounted) return;
+    if (_worldDebugVisible) {
+      if (_worldDebugRenderer.parent == null ||
+          _worldDebugRenderer.isRemoving) {
+        addWorldComponent(_worldDebugRenderer);
+      }
+    } else if (_worldDebugRenderer.parent != null) {
+      _worldDebugRenderer.removeFromParent();
+    }
+  }
+
+  @override
+  WorldDebugSnapshot get debugSnapshot {
+    final frameTimes = _debugFrameTimesMs.toList()..sort();
+    final averageMs = frameTimes.isEmpty
+        ? 0.0
+        : frameTimes.reduce((left, right) => left + right) / frameTimes.length;
+    final p95Index = frameTimes.isEmpty
+        ? 0
+        : ((frameTimes.length - 1) * .95).ceil();
+    final cameraRect = hasLayout
+        ? camera.visibleWorldRect
+        : Rect.fromCenter(
+            center: worldConfig.worldBounds.center,
+            width: 0,
+            height: 0,
+          );
+    final zones = WorldActivityZones.fromVisibleRect(
+      cameraRect,
+      worldBounds: worldConfig.worldBounds,
+      hysteresis: worldConfig.zoneHysteresis,
+    );
+    final mounted = world.descendants(includeSelf: false).toList();
+    final activeGems = mounted
+        .whereType<ExperienceGemComponent>()
+        .where((gem) => !gem.isRemoving)
+        .length;
+    final activeVfx = mounted.where((component) {
+      return component is RegistryVfxComponent ||
+          component is HwandoVfxComponent ||
+          component is CombatEffectComponent ||
+          component is AttackEffectComponent;
+    }).length;
+    return WorldDebugSnapshot(
+      worldBounds: worldConfig.worldBounds,
+      cameraRect: cameraRect,
+      visibleRect: zones.visibleRect,
+      activeRect: zones.activeRect,
+      sleepingRect: zones.sleepingRect,
+      chunkSize: worldConfig.chunkSize,
+      activeEnemies: enemyCount,
+      sleepingEnemies: sleepingEnemyCount,
+      activeExperienceGems: activeGems,
+      compressedExperience: compressedExperience,
+      activeProjectiles: _populationIndex.projectileCount,
+      activeVfx: activeVfx,
+      mountedComponents: mounted.length,
+      componentCreatesPerSecond: _debugCreatesPerSecond,
+      componentRemovesPerSecond: _debugRemovesPerSecond,
+      fps: averageMs <= 0 ? 0 : 1000 / averageMs,
+      frameTimeP95Ms: frameTimes.isEmpty ? 0 : frameTimes[p95Index],
+      cameraZoom: camera.viewfinder.zoom,
+    );
   }
 
   @override

@@ -79,7 +79,7 @@ class _GameHudState extends State<GameHud> {
                 onInputChanged: widget.source.updateMovementInput,
                 size: 104,
                 deadZone: 9,
-                idleOpacity: 0.35,
+                idleOpacity: 0.22,
                 activeOpacity: 0.55,
               ),
             ),
@@ -111,24 +111,18 @@ class _PauseButton extends StatelessWidget {
         child: SizedBox.square(
           key: const Key('hud-pause'),
           dimension: 48,
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: onPressed,
-              borderRadius: BorderRadius.circular(12),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: const Color(0xe8101820),
-                  border: Border.all(
-                    color: const Color(0xfff4ead2),
-                    width: 1.5,
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const CustomPaint(
-                  key: Key('hud-pause-glyph'),
-                  painter: _PauseGlyphPainter(),
-                ),
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onPressed,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: const Color(0xe8101820),
+                border: Border.all(color: const Color(0xfff4ead2), width: 1.5),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const CustomPaint(
+                key: Key('hud-pause-glyph'),
+                painter: _PauseGlyphPainter(),
               ),
             ),
           ),
@@ -180,10 +174,6 @@ class _TopHud extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final notice = source.combatNotice;
-    final showNotice =
-        notice != null && source.combatNoticeSecondsRemaining > 0;
-    final showStreak = source.killStreak > 1;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -210,44 +200,6 @@ class _TopHud extends StatelessWidget {
           key: const Key('hud-status'),
           child: _StatusBar(source: source, leadingClearance: leadingClearance),
         ),
-        if (showNotice) ...[
-          const SizedBox(height: 6),
-          Padding(
-            padding: EdgeInsets.only(left: leadingClearance, right: 8),
-            child: Semantics(
-              key: const Key('combat-notice'),
-              liveRegion: true,
-              label: '${AppStrings.combatNotice} $notice',
-              excludeSemantics: true,
-              child: _CombatNotice(label: notice),
-            ),
-          ),
-        ],
-        if (showStreak) ...[
-          const SizedBox(height: 3),
-          Padding(
-            padding: EdgeInsets.only(left: leadingClearance, right: 8),
-            child: Semantics(
-              key: const Key('kill-streak'),
-              liveRegion: true,
-              label: '${source.killStreak} ${AppStrings.killStreak}',
-              excludeSemantics: true,
-              child: Center(
-                child: Text(
-                  '${source.killStreak} ${AppStrings.killStreak}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xffffd166),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    shadows: [Shadow(color: Color(0xff101820), blurRadius: 3)],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
       ],
     );
   }
@@ -265,7 +217,6 @@ class _StatusBar extends StatelessWidget {
     final elapsed = Duration(seconds: source.elapsedSeconds.floor());
     final minutes = elapsed.inMinutes.remainder(60).toString().padLeft(2, '0');
     final seconds = elapsed.inSeconds.remainder(60).toString().padLeft(2, '0');
-    final healthFraction = _fractionFromLabel(source.playerHealthLabel);
     final xpFraction = source.experienceToNextLevel <= 0
         ? 0.0
         : (source.currentExperience / source.experienceToNextLevel)
@@ -273,7 +224,6 @@ class _StatusBar extends StatelessWidget {
               .toDouble();
     final statusLabel =
         '${AppStrings.hudTime} $minutes:$seconds, '
-        '${AppStrings.hudHealth} ${source.playerHealthLabel}, '
         '${AppStrings.hudLevel} ${source.playerLevel}, '
         '${AppStrings.hudExperience} '
         '${source.currentExperience}/${source.experienceToNextLevel}, '
@@ -284,7 +234,7 @@ class _StatusBar extends StatelessWidget {
       explicitChildNodes: true,
       label: statusLabel,
       child: SizedBox(
-        height: 88,
+        height: 64,
         child: DecoratedBox(
           decoration: BoxDecoration(
             color: _panelColor,
@@ -292,7 +242,7 @@ class _StatusBar extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
           ),
           child: Padding(
-            padding: EdgeInsets.fromLTRB(leadingClearance, 7, 8, 7),
+            padding: EdgeInsets.fromLTRB(leadingClearance, 4, 8, 4),
             child: Column(
               children: [
                 SizedBox(
@@ -385,54 +335,39 @@ class _StatusBar extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: 5),
+                const SizedBox(height: 3),
                 SizedBox(
-                  height: 38,
+                  height: 24,
                   child: Row(
                     children: [
                       Expanded(
                         child: ExcludeSemantics(
-                          child: Column(
+                          child: Row(
                             children: [
-                              SizedBox(
-                                height: 17,
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: _FittedHudText(
-                                        '$minutes:$seconds',
-                                        color: const Color(0xfffff1b8),
-                                        fontWeight: FontWeight.w900,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    SizedBox(
-                                      width: 64,
-                                      height: 17,
-                                      child: FittedBox(
-                                        fit: BoxFit.scaleDown,
-                                        alignment: Alignment.centerRight,
-                                        child: Text(
-                                          '${source.kills}',
-                                          key: const Key('hud-kills-value'),
-                                          style: const TextStyle(
-                                            color: Color(0xff9fb3c8),
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
+                              Expanded(
+                                child: _FittedHudText(
+                                  '$minutes:$seconds',
+                                  color: const Color(0xfffff1b8),
+                                  fontWeight: FontWeight.w900,
                                 ),
                               ),
-                              const SizedBox(height: 4),
-                              _MeterBar(
-                                key: const Key('hud-health-bar'),
-                                value: healthFraction,
-                                color: const Color(0xffef5b5b),
-                                trackColor: const Color(0xff48242d),
-                                fillKey: const Key('hud-health-fill'),
+                              const SizedBox(width: 6),
+                              SizedBox(
+                                width: 52,
+                                height: 20,
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerRight,
+                                  child: Text(
+                                    '${source.kills}',
+                                    key: const Key('hud-kills-value'),
+                                    style: const TextStyle(
+                                      color: Color(0xff9fb3c8),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
                               ),
                             ],
                           ),
@@ -554,7 +489,7 @@ class _WeaponSlot extends StatelessWidget {
       excludeSemantics: true,
       child: SizedBox.square(
         key: Key('hud-weapon-slot-$index'),
-        dimension: 32,
+        dimension: 24,
         child: DecoratedBox(
           decoration: BoxDecoration(
             color: const Color(0xff172633),
@@ -721,40 +656,6 @@ class _FittedHudText extends StatelessWidget {
   }
 }
 
-class _CombatNotice extends StatelessWidget {
-  const _CombatNotice({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 240),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: const Color(0xff2f1b25).withValues(alpha: 0.9),
-          border: Border.all(color: const Color(0xffffd166)),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Color(0xfffff1b8),
-              fontSize: 16,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _RewardCollectionNotice extends StatelessWidget {
   const _RewardCollectionNotice({
     required this.seconds,
@@ -834,15 +735,6 @@ class BossHealthBar extends StatelessWidget {
       ],
     );
   }
-}
-
-double _fractionFromLabel(String label) {
-  final match = RegExp(r'(\d+)\s*/\s*(\d+)').firstMatch(label);
-  if (match == null) return 1;
-  final current = double.tryParse(match.group(1)!) ?? 0;
-  final maximum = double.tryParse(match.group(2)!) ?? 0;
-  if (maximum <= 0) return 0;
-  return (current / maximum).clamp(0, 1);
 }
 
 int _levelFromLabel(String label) {

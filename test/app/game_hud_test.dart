@@ -57,7 +57,7 @@ void main() {
     );
     expect(
       tester.getSize(find.byKey(const Key('hud-status'))).height,
-      lessThanOrEqualTo(92),
+      lessThanOrEqualTo(64),
     );
     final pause = tester.getRect(find.byKey(const Key('hud-pause')));
     final status = tester.getRect(find.byKey(const Key('hud-status')));
@@ -70,12 +70,8 @@ void main() {
       '레벨 1',
     );
     expect(find.text('4/12'), findsOneWidget);
-    expect(find.byKey(const Key('hud-health-bar')), findsOneWidget);
+    expect(find.byKey(const Key('hud-health-bar')), findsNothing);
     expect(find.byKey(const Key('hud-xp-bar')), findsOneWidget);
-    expect(
-      tester.getSize(find.byKey(const Key('hud-health-bar'))).height,
-      inInclusiveRange(8, 10),
-    );
     expect(
       tester.getSize(find.byKey(const Key('hud-xp-bar'))).height,
       inInclusiveRange(14, 18),
@@ -99,13 +95,11 @@ void main() {
     expect(find.byKey(const Key('hud-weapon-slot-3')), findsNothing);
     expect(
       tester.getSize(find.byKey(const Key('hud-weapon-slot-0'))),
-      const Size.square(32),
+      const Size.square(24),
     );
   });
 
-  testWidgets('HUD derives visible health fill and weapon badge level', (
-    tester,
-  ) async {
+  testWidgets('HUD keeps the compact weapon badge level', (tester) async {
     final source = FakeGameHudSource(
       bossName: null,
       bossHealthFraction: null,
@@ -113,9 +107,7 @@ void main() {
     );
     await tester.pumpWidget(MaterialApp(home: GameHud(source: source)));
 
-    final bar = tester.getRect(find.byKey(const Key('hud-health-bar')));
-    final fill = tester.getRect(find.byKey(const Key('hud-health-fill')));
-    expect(fill.width, closeTo(bar.width * 0.8, 0.5));
+    expect(find.byKey(const Key('hud-health-bar')), findsNothing);
     expect(
       tester.widget<Text>(find.byKey(const Key('hud-weapon-level-0'))).data,
       '6',
@@ -192,44 +184,44 @@ void main() {
     expect(find.textContaining('20'), findsNothing);
   });
 
-  testWidgets('large kill value stays above health at text scale two', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(390, 844);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    final source = FakeGameHudSource(
-      bossName: null,
-      bossHealthFraction: null,
-      weaponLevelLabels: const [
-        'Hwando Slash Lv. 6',
-        'Talisman Lv. 6',
-        'Bow Shot Lv. 5',
-      ],
-      kills: 9223372036854775807,
-    );
+  testWidgets(
+    'large kill value stays inside the compact panel at text scale two',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final source = FakeGameHudSource(
+        bossName: null,
+        bossHealthFraction: null,
+        weaponLevelLabels: const [
+          'Hwando Slash Lv. 6',
+          'Talisman Lv. 6',
+          'Bow Shot Lv. 5',
+        ],
+        kills: 9223372036854775807,
+      );
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: MediaQuery(
-          data: const MediaQueryData(
-            size: Size(390, 844),
-            textScaler: TextScaler.linear(2),
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MediaQuery(
+            data: const MediaQueryData(
+              size: Size(390, 844),
+              textScaler: TextScaler.linear(2),
+            ),
+            child: GameHud(source: source, onPause: () {}),
           ),
-          child: GameHud(source: source, onPause: () {}),
         ),
-      ),
-    );
+      );
 
-    final status = tester.getRect(find.byKey(const Key('hud-status')));
-    final kills = tester.getRect(find.byKey(const Key('hud-kills-value')));
-    final health = tester.getRect(find.byKey(const Key('hud-health-bar')));
-    expect(kills.left, greaterThanOrEqualTo(status.left));
-    expect(kills.right, lessThanOrEqualTo(status.right));
-    expect(kills.bottom, lessThanOrEqualTo(health.top));
-    expect(tester.takeException(), isNull);
-  });
+      final status = tester.getRect(find.byKey(const Key('hud-status')));
+      final kills = tester.getRect(find.byKey(const Key('hud-kills-value')));
+      expect(kills.left, greaterThanOrEqualTo(status.left));
+      expect(kills.right, lessThanOrEqualTo(status.right));
+      expect(kills.bottom, lessThanOrEqualTo(status.bottom));
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('pause uses one localized semantic button and painted glyph', (
     tester,
@@ -252,7 +244,7 @@ void main() {
     expect(find.byIcon(Icons.pause), findsNothing);
   });
 
-  testWidgets('streak uses the centered Korean presentation', (tester) async {
+  testWidgets('streak does not add a persistent combat row', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -265,9 +257,7 @@ void main() {
     );
     await tester.pumpWidget(MaterialApp(home: GameHud(source: source)));
 
-    expect(find.text('7 연속 처치'), findsOneWidget);
-    final streak = tester.getRect(find.byKey(const Key('kill-streak')));
-    expect(streak.center.dx, closeTo(195, 1));
+    expect(find.byKey(const Key('kill-streak')), findsNothing);
   });
 
   testWidgets('level-up card shows effect description', (tester) async {
@@ -313,7 +303,7 @@ void main() {
     expect(pauses, 1);
   });
 
-  testWidgets('combat notice stays below boss warning and expires', (
+  testWidgets('combat notice does not add a persistent HUD row', (
     tester,
   ) async {
     final source = FakeGameHudSource(
@@ -327,9 +317,8 @@ void main() {
 
     await tester.pumpWidget(MaterialApp(home: GameHud(source: source)));
 
-    expect(find.text('Sealing Slash'), findsOneWidget);
-    expect(tester.getTopLeft(find.text('Sealing Slash')).dy, greaterThan(80));
-    expect(find.byKey(const Key('kill-streak')), findsOneWidget);
+    expect(find.text('Sealing Slash'), findsNothing);
+    expect(find.byKey(const Key('kill-streak')), findsNothing);
 
     source.combatNoticeSecondsRemaining = 0;
     await tester.pump(const Duration(milliseconds: 250));

@@ -9,6 +9,7 @@ import 'game_hud.dart';
 import 'level_up_overlay.dart';
 import 'pause_menu_overlay.dart';
 import 'run_summary_screen.dart';
+import 'world_debug_overlay.dart';
 import '../game/models/player_slot.dart';
 import '../game/audio/audio_settings_controller.dart';
 import '../game/audio/audio_settings_repository.dart';
@@ -449,9 +450,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                   _completeTutorial();
                 },
               ),
+              if (kDebugMode)
+                'worldDebug': (_, game) => WorldDebugOverlay(source: game),
             },
             initialActiveOverlays: [
               'hud',
+              if (kDebugMode) 'worldDebug',
               if (widget.showFirstRunTutorial) _tutorialOverlayId,
             ],
           ),

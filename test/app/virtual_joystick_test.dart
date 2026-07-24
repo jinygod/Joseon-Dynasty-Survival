@@ -104,7 +104,7 @@ void main() {
       ),
     );
     final joystick = find.byKey(const Key('virtual-joystick'));
-    expect(_joystickFillAlpha(tester, joystick), closeTo(0.35, 0.001));
+    expect(_joystickFillAlpha(tester, joystick), closeTo(0.22, 0.001));
 
     final gesture = await tester.startGesture(tester.getCenter(joystick));
     await gesture.moveBy(const Offset(24, 0));

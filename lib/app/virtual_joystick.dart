@@ -9,7 +9,7 @@ class VirtualJoystick extends StatefulWidget {
     required this.onInputChanged,
     this.size = 120,
     this.deadZone = 10,
-    this.idleOpacity = 0.35,
+    this.idleOpacity = 0.22,
     this.activeOpacity = 0.55,
     super.key,
   }) : assert(idleOpacity >= 0 && idleOpacity <= 1),
@@ -134,7 +134,7 @@ class _VirtualJoystickState extends State<VirtualJoystick> {
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               color: const Color(
-                                0xff5cc8ff,
+                                0xffffc857,
                               ).withValues(alpha: 0.85),
                               border: Border.all(
                                 color: const Color(0xff101820),

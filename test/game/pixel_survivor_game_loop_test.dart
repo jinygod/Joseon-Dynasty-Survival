@@ -122,6 +122,23 @@ void main() {
       expect(game.children.whereType<EnemyComponent>(), isEmpty);
     },
   );
+  gameTester.testGameWidget(
+    'development snapshot reports bounded zones and rolling frame metrics',
+    verify: (game, _) async {
+      game.update(.02);
+      game.update(.05);
+      game.setWorldDebugVisible(true);
+      game.processLifecycleEvents();
+
+      final snapshot = game.debugSnapshot;
+      expect(snapshot.worldBounds, game.worldConfig.worldBounds);
+      expect(snapshot.cameraRect, game.camera.visibleWorldRect);
+      expect(snapshot.activeRect.contains(snapshot.visibleRect.center), isTrue);
+      expect(snapshot.frameTimeP95Ms, 50);
+      expect(snapshot.cameraZoom, closeTo(game.worldConfig.cameraZoom, .0001));
+      expect(game.worldDebugVisible, isTrue);
+    },
+  );
   final representativeStageGameTester = FlameTester<PixelSurvivorGame>(
     () => PixelSurvivorGame(
       playerSlot: const PlayerSlot(index: 0, characterId: exorcistDosa),
