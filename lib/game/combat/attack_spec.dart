@@ -1,6 +1,8 @@
 import 'package:flame/components.dart';
 import 'package:flutter/foundation.dart';
 
+import 'attack_timeline.dart';
+
 enum AttackShape { sector, circle, line }
 
 enum AttackTrait { melee, projectile, piercing, explosion, master, synergy }
@@ -40,6 +42,14 @@ class AttackSpec {
   final double slowFraction;
   final Set<AttackTrait> traits;
   final AttackPresentation presentation;
+
+  double get recoverySeconds => lingerSeconds;
+
+  AttackTiming get timing => AttackTiming(
+    windupSeconds: windupSeconds,
+    activeSeconds: activeSeconds,
+    recoverySeconds: recoverySeconds,
+  );
 }
 
 @immutable
