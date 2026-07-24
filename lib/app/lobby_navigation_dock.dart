@@ -5,13 +5,14 @@ import 'joseon_ui_theme.dart';
 
 /// The shared lobby navigation actions, without taking ownership of navigation.
 class LobbyNavigationDock extends StatelessWidget {
-  static const _minimumContentWidth = 296.0;
+  static const _minimumContentWidth = 370.0;
 
   const LobbyNavigationDock({
     required this.onStagePressed,
     required this.onCharacterPressed,
     required this.onCompendiumPressed,
     required this.onRecordsPressed,
+    this.onTrainingPressed,
     super.key,
   });
 
@@ -19,6 +20,7 @@ class LobbyNavigationDock extends StatelessWidget {
   final VoidCallback onCharacterPressed;
   final VoidCallback onCompendiumPressed;
   final VoidCallback onRecordsPressed;
+  final VoidCallback? onTrainingPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -77,6 +79,13 @@ class LobbyNavigationDock extends StatelessWidget {
                         label: '기록',
                         medalColor: const Color(0xff9b6a34),
                         onPressed: onRecordsPressed,
+                      ),
+                      _DockItem(
+                        debugId: 'lobby-training-entry',
+                        icon: Icons.self_improvement_outlined,
+                        label: '\uC218\uB828',
+                        medalColor: JoseonUiTheme.gold,
+                        onPressed: onTrainingPressed ?? () {},
                       ),
                     ],
                   ),

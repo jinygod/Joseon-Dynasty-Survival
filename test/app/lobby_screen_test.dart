@@ -181,6 +181,37 @@ void main() {
     expect(find.byKey(const Key('lobby-deploy')), findsOneWidget);
   });
 
+  testWidgets(
+    'lobby keeps deploy and training entry above the safe bottom area',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(375, 667);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+      final lobby = LobbyController(
+        store: _MemorySaveStore(SaveState.defaults()),
+      );
+      await lobby.load();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: LobbyScreen(
+            controller: lobby,
+            audioSettingsController: _audioController(),
+          ),
+        ),
+      );
+
+      expect(find.byKey(const Key('lobby-deploy')), findsOneWidget);
+      expect(find.byKey(const Key('lobby-training-entry')), findsOneWidget);
+      expect(
+        find.byKey(const Key('legacy-character-green-circle')),
+        findsNothing,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('390x844 lobby presents the command hierarchy without overflow', (
     tester,
   ) async {

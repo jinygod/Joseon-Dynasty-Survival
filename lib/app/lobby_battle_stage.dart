@@ -393,46 +393,67 @@ class _LobbyCharacterArt extends StatelessWidget {
         AssetCatalog.characters[characterId] ??
         AssetCatalog.characters[rookieConstable]!;
     final usesAtlas = path.endsWith('_128.png');
-    return SizedBox.square(
+    return SizedBox(
       key: const Key('lobby-character-art'),
-      dimension: dimension,
-      child: DecoratedBox(
-        decoration: const BoxDecoration(
-          color: Color(0x3348d7a1),
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Color(0xaa000000),
-              blurRadius: 18,
-              spreadRadius: 2,
+      width: dimension * 1.2,
+      height: dimension,
+      child: Stack(
+        alignment: Alignment.bottomCenter,
+        children: [
+          Container(
+            key: const Key('lobby-character-contact-shadow'),
+            width: dimension * .78,
+            height: dimension * .12,
+            margin: EdgeInsets.only(bottom: dimension * .04),
+            decoration: const BoxDecoration(
+              color: Color(0x88000000),
+              borderRadius: BorderRadius.all(Radius.elliptical(100, 30)),
             ),
-          ],
-        ),
-        child: usesAtlas
-            ? ClipOval(
-                child: OverflowBox(
-                  alignment: Alignment.topLeft,
-                  minWidth: dimension * 4,
-                  maxWidth: dimension * 4,
-                  minHeight: dimension * 4,
-                  maxHeight: dimension * 4,
-                  child: Image.asset(
-                    path,
-                    width: dimension * 4,
-                    height: dimension * 4,
-                    fit: BoxFit.fill,
-                    filterQuality: FilterQuality.medium,
-                  ),
-                ),
-              )
-            : Padding(
-                padding: const EdgeInsets.all(10),
-                child: Image.asset(
-                  path,
-                  fit: BoxFit.contain,
-                  filterQuality: FilterQuality.medium,
-                ),
+          ),
+          Container(
+            key: const Key('lobby-character-landing-plate'),
+            width: dimension * .94,
+            height: dimension * .22,
+            margin: EdgeInsets.only(bottom: dimension * .02),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xffe6c268), Color(0xff2b8174)],
               ),
+              borderRadius: const BorderRadius.all(Radius.elliptical(100, 32)),
+              border: Border.all(color: JoseonUiTheme.gold, width: 2),
+            ),
+          ),
+          Positioned.fill(
+            bottom: dimension * .08,
+            child: usesAtlas
+                ? ClipRect(
+                    child: OverflowBox(
+                      alignment: Alignment.topLeft,
+                      minWidth: dimension * 4,
+                      maxWidth: dimension * 4,
+                      minHeight: dimension * 4,
+                      maxHeight: dimension * 4,
+                      child: Image.asset(
+                        path,
+                        width: dimension * 4,
+                        height: dimension * 4,
+                        fit: BoxFit.fill,
+                        filterQuality: FilterQuality.medium,
+                      ),
+                    ),
+                  )
+                : Padding(
+                    padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
+                    child: Image.asset(
+                      path,
+                      fit: BoxFit.contain,
+                      filterQuality: FilterQuality.medium,
+                    ),
+                  ),
+          ),
+        ],
       ),
     );
   }

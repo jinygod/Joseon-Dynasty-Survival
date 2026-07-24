@@ -27,6 +27,7 @@ import 'premium_shop_screen.dart';
 import 'records_screen.dart';
 import 'settings_screen.dart';
 import 'stage_select_screen.dart';
+import 'training_screen.dart';
 
 class LobbyScreen extends StatefulWidget {
   const LobbyScreen({
@@ -160,6 +161,15 @@ class _LobbyScreenState extends State<LobbyScreen> with WidgetsBindingObserver {
           state: state,
           onEntriesViewed: widget.controller.markCompendiumEntriesSeen,
         ),
+      ),
+    );
+  }
+
+  Future<void> _openTraining() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) =>
+            TrainingScreen(progress: widget.controller.state.trainingProgress),
       ),
     );
   }
@@ -384,6 +394,7 @@ class _LobbyScreenState extends State<LobbyScreen> with WidgetsBindingObserver {
                               builder: (_) => RecordsScreen(state: state),
                             ),
                           ),
+                          onTrainingPressed: _openTraining,
                         ),
                       ),
                     ),
