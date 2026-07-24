@@ -2202,10 +2202,11 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
 
   bool _isPositionOutsideBounds(Vector2 position) {
     const margin = 64.0;
-    return position.x < -margin ||
-        position.y < -margin ||
-        position.x > size.x + margin ||
-        position.y > size.y + margin;
+    final bounds = worldConfig.worldBounds;
+    return position.x < bounds.left - margin ||
+        position.y < bounds.top - margin ||
+        position.x > bounds.right + margin ||
+        position.y > bounds.bottom + margin;
   }
 
   VectorInput _movementInputFromKeys(Set<LogicalKeyboardKey> keysPressed) {

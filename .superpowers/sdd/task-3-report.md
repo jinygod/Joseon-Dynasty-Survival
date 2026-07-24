@@ -107,3 +107,23 @@ semantics and arguments were unchanged.
 The C: drive had zero free bytes during final verification. No user files or
 caches were deleted; direct cached tool invocation avoided the Flutter wrapper's
 engine-stamp write. No full suite or build was run.
+
+## Projectile culling follow-up
+
+### RED
+
+`projectiles near world-centered player survive viewport culling` mounted a
+non-expired, stationary `ProjectileComponent` and
+`EnemyProjectileComponent` near `(1024, 2560)`, with collision targets safely
+separated, then ran the real game update/resolution path. Against the prior
+viewport-sized bounds, the player projectile was removed and its parent became
+`null`.
+
+### Fix and GREEN
+
+`_isPositionOutsideBounds` now compares against
+`worldConfig.worldBounds` plus the existing `64` world-unit margin. Lifetime,
+velocity, collision, population caps, and active-zone behavior are unchanged.
+The isolated regression passed after the fix. The full Task 3 focused suite
+passed 47 tests, focused analysis reported no issues, and `git diff --check`
+passed.

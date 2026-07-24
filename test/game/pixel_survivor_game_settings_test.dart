@@ -6,6 +6,7 @@ import 'package:pixel_survivor/game/combat/attack_geometry.dart';
 import 'package:pixel_survivor/game/combat/attack_spec.dart';
 import 'package:pixel_survivor/game/components/boss_component.dart';
 import 'package:pixel_survivor/game/components/damage_number_component.dart';
+import 'package:pixel_survivor/game/components/enemy_projectile_component.dart';
 import 'package:pixel_survivor/game/components/projectile_component.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
 import 'package:pixel_survivor/game/content/enemy_definitions.dart';
@@ -169,6 +170,47 @@ void main() {
         game.camera.visibleWorldRect,
         game.worldConfig.worldBounds,
       );
+    },
+  );
+
+  test(
+    'projectiles near world-centered player survive viewport culling',
+    () async {
+      final game = await _loadGame();
+      game.debugSpawnEnemy(plagueRatSwarm, position: Vector2(1800, 4000));
+      final playerProjectile = ProjectileComponent(
+        weaponId: hwandoSlash,
+        damage: 1,
+        position: Vector2(1024, 2400),
+        velocity: Vector2.zero(),
+        lifetime: 10,
+      );
+      final enemyProjectile = EnemyProjectileComponent(
+        sourceId: 'camera_bounds_test',
+        damage: 1,
+        position: Vector2(1300, 2560),
+        velocity: Vector2.zero(),
+        lifetime: 10,
+      );
+      await game.addWorldComponent(playerProjectile);
+      await game.addWorldComponent(enemyProjectile);
+      game.processLifecycleEvents();
+
+      game.update(.01);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(playerProjectile.parent, same(game.world));
+      expect(enemyProjectile.parent, same(game.world));
+      expect(
+        game.worldChildrenOfType<ProjectileComponent>(),
+        contains(playerProjectile),
+      );
+      expect(
+        game.worldChildrenOfType<EnemyProjectileComponent>(),
+        contains(enemyProjectile),
+      );
+      expect(playerProjectile.position, Vector2(1024, 2400));
+      expect(enemyProjectile.position, Vector2(1300, 2560));
     },
   );
 
