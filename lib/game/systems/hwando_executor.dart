@@ -139,9 +139,13 @@ class _ScheduledHwandoStage {
             : 0,
         radius: isCircle ? input.range : 0,
         width: isLine ? 18 * input.sizeMultiplier : 0,
-        windupSeconds: 0,
+        windupSeconds: shape == AttackShape.sector ? .06 : 0,
         activeSeconds: .08,
-        lingerSeconds: isLine ? .16 : .12,
+        lingerSeconds: shape == AttackShape.sector
+            ? .10
+            : isLine
+            ? .16
+            : .12,
         knockback: input.knockback,
         slowFraction: 0,
         traits: traits,

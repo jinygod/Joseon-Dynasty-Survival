@@ -36,6 +36,15 @@ void main() {
     expect(attacks.single.direction, Vector2(0, -1));
   });
 
+  test('sector slash separates windup strike and recovery timing', () {
+    final attacks = HwandoExecutor().tick(input(level: 1, dt: 0));
+
+    expect(attacks, hasLength(1));
+    expect(attacks.single.spec.windupSeconds, .06);
+    expect(attacks.single.spec.activeSeconds, .08);
+    expect(attacks.single.spec.recoverySeconds, .10);
+  });
+
   test('level three separates its two slashes in time', () {
     final executor = HwandoExecutor();
 

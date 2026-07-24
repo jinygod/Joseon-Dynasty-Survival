@@ -15,8 +15,10 @@ import 'components/area_attack_component.dart';
 import 'components/actor_shadow_component.dart';
 import 'audio/audio_cue.dart';
 import 'combat/attack_geometry.dart';
+import 'combat/attack_presentation_contract.dart';
 import 'combat/attack_spec.dart';
 import 'combat/attack_visual_event.dart';
+import 'combat/hwando_attack_queue.dart';
 import 'combat/talisman_damage.dart';
 import 'components/attack_effect_component.dart';
 import 'components/boss_component.dart';
@@ -186,6 +188,7 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
   late final FiniteWorldLayout _stageWorldLayout;
   late final StageChunkStreamer _stageChunkStreamer;
   late final CombatFeedbackController _combatFeedback;
+  final HwandoAttackQueue _hwandoAttackQueue = HwandoAttackQueue();
   late final CombatCameraController _cameraController;
   bool _cameraControllerReady = false;
   late WorldActivityZones _activityZones;
@@ -596,6 +599,7 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
 
     _updatePlayerMovement(simulationDt);
     _resetProjectileAdmissionBudget();
+    _resolveQueuedHwando(simulationDt);
     _updateWeapons(simulationDt);
     _applyProjectileHits();
     _resolveAreaAttacks();
@@ -1182,7 +1186,36 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
   }
 
   void _resolveSharedAttack(AttackInstance attack) {
-    _spawnAttackEffect(attack);
+    final isTimedHwandoSector =
+        attack.spec.shape == AttackShape.sector &&
+        attack.spec.id.startsWith('hwando_');
+    if (isTimedHwandoSector) {
+      _spawnAttackEffect(attack);
+      _hwandoAttackQueue.enqueue(attack);
+      _emitSharedAttackAudio(attack);
+      return;
+    }
+    _resolveSharedAttackImmediately(attack);
+  }
+
+  void _resolveQueuedHwando(double dt) {
+    for (final activation in _hwandoAttackQueue.advance(dt)) {
+      _resolveSharedAttackImmediately(
+        activation.attack,
+        contract: activation.contract,
+        spawnEffect: false,
+        emitAudio: false,
+      );
+    }
+  }
+
+  void _resolveSharedAttackImmediately(
+    AttackInstance attack, {
+    AttackPresentationContract? contract,
+    bool spawnEffect = true,
+    bool emitAudio = true,
+  }) {
+    if (spawnEffect) _spawnAttackEffect(attack);
     final enemies = worldChildrenOfType<EnemyComponent>()
         .where((enemy) => !enemy.isDead && !enemy.isRemoving)
         .toList(growable: false);
@@ -1195,8 +1228,21 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
         ? talismanThrow
         : hwandoSlash;
     for (final enemy in enemies) {
-      if (!AttackGeometry.contains(attack, enemy.position, enemy.size.x / 2)) {
-        continue;
+      if (contract == null) {
+        if (!AttackGeometry.contains(
+          attack,
+          enemy.position,
+          enemy.size.x / 2,
+        )) {
+          continue;
+        }
+      } else {
+        final contact = AttackGeometry.sectorContact(
+          contract.hitSector,
+          enemy.position,
+          enemy.hurtRadius,
+        );
+        if (contact == null) continue;
       }
       final direction = enemy.position - attack.origin;
       if (direction.length2 > 0) direction.normalize();
@@ -1232,7 +1278,7 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
       }
     }
     _applyDamageEvents(events);
-    _emitSharedAttackAudio(attack);
+    if (emitAudio) _emitSharedAttackAudio(attack);
     for (final synergyAttack in synergyAttacks) {
       _resolveSharedAttack(synergyAttack);
     }
@@ -2382,6 +2428,7 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
     }
 
     _runOutcome = outcome;
+    _hwandoAttackQueue.clear();
     _emitAudio(
       outcome == RunOutcome.victory
           ? AudioCue.victoryMusic

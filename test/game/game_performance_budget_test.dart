@@ -257,7 +257,8 @@ void main() {
     'shared stage visual wins the single combat effect slot',
     verify: (game, _) async {
       game.update(.05);
-      game.update(0);
+      game.update(.011);
+      game.processLifecycleEvents();
 
       expect(game.worldChildrenOfType<HwandoVfxComponent>(), hasLength(1));
       expect(game.worldChildrenOfType<CombatEffectComponent>(), isEmpty);

@@ -390,7 +390,7 @@ void main() {
       setUp: (game, _) async {
         game.unlockedWeaponIds.add(talismanThrow);
         game.weaponSystem.upgrade(talismanThrow, game.unlockedWeaponIds);
-        await game.ensureAdd(
+        await game.addWorldComponent(
           EnemyComponent(
             enemyId: bandit,
             maxHealth: 10000,
@@ -401,21 +401,22 @@ void main() {
         );
       },
       verify: (game, _) async {
+        var sawSealingSlash = false;
         for (var frame = 0; frame < 34; frame += 1) {
           game.update(.05);
+          sawSealingSlash =
+              sawSealingSlash ||
+              game.worldChildrenOfType<HwandoVfxComponent>().any(
+                (effect) =>
+                    effect.event.effectId == sealingSlash &&
+                    effect.event.presentation == AttackPresentation.synergy,
+              );
         }
 
         expect(audioCues, contains(AudioCue.sealingSlash));
         expect(game.combatNotice, '봉마참');
         expect(game.combatNoticeSecondsRemaining, inInclusiveRange(0, 1.2));
-        expect(
-          game.worldChildrenOfType<HwandoVfxComponent>().any(
-            (effect) =>
-                effect.event.effectId == sealingSlash &&
-                effect.event.presentation == AttackPresentation.synergy,
-          ),
-          isTrue,
-        );
+        expect(sawSealingSlash, isTrue);
 
         final result = game.runStats.toRunResult(
           outcome: RunOutcome.defeat,
@@ -1240,7 +1241,7 @@ void main() {
         );
         expect(
           game.performanceSnapshot.rejected[GamePopulationKind.combatEffect],
-          43,
+          51,
         );
       },
     );
@@ -1446,10 +1447,54 @@ void main() {
       },
     );
 
+    representativeStageGameTester.testGameWidget(
+      'automatic hwando damages only after windup reaches strike',
+      setUp: (game, _) async {
+        game.unlockedWeaponIds.add(hwandoSlash);
+        game.weaponSystem.upgrade(hwandoSlash, game.unlockedWeaponIds);
+        final player = game.activePlayers.single;
+        await game.addWorldComponent(
+          EnemyComponent(
+            enemyId: 'timed_hwando_target',
+            maxHealth: 1000,
+            moveSpeed: 0,
+            damage: 0,
+            position: player.position + Vector2(30, 0),
+          ),
+        );
+      },
+      verify: (game, _) async {
+        final enemy = game.worldChildrenOfType<EnemyComponent>().singleWhere(
+          (item) => item.enemyId == 'timed_hwando_target',
+        );
+        final fullHealth = enemy.currentHealth;
+
+        game.update(0);
+        expect(enemy.currentHealth, fullHealth);
+        final windup = game
+            .worldChildrenOfType<HwandoVfxComponent>()
+            .singleWhere((item) => item.event.effectId == hwandoSlash);
+        final towardEnemy = enemy.position - windup.event.origin;
+        expect(windup.event.direction.dot(towardEnemy), greaterThan(0));
+        final unrelatedHitStop = game.combatHitStopRemaining;
+        if (unrelatedHitStop > 0) game.update(unrelatedHitStop);
+        expect(enemy.currentHealth, fullHealth);
+
+        game.update(.059);
+        expect(enemy.currentHealth, fullHealth);
+
+        game.update(.011);
+        expect(enemy.currentHealth, lessThan(fullHealth));
+      },
+    );
+
     masterGameTester.testGameWidget(
       'hwando mastery enhances only sequence start and finish',
       verify: (game, _) async {
         game.update(0);
+        game.update(.05);
+        game.update(.011);
+        game.processLifecycleEvents();
         final effect = game.worldChildrenOfType<HwandoVfxComponent>().single;
         final enemies = game.worldChildrenOfType<EnemyComponent>().toList();
         final damaged = enemies
@@ -1503,7 +1548,8 @@ void main() {
       'critical chance one doubles shared hwando damage and feedback',
       verify: (game, _) async {
         game.update(.05);
-        game.update(0);
+        game.update(.011);
+        game.processLifecycleEvents();
         final attack = game.worldChildrenOfType<HwandoVfxComponent>().single;
         final enemy = game.worldChildrenOfType<EnemyComponent>().single;
 
