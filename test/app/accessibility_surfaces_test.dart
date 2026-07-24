@@ -53,9 +53,18 @@ void main() {
       MaterialApp(
         home: MediaQuery(
           data: media,
-          child: CompendiumScreen(state: SaveState.defaults()),
+          child: CompendiumScreen(
+            state: SaveState.defaults().copyWith(unlockedAugmentIds: const {}),
+          ),
         ),
       ),
+    );
+    await tester.pump();
+    await tester.tap(find.byType(TextButton).last);
+    await tester.pumpAndSettle();
+    await tester.drag(
+      find.byKey(const Key('compendium-grid')),
+      const Offset(0, -250),
     );
     await tester.pump();
     expect(find.byType(AccessibleStatusBadge), findsWidgets);
@@ -73,9 +82,35 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.drag(find.byType(Scrollable).last, const Offset(0, -250));
+    await tester.drag(
+      find.byType(SingleChildScrollView),
+      const Offset(0, -250),
+    );
     await tester.pump();
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('locked codex cards expose an accessible locked badge', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: CompendiumScreen(
+          state: SaveState.defaults().copyWith(unlockedAugmentIds: const {}),
+        ),
+      ),
+    );
+    await tester.tap(find.byType(TextButton).last);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AccessibleStatusBadge), findsWidgets);
+    expect(find.text('잠김'), findsWidgets);
+    expect(
+      tester.getSemantics(find.byType(AccessibleStatusBadge).first).label,
+      contains('잠긴 항목'),
+    );
+    semantics.dispose();
   });
 
   testWidgets('HUD tolerates UI 1.15 and system text scale two', (

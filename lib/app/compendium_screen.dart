@@ -6,6 +6,7 @@ import '../game/content/asset_catalog.dart';
 import '../game/models/compendium_entry.dart';
 import '../game/systems/compendium_service.dart';
 import '../game/systems/save_system.dart';
+import 'accessible_status_badge.dart';
 import 'joseon_codex_card.dart';
 import 'joseon_tab_bar.dart';
 import 'missing_asset_placeholder.dart';
@@ -91,7 +92,7 @@ class _CompendiumList extends StatelessWidget {
         crossAxisCount: useTwoColumns ? 2 : 1,
         mainAxisSpacing: 10,
         crossAxisSpacing: 10,
-        mainAxisExtent: useTwoColumns ? 260 : (textScale > 1.3 ? 240 : 156),
+        mainAxisExtent: useTwoColumns ? 260 : 180 * textScale,
       ),
       itemCount: entries.length,
       itemBuilder: (context, index) => _CompendiumCard(entry: entries[index]),
@@ -113,6 +114,13 @@ class _CompendiumCard extends StatelessWidget {
       leading: entry.isUnlocked
           ? _UnlockedArtwork(entry: entry)
           : const _LockedSilhouette(),
+      trailing: entry.isUnlocked
+          ? null
+          : const AccessibleStatusBadge(
+              icon: Icons.lock_outline,
+              label: '잠김',
+              semanticsLabel: '잠긴 항목',
+            ),
     );
     return entry.isUnlocked && entry.isNew
         ? Semantics(label: '새 항목', child: card)

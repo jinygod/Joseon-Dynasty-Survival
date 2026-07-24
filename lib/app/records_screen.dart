@@ -31,6 +31,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final textScale = MediaQuery.textScalerOf(context).textScaleFactor;
     final records = <({IconData icon, String label})>[
       (icon: Icons.sports_kabaddi, label: '누적 처치 ${widget.state.totalKills}'),
       (
@@ -62,7 +63,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
                 physics: const NeverScrollableScrollPhysics(),
                 mainAxisSpacing: 10,
                 crossAxisSpacing: 10,
-                mainAxisExtent: 112,
+                mainAxisExtent: textScale > 1.3 ? 200 * textScale : 112,
                 children: [
                   for (final record in records)
                     _SummaryCard(icon: record.icon, label: record.label),
@@ -83,7 +84,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
                       assetPath: AssetCatalog.characterPortraits[character.id],
                       assetKey:
                           AssetCatalog.characterPortraits[character.id] ??
-                              character.id,
+                          character.id,
                     ),
                   ),
                 ),
