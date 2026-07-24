@@ -2,6 +2,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/game/components/stage_tile_batch_component.dart';
+import 'package:pixel_survivor/game/content/stage_definitions.dart';
 import 'package:pixel_survivor/game/content/stage_visual_spec.dart';
 
 void main() {
@@ -156,4 +157,28 @@ void main() {
       const ui.Rect.fromLTWH(384, 0, 128, 128),
     );
   });
+
+  test(
+    'moonlit base sources stay on stone cells with safe turn transforms',
+    () {
+      final moonlit = stageVisualSpecFor(moonlitAbandonedOffice);
+      final visuals = [
+        for (var variant = 0; variant < moonlit.tileVariants; variant += 1)
+          moonlit.baseTileVisualFor(variant),
+      ];
+      final sources = [
+        for (final visual in visuals)
+          StageTileBatchComponent.sourceRectFor(
+            kind: StageAtlasKind.tile,
+            variant: visual.sourceCell,
+            cellSize: 128,
+          ),
+      ];
+
+      expect(sources.map((source) => source.left).toSet(), {256.0, 384.0});
+      expect(sources.every((source) => source.top == 0), isTrue);
+      expect(sources.every((source) => source.left >= 256), isTrue);
+      expect(visuals.map((visual) => visual.quarterTurns).toSet(), {0, 1, 3});
+    },
+  );
 }

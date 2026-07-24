@@ -5,6 +5,16 @@ import 'dart:ui';
 import 'stage_definitions.dart';
 import '../world/world_chunk_coordinate.dart';
 
+/// One low-contrast base-tile source and its deterministic presentation turn.
+class StageBaseTileVisual {
+  const StageBaseTileVisual({required this.sourceCell, this.quarterTurns = 0})
+    : assert(sourceCell >= 0 && sourceCell < 4),
+      assert(quarterTurns >= 0 && quarterTurns < 4);
+
+  final int sourceCell;
+  final int quarterTurns;
+}
+
 /// Static art choices for one stage. The salt is a permanent, explicit part of
 /// the stage contract so layouts never depend on a runtime string hash.
 class StageVisualSpec {
@@ -15,6 +25,12 @@ class StageVisualSpec {
     this.decalAssetKey,
     this.propAssetKey,
     this.tileVariants = 4,
+    this.baseTileVisuals = const <StageBaseTileVisual>[
+      StageBaseTileVisual(sourceCell: 0),
+      StageBaseTileVisual(sourceCell: 1),
+      StageBaseTileVisual(sourceCell: 2),
+      StageBaseTileVisual(sourceCell: 3),
+    ],
     this.decalVariants = 4,
     this.propVariants = 8,
     this.atlasColumns = 4,
@@ -33,11 +49,15 @@ class StageVisualSpec {
   final String? decalAssetKey;
   final String? propAssetKey;
   final int tileVariants;
+  final List<StageBaseTileVisual> baseTileVisuals;
   final int decalVariants;
   final int propVariants;
   final int atlasColumns;
   final double tileSize;
   final double edgeBand;
+
+  StageBaseTileVisual baseTileVisualFor(int variant) =>
+      baseTileVisuals[variant % baseTileVisuals.length];
 }
 
 const stageVisualSpecs = <String, StageVisualSpec>{
@@ -48,6 +68,12 @@ const stageVisualSpecs = <String, StageVisualSpec>{
     decalAssetKey: 'tiles/moonlit_office_tiles_128.png',
     propAssetKey: 'props/moonlit_office_props_128.png',
     tileVariants: 4,
+    baseTileVisuals: <StageBaseTileVisual>[
+      StageBaseTileVisual(sourceCell: 2),
+      StageBaseTileVisual(sourceCell: 3),
+      StageBaseTileVisual(sourceCell: 2, quarterTurns: 1),
+      StageBaseTileVisual(sourceCell: 3, quarterTurns: 3),
+    ],
     decalVariants: 4,
     propVariants: 8,
   ),

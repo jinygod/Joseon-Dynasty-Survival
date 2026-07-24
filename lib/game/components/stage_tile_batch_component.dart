@@ -90,12 +90,16 @@ class StageTileBatchComponent extends Component {
         .addAll(placements);
   }
 
-  _BatchEntry _batchEntryForTile(StageTilePlacement placement) => _BatchEntry(
-    position: placement.position,
-    size: placement.size,
-    variant: placement.variant,
-    kind: StageAtlasKind.tile,
-  );
+  _BatchEntry _batchEntryForTile(StageTilePlacement placement) {
+    final visual = layout.spec.baseTileVisualFor(placement.variant);
+    return _BatchEntry(
+      position: placement.position,
+      size: placement.size,
+      variant: visual.sourceCell,
+      kind: StageAtlasKind.tile,
+      quarterTurns: visual.quarterTurns,
+    );
+  }
 
   _BatchEntry _batchEntryForDecoration(StageDecorationPlacement placement) =>
       _BatchEntry(
@@ -105,6 +109,7 @@ class StageTileBatchComponent extends Component {
         kind: placement.kind == StageDecorationKind.decal
             ? StageAtlasKind.decal
             : StageAtlasKind.prop,
+        quarterTurns: 0,
       );
 
   void _addBatch(String assetKey, Iterable<_BatchEntry> placements) {
@@ -115,21 +120,30 @@ class StageTileBatchComponent extends Component {
       if (!bounds.contains(placement.position + const Offset(0.1, 0.1))) {
         continue;
       }
-      batch.add(
+      batch.addTransform(
         source: sourceRectFor(
           kind: placement.kind,
           variant: placement.variant,
           cellSize: placement.size,
         ),
-        offset: Vector2(
-          placement.position.dx.roundToDouble(),
-          placement.position.dy.roundToDouble(),
-        ),
+        transform: _transformFor(placement),
       );
     }
     if (batch.isEmpty) return;
     _batches.add(batch);
     _batchBuildCount += 1;
+  }
+
+  RSTransform _transformFor(_BatchEntry placement) {
+    final x = placement.position.dx.roundToDouble();
+    final y = placement.position.dy.roundToDouble();
+    final size = placement.size.roundToDouble();
+    return switch (placement.quarterTurns) {
+      0 => RSTransform(1, 0, x, y),
+      1 => RSTransform(0, 1, x + size, y),
+      2 => RSTransform(-1, 0, x + size, y + size),
+      _ => RSTransform(0, -1, x, y + size),
+    };
   }
 
   @override
@@ -148,10 +162,12 @@ class _BatchEntry {
     required this.size,
     required this.variant,
     required this.kind,
+    required this.quarterTurns,
   });
 
   final Offset position;
   final double size;
   final int variant;
   final StageAtlasKind kind;
+  final int quarterTurns;
 }

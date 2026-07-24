@@ -352,6 +352,18 @@ void main() {
     expect(plague.propVariants, 8);
   });
 
+  test('moonlit base variants use only compatible stone cells and turns', () {
+    final moonlit = stageVisualSpecFor(moonlitAbandonedOffice);
+    final visuals = [
+      for (var variant = 0; variant < moonlit.tileVariants; variant += 1)
+        moonlit.baseTileVisualFor(variant),
+    ];
+
+    expect(visuals.map((visual) => visual.sourceCell).toSet(), {2, 3});
+    expect(visuals.where((visual) => visual.quarterTurns != 0), hasLength(2));
+    expect(visuals.where((visual) => visual.quarterTurns == 0), hasLength(2));
+  });
+
   test(
     'authored decoration variant ranges are reachable across fixed seeds',
     () {
