@@ -24,6 +24,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../support/recording_audio_backend.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   testWidgets('pause menu uses the shared panel and retains resume action', (
     tester,
   ) async {
