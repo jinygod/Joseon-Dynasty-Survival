@@ -81,6 +81,7 @@ import 'systems/weapon_system.dart';
 import 'systems/weapon_synergy_resolver.dart';
 import 'world/combat_world.dart';
 import 'world/combat_camera_controller.dart';
+import 'world/experience_gem_coordinator.dart';
 import 'world/finite_world_layout.dart';
 import 'world/stage_chunk_streamer.dart';
 import 'world/spatial_spawn_planner.dart';
@@ -92,7 +93,7 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
     with KeyboardEvents
     implements GameHudSource, RewardCollectionHudSource, VisualAssetLoadPolicy {
   static const levelUpOverlayId = 'levelUp';
-  static const maxExperienceGemComponents = 128;
+  static const maxExperienceGemComponents = 96;
   static const _combatBackgroundColor = Color(0xfff1d7ab);
 
   PixelSurvivorGame({
@@ -186,8 +187,15 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
   late final SpatialSpawnPlanner _spawnPlanner = SpatialSpawnPlanner(
     seed: stageVisualSeed,
   );
+  late final ExperienceGemCoordinator _experienceGemCoordinator =
+      ExperienceGemCoordinator(
+        maxActiveGems: worldConfig.maxActiveExperienceGems,
+        chunkSize: worldConfig.chunkSize,
+      );
   final Vector2 _recentPlayerMotion = Vector2.zero();
   int _spatialSpawnSequence = 0;
+  double _experienceMergeCooldown = 0;
+  double _experienceAudioCooldown = 0;
   final List<PlayerComponent> _activePlayers = [];
   late final List<PlayerComponent> _activePlayersView = UnmodifiableListView(
     _activePlayers,
@@ -402,6 +410,11 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
   int get enemyCount =>
       _populationIndex.mountedEnemies.where((enemy) => !enemy.isDead).length;
   int get sleepingEnemyCount => _chunkRepository.sleepingCount;
+  int get compressedExperience =>
+      _experienceGemCoordinator.compressedExperience;
+  int get ownedExperience => _experienceGemCoordinator.totalOwnedExperience;
+  int get grantedCoordinatedExperience =>
+      _experienceGemCoordinator.grantedExperience;
 
   String get currentWeaponLabel {
     final labels = weaponLevelLabels;
@@ -438,6 +451,7 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
         ? await CombatAssetPreloader.loadWith([
             ...AttackVisualRegistry.requiredAssetKeys,
             WeaponEffectAtlas.assetKey,
+            CombatEffectAtlas.assetKey,
             for (final spec in stageVisualSpecs.values) ...[
               spec.tileAssetKey,
               if (spec.decalAssetKey case final decalKey?) decalKey,
@@ -518,6 +532,7 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
     }
     final wallFrameDt = dt.isFinite && dt > 0 ? dt : 0.0;
     final safeDt = wallFrameDt.clamp(0, 0.05).toDouble();
+    _experienceAudioCooldown = max(0.0, _experienceAudioCooldown - safeDt);
     final simulationDt = _combatFeedback.tick(safeDt);
     super.update(simulationDt);
     _cleanupCombatPresentationOwners();
@@ -571,6 +586,7 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
     _collectSpiritJade();
     _updateCamera(safeDt);
     _updateEnemyActivityLifecycle();
+    _updateExperienceGemStorage(safeDt);
   }
 
   void _advanceTime(double dt) {
@@ -1785,10 +1801,10 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
   }
 
   void _dropExperienceForDeadEnemies() {
-    final deadEnemies = worldChildrenOfType<EnemyComponent>().where(
-      (enemy) => enemy.deathVisualComplete,
-    );
-    for (final enemy in deadEnemies.toList()) {
+    final deadEnemies = worldChildrenOfType<EnemyComponent>()
+        .where((enemy) => enemy.deathVisualComplete)
+        .toList(growable: false);
+    for (final enemy in deadEnemies) {
       _recordEnemyDefeat(enemy);
       _spawnPendingSpiritJade(enemy);
       _recordedEnemyDefeats.remove(enemy);
@@ -1800,22 +1816,11 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
       _addExperienceGem(enemy);
       enemy.removeFromParent();
     }
+    if (deadEnemies.isNotEmpty) _synchronizeExperienceGemComponents();
   }
 
   void _addExperienceGem(EnemyComponent enemy) {
-    final gems = worldChildrenOfType<ExperienceGemComponent>()
-        .where((gem) => !gem.isRemoving)
-        .toList(growable: false);
-    if (gems.length >= maxExperienceGemComponents) {
-      gems.first.absorbExperience(enemy.experienceValue);
-      return;
-    }
-    addWorldComponent(
-      ExperienceGemComponent(
-        experienceValue: enemy.experienceValue,
-        position: enemy.position.clone(),
-      ),
-    );
+    _experienceGemCoordinator.drop(enemy.experienceValue, enemy.position);
   }
 
   void _recordNewEnemyDefeats() {
@@ -1993,22 +1998,122 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
         .where((player) => player.isMounted && player.currentHealth > 0)
         .toList(growable: false);
     if (alivePlayers.isEmpty) {
+      for (final gem in worldChildrenOfType<ExperienceGemComponent>().where(
+        (item) => item.isBeingPickedUp && item.ledgerRecordId != null,
+      )) {
+        final token = gem.cancelPickup();
+        if (token != null) {
+          _experienceGemCoordinator.cancelPickup(token, gem.position);
+        }
+      }
+      _synchronizeExperienceGemComponents();
       return;
     }
 
     final gems = worldChildrenOfType<ExperienceGemComponent>().toList();
     for (final gem in gems) {
-      final canPickup = alivePlayers.any(
-        (player) => gem.canBePickedUpBy(
-          player,
-          additionalRadius: experiencePickupRadiusBonus,
-        ),
-      );
-      if (canPickup) {
+      final player = alivePlayers
+          .where(
+            (player) => gem.canBePickedUpBy(
+              player,
+              additionalRadius: experiencePickupRadiusBonus,
+            ),
+          )
+          .firstOrNull;
+      if (player == null) continue;
+      final recordId = gem.ledgerRecordId;
+      if (recordId == null) {
         _emitAudio(AudioCue.experiencePickup);
         gainExperience(gem.experienceValue);
         gem.removeFromParent();
+        continue;
       }
+      final token = _experienceGemCoordinator.beginPickup(recordId);
+      if (token == null) continue;
+      final started = gem.beginPickup(
+        targetPosition: () => player.position,
+        token: token,
+        onComplete: (completedToken) {
+          if (!player.isAlive) {
+            final restored = _experienceGemCoordinator.cancelPickup(
+              completedToken,
+              gem.position,
+            );
+            if (restored != null) {
+              gem.resetForReuse(
+                experienceValue: restored.value,
+                position: restored.position,
+                ledgerRecordId: restored.id,
+              );
+            } else {
+              gem.removeFromParent();
+            }
+            return;
+          }
+          final amount = _experienceGemCoordinator.completePickup(
+            completedToken,
+          );
+          if (amount <= 0) return;
+          if (_experienceAudioCooldown <= 0) {
+            _emitAudio(AudioCue.experiencePickup);
+            _experienceAudioCooldown = .055;
+          }
+          gainExperience(amount);
+          gem.removeFromParent();
+        },
+      );
+      if (!started) {
+        _experienceGemCoordinator.cancelPickup(token, gem.position);
+      }
+    }
+  }
+
+  void _updateExperienceGemStorage(double dt) {
+    if (!_cameraControllerReady || !hasLayout) return;
+    _experienceMergeCooldown -= dt;
+    if (_experienceMergeCooldown <= 0) {
+      _experienceGemCoordinator.mergeNearby();
+      _experienceMergeCooldown = .20;
+    }
+    final retained = camera.visibleWorldRect
+        .inflate(96)
+        .intersect(worldConfig.worldBounds);
+    _experienceGemCoordinator.compressOutside(retained);
+    _experienceGemCoordinator.restoreNear(retained);
+    _synchronizeExperienceGemComponents();
+  }
+
+  void _synchronizeExperienceGemComponents() {
+    final recordsById = {
+      for (final record in _experienceGemCoordinator.activeRecords)
+        record.id: record,
+    };
+    final componentsById = <int, ExperienceGemComponent>{};
+    for (final gem in worldChildrenOfType<ExperienceGemComponent>().where(
+      (item) => item.ledgerRecordId != null && !item.isRemoving,
+    )) {
+      final id = gem.ledgerRecordId!;
+      componentsById[id] = gem;
+      final record = recordsById[id];
+      if (record == null) {
+        if (gem.isIdle) gem.removeFromParent();
+        continue;
+      }
+      if (gem.isIdle) {
+        gem.experienceValue = record.value;
+        gem.position.setFrom(record.position);
+      }
+    }
+    for (final record in recordsById.values) {
+      if (componentsById.containsKey(record.id)) continue;
+      addWorldComponent(
+        ExperienceGemComponent(
+          experienceValue: record.value,
+          ledgerRecordId: record.id,
+          position: record.position,
+          atlasImage: _visualImages[CombatEffectAtlas.assetKey],
+        ),
+      );
     }
   }
 
@@ -2162,6 +2267,12 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
   @visibleForTesting
   EnemyComponent debugSpawnWaveEnemy(EnemyId enemyId, {int spawnIndex = 0}) {
     return _addEnemy(enemyId, spawnIndex);
+  }
+
+  @visibleForTesting
+  void debugDropExperience(int value, {required Vector2 position}) {
+    _experienceGemCoordinator.drop(value, position);
+    _synchronizeExperienceGemComponents();
   }
 
   @visibleForTesting

@@ -1971,6 +1971,80 @@ void main() {
       },
     );
 
+    gameTester.testGameWidget(
+      'coordinated experience grants only after the pickup animation',
+      setUp: (game, _) async {
+        game.debugDropExperience(
+          4,
+          position: game.activePlayers.single.position + Vector2(6, 0),
+        );
+        game.update(0);
+      },
+      verify: (game, _) async {
+        expect(game.currentExperience, 0);
+        expect(
+          game.worldChildrenOfType<ExperienceGemComponent>().single.state,
+          ExperienceGemState.magnet,
+        );
+
+        for (var frame = 0; frame < 5; frame++) {
+          game.update(.05);
+          game.processLifecycleEvents();
+        }
+
+        expect(game.currentExperience, 4);
+        expect(game.worldChildrenOfType<ExperienceGemComponent>(), isEmpty);
+        expect(game.ownedExperience, 4);
+      },
+    );
+
+    gameTester.testGameWidget(
+      'player death cancels an in-flight experience pickup without granting',
+      setUp: (game, _) async {
+        game.debugDropExperience(
+          4,
+          position: game.activePlayers.single.position + Vector2(6, 0),
+        );
+        game.update(0);
+        game.activePlayers.single.takeDamage(
+          game.activePlayers.single.currentHealth,
+        );
+        game.update(.05);
+        game.processLifecycleEvents();
+      },
+      verify: (game, _) async {
+        expect(game.currentExperience, 0);
+        expect(game.grantedCoordinatedExperience, 0);
+        expect(game.ownedExperience, 4);
+      },
+    );
+
+    audioGameTester.testGameWidget(
+      'dense coordinated pickups batch their primary audio cue',
+      setUp: (game, _) async {
+        final player = game.activePlayers.single;
+        for (var index = 0; index < 8; index++) {
+          game.debugDropExperience(
+            1,
+            position: player.position + Vector2(index.toDouble(), 0),
+          );
+        }
+        game.update(0);
+      },
+      verify: (game, _) async {
+        for (var frame = 0; frame < 5; frame++) {
+          game.update(.05);
+          game.processLifecycleEvents();
+        }
+
+        expect(game.currentExperience, 8);
+        expect(
+          audioCues.where((cue) => cue == AudioCue.experiencePickup),
+          hasLength(1),
+        );
+      },
+    );
+
     final persistedPickupIds = <String>[];
     gameTester.testGameWidget(
       'ghost step minimum radius persists only real spirit jade inside seven units',
