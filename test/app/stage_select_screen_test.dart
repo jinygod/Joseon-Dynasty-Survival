@@ -37,6 +37,9 @@ void main() {
       findsOneWidget,
     );
     expect(find.textContaining('5:00'), findsAtLeastNWidgets(1));
+    expect(find.text('\uCD5C\uACE0 \uAE30\uB85D \uBBF8\uC9D1\uACC4'), findsAtLeastNWidgets(1));
+    expect(find.text('\uD074\uB9AC\uC5B4 \uC0C1\uD0DC \uBBF8\uC9D1\uACC4'), findsAtLeastNWidgets(1));
+    expect(find.text('\uC5ED\uBCD1 \uC7A5\uD130 \uD574\uAE08'), findsAtLeastNWidgets(1));
     final illustration = tester.getRect(
       find.byKey(const Key('stage-illustration-slot-moonlit_abandoned_office')),
     );

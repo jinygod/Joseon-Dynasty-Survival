@@ -70,6 +70,17 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('locked character card states its actual boss-defeat condition', (
+    tester,
+  ) async {
+    await pumpCharacterSelect(tester, size: const Size(375, 667));
+
+    await tester.drag(find.byType(PageView), const Offset(-320, 0));
+    await tester.pumpAndSettle();
+
+    expect(find.text('\uBCF4\uC2A4 1\uD68C \uACA9\uD30C \uC2DC \uD574\uAE08'), findsOneWidget);
+  });
+
   testWidgets('missing logical portrait shows its debug asset key', (tester) async {
     await tester.pumpWidget(
       DefaultAssetBundle(

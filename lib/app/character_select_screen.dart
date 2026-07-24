@@ -124,6 +124,7 @@ class _CharacterCard extends StatelessWidget {
     );
     final stats = characterDisplayStats(definition);
     final assetPath = AssetCatalog.characterPortraits[definition.id];
+    final unlockPresentation = characterUnlockPresentation[definition.id]!;
     return JoseonSelectionCard(
       key: Key('character-${definition.id}'),
       selected: selected,
@@ -180,9 +181,20 @@ class _CharacterCard extends StatelessWidget {
               SizedBox(key: Key('character-selected-${definition.id}')),
             if (!unlocked)
               Center(
-                child: Icon(
-                  Icons.lock,
-                  key: Key('character-lock-${definition.id}'),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.lock,
+                      key: Key('character-lock-${definition.id}'),
+                    ),
+                    Text(
+                      unlockPresentation.condition,
+                      key: Key('character-unlock-condition-${definition.id}'),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ],
                 ),
               ),
           ],

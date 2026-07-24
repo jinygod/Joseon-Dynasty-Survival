@@ -5,6 +5,28 @@ const rookieConstable = 'rookie_constable';
 const exorcistDosa = 'exorcist_dosa';
 const mountainHunter = 'mountain_hunter';
 
+class CharacterUnlockPresentation {
+  const CharacterUnlockPresentation({
+    required this.condition,
+    this.unlockGoalId,
+  });
+
+  final String condition;
+  final String? unlockGoalId;
+}
+
+const characterUnlockPresentation = <String, CharacterUnlockPresentation>{
+  rookieConstable: CharacterUnlockPresentation(condition: '기본 해금'),
+  exorcistDosa: CharacterUnlockPresentation(
+    condition: '보스 1회 격파 시 해금',
+    unlockGoalId: 'defeat_fallen_general',
+  ),
+  mountainHunter: CharacterUnlockPresentation(
+    condition: '보스 3회 격파 시 해금',
+    unlockGoalId: 'defeat_three_bosses',
+  ),
+};
+
 const characterDefinitions = <CharacterDefinition>[
   CharacterDefinition(
     id: rookieConstable,

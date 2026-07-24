@@ -148,6 +148,39 @@ void main() {
     expect(find.byKey(const Key('filled-star-5')), findsNothing);
   });
 
+  for (final size in const [
+    Size(375, 667),
+    Size(390, 844),
+    Size(430, 932),
+  ])
+    testWidgets('core-only HUD remains readable at $size', (tester) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final source = FakeGameHudSource(
+        bossName: null,
+        bossHealthFraction: null,
+        weaponLevelLabels: const [
+          'Hwando Slash Lv. 6',
+          'Talisman Lv. 5',
+          'Bow Shot Lv. 4',
+        ],
+      );
+
+      await tester.pumpWidget(MaterialApp(home: GameHud(source: source)));
+
+      expect(find.byKey(const Key('hud-weapon-slot-0')), findsOneWidget);
+      expect(find.byKey(const Key('hud-weapon-slot-1')), findsNothing);
+      expect(find.byKey(const Key('hud-weapon-slot-2')), findsNothing);
+      expect(find.byKey(const Key('hud-core-weapon-rating')), findsOneWidget);
+      expect(
+        tester.getSize(find.byKey(const Key('virtual-joystick-base'))),
+        const Size.square(104),
+      );
+      expect(tester.takeException(), isNull);
+    });
+
   testWidgets('weapon slots expose name and level in the semantics tree', (
     tester,
   ) async {

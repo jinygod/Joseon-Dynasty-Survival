@@ -35,11 +35,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('4:00'), findsOneWidget);
+    expect(find.textContaining('\uCD5C\uACE0 \uB4F1\uAE09 \uBBF8\uC9D1\uACC4'), findsOneWidget);
     expect(find.text('최고 생존'), findsOneWidget);
     expect(find.text('신참 포졸 3승'), findsOneWidget);
     expect(find.text('퇴마 도사 0승'), findsOneWidget);
     expect(find.text('무기 사용 기록'), findsOneWidget);
-    expect(find.text('환도 베기'), findsOneWidget);
+    expect(find.textContaining('환도 베기'), findsOneWidget);
     expect(find.text('사용 1판 · 처치 7 · 피해 20'), findsOneWidget);
     final characterImage = tester.widget<Image>(find.byType(Image).first);
     final historyImage = tester.widget<Image>(find.byType(Image).last);

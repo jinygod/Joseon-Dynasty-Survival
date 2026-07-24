@@ -110,7 +110,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
                         Padding(
                           padding: const EdgeInsets.only(bottom: 6),
                           child: JoseonCodexCard(
-                            title: record.weaponName,
+                            title: '${record.weaponName} \u00b7 최고 등급 미집계',
                             description:
                                 '사용 ${record.usageRuns}판 · '
                                 '처치 ${record.kills} · 피해 ${_number(record.damage)}',
