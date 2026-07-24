@@ -732,9 +732,13 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
     }
 
     final definition = bossDefinitionForStage(stageId, roll: _bossRoll());
+    final bossAnchor = _activePlayerAnchor();
+    final bossPosition = _clampPointToWorld(
+      bossAnchor + Vector2(0, -(size.y / 2 + 36)),
+    );
     final boss = BossComponent.fromBossDefinition(
       definition: definition,
-      position: Vector2(size.x / 2, -36),
+      position: bossPosition,
       targetPositionProvider: _nearestActivePlayerPosition,
       nearbyEnemiesProvider: () => worldChildrenOfType<EnemyComponent>(),
       onAreaAttack: addWorldComponent,
@@ -761,10 +765,26 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
     _rejectPopulation(GamePopulationKind.enemy, enemyIds.length - summonCount);
   }
 
-  void _addEnemy(EnemyId enemyId, int spawnIndex) {
+  EnemyComponent _addEnemy(EnemyId enemyId, int spawnIndex) {
     final offset = _spawnOffsetFor(spawnIndex);
-    _addEnemyWithWarningOverlay(
-      _createEnemy(enemyId, Vector2(size.x / 2, size.y / 2) + offset),
+    final enemy = _createEnemy(
+      enemyId,
+      _clampPointToWorld(_activePlayerAnchor() + offset),
+    );
+    _addEnemyWithWarningOverlay(enemy);
+    return enemy;
+  }
+
+  Vector2 _activePlayerAnchor() {
+    final worldCenter = worldConfig.worldSize / 2;
+    return _nearestActivePlayerPosition(worldCenter) ?? worldCenter;
+  }
+
+  Vector2 _clampPointToWorld(Vector2 position) {
+    final bounds = worldConfig.worldBounds;
+    return Vector2(
+      position.x.clamp(bounds.left, bounds.right).toDouble(),
+      position.y.clamp(bounds.top, bounds.bottom).toDouble(),
     );
   }
 
@@ -1988,6 +2008,11 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
     final enemy = _createEnemy(enemyId, position);
     _addEnemyWithWarningOverlay(enemy);
     return enemy;
+  }
+
+  @visibleForTesting
+  EnemyComponent debugSpawnWaveEnemy(EnemyId enemyId, {int spawnIndex = 0}) {
+    return _addEnemy(enemyId, spawnIndex);
   }
 
   @visibleForTesting

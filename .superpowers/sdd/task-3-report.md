@@ -62,3 +62,48 @@ dart analyze lib/game/world/combat_camera_controller.dart lib/game/pixel_survivo
 No unrelated VFX or Task 2 files were modified. The camera controller uses
 the active player as its target only after player creation, avoiding an opening
 interpolation. No full suite or build was run, per task scope.
+
+## Reviewer follow-up
+
+### RED
+
+The focused settings test exposed both reported spawn regressions before the
+compatibility fix:
+
+- `regular wave spawns around the world-centered player` found no enemy near
+  the world-centered player through the ordinary wave-spawn path.
+- `debug-requested boss preserves top-of-viewport intent near player` expected
+  a `306` world-unit offset from the player, but the viewport-origin boss was
+  `2652.386` units away.
+- The replacement game-level combat-invariance and actual-camera resize/edge
+  cases were added alongside these regressions. The ordinary wave debug hook
+  was separately observed RED as an undefined API before implementation.
+
+### Fix
+
+Ordinary wave spawns retain the existing `SpawnRingGeometry` offset but now
+anchor it to the nearest mounted, living player, falling back to world center.
+Bosses retain the old top-of-viewport offset relative to that same anchor. Both
+positions are point-clamped to runtime world bounds. No wave timing, radius,
+count, balance, or spatial-planner behavior changed.
+
+The former null-camera invariance test was replaced with a real
+`PixelSurvivorGame.camera.viewfinder` test at two distinct centers. It directly
+exercises `AttackGeometry.contains`, `ProjectileComponent.overlapsEnemy`, and
+`CombatSystem.applyContactDamage`, and verifies actor/projectile world positions
+remain fixed. Resize coverage now drives the real tracked target to both world
+edges and checks `camera.visibleWorldRect` before and after viewport resize.
+
+### GREEN
+
+The reviewer-focused settings file passed all 7 tests. The complete Task 3
+focused command passed all 46 tests, and focused analysis reported no issues.
+Because the host C: drive was full, final verification invoked the cached
+Flutter tools snapshot and Dart executable directly; the test and analysis
+semantics and arguments were unchanged.
+
+### Concerns
+
+The C: drive had zero free bytes during final verification. No user files or
+caches were deleted; direct cached tool invocation avoided the Flutter wrapper's
+engine-stamp write. No full suite or build was run.
