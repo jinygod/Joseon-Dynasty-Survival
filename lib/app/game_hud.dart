@@ -6,6 +6,7 @@ import '../game/content/weapon_definitions.dart';
 import '../l10n/app_strings.dart';
 import 'game_hud_source.dart';
 import 'virtual_joystick.dart';
+import 'weapon_star_rating.dart';
 
 class GameHud extends StatefulWidget {
   const GameHud({
@@ -355,18 +356,32 @@ class _StatusBar extends StatelessWidget {
                               SizedBox(
                                 width: 52,
                                 height: 20,
-                                child: FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  alignment: Alignment.centerRight,
-                                  child: Text(
-                                    '${source.kills}',
-                                    key: const Key('hud-kills-value'),
-                                    style: const TextStyle(
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    const Icon(
+                                      Icons.gps_fixed,
+                                      key: Key('kill-count-icon'),
                                       color: Color(0xff9fb3c8),
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w700,
+                                      size: 13,
                                     ),
-                                  ),
+                                    const SizedBox(width: 2),
+                                    Flexible(
+                                      child: FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        alignment: Alignment.centerRight,
+                                        child: Text(
+                                          '${source.kills}',
+                                          key: const Key('hud-kills-value'),
+                                          style: const TextStyle(
+                                            color: Color(0xff9fb3c8),
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
@@ -515,16 +530,9 @@ class _WeaponSlot extends StatelessWidget {
                     color: Color(0xff101820),
                     shape: BoxShape.circle,
                   ),
-                  child: FittedBox(
-                    child: Text(
-                      '$level',
-                      key: Key('hud-weapon-level-$index'),
-                      style: const TextStyle(
-                        color: Color(0xfffff1b8),
-                        fontSize: 10,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
+                child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: WeaponStarRating(level: level),
                   ),
                 ),
               ),

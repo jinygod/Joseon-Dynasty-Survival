@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/app/game_screen.dart';
 import 'package:pixel_survivor/app/pause_menu_overlay.dart';
+import 'package:pixel_survivor/app/joseon_buttons.dart';
+import 'package:pixel_survivor/app/joseon_panel.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
 import 'package:pixel_survivor/game/content/stage_definitions.dart';
 import 'package:pixel_survivor/game/audio/audio_settings_controller.dart';
@@ -22,6 +24,33 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../support/recording_audio_backend.dart';
 
 void main() {
+  testWidgets('pause menu uses the shared panel and retains resume action', (
+    tester,
+  ) async {
+    var resumed = 0;
+    final settings = AudioSettingsController(
+      store: AudioSettingsRepository(
+        preferences: await SharedPreferences.getInstance(),
+      ),
+    );
+    addTearDown(settings.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PauseMenuOverlay(
+          onResume: () => resumed += 1,
+          onRestart: () {},
+          onExitToMenu: () {},
+          settingsController: settings,
+        ),
+      ),
+    );
+
+    expect(find.byType(JoseonPanel), findsOneWidget);
+    expect(find.byType(JoseonPrimaryButton), findsOneWidget);
+    await tester.tap(find.byKey(const Key('pause-resume')));
+    expect(resumed, 1);
+  });
+
   testWidgets('HUD pause clears input and can explicitly resume', (
     tester,
   ) async {

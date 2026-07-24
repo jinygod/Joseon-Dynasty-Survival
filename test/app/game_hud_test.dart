@@ -3,10 +3,34 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/app/game_hud.dart';
 import 'package:pixel_survivor/app/game_hud_source.dart';
 import 'package:pixel_survivor/app/level_up_overlay.dart';
+import 'package:pixel_survivor/app/weapon_star_rating.dart';
 import 'package:pixel_survivor/game/models/vector_input.dart';
 import 'package:pixel_survivor/game/systems/level_up_system.dart';
 
 void main() {
+  testWidgets('combat hud labels kills and shows mastery for level six', (
+    tester,
+  ) async {
+    final source = FakeGameHudSource(
+      bossName: null,
+      bossHealthFraction: null,
+      kills: 119,
+      weaponLevelLabels: const ['Hwando Slash Lv. 6'],
+    );
+
+    await tester.pumpWidget(MaterialApp(home: GameHud(source: source)));
+
+    expect(find.byKey(const Key('kill-count-icon')), findsOneWidget);
+    expect(find.text('119'), findsOneWidget);
+    expect(find.byType(WeaponStarRating), findsOneWidget);
+    expect(tester.widget<WeaponStarRating>(find.byType(WeaponStarRating)).level, 6);
+    expect(
+      find.text(String.fromCharCodes(const [53685, 45804])),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('filled-star-5')), findsNothing);
+  });
+
   testWidgets('hud shows boss bar and compact equipped weapon slots', (
     tester,
   ) async {
@@ -99,7 +123,7 @@ void main() {
     );
   });
 
-  testWidgets('HUD keeps the compact weapon badge level', (tester) async {
+  testWidgets('HUD keeps the compact weapon mastery rating', (tester) async {
     final source = FakeGameHudSource(
       bossName: null,
       bossHealthFraction: null,
@@ -108,10 +132,13 @@ void main() {
     await tester.pumpWidget(MaterialApp(home: GameHud(source: source)));
 
     expect(find.byKey(const Key('hud-health-bar')), findsNothing);
+    expect(find.byType(WeaponStarRating), findsOneWidget);
+    expect(tester.widget<WeaponStarRating>(find.byType(WeaponStarRating)).level, 6);
     expect(
-      tester.widget<Text>(find.byKey(const Key('hud-weapon-level-0'))).data,
-      '6',
+      find.text(String.fromCharCodes(const [53685, 45804])),
+      findsOneWidget,
     );
+    expect(find.byKey(const Key('filled-star-5')), findsNothing);
   });
 
   testWidgets('weapon slots expose name and level in the semantics tree', (

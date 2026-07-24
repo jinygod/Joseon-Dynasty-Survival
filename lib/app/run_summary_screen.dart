@@ -10,6 +10,8 @@ import '../game/models/run_feedback.dart';
 import '../game/models/run_result.dart';
 import '../game/systems/progression_system.dart';
 import '../game/systems/meta_progression_service.dart';
+import 'joseon_buttons.dart';
+import 'joseon_panel.dart';
 
 typedef FeedbackSubmitted = Future<void> Function(RunFeedback feedback);
 typedef JsonAction = Future<bool> Function();
@@ -67,9 +69,11 @@ class _RunSummaryScreenState extends State<RunSummaryScreen> {
             constraints: const BoxConstraints(maxWidth: 560),
             child: Padding(
               padding: const EdgeInsets.all(24),
-              child: ListView(
-                shrinkWrap: true,
-                children: [
+              child: JoseonPanel(
+                padding: const EdgeInsets.all(16),
+                child: ListView(
+                  shrinkWrap: true,
+                  children: [
                   Text(
                     isVictory ? AppStrings.victory : AppStrings.defeat,
                     textAlign: TextAlign.center,
@@ -245,23 +249,28 @@ class _RunSummaryScreenState extends State<RunSummaryScreen> {
                     spacing: 12,
                     runSpacing: 12,
                     children: [
-                      FilledButton(
+                      KeyedSubtree(
                         key: const Key('result-retry'),
-                        onPressed: _navigationCommitted
-                            ? null
-                            : () => _commitNavigation(widget.onStart),
-                        child: const Text(AppStrings.retry),
+                        child: JoseonPrimaryButton(
+                          label: AppStrings.retry,
+                          onPressed: _navigationCommitted
+                              ? null
+                              : () => _commitNavigation(widget.onStart),
+                        ),
                       ),
-                      OutlinedButton(
+                      KeyedSubtree(
                         key: const Key('result-menu'),
-                        onPressed: _navigationCommitted
-                            ? null
-                            : () => _commitNavigation(widget.onMenu),
-                        child: const Text(AppStrings.mainMenu),
+                        child: JoseonSecondaryButton(
+                          label: AppStrings.mainMenu,
+                          onPressed: _navigationCommitted
+                              ? null
+                              : () => _commitNavigation(widget.onMenu),
+                        ),
                       ),
                     ],
                   ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),

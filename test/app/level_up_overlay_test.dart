@@ -1,9 +1,41 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/app/level_up_overlay.dart';
+import 'package:pixel_survivor/app/joseon_panel.dart';
+import 'package:pixel_survivor/app/weapon_star_rating.dart';
 import 'package:pixel_survivor/game/systems/level_up_system.dart';
 
 void main() {
+  testWidgets('level-up choice uses shared panel and mastery rating', (
+    tester,
+  ) async {
+    const masteredWeapon = LevelUpChoice(
+      id: 'mastered_weapon',
+      displayName: 'Mastered weapon',
+      effectDescription: 'A final upgrade.',
+      type: LevelUpChoiceType.weapon,
+      currentLevel: 5,
+      nextLevel: 6,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: LevelUpOverlay(
+          choices: const [masteredWeapon],
+          onChoiceSelected: (_) {},
+        ),
+      ),
+    );
+
+    expect(find.byType(JoseonPanel), findsOneWidget);
+    expect(find.byType(WeaponStarRating), findsOneWidget);
+    expect(
+      find.text(String.fromCharCodes(const [53685, 45804])),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('filled-star-5')), findsNothing);
+  });
+
   const choices = <LevelUpChoice>[
     LevelUpChoice(
       id: 'long_weapon',

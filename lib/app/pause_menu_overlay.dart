@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../game/audio/audio_settings_controller.dart';
+import 'joseon_buttons.dart';
+import 'joseon_panel.dart';
 
 class PauseMenuOverlay extends StatefulWidget {
   const PauseMenuOverlay({
@@ -33,12 +35,9 @@ class _PauseMenuOverlayState extends State<PauseMenuOverlay> {
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 360),
-            child: Card(
-              color: const Color(0xfff4ead2),
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: _showSettings ? _buildSettings() : _buildMenu(),
-              ),
+            child: JoseonPanel(
+              padding: const EdgeInsets.all(24),
+              child: _showSettings ? _buildSettings() : _buildMenu(),
             ),
           ),
         ),
@@ -47,6 +46,43 @@ class _PauseMenuOverlayState extends State<PauseMenuOverlay> {
   }
 
   Widget _buildMenu() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text(
+          '일시 정지',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900),
+        ),
+        const SizedBox(height: 24),
+        KeyedSubtree(
+          key: const Key('pause-resume'),
+          child: JoseonPrimaryButton(label: '계속하기', onPressed: widget.onResume),
+        ),
+        const SizedBox(height: 10),
+        KeyedSubtree(
+          key: const Key('pause-restart'),
+          child: JoseonSecondaryButton(label: '다시 시작', onPressed: widget.onRestart),
+        ),
+        const SizedBox(height: 10),
+        KeyedSubtree(
+          key: const Key('pause-settings'),
+          child: JoseonSecondaryButton(
+            label: '설정',
+            onPressed: () => setState(() => _showSettings = true),
+          ),
+        ),
+        const SizedBox(height: 10),
+        KeyedSubtree(
+          key: const Key('pause-menu'),
+          child: JoseonSecondaryButton(label: '메인 메뉴', onPressed: widget.onExitToMenu),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLegacyMenu() {
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../game/systems/level_up_system.dart';
 import '../l10n/app_strings.dart';
+import 'joseon_panel.dart';
+import 'weapon_star_rating.dart';
 
 class LevelUpOverlay extends StatelessWidget {
   const LevelUpOverlay({
@@ -183,7 +185,7 @@ class _LevelUpChoiceCard extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 9),
-        _LevelPips(level: choice.nextLevel, accent: accent),
+        WeaponStarRating(level: choice.nextLevel, compact: true),
       ],
     );
 
@@ -191,65 +193,64 @@ class _LevelUpChoiceCard extends StatelessWidget {
       button: true,
       label: '$typeLabel ${choice.displayName} ${choice.effectDescription}',
       child: Material(
-        key: Key('level-up-choice-$index'),
-        color: const Color(0xff303847),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-          side: BorderSide(color: accent, width: 2),
-        ),
-        clipBehavior: Clip.antiAlias,
+        color: Colors.transparent,
         child: InkWell(
+          key: Key('level-up-choice-$index'),
           onTap: onPressed,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: compact ? 154 : 226),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Container(
-                  color: accent,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 7,
-                  ),
-                  child: Text(
-                    typeLabel,
-                    textAlign: compact ? TextAlign.left : TextAlign.center,
-                    style: const TextStyle(
-                      color: Color(0xff21170c),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w900,
+          child: JoseonPanel(
+            padding: EdgeInsets.zero,
+            semanticsLabel: '$typeLabel ${choice.displayName}',
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: compact ? 154 : 226),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Container(
+                    color: accent,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 7,
+                    ),
+                    child: Text(
+                      typeLabel,
+                      textAlign: compact ? TextAlign.left : TextAlign.center,
+                      style: const TextStyle(
+                        color: Color(0xff21170c),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: compact
-                      ? Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _ChoiceMedallion(
-                              isWeapon: isWeapon,
-                              accent: accent,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(child: details),
-                          ],
-                        )
-                      : Column(
-                          children: [
-                            _ChoiceMedallion(
-                              isWeapon: isWeapon,
-                              accent: accent,
-                            ),
-                            const SizedBox(height: 12),
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: details,
-                            ),
-                          ],
-                        ),
-                ),
-              ],
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: compact
+                        ? Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _ChoiceMedallion(
+                                isWeapon: isWeapon,
+                                accent: accent,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(child: details),
+                            ],
+                          )
+                        : Column(
+                            children: [
+                              _ChoiceMedallion(
+                                isWeapon: isWeapon,
+                                accent: accent,
+                              ),
+                              const SizedBox(height: 12),
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: details,
+                              ),
+                            ],
+                          ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -279,32 +280,6 @@ class _ChoiceMedallion extends StatelessWidget {
         color: accent,
         size: 30,
       ),
-    );
-  }
-}
-
-class _LevelPips extends StatelessWidget {
-  const _LevelPips({required this.level, required this.accent});
-
-  final int level;
-  final Color accent;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        for (var index = 1; index <= 6; index++) ...[
-          if (index > 1) const SizedBox(width: 4),
-          Container(
-            width: 15,
-            height: 5,
-            decoration: BoxDecoration(
-              color: index <= level ? accent : const Color(0xff151b24),
-              borderRadius: BorderRadius.circular(3),
-            ),
-          ),
-        ],
-      ],
     );
   }
 }
