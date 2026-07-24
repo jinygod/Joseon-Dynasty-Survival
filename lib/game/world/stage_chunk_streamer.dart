@@ -66,6 +66,9 @@ class StageChunkStreamer extends Component {
             coordinate: chunk.coordinate,
             chunkSize: chunkSize,
             worldBounds: layout.worldBounds,
+            landmarkPositions: layout.landmarkAnchors
+                .map((anchor) => anchor.position)
+                .toList(growable: false),
           ),
           images: images,
         ),

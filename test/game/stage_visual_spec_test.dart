@@ -1,9 +1,15 @@
+import 'dart:math';
 import 'dart:ui';
 
+import 'package:flame/components.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pixel_survivor/game/components/stage_backdrop_component.dart';
+import 'package:pixel_survivor/game/components/stage_tile_batch_component.dart';
 import 'package:pixel_survivor/game/content/stage_definitions.dart';
 import 'package:pixel_survivor/game/content/stage_visual_spec.dart';
+import 'package:pixel_survivor/game/world/finite_world_layout.dart';
 import 'package:pixel_survivor/game/world/world_chunk_coordinate.dart';
+import 'package:pixel_survivor/game/world/world_runtime_config.dart';
 
 void main() {
   const bounds = Rect.fromLTWH(-64, -64, 384, 256);
@@ -81,39 +87,106 @@ void main() {
   });
 
   test('center keeps sparse decals and base variants are reproducible', () {
-    const worldBounds = Rect.fromLTWH(0, 0, 2048, 5120);
+    final world = FiniteWorldLayout.generate(
+      stageId: plagueMarket,
+      seed: 3107,
+      config: WorldRuntimeConfig.standard,
+    );
+    final landmarkPositions = world.landmarkAnchors
+        .map((anchor) => anchor.position)
+        .toList(growable: false);
     final first = StageLayout.buildChunk(
       spec,
-      seed: 104729,
-      coordinate: const WorldChunkCoordinate(1, 2),
-      chunkSize: 1024,
-      worldBounds: worldBounds,
+      seed: 3107,
+      coordinate: const WorldChunkCoordinate(1, 1),
+      chunkSize: 512,
+      worldBounds: world.worldBounds,
+      landmarkPositions: landmarkPositions,
     );
     final second = StageLayout.buildChunk(
       spec,
-      seed: 104729,
-      coordinate: const WorldChunkCoordinate(1, 2),
-      chunkSize: 1024,
-      worldBounds: worldBounds,
+      seed: 3107,
+      coordinate: const WorldChunkCoordinate(1, 1),
+      chunkSize: 512,
+      worldBounds: world.worldBounds,
+      landmarkPositions: landmarkPositions,
     );
-    final center = first.tiles.where((tile) {
-      final tileCenter = tile.position + const Offset(64, 64);
-      return tileCenter.dx > first.bounds.left + spec.edgeBand &&
-          tileCenter.dx < first.bounds.right - spec.edgeBand &&
-          tileCenter.dy > first.bounds.top + spec.edgeBand &&
-          tileCenter.dy < first.bounds.bottom - spec.edgeBand;
-    });
-    final centerPositions = center.map((tile) => tile.position).toSet();
-    final centerDecals = first.decorations.where(
-      (decal) => centerPositions.contains(decal.position),
+    final interiorLayouts = [
+      for (var y = 1; y < WorldRuntimeConfig.standard.chunkRows - 1; y += 1)
+        for (
+          var x = 1;
+          x < WorldRuntimeConfig.standard.chunkColumns - 1;
+          x += 1
+        )
+          StageLayout.buildChunk(
+            spec,
+            seed: 3107,
+            coordinate: WorldChunkCoordinate(x, y),
+            chunkSize: 512,
+            worldBounds: world.worldBounds,
+            landmarkPositions: landmarkPositions,
+          ),
+    ];
+    final interiorTileCount = interiorLayouts.fold<int>(
+      0,
+      (count, layout) => count + layout.tiles.length,
+    );
+    final interiorDecalCount = interiorLayouts.fold<int>(
+      0,
+      (count, layout) => count + layout.decorations.length,
     );
 
     expect(first, isNot(same(second)));
     expect(first.tiles, second.tiles);
     expect(first.decorations, second.decorations);
-    expect(centerDecals.length / center.length, lessThan(.08));
+    expect(interiorDecalCount / interiorTileCount, lessThan(.08));
     expect(first.tiles.map((tile) => tile.variant).toSet(), hasLength(4));
   });
+
+  test(
+    'interior chunk borders are not edge-biased and landmarks add decals',
+    () {
+      final world = FiniteWorldLayout.generate(
+        stageId: plagueMarket,
+        seed: 3107,
+        config: WorldRuntimeConfig.standard,
+      );
+      final landmark = world.landmarkAnchors.first;
+      final withLandmark = StageLayout.buildChunk(
+        spec,
+        seed: 3107,
+        coordinate: landmark.coordinate,
+        chunkSize: 512,
+        worldBounds: world.worldBounds,
+        landmarkPositions: [landmark.position],
+      );
+      final ordinary = StageLayout.buildChunk(
+        spec,
+        seed: 3107,
+        coordinate: landmark.coordinate,
+        chunkSize: 512,
+        worldBounds: world.worldBounds,
+      );
+
+      expect(
+        ordinary.decorations.length / ordinary.tiles.length,
+        lessThan(.08),
+      );
+      expect(
+        withLandmark.decorations.length,
+        greaterThan(ordinary.decorations.length),
+      );
+      expect(
+        withLandmark.decorations.any(
+          (decal) =>
+              (decal.position + const Offset(64, 64) - landmark.position)
+                  .distance <=
+              96,
+        ),
+        isTrue,
+      );
+    },
+  );
 
   test('chunk base variants avoid a repeating checkerboard', () {
     const worldBounds = Rect.fromLTWH(0, 0, 2048, 5120);
@@ -128,14 +201,57 @@ void main() {
       for (final tile in layout.tiles) tile.position: tile.variant,
     };
 
-    final firstFour = [
-      for (var x = 1024.0; x < 1536.0; x += 128) variants[Offset(x, 2048)],
-    ];
-    final nextFour = [
-      for (var x = 1536.0; x < 2048.0; x += 128) variants[Offset(x, 2048)],
+    final row = [
+      for (var x = 1024.0; x < 2048.0; x += 128) variants[Offset(x, 2048)],
     ];
 
-    expect(firstFour, isNot(nextFour));
+    expect(row.take(4), isNot(row.skip(4).take(4)));
+    expect(row[0], isNot(row[2]));
+    expect(row[1], isNot(row[3]));
+  });
+
+  test('adjacent chunks keep integer, contiguous edges at .90 projection', () {
+    const worldBounds = Rect.fromLTWH(0, 0, 2048, 5120);
+    final left = StageLayout.buildChunk(
+      spec,
+      seed: 3107,
+      coordinate: const WorldChunkCoordinate(1, 1),
+      chunkSize: 512,
+      worldBounds: worldBounds,
+    );
+    final right = StageLayout.buildChunk(
+      spec,
+      seed: 3107,
+      coordinate: const WorldChunkCoordinate(2, 1),
+      chunkSize: 512,
+      worldBounds: worldBounds,
+    );
+    final leftEdge = left.tiles.map((tile) => tile.bounds.right).reduce(max);
+    final rightEdge = right.tiles.map((tile) => tile.bounds.left).reduce(min);
+
+    expect(
+      left.tiles.every((tile) => tile.position.dx == tile.position.dx.round()),
+      isTrue,
+    );
+    expect(
+      right.tiles.every((tile) => tile.position.dy == tile.position.dy.round()),
+      isTrue,
+    );
+    expect(leftEdge, rightEdge);
+    expect(leftEdge * .90, rightEdge * .90);
+
+    final source = StageTileBatchComponent.sourceRectFor(
+      kind: StageAtlasKind.tile,
+      variant: 3,
+      cellSize: 127.6,
+    );
+    final crop = StageBackdropComponent(
+      viewportSize: Vector2(390, 844),
+    ).groundImageSourceRectFor(const Size(1024, 1824));
+    expect(source.left, source.left.roundToDouble());
+    expect(source.width, source.width.roundToDouble());
+    expect(crop.left, crop.left.roundToDouble());
+    expect(crop.right, crop.right.roundToDouble());
   });
 
   test('chunk building rejects non-positive or non-finite chunk sizes', () {

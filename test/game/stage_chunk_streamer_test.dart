@@ -58,6 +58,33 @@ void main() {
     );
   });
 
+  test('streamer forwards real landmark anchors to interior stage layouts', () {
+    final config = WorldRuntimeConfig.standard;
+    final layout = FiniteWorldLayout.generate(
+      stageId: plagueMarket,
+      seed: 3107,
+      config: config,
+    );
+    final landmark = layout.landmarkAnchors.first;
+    final streamer = StageChunkStreamer(
+      layout: layout,
+      spec: stageVisualSpecFor(plagueMarket),
+      seed: 3107,
+      images: const {},
+      chunkSize: config.chunkSize,
+    );
+
+    streamer.updateStreaming(landmark.position & const Size(1, 1));
+
+    final batch = streamer
+        .descendants(includeSelf: false)
+        .whereType<StageTileBatchComponent>()
+        .singleWhere(
+          (component) => component.coordinate == landmark.coordinate,
+        );
+    expect(batch.layout.decorations, isNotEmpty);
+  });
+
   test(
     'unload then immediate reentry retains one bundle per coordinate',
     () async {

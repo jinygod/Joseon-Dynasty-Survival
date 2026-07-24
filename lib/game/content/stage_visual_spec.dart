@@ -178,8 +178,9 @@ class StageLayout {
               ),
               position: position,
               tileSize: size,
-              bounds: bounds,
+              worldBounds: bounds,
               edgeBand: spec.edgeBand,
+              landmarkPositions: const <Offset>[],
             )) {
           decals.add(
             StageDecorationPlacement(
@@ -245,6 +246,7 @@ class StageLayout {
     required WorldChunkCoordinate coordinate,
     required double chunkSize,
     required Rect worldBounds,
+    List<Offset> landmarkPositions = const <Offset>[],
   }) {
     if (!chunkSize.isFinite || chunkSize <= 0) {
       throw ArgumentError.value(
@@ -306,8 +308,9 @@ class StageLayout {
               choice: choice,
               position: position,
               tileSize: tileSize,
-              bounds: bounds,
+              worldBounds: worldBounds,
               edgeBand: spec.edgeBand,
+              landmarkPositions: landmarkPositions,
             )) {
           decals.add(
             StageDecorationPlacement(
@@ -332,19 +335,6 @@ class StageLayout {
           );
         }
       }
-    }
-    if (spec.decalAssetKey != null && decals.isEmpty && tiles.isNotEmpty) {
-      final tile =
-          tiles[_chunkMix(seed, spec.seedSalt, coordinate.x, coordinate.y) %
-              tiles.length];
-      decals.add(
-        StageDecorationPlacement(
-          kind: StageDecorationKind.decal,
-          position: tile.position,
-          size: tile.size,
-          variant: tile.variant % spec.decalVariants,
-        ),
-      );
     }
     if (spec.propAssetKey != null && isBoundary && props.isEmpty) {
       final edgeTiles = tiles.where(
@@ -400,20 +390,23 @@ bool _shouldPlaceDecal({
   required int choice,
   required Offset position,
   required double tileSize,
-  required Rect bounds,
+  required Rect worldBounds,
   required double edgeBand,
+  required List<Offset> landmarkPositions,
 }) {
   final center = position + Offset(tileSize / 2, tileSize / 2);
   final isEdge =
-      center.dx <= bounds.left + edgeBand ||
-      center.dx >= bounds.right - edgeBand ||
-      center.dy <= bounds.top + edgeBand ||
-      center.dy >= bounds.bottom - edgeBand;
-  // Landmarks are infrequent, deterministic clusters that can receive a
-  // decal even away from the perimeter. The central budget remains below 8%.
-  final isLandmark = choice % 29 == 0;
-  if (isEdge) return choice % 5 == 0 || isLandmark;
-  if (isLandmark) return true;
+      center.dx <= worldBounds.left + edgeBand ||
+      center.dx >= worldBounds.right - edgeBand ||
+      center.dy <= worldBounds.top + edgeBand ||
+      center.dy >= worldBounds.bottom - edgeBand;
+  // A small world-space band around authored landmarks adds local detail
+  // without classifying arbitrary chunk borders as stage edges.
+  final isNearLandmark = landmarkPositions.any(
+    (landmark) => (center - landmark).distance <= tileSize * .75,
+  );
+  if (isNearLandmark) return true;
+  if (isEdge) return choice % 5 == 0;
   return choice % 64 == 0;
 }
 
