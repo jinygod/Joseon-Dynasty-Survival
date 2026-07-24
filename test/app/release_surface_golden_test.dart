@@ -52,6 +52,7 @@ void main() {
         audioSettingsController: _audioController(),
       ),
       'lobby_16_9.png',
+      beforeCapture: _warmAndExpectLobbyAssets,
     );
   });
 
@@ -168,6 +169,67 @@ void main() {
       'run_summary_16_9.png',
     );
   });
+}
+
+Future<void> _warmAndExpectLobbyAssets(WidgetTester tester) async {
+  for (var attempt = 0; attempt < 3; attempt += 1) {
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 100)),
+    );
+    await tester.pump();
+  }
+  expect(tester.takeException(), isNull);
+  final boundaryFinder = find.byKey(const Key('golden-root'));
+  final boundary = tester.renderObject<RenderRepaintBoundary>(boundaryFinder);
+  final boundaryRect = tester.getRect(boundaryFinder);
+  final rendered = await tester.runAsync(() async {
+    final image = await boundary.toImage(pixelRatio: 1);
+    final bytes = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+    return (width: image.width, pixels: bytes?.buffer.asUint8List());
+  });
+  expect(rendered, isNotNull);
+  expect(rendered!.pixels, isNotNull);
+
+  final background = tester.getRect(
+    find.byKey(const Key('lobby-stage-background-image')),
+  );
+  final character = tester.getRect(
+    find.byKey(const Key('lobby-character-art')),
+  );
+  expect(
+    _sampledColorCount(
+      rendered.pixels!,
+      rendered.width,
+      background.shift(-boundaryRect.topLeft),
+    ),
+    greaterThan(100),
+    reason: 'lobby stage background image did not paint',
+  );
+  expect(
+    _sampledColorCount(
+      rendered.pixels!,
+      rendered.width,
+      character.shift(-boundaryRect.topLeft),
+    ),
+    greaterThan(20),
+    reason: 'lobby character art did not paint',
+  );
+}
+
+int _sampledColorCount(Uint8List pixels, int imageWidth, Rect rect) {
+  final colors = <int>{};
+  for (var y = rect.top.floor(); y < rect.bottom.ceil(); y += 4) {
+    for (var x = rect.left.floor(); x < rect.right.ceil(); x += 4) {
+      final pixel = (y * imageWidth + x) * 4;
+      colors.add(
+        pixels[pixel] << 24 |
+            pixels[pixel + 1] << 16 |
+            pixels[pixel + 2] << 8 |
+            pixels[pixel + 3],
+      );
+    }
+  }
+  return colors.length;
 }
 
 Future<void> _expectGolden(

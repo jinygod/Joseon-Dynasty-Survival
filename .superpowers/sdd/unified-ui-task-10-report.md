@@ -76,6 +76,20 @@ logical asset key; release builds retain the approved neutral placeholder.
 
 Review follow-up commit: `fix: use logical character portrait placeholders`.
 
+## Release lobby async asset gate
+
+- RED: the filtered lobby golden failed with a 78.53% pixel difference after
+  waiting for asynchronous image decoding, proving the previous baseline had
+  captured the unloaded state.
+- `_warmAndExpectLobbyAssets` is scoped to the lobby `beforeCapture` hook. It
+  performs three bounded 100 ms `runAsync`/`pump` cycles, then samples the
+  rendered lobby-stage background and character-art bounds for color diversity
+  so an empty image placeholder cannot be approved.
+- Updated only `lobby_16_9.png`. Visual inspection confirms the moonlit palace
+  scene and the central character are painted.
+- GREEN: the filtered lobby test and all six release-surface golden tests pass
+  without `--update-goldens`.
+
 ## Release golden font gate
 
 - RED: after loading the Joseon display/body fonts and MaterialIcons, the
