@@ -43,6 +43,7 @@ import 'package:pixel_survivor/game/models/run_result.dart';
 import 'package:pixel_survivor/game/models/vector_input.dart';
 import 'package:pixel_survivor/game/pixel_survivor_game.dart';
 import 'package:pixel_survivor/game/world/combat_world.dart';
+import 'package:pixel_survivor/game/world/stage_chunk_streamer.dart';
 import 'package:pixel_survivor/game/game_performance_budget.dart';
 import 'package:pixel_survivor/game/systems/level_up_system.dart';
 import 'package:pixel_survivor/game/systems/talisman_executor.dart';
@@ -248,10 +249,12 @@ void main() {
       verify: (game, _) async {
         game.update(0);
 
+        expect(game.worldChildrenOfType<StageChunkStreamer>(), hasLength(1));
         expect(
-          game.worldChildrenOfType<StageBackdropComponent>(),
-          hasLength(1),
+          game.worldChildrenOfType<StageChunkStreamer>().single.loadedCount,
+          greaterThan(0),
         );
+        expect(game.worldChildrenOfType<StageBackdropComponent>(), isEmpty);
         final shadows = game
             .worldChildrenOfType<ActorShadowComponent>()
             .toList();

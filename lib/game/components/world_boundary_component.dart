@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'dart:collection';
 
 import 'package:flame/components.dart';
 import 'package:flame/sprite.dart';
@@ -22,14 +23,17 @@ class WorldBoundaryComponent extends Component {
   final StageVisualSpec spec;
   final Map<String, Image> images;
   SpriteBatch? _batch;
+  final List<Rect> _placementBounds = <Rect>[];
   int _batchBuildCount = 0;
 
   List<WorldLayoutAnchor> get anchors => List.unmodifiable(
-    layout.boundaryDecorationAnchors
-        .where((anchor) => anchor.coordinate == coordinate),
+    layout.boundaryDecorationAnchors.where(
+      (anchor) => anchor.coordinate == coordinate,
+    ),
   );
   int get anchorCount => anchors.length;
   int get placementCount => anchorCount;
+  List<Rect> get placementBounds => UnmodifiableListView(_placementBounds);
   int get batchBuildCount => _batchBuildCount;
   bool get ownsCollision => false;
 
@@ -38,11 +42,28 @@ class WorldBoundaryComponent extends Component {
     final key = spec.propAssetKey;
     final image = key == null ? null : images[key];
     if (image == null || anchors.isEmpty) return;
+    final chunkBounds = layout.chunkBounds[coordinate];
+    if (chunkBounds == null) return;
+    final allowedBounds = chunkBounds.intersect(layout.worldBounds);
+    if (allowedBounds.width < spec.tileSize ||
+        allowedBounds.height < spec.tileSize) {
+      return;
+    }
     final batch = SpriteBatch(image);
     for (var index = 0; index < anchors.length; index += 1) {
       final anchor = anchors[index];
       final variant = (anchor.layoutSeed + index) % spec.propVariants;
-      final position = anchor.position - Offset(spec.tileSize / 2, spec.tileSize / 2);
+      final position = Offset(
+        (anchor.position.dx - spec.tileSize / 2)
+            .clamp(allowedBounds.left, allowedBounds.right - spec.tileSize)
+            .toDouble(),
+        (anchor.position.dy - spec.tileSize / 2)
+            .clamp(allowedBounds.top, allowedBounds.bottom - spec.tileSize)
+            .toDouble(),
+      );
+      _placementBounds.add(
+        Rect.fromLTWH(position.dx, position.dy, spec.tileSize, spec.tileSize),
+      );
       batch.add(
         source: StageTileBatchComponent.sourceRectFor(
           kind: StageAtlasKind.prop,

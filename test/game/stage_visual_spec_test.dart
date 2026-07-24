@@ -65,13 +65,81 @@ void main() {
 
     expect(edge.props.length, greaterThan(center.props.length));
     for (final placement in edge.tiles) {
-      expect(edge.bounds.contains(placement.position + const Offset(1, 1)), isTrue);
+      expect(
+        edge.bounds.contains(placement.position + const Offset(1, 1)),
+        isTrue,
+      );
       expect(worldBounds.overlaps(placement.bounds), isTrue);
     }
     for (final placement in edge.props) {
-      expect(edge.bounds.contains(placement.position + const Offset(1, 1)), isTrue);
+      expect(
+        edge.bounds.contains(placement.position + const Offset(1, 1)),
+        isTrue,
+      );
       expect(worldBounds.overlaps(placement.bounds), isTrue);
     }
+  });
+
+  test('chunk tiles use different variants across every shared edge', () {
+    const worldBounds = Rect.fromLTWH(0, 0, 2048, 5120);
+    for (var seed = 0; seed < 16; seed += 1) {
+      final left = StageLayout.buildChunk(
+        spec,
+        seed: seed,
+        coordinate: const WorldChunkCoordinate(1, 1),
+        chunkSize: 512,
+        worldBounds: worldBounds,
+      );
+      final right = StageLayout.buildChunk(
+        spec,
+        seed: seed,
+        coordinate: const WorldChunkCoordinate(2, 1),
+        chunkSize: 512,
+        worldBounds: worldBounds,
+      );
+      final below = StageLayout.buildChunk(
+        spec,
+        seed: seed,
+        coordinate: const WorldChunkCoordinate(1, 2),
+        chunkSize: 512,
+        worldBounds: worldBounds,
+      );
+      final variants = {
+        for (final tile in [...left.tiles, ...right.tiles, ...below.tiles])
+          tile.position: tile.variant,
+      };
+      for (final tile in left.tiles) {
+        final horizontal = variants[tile.position + const Offset(128, 0)];
+        final vertical = variants[tile.position + const Offset(0, 128)];
+        if (horizontal != null) expect(tile.variant, isNot(horizontal));
+        if (vertical != null) expect(tile.variant, isNot(vertical));
+      }
+    }
+  });
+
+  test('chunk building rejects non-positive or non-finite chunk sizes', () {
+    const worldBounds = Rect.fromLTWH(0, 0, 2048, 5120);
+
+    expect(
+      () => StageLayout.buildChunk(
+        spec,
+        seed: 3107,
+        coordinate: const WorldChunkCoordinate(0, 0),
+        chunkSize: 0,
+        worldBounds: worldBounds,
+      ),
+      throwsArgumentError,
+    );
+    expect(
+      () => StageLayout.buildChunk(
+        spec,
+        seed: 3107,
+        coordinate: const WorldChunkCoordinate(0, 0),
+        chunkSize: double.infinity,
+        worldBounds: worldBounds,
+      ),
+      throwsArgumentError,
+    );
   });
 
   test('different seeds vary optional placements while retaining coverage', () {

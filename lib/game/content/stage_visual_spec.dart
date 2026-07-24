@@ -228,6 +228,13 @@ class StageLayout {
     required double chunkSize,
     required Rect worldBounds,
   }) {
+    if (!chunkSize.isFinite || chunkSize <= 0) {
+      throw ArgumentError.value(
+        chunkSize,
+        'chunkSize',
+        'must be finite and positive',
+      );
+    }
     final requested = Rect.fromLTWH(
       coordinate.x * chunkSize,
       coordinate.y * chunkSize,
@@ -251,7 +258,8 @@ class StageLayout {
     final tileSize = spec.tileSize;
     final left = (bounds.left / tileSize).ceil() * tileSize;
     final top = (bounds.top / tileSize).ceil() * tileSize;
-    final isBoundary = requested.left <= worldBounds.left ||
+    final isBoundary =
+        requested.left <= worldBounds.left ||
         requested.top <= worldBounds.top ||
         requested.right >= worldBounds.right ||
         requested.bottom >= worldBounds.bottom;
@@ -260,55 +268,72 @@ class StageLayout {
         final cellX = (x / tileSize).round();
         final cellY = (y / tileSize).round();
         final choice = _chunkMix(seed, spec.seedSalt, cellX, cellY);
+        final tileVariant =
+            (cellX + cellY + _chunkMix(seed, spec.seedSalt, 0, 0)) %
+            spec.tileVariants;
         final position = Offset(x, y);
-        tiles.add(StageTilePlacement(
-          position: position,
-          size: tileSize,
-          variant: choice % spec.tileVariants,
-        ));
-        if (spec.decalAssetKey != null && choice % 7 == 0) {
-          decals.add(StageDecorationPlacement(
-            kind: StageDecorationKind.decal,
+        tiles.add(
+          StageTilePlacement(
             position: position,
             size: tileSize,
-            variant: (choice ~/ 7) % spec.decalVariants,
-          ));
+            variant: tileVariant,
+          ),
+        );
+        if (spec.decalAssetKey != null && choice % 7 == 0) {
+          decals.add(
+            StageDecorationPlacement(
+              kind: StageDecorationKind.decal,
+              position: position,
+              size: tileSize,
+              variant: (choice ~/ 7) % spec.decalVariants,
+            ),
+          );
         }
         if (spec.propAssetKey != null &&
             isBoundary &&
             _isBoundaryCell(position, tileSize, requested, worldBounds) &&
             choice % 2 == 0) {
-          props.add(StageDecorationPlacement(
-            kind: StageDecorationKind.prop,
-            position: position,
-            size: tileSize,
-            variant: (choice ~/ 11) % spec.propVariants,
-          ));
+          props.add(
+            StageDecorationPlacement(
+              kind: StageDecorationKind.prop,
+              position: position,
+              size: tileSize,
+              variant: (choice ~/ 11) % spec.propVariants,
+            ),
+          );
         }
       }
     }
     if (spec.decalAssetKey != null && decals.isEmpty && tiles.isNotEmpty) {
-      final tile = tiles[_chunkMix(seed, spec.seedSalt, coordinate.x, coordinate.y) % tiles.length];
-      decals.add(StageDecorationPlacement(
-        kind: StageDecorationKind.decal,
-        position: tile.position,
-        size: tile.size,
-        variant: tile.variant % spec.decalVariants,
-      ));
+      final tile =
+          tiles[_chunkMix(seed, spec.seedSalt, coordinate.x, coordinate.y) %
+              tiles.length];
+      decals.add(
+        StageDecorationPlacement(
+          kind: StageDecorationKind.decal,
+          position: tile.position,
+          size: tile.size,
+          variant: tile.variant % spec.decalVariants,
+        ),
+      );
     }
     if (spec.propAssetKey != null && isBoundary && props.isEmpty) {
       final edgeTiles = tiles.where(
-        (tile) => _isBoundaryCell(tile.position, tile.size, requested, worldBounds),
+        (tile) =>
+            _isBoundaryCell(tile.position, tile.size, requested, worldBounds),
       );
       if (edgeTiles.isNotEmpty) {
         final tile = edgeTiles.first;
-        props.add(StageDecorationPlacement(
-          kind: StageDecorationKind.prop,
-          position: tile.position,
-          size: tile.size,
-          variant: _chunkMix(seed, spec.seedSalt, coordinate.x, coordinate.y) %
-              spec.propVariants,
-        ));
+        props.add(
+          StageDecorationPlacement(
+            kind: StageDecorationKind.prop,
+            position: tile.position,
+            size: tile.size,
+            variant:
+                _chunkMix(seed, spec.seedSalt, coordinate.x, coordinate.y) %
+                spec.propVariants,
+          ),
+        );
       }
     }
     return StageLayout._(

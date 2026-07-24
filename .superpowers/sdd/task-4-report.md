@@ -21,3 +21,23 @@
 
 No full-suite or device run was requested. Streamer lifecycle behavior is
 covered by focused unit tests and targeted static analysis only.
+
+## Follow-up fixes
+
+- Boundary props now clamp their complete 128px render rectangles inside their
+  owning chunk and the finite world; the boundary test uses a real prop atlas
+  and verifies the rendered-placement bounds.
+- Streamer priority is stage-level, immediate re-entry cancels a retiring
+  bundle before it can be duplicated, and focused lifecycle coverage verifies
+  a single mounted bundle per requested coordinate.
+- Chunk tiles use a seed-offset global checker pattern so every horizontal and
+  vertical neighbor differs, including across chunk edges. Invalid chunk sizes
+  now reject with `ArgumentError`.
+- The representative loop assertion now verifies the streamer and loaded
+  chunks rather than the removed backdrop component.
+
+## Follow-up verification
+
+- The five focused Task 4 test files pass (27 tests).
+- The named game-loop file still contains three unrelated combat failures:
+  sealing-slash presentation plus the two Hwando mastery/critical assertions.
