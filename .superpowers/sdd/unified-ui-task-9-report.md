@@ -40,6 +40,18 @@ pause-menu implementation was removed.
 - PASS: all four Task 9 focused files, run sequentially to avoid concurrent
   Flutter runner contention.
 
+## Review follow-up
+
+- Level-up choice copy now uses navy/ink foregrounds on the ivory shared panel.
+- HUD now shows only the first (core) weapon mark with an unscaled compact
+  `WeaponStarRating`; the 22px mark and rating remain within the fixed 64px
+  HUD on the narrow portrait test.
+- PASS: the four Task 9 focused files and
+  `test/game/run_summary_progression_test.dart`.
+- The targeted HUD golden contract assertions pass before image comparison, but
+  `game HUD 16:9 golden` differs by 0.29% (2651 pixels), as expected after the
+  approved HUD visual redesign. Golden files were intentionally not regenerated.
+
 ## Commits
 
 - `ac9a877 feat: unify combat hud and overlays`

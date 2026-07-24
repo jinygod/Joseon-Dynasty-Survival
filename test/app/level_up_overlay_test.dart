@@ -36,6 +36,40 @@ void main() {
     expect(find.byKey(const Key('filled-star-5')), findsNothing);
   });
 
+  testWidgets('level-up copy uses dark ink on the shared ivory panel', (
+    tester,
+  ) async {
+    const choice = LevelUpChoice(
+      id: 'ink_test',
+      displayName: 'Ink test',
+      effectDescription: 'Readable copy.',
+      type: LevelUpChoiceType.weapon,
+      currentLevel: 1,
+      nextLevel: 2,
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: LevelUpOverlay(
+          choices: const [choice],
+          onChoiceSelected: (_) {},
+        ),
+      ),
+    );
+
+    expect(
+      tester.widget<Text>(find.byKey(const Key('level-up-choice-name-0')))
+          .style
+          ?.color,
+      const Color(0xff14233b),
+    );
+    expect(
+      tester.widget<Text>(find.byKey(const Key('level-up-choice-effect-0')))
+          .style
+          ?.color,
+      const Color(0xff2b251d),
+    );
+  });
+
   const choices = <LevelUpChoice>[
     LevelUpChoice(
       id: 'long_weapon',

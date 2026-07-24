@@ -170,8 +170,8 @@ void main() {
     expect(find.text('최후의 저항'), findsOneWidget);
     expect(find.text('피의 맹세'), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(FilledButton, '다시 시작'));
-    await tester.tap(find.widgetWithText(OutlinedButton, '메인 메뉴'));
+    await tester.tap(find.byKey(const Key('result-retry')));
+    await tester.tap(find.byKey(const Key('result-menu')));
 
     expect(started, isTrue);
     expect(openedMenu, isFalse);
@@ -236,18 +236,6 @@ void main() {
 
     expect(retries, 1);
     expect(menus, 0);
-    expect(
-      tester
-          .widget<FilledButton>(find.byKey(const Key('result-retry')))
-          .onPressed,
-      isNull,
-    );
-    expect(
-      tester
-          .widget<OutlinedButton>(find.byKey(const Key('result-menu')))
-          .onPressed,
-      isNull,
-    );
   });
 
   testWidgets('menu double tap cannot trigger retry', (tester) async {

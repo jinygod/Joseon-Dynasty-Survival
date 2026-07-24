@@ -16,6 +16,7 @@ import 'package:pixel_survivor/app/lobby_screen.dart';
 import 'package:pixel_survivor/app/pause_menu_overlay.dart';
 import 'package:pixel_survivor/app/run_summary_screen.dart';
 import 'package:pixel_survivor/app/stage_select_screen.dart';
+import 'package:pixel_survivor/app/weapon_star_rating.dart';
 import 'package:pixel_survivor/game/audio/audio_settings.dart';
 import 'package:pixel_survivor/game/audio/audio_settings_controller.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
@@ -122,16 +123,15 @@ void main() {
           containsPair(talismanThrow, expectedWeaponLevels[talismanThrow]),
         );
         expect(game.weaponLevelLabels, expectedWeaponLabels);
-        for (var index = 0; index < expectedWeaponLabels.length; index++) {
-          final slot = find.byKey(Key('hud-weapon-slot-$index'));
-          expect(slot, findsOneWidget);
-          expect(
-            tester
-                .widget<Text>(find.byKey(Key('hud-weapon-level-$index')))
-                .data,
-            '${expectedWeaponLevels.values.elementAt(index)}',
-          );
-        }
+        expect(find.byKey(const Key('hud-weapon-slot-0')), findsOneWidget);
+        expect(find.byType(WeaponStarRating), findsOneWidget);
+        expect(
+          tester.widget<WeaponStarRating>(find.byType(WeaponStarRating)).level,
+          expectedWeaponLevels.values.first,
+        );
+        expect(find.byKey(const Key('filled-star-5')), findsNothing);
+        expect(find.byKey(const Key('hud-weapon-slot-1')), findsNothing);
+        expect(find.byKey(const Key('hud-weapon-slot-2')), findsNothing);
         expect(find.byKey(const Key('hud-weapon-slot-3')), findsNothing);
         await _expectWeaponMarksPainted(tester);
       },
@@ -202,8 +202,6 @@ Future<void> _expectGolden(
 Future<void> _expectWeaponMarksPainted(WidgetTester tester) async {
   const expectedMarks = [
     (index: 0, style: 'hwando', color: (217, 247, 255)),
-    (index: 1, style: 'projectile', color: (232, 197, 255)),
-    (index: 2, style: 'talisman', color: (255, 214, 170)),
   ];
   final marks = [
     for (final expected in expectedMarks)

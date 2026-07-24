@@ -391,8 +391,10 @@ class _StatusBar extends StatelessWidget {
                       const SizedBox(width: 8),
                       KeyedSubtree(
                         key: const Key('weapon-list'),
-                        child: _WeaponSlots(
-                          labels: source.weaponLevelLabels.take(3).toList(),
+                        child: _CoreWeaponRating(
+                          label: source.weaponLevelLabels.isEmpty
+                              ? null
+                              : source.weaponLevelLabels.first,
                         ),
                       ),
                     ],
@@ -464,21 +466,59 @@ class _MeterBar extends StatelessWidget {
   }
 }
 
-class _WeaponSlots extends StatelessWidget {
-  const _WeaponSlots({required this.labels});
+class _CoreWeaponRating extends StatelessWidget {
+  const _CoreWeaponRating({required this.label});
 
-  final List<String> labels;
+  final String? label;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (var index = 0; index < labels.length; index++) ...[
-          if (index > 0) const SizedBox(width: 4),
-          _WeaponSlot(index: index, label: labels[index]),
-        ],
-      ],
+    if (label == null) return const SizedBox.shrink();
+    final level = _levelFromLabel(label!);
+    final style = _weaponMarkStyleForLabel(label!);
+    final color = switch (style) {
+      _WeaponMarkStyle.hwando => const Color(0xffd9f7ff),
+      _WeaponMarkStyle.talisman => const Color(0xffffd6aa),
+      _WeaponMarkStyle.projectile => const Color(0xffe8c5ff),
+    };
+    return Semantics(
+      container: true,
+      label: label,
+      child: SizedBox(
+        key: const Key('hud-core-weapon'),
+        height: 24,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox.square(
+              key: const Key('hud-weapon-slot-0'),
+              dimension: 22,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: const Color(0xff172633),
+                  border: Border.all(color: color),
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                child: Center(
+                  child: CustomPaint(
+                    key: Key('hud-weapon-mark-0-${style.name}'),
+                    size: const Size.square(16),
+                    painter: _WeaponMarkPainter(style: style, color: color),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 5),
+            ExcludeSemantics(
+              child: WeaponStarRating(
+                key: const Key('hud-core-weapon-rating'),
+                level: level,
+                compact: true,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

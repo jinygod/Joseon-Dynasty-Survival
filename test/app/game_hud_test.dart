@@ -44,7 +44,7 @@ void main() {
 
     expect(find.text('Corrupted Guard Captain'), findsOneWidget);
     expect(find.byKey(const Key('hud-weapon-slot-0')), findsOneWidget);
-    expect(find.byKey(const Key('hud-weapon-slot-1')), findsOneWidget);
+    expect(find.byKey(const Key('hud-weapon-slot-1')), findsNothing);
     expect(find.byType(LinearProgressIndicator), findsOneWidget);
   });
 
@@ -114,13 +114,20 @@ void main() {
       const Size.square(104),
     );
     expect(find.byKey(const Key('hud-weapon-slot-0')), findsOneWidget);
-    expect(find.byKey(const Key('hud-weapon-slot-1')), findsOneWidget);
-    expect(find.byKey(const Key('hud-weapon-slot-2')), findsOneWidget);
+    expect(find.byKey(const Key('hud-weapon-slot-1')), findsNothing);
+    expect(find.byKey(const Key('hud-weapon-slot-2')), findsNothing);
     expect(find.byKey(const Key('hud-weapon-slot-3')), findsNothing);
     expect(
       tester.getSize(find.byKey(const Key('hud-weapon-slot-0'))),
-      const Size.square(24),
+      const Size.square(22),
     );
+    final coreWeapon = tester.getRect(find.byKey(const Key('hud-core-weapon')));
+    final rating = tester.getRect(
+      find.byKey(const Key('hud-core-weapon-rating')),
+    );
+    expect(rating.height, greaterThanOrEqualTo(12));
+    expect(coreWeapon.right, lessThanOrEqualTo(status.right));
+    expect(coreWeapon.bottom, lessThanOrEqualTo(status.bottom));
   });
 
   testWidgets('HUD keeps the compact weapon mastery rating', (tester) async {
@@ -161,7 +168,7 @@ void main() {
     semantics.dispose();
   });
 
-  testWidgets('weapon marks follow weapon identity instead of slot index', (
+  testWidgets('core weapon mark follows the first equipped weapon', (
     tester,
   ) async {
     final source = FakeGameHudSource(
@@ -173,11 +180,8 @@ void main() {
     await tester.pumpWidget(MaterialApp(home: GameHud(source: source)));
 
     expect(find.byKey(const Key('hud-weapon-mark-0-talisman')), findsOneWidget);
-    expect(
-      find.byKey(const Key('hud-weapon-mark-1-projectile')),
-      findsOneWidget,
-    );
-    expect(find.byKey(const Key('hud-weapon-mark-2-hwando')), findsOneWidget);
+    expect(find.byKey(const Key('hud-weapon-mark-1-projectile')), findsNothing);
+    expect(find.byKey(const Key('hud-weapon-mark-2-hwando')), findsNothing);
   });
 
   testWidgets('a talisman-only legacy source still paints a talisman', (

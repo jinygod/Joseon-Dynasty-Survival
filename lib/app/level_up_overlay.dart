@@ -155,7 +155,7 @@ class _LevelUpChoiceCard extends StatelessWidget {
           choice.displayName,
           key: Key('level-up-choice-name-$index'),
           style: const TextStyle(
-            color: Colors.white,
+            color: Color(0xff14233b),
             fontSize: 17,
             fontWeight: FontWeight.w900,
             height: 1.12,
@@ -178,7 +178,7 @@ class _LevelUpChoiceCard extends StatelessWidget {
           choice.effectDescription,
           key: Key('level-up-choice-effect-$index'),
           style: const TextStyle(
-            color: Color(0xffeef2f8),
+            color: Color(0xff2b251d),
             fontSize: 13,
             fontWeight: FontWeight.w600,
             height: 1.28,
