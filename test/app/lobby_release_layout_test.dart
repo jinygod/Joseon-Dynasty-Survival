@@ -40,6 +40,27 @@ void main() {
       expect(find.text('\uac80\uc218'), findsOneWidget);
       expect(find.byKey(const Key('lobby-profile-frame')), findsOneWidget);
       expect(find.byKey(const Key('lobby-resource-frame')), findsOneWidget);
+      final profileFrame = tester.widget<Image>(
+        find.byKey(const Key('lobby-profile-frame')),
+      );
+      expect(
+        profileFrame.image,
+        AssetImage(AssetCatalog.lobbyFrames['profile']!),
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('lobby-profile-frame')),
+          matching: find.byType(Icon),
+        ),
+        findsNothing,
+      );
+      final profileRaster = tester.widget<Image>(
+        find.byKey(const Key('lobby-profile-icon')),
+      );
+      expect(
+        profileRaster.image,
+        AssetImage(AssetCatalog.lobbyIcons['character']!),
+      );
       expect(
         tester.getSemantics(find.byKey(const Key('lobby-settings'))),
         matchesSemantics(
@@ -81,6 +102,7 @@ void main() {
                   launching: false,
                   saving: false,
                   onDeploy: () {},
+                  onStageSelect: () {},
                 ),
               ),
             ),
@@ -92,6 +114,7 @@ void main() {
       expect(find.byKey(const Key('lobby-character-shadow')), findsOneWidget);
       expect(find.byKey(const Key('lobby-character-art')), findsOneWidget);
       expect(find.byKey(const Key('lobby-stage-plaque')), findsOneWidget);
+      expect(find.byKey(const Key('lobby-stage')), findsOneWidget);
       expect(find.byKey(const Key('lobby-deploy')), findsOneWidget);
       expect(
         find.byKey(const Key('lobby-stage-background-image')),
@@ -174,6 +197,35 @@ void main() {
       expect(tester.getSize(button).height, greaterThanOrEqualTo(48));
     }
     semantics.dispose();
+  });
+
+  testWidgets('stage plaque owns its matching selection hit target', (
+    tester,
+  ) async {
+    var selected = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LobbyBattleStage(
+            characterId: 'rookie_constable',
+            characterName: 'New constable',
+            stage: stageDefinitions.first,
+            bestSeconds: 75,
+            launching: false,
+            saving: false,
+            onDeploy: () {},
+            onStageSelect: () => selected++,
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      tester.getRect(find.byKey(const Key('lobby-stage'))),
+      tester.getRect(find.byKey(const Key('lobby-stage-plaque'))),
+    );
+    await tester.tap(find.byKey(const Key('lobby-stage')));
+    expect(selected, 1);
   });
 
   testWidgets('quick actions expose Korean labels and forward callbacks', (

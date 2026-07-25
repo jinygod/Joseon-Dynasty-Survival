@@ -4,11 +4,7 @@ import 'package:pixel_survivor/app/lobby_feature_notice.dart';
 
 void main() {
   test('resolves the approved copy for every lobby feature', () {
-    const cases = <(
-      LobbyFeature,
-      String,
-      String,
-    )>[
+    const cases = <(LobbyFeature, String, String)>[
       (LobbyFeature.mail, '전령의 소식', '전령이 새로운 소식을 모으고 있습니다.'),
       (LobbyFeature.mission, '임무서', '관아에서 오늘의 임무서를 정리하고 있습니다.'),
       (LobbyFeature.pass, '승급 준비', '새 승급 보상이 도착할 때까지 잠시 기다려 주십시오.'),
@@ -18,6 +14,11 @@ void main() {
       (LobbyFeature.companion, '인연', '함께 싸울 인연을 찾고 있습니다.'),
       (LobbyFeature.crafting, '대장간', '대장간의 화로를 달구고 있습니다.'),
       (LobbyFeature.challenge, '봉인된 시련', '봉인된 시련의 문이 아직 열리지 않았습니다.'),
+      (
+        LobbyFeature.weapon,
+        '\ubb34\uae30\uace0',
+        '\uc804\ud22c\uc5d0 \uc4f8 \ubb34\uae30\ub97c \uc815\ube44\ud558\uace0 \uc788\uc2b5\ub2c8\ub2e4.',
+      ),
     ];
 
     for (final entry in cases) {

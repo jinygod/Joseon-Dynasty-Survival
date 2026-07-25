@@ -15,6 +15,7 @@ class LobbyBattleStage extends StatelessWidget {
     required this.launching,
     required this.saving,
     required this.onDeploy,
+    required this.onStageSelect,
     this.shortLandscape = false,
     super.key,
   });
@@ -26,6 +27,7 @@ class LobbyBattleStage extends StatelessWidget {
   final bool launching;
   final bool saving;
   final VoidCallback onDeploy;
+  final VoidCallback onStageSelect;
   final bool shortLandscape;
 
   @override
@@ -42,6 +44,7 @@ class LobbyBattleStage extends StatelessWidget {
             stage: stage,
             bestSeconds: bestSeconds,
             compact: compact,
+            onStageSelect: onStageSelect,
           );
           final deploy = _DeployCommand(
             launching: launching,
@@ -65,69 +68,78 @@ class _StagePlaque extends StatelessWidget {
     required this.stage,
     required this.bestSeconds,
     required this.compact,
+    required this.onStageSelect,
   });
 
   final String characterName;
   final StageDefinition stage;
   final int bestSeconds;
   final bool compact;
+  final VoidCallback onStageSelect;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      key: const Key('lobby-stage-plaque'),
-      width: compact ? 276 : 330,
-      height: compact ? 78 : 96,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Image.asset(
-            AssetCatalog.lobbyFrames['stage_plaque']!,
-            fit: BoxFit.fill,
-          ),
-          Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: 26,
-              vertical: compact ? 6 : 12,
+    return GestureDetector(
+      key: const Key('lobby-stage'),
+      behavior: HitTestBehavior.opaque,
+      onTap: onStageSelect,
+      child: SizedBox(
+        key: const Key('lobby-stage-plaque'),
+        width: compact ? 276 : 330,
+        height: compact ? 78 : 96,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset(
+              AssetCatalog.lobbyFrames['stage_plaque']!,
+              fit: BoxFit.fill,
             ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  characterName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontFamily: JoseonUiTheme.bodyFontFamily,
-                    color: const Color(0xffffe6a7),
-                    fontSize: compact ? 12 : 14,
-                    fontWeight: FontWeight.bold,
+            Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: 26,
+                vertical: compact ? 6 : 12,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    characterName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: JoseonUiTheme.bodyFontFamily,
+                      color: const Color(0xffffe6a7),
+                      fontSize: compact ? 12 : 14,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                Text(
-                  stage.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontFamily: JoseonUiTheme.displayFontFamily,
-                    color: Colors.white,
-                    fontSize: compact ? 18 : 22,
-                    shadows: const [Shadow(color: Colors.black, blurRadius: 4)],
+                  Text(
+                    stage.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: JoseonUiTheme.displayFontFamily,
+                      color: Colors.white,
+                      fontSize: compact ? 18 : 22,
+                      shadows: const [
+                        Shadow(color: Colors.black, blurRadius: 4),
+                      ],
+                    ),
                   ),
-                ),
-                Text(
-                  '최고 기록 ${_clock(bestSeconds)}',
-                  maxLines: 1,
-                  style: TextStyle(
-                    fontFamily: JoseonUiTheme.bodyFontFamily,
-                    color: const Color(0xffffe6a7),
-                    fontSize: compact ? 11 : 12,
+                  Text(
+                    '최고 기록 ${_clock(bestSeconds)}',
+                    maxLines: 1,
+                    style: TextStyle(
+                      fontFamily: JoseonUiTheme.bodyFontFamily,
+                      color: const Color(0xffffe6a7),
+                      fontSize: compact ? 11 : 12,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

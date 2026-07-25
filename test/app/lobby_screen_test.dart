@@ -18,6 +18,9 @@ import 'package:pixel_survivor/game/content/stage_definitions.dart';
 import 'package:pixel_survivor/game/models/meta_progress.dart';
 import 'package:pixel_survivor/game/systems/save_system.dart';
 import 'package:pixel_survivor/backend/account/account_session.dart';
+import 'package:pixel_survivor/backend/account/account_controller.dart';
+import 'package:pixel_survivor/backend/account/account_service.dart';
+import 'package:pixel_survivor/backend/backend_config.dart';
 import 'package:pixel_survivor/backend/economy/premium_wallet.dart';
 import 'package:pixel_survivor/backend/economy/purchase_controller.dart';
 import 'package:pixel_survivor/backend/economy/purchase_gateway.dart';
@@ -154,6 +157,54 @@ void main() {
 
     expect(find.text('대장간'), findsOneWidget);
     expect(find.byKey(const Key('lobby-feature-notice')), findsOneWidget);
+  });
+
+  for (final size in const [Size(1280, 720), Size(780, 400), Size(640, 360)]) {
+    testWidgets(
+      'stage plaque owns the selection bounds at ${size.width}x${size.height}',
+      (tester) async {
+        tester.view.devicePixelRatio = 1;
+        tester.view.physicalSize = size;
+        addTearDown(tester.view.resetDevicePixelRatio);
+        addTearDown(tester.view.resetPhysicalSize);
+        final lobby = LobbyController(
+          store: _MemorySaveStore(SaveState.defaults()),
+        );
+        await lobby.load();
+        await tester.pumpWidget(_lobbyApp(lobby));
+        await tester.pump();
+
+        final stage = tester.getRect(find.byKey(const Key('lobby-stage')));
+        expect(
+          stage,
+          tester.getRect(find.byKey(const Key('lobby-stage-plaque'))),
+        );
+        expect(
+          stage.overlaps(tester.getRect(find.byKey(const Key('lobby-deploy')))),
+          isFalse,
+        );
+      },
+    );
+  }
+
+  testWidgets('permanent account sync-now has a 48 by 48 hit target', (
+    tester,
+  ) async {
+    final account = AccountController(
+      config: const BackendConfig(url: 'url', publishableKey: 'key'),
+      service: _PermanentAccountService(),
+    );
+    await account.initialize();
+    final lobby = LobbyController(
+      store: _MemorySaveStore(SaveState.defaults()),
+    );
+    await lobby.load();
+    await tester.pumpWidget(_lobbyApp(lobby, accountController: account));
+    await tester.pump();
+
+    final sync = tester.getSize(find.byKey(const Key('sync-now')));
+    expect(sync.width, greaterThanOrEqualTo(48));
+    expect(sync.height, greaterThanOrEqualTo(48));
   });
 
   testWidgets('deploy uses the persisted character and stage', (tester) async {
@@ -359,6 +410,7 @@ void main() {
       ('lobby-quick-companion', '인연'),
       ('lobby-quick-crafting', '대장간'),
       ('lobby-primary-challenge', '봉인된 시련'),
+      ('lobby-quick-weapon', '\ubb34\uae30\uace0'),
     ];
     for (final entry in entries) {
       await tester.tap(find.byKey(Key(entry.$1)));
@@ -370,11 +422,15 @@ void main() {
   });
 }
 
-Widget _lobbyApp(LobbyController lobby) => MaterialApp(
+Widget _lobbyApp(
+  LobbyController lobby, {
+  AccountController? accountController,
+}) => MaterialApp(
   theme: ThemeData(splashFactory: NoSplash.splashFactory),
   home: LobbyScreen(
     controller: lobby,
     audioSettingsController: _audioController(),
+    accountController: accountController,
   ),
 );
 
@@ -391,6 +447,26 @@ class _MemorySaveStore implements SaveStore {
 
   @override
   Future<void> save(SaveState state) async => value = state;
+}
+
+class _PermanentAccountService implements AccountService {
+  static final _session = AccountSession.google(
+    userId: 'player',
+    email: 'player@example.com',
+  );
+
+  @override
+  Stream<AccountSession> get changes => const Stream.empty();
+  @override
+  AccountSession get current => _session;
+  @override
+  Future<AccountSession> ensureGuest() async => _session;
+  @override
+  Future<AccountSession> connectGoogle() async => _session;
+  @override
+  Future<void> signOut() async {}
+  @override
+  Future<void> deleteAccount() async {}
 }
 
 class _MemoryAudioStore implements AudioSettingsStore {

@@ -326,7 +326,7 @@ class _LobbyScreenState extends State<LobbyScreen> with WidgetsBindingObserver {
                             top: 66,
                             right: 82,
                             width: 210,
-                            height: 40,
+                            height: 48,
                             child: ListenableBuilder(
                               listenable: account,
                               builder: (context, _) => Row(
@@ -353,7 +353,7 @@ class _LobbyScreenState extends State<LobbyScreen> with WidgetsBindingObserver {
                                       ),
                                       child: const SizedBox(
                                         width: 48,
-                                        height: 40,
+                                        height: 48,
                                         child: Center(child: Text('동기화')),
                                       ),
                                     ),
@@ -508,22 +508,11 @@ class _LobbyScreenState extends State<LobbyScreen> with WidgetsBindingObserver {
                                   saving: widget.controller.saving,
                                   shortLandscape: ultraWide,
                                   onDeploy: _deploy,
+                                  onStageSelect: () =>
+                                      unawaited(_openStagePicker()),
                                 ),
                               ),
                             ),
-                          ),
-                        ),
-                        Positioned(
-                          left: ultraWide ? null : 100,
-                          right: ultraWide ? 118 : null,
-                          bottom: ultraWide ? 202 : 174,
-                          width: ultraWide ? 276 : 280,
-                          height: ultraWide ? 78 : 80,
-                          child: Listener(
-                            key: const Key('lobby-stage'),
-                            behavior: HitTestBehavior.opaque,
-                            onPointerUp: (_) => unawaited(_openStagePicker()),
-                            child: const SizedBox.expand(),
                           ),
                         ),
                         Positioned(
@@ -534,8 +523,7 @@ class _LobbyScreenState extends State<LobbyScreen> with WidgetsBindingObserver {
                           child: Center(
                             child: LobbyQuickActions(
                               onGrowth: _openTraining,
-                              onWeapon: () =>
-                                  _showFeature(LobbyFeature.ranking),
+                              onWeapon: () => _showFeature(LobbyFeature.weapon),
                               onRelic: () => _showFeature(LobbyFeature.relic),
                               onCompanion: () =>
                                   _showFeature(LobbyFeature.companion),

@@ -233,8 +233,8 @@ Future<void> _expectLobbyVisualAssetsPainted(WidgetTester tester) async {
   final rendered = await _captureRawPixels(tester, boundaryFinder);
   final pixels = rendered.pixels;
 
-  final iconFinder = find.byType(Icon);
-  expect(iconFinder, findsWidgets);
+  final iconFinder = find.byKey(const Key('lobby-profile-icon'));
+  expect(iconFinder, findsOneWidget);
   for (final icon in iconFinder.evaluate()) {
     final rect = tester.getRect(find.byWidget(icon.widget));
     final left = (rect.left - boundaryRect.left).floor();
@@ -257,9 +257,7 @@ Future<void> _expectLobbyVisualAssetsPainted(WidgetTester tester) async {
         height: height,
       ),
       isFalse,
-      reason:
-          'Material icon ${(icon.widget as Icon).icon} painted as a '
-          'thin rectangular missing-glyph box',
+      reason: 'profile raster icon painted as a thin rectangular empty box',
     );
   }
 

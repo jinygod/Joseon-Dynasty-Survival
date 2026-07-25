@@ -10,6 +10,7 @@ enum LobbyFeature {
   companion,
   crafting,
   challenge,
+  weapon,
 }
 
 class LobbyFeatureNoticeCopy {
@@ -56,6 +57,11 @@ LobbyFeatureNoticeCopy copyForLobbyFeature(LobbyFeature feature) {
     LobbyFeature.challenge => const LobbyFeatureNoticeCopy(
       title: '봉인된 시련',
       body: '봉인된 시련의 문이 아직 열리지 않았습니다.',
+    ),
+    LobbyFeature.weapon => const LobbyFeatureNoticeCopy(
+      title: '\ubb34\uae30\uace0',
+      body:
+          '\uc804\ud22c\uc5d0 \uc4f8 \ubb34\uae30\ub97c \uc815\ube44\ud558\uace0 \uc788\uc2b5\ub2c8\ub2e4.',
     ),
   };
 }
@@ -176,10 +182,7 @@ class _LobbyFeatureNotice extends StatelessWidget {
                               fontSize: 20,
                               fontWeight: FontWeight.w700,
                               shadows: [
-                                Shadow(
-                                  color: Color(0xff201108),
-                                  blurRadius: 3,
-                                ),
+                                Shadow(color: Color(0xff201108), blurRadius: 3),
                               ],
                             ),
                           ),

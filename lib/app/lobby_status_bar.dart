@@ -71,7 +71,13 @@ class _ProfileFrame extends StatelessWidget {
         key: const Key('lobby-profile-frame'),
         fit: BoxFit.fill,
       ),
-      const Center(child: Icon(Icons.person_outline, color: Colors.white)),
+      Center(
+        child: Image.asset(
+          AssetCatalog.lobbyIcons['character']!,
+          key: const Key('lobby-profile-icon'),
+          fit: BoxFit.contain,
+        ),
+      ),
     ],
   );
 }
