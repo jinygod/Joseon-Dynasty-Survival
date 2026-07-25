@@ -293,6 +293,8 @@ class _LobbyScreenState extends State<LobbyScreen> with WidgetsBindingObserver {
               foreground: LayoutBuilder(
                 builder: (context, constraints) {
                   final compactRails = constraints.maxWidth <= 640;
+                  final ultraWide =
+                      constraints.maxWidth >= constraints.maxHeight * 2;
                   final account = widget.accountController;
                   final railTop = account == null ? 70.0 : 112.0;
                   return MediaQuery(
@@ -484,37 +486,37 @@ class _LobbyScreenState extends State<LobbyScreen> with WidgetsBindingObserver {
                           ),
                         ],
                         Positioned(
-                          left: 52,
-                          right: 52,
-                          bottom: 150,
-                          child: Center(
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: SizedBox(
-                                width: 526,
-                                child: MediaQuery(
-                                  data: MediaQuery.of(
-                                    context,
-                                  ).copyWith(textScaler: TextScaler.noScaling),
-                                  child: LobbyBattleStage(
-                                    characterId: character.id,
-                                    characterName: character.name,
-                                    stage: stage,
-                                    bestSeconds: state.bestSurvivalSeconds,
-                                    launching: _launching,
-                                    saving: widget.controller.saving,
-                                    onDeploy: _deploy,
-                                  ),
+                          left: ultraWide ? null : 52,
+                          right: ultraWide ? 86 : 52,
+                          bottom: ultraWide ? 132 : 150,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: SizedBox(
+                              width: ultraWide ? 340 : 526,
+                              child: MediaQuery(
+                                data: MediaQuery.of(
+                                  context,
+                                ).copyWith(textScaler: TextScaler.noScaling),
+                                child: LobbyBattleStage(
+                                  characterId: character.id,
+                                  characterName: character.name,
+                                  stage: stage,
+                                  bestSeconds: state.bestSurvivalSeconds,
+                                  launching: _launching,
+                                  saving: widget.controller.saving,
+                                  shortLandscape: ultraWide,
+                                  onDeploy: _deploy,
                                 ),
                               ),
                             ),
                           ),
                         ),
                         Positioned(
-                          left: 100,
-                          bottom: 174,
-                          width: 280,
-                          height: 80,
+                          left: ultraWide ? null : 100,
+                          right: ultraWide ? 86 : null,
+                          bottom: ultraWide ? 202 : 174,
+                          width: ultraWide ? 276 : 280,
+                          height: ultraWide ? 78 : 80,
                           child: Listener(
                             key: const Key('lobby-stage'),
                             behavior: HitTestBehavior.opaque,

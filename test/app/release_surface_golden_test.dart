@@ -191,10 +191,32 @@ Future<void> _warmAndExpectLobbyAssets(WidgetTester tester) async {
   expect(rendered!.pixels, isNotNull);
 
   final background = tester.getRect(
-    find.byKey(const Key('lobby-stage-background-image')),
+    find.byKey(const Key('lobby-scene-background')),
   );
   final character = tester.getRect(
     find.byKey(const Key('lobby-character-art')),
+  );
+  final stagePlaque = tester.getRect(
+    find.byKey(const Key('lobby-stage-plaque')),
+  );
+  final deploy = tester.getRect(find.byKey(const Key('lobby-deploy')));
+  final deployShadow = tester.getRect(
+    find.byKey(const Key('lobby-asset-button-shadow-lobby-deploy')),
+  );
+  expect(
+    deploy.top,
+    greaterThanOrEqualTo(stagePlaque.bottom),
+    reason: 'the deploy command must sit below the stage plaque as the focal action',
+  );
+  expect(
+    deployShadow.height,
+    lessThanOrEqualTo(8),
+    reason: 'the deploy frame must retain its bright raster center',
+  );
+  expect(
+    character.height,
+    greaterThanOrEqualTo(480),
+    reason: 'the selected character must remain the primary lobby focal point',
   );
   expect(
     _sampledColorCount(

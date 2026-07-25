@@ -105,6 +105,18 @@ class _LobbyFeatureNotice extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
+              const Positioned(
+                left: 48,
+                top: 48,
+                right: 48,
+                bottom: 38,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Color(0xffe2c995),
+                    borderRadius: BorderRadius.all(Radius.circular(18)),
+                  ),
+                ),
+              ),
               ExcludeSemantics(
                 child: Image.asset(
                   'assets/images/ui/lobby/frame_feature_notice.png',
@@ -146,19 +158,29 @@ class _LobbyFeatureNotice extends StatelessWidget {
                         onTap: () => Navigator.of(context).pop(),
                         child: Container(
                           alignment: Alignment.center,
-                          width: 112,
+                          width: 128,
                           height: 52,
-                          decoration: BoxDecoration(
-                            color: const Color(0xff3b2718),
-                            border: Border.all(color: const Color(0xffc7a65a)),
-                            borderRadius: BorderRadius.circular(4),
+                          decoration: const BoxDecoration(
+                            image: DecorationImage(
+                              image: AssetImage(
+                                'assets/images/ui/lobby/frame_deploy.png',
+                              ),
+                              fit: BoxFit.fill,
+                            ),
                           ),
                           child: const Text(
                             '확인',
                             style: TextStyle(
-                              color: Color(0xfffff5d6),
+                              color: Color(0xfffff1c4),
                               fontFamily: 'GowunBatang',
+                              fontSize: 20,
                               fontWeight: FontWeight.w700,
+                              shadows: [
+                                Shadow(
+                                  color: Color(0xff201108),
+                                  blurRadius: 3,
+                                ),
+                              ],
                             ),
                           ),
                         ),

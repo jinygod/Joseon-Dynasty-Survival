@@ -58,12 +58,17 @@ class _LobbyAssetButtonState extends State<LobbyAssetButton> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              Positioned.fill(
-                top: _pressDepth,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: const Color(0x99000000),
-                    borderRadius: BorderRadius.circular(8),
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: SizedBox(
+                  width: targetSize.width * .72,
+                  height: _pressDepth + 3,
+                  child: DecoratedBox(
+                    key: Key('lobby-asset-button-shadow-${widget.debugId}'),
+                    decoration: BoxDecoration(
+                      color: const Color(0x99000000),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
                 ),
               ),

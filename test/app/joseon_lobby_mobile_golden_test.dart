@@ -93,9 +93,9 @@ void main() {
     }
   });
 
-  for (final size in const [Size(390, 844), Size(375, 667), Size(430, 932)]) {
+  for (final size in const [Size(1280, 720), Size(1170, 540)]) {
     testWidgets(
-      'lobby mobile ${size.width.toInt()}x${size.height.toInt()} golden',
+      'lobby landscape ${size.width.toInt()}x${size.height.toInt()} golden',
       (tester) async {
         final controller = LobbyController(
           store: _MemorySaveStore(SaveState.defaults()),
@@ -108,16 +108,63 @@ void main() {
             controller: controller,
             audioSettingsController: _audioController(),
           ),
+          goldenFile:
+              'lobby_${size.width.toInt()}x${size.height.toInt()}.png',
+          beforeCapture: (tester) async {
+            if (size.width / size.height < 2) return;
+            final character = tester.getRect(
+              find.byKey(const Key('lobby-character-art')),
+            );
+            final deploy = tester.getRect(
+              find.byKey(const Key('lobby-deploy')),
+            );
+            expect(
+              deploy.left,
+              greaterThanOrEqualTo(size.width * .65),
+              reason: 'ultra-wide staging must not cover the character',
+            );
+          },
         );
       },
     );
   }
+
+  testWidgets('lobby feature notice 16:9 golden', (tester) async {
+    final controller = LobbyController(
+      store: _MemorySaveStore(SaveState.defaults()),
+    );
+    await controller.load();
+    await _expectMobileLobbyGolden(
+      tester,
+      const Size(1280, 720),
+      LobbyScreen(
+        controller: controller,
+        audioSettingsController: _audioController(),
+      ),
+      goldenFile: 'lobby_feature_notice.png',
+      beforeCapture: (tester) async {
+        await tester.tap(find.byKey(const Key('lobby-quick-crafting')));
+        await tester.pumpAndSettle();
+        for (var attempt = 0; attempt < 3; attempt++) {
+          await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 100)),
+          );
+          await tester.pump();
+        }
+        expect(find.byKey(const Key('lobby-feature-notice')), findsOneWidget);
+      },
+    );
+  });
 }
 
 Future<void> _expectMobileLobbyGolden(
   WidgetTester tester,
   Size size,
   Widget lobby,
+  {
+  required String goldenFile,
+  Future<void> Function(WidgetTester tester)? beforeCapture,
+}
 ) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = size;
@@ -133,7 +180,11 @@ Future<void> _expectMobileLobbyGolden(
     MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: JoseonUiTheme.create(),
-      home: RepaintBoundary(key: const Key('golden-root'), child: lobby),
+      builder: (context, child) => RepaintBoundary(
+        key: const Key('golden-root'),
+        child: child!,
+      ),
+      home: lobby,
     ),
   );
   for (var attempt = 0; attempt < 3; attempt++) {
@@ -144,11 +195,10 @@ Future<void> _expectMobileLobbyGolden(
   }
   expect(tester.takeException(), isNull);
   await _expectLobbyVisualAssetsPainted(tester);
+  await beforeCapture?.call(tester);
   await expectLater(
     find.byKey(const Key('golden-root')),
-    matchesGoldenFile(
-      'goldens/lobby_mobile_${size.width.toInt()}x${size.height.toInt()}.png',
-    ),
+    matchesGoldenFile('goldens/$goldenFile'),
   );
   await tester.pumpWidget(const SizedBox.shrink());
 }

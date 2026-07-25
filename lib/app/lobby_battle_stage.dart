@@ -15,6 +15,7 @@ class LobbyBattleStage extends StatelessWidget {
     required this.launching,
     required this.saving,
     required this.onDeploy,
+    this.shortLandscape = false,
     super.key,
   });
 
@@ -25,16 +26,17 @@ class LobbyBattleStage extends StatelessWidget {
   final bool launching;
   final bool saving;
   final VoidCallback onDeploy;
+  final bool shortLandscape;
 
   @override
   Widget build(BuildContext context) {
     final busy = launching || saving;
     return SizedBox(
       key: const Key('lobby-stage-hero'),
-      height: 156,
+      height: shortLandscape ? 148 : 176,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final compact = constraints.maxWidth < 460;
+          final compact = shortLandscape || constraints.maxWidth < 460;
           final plaque = _StagePlaque(
             characterName: characterName,
             stage: stage,
@@ -44,17 +46,13 @@ class LobbyBattleStage extends StatelessWidget {
           final deploy = _DeployCommand(
             launching: launching,
             busy: busy,
+            compact: shortLandscape,
             onDeploy: onDeploy,
           );
-          return compact
-              ? Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [plaque, deploy],
-                )
-              : Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [plaque, const SizedBox(width: 16), deploy],
-                );
+          return Column(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [plaque, deploy],
+          );
         },
       ),
     );
@@ -78,8 +76,8 @@ class _StagePlaque extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       key: const Key('lobby-stage-plaque'),
-      width: compact ? 264 : 330,
-      height: compact ? 76 : 96,
+      width: compact ? 276 : 330,
+      height: compact ? 78 : 96,
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -88,7 +86,10 @@ class _StagePlaque extends StatelessWidget {
             fit: BoxFit.fill,
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 12),
+            padding: EdgeInsets.symmetric(
+              horizontal: 26,
+              vertical: compact ? 6 : 12,
+            ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -115,7 +116,7 @@ class _StagePlaque extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  '理쒓퀬 湲곕줉 ${_clock(bestSeconds)}',
+                  '최고 기록 ${_clock(bestSeconds)}',
                   maxLines: 1,
                   style: TextStyle(
                     fontFamily: JoseonUiTheme.bodyFontFamily,
@@ -136,11 +137,13 @@ class _DeployCommand extends StatelessWidget {
   const _DeployCommand({
     required this.launching,
     required this.busy,
+    required this.compact,
     required this.onDeploy,
   });
 
   final bool launching;
   final bool busy;
+  final bool compact;
   final VoidCallback onDeploy;
 
   @override
@@ -156,17 +159,18 @@ class _DeployCommand extends StatelessWidget {
           debugId: 'lobby-deploy',
           semanticLabel: label,
           frameAsset: AssetCatalog.lobbyFrames['deploy']!,
-          minimumSize: const Size(180, 72),
+          minimumSize: compact ? const Size(168, 64) : const Size(180, 72),
           onPressed: onDeploy,
           child: Text(
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: JoseonUiTheme.bodyFontFamily,
-              color: JoseonUiTheme.ink,
-              fontSize: 18,
+              color: const Color(0xfffff1c4),
+              fontSize: 20,
               fontWeight: FontWeight.bold,
+              shadows: const [Shadow(color: Color(0xff201108), blurRadius: 3)],
             ),
           ),
         ),
