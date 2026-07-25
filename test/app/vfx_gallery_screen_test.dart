@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/app/pixel_survivor_app.dart';
 import 'package:pixel_survivor/app/vfx_gallery_screen.dart';
+import 'package:pixel_survivor/game/combat/attack_timeline.dart';
+import 'package:pixel_survivor/game/components/hwando_vfx_component.dart';
 import 'package:pixel_survivor/game/vfx_gallery_game.dart';
 
 void main() {
@@ -82,6 +84,43 @@ void main() {
 
     expect(game.status.value.currentFrame, 0);
     expect(game.status.value.activeProductionComponentCount, 1);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('playback publishes frame changes after the Flutter frame', (
+    tester,
+  ) async {
+    final game = VfxGalleryGame(loadVisualAssets: false);
+    addTearDown(game.onDispose);
+    await tester.pumpWidget(MaterialApp(home: VfxGalleryScreen(game: game)));
+
+    for (var frame = 0; frame < 4; frame += 1) {
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(tester.takeException(), isNull);
+    }
+
+    expect(game.status.value.currentFrame, greaterThanOrEqualTo(0));
+  });
+
+  testWidgets('step control advances Hwando into its active phase', (
+    tester,
+  ) async {
+    final game = VfxGalleryGame(loadVisualAssets: false);
+    addTearDown(game.onDispose);
+    await tester.pumpWidget(MaterialApp(home: VfxGalleryScreen(game: game)));
+    game.selectEffect('hwando_slash');
+    await tester.pump();
+
+    for (var step = 0; step < 4; step += 1) {
+      await tester.tap(find.byKey(const Key('vfx-step')));
+      await tester.pump();
+    }
+
+    expect(
+      (game.activeProductionComponent! as HwandoVfxComponent).phase,
+      AttackPhase.active,
+    );
+    expect(game.status.value.currentFrame, greaterThanOrEqualTo(4));
     expect(tester.takeException(), isNull);
   });
 

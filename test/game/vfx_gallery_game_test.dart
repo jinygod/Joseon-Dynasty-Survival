@@ -6,6 +6,8 @@ import 'package:pixel_survivor/game/content/combat_visual_factory.dart';
 import 'package:pixel_survivor/game/components/area_vfx_component.dart';
 import 'package:pixel_survivor/game/components/registry_vfx_component.dart';
 import 'package:pixel_survivor/game/components/combat_geometry_debug_component.dart';
+import 'package:pixel_survivor/game/components/hwando_vfx_component.dart';
+import 'package:pixel_survivor/game/combat/attack_timeline.dart';
 import 'package:pixel_survivor/game/vfx_gallery_game.dart';
 
 void main() {
@@ -56,6 +58,13 @@ void main() {
     final frameBeforeStep = game.status.value.currentFrame;
     game.step();
     expect(game.status.value.currentFrame, greaterThan(frameBeforeStep));
+    for (var step = 0; step < 3; step += 1) {
+      game.step();
+    }
+    expect(
+      (game.activeProductionComponent! as HwandoVfxComponent).phase,
+      AttackPhase.active,
+    );
   });
 
   test(

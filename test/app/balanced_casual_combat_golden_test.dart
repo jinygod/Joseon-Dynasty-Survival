@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/app/game_hud.dart';
 import 'package:pixel_survivor/game/combat/attack_spec.dart';
+import 'package:pixel_survivor/game/combat/attack_timeline.dart';
 import 'package:pixel_survivor/game/combat/attack_visual_event.dart';
 import 'package:pixel_survivor/game/combat/combat_vfx_primitives.dart';
 import 'package:pixel_survivor/game/components/enemy_component.dart';
@@ -30,6 +31,24 @@ import 'package:pixel_survivor/game/systems/weapon_synergy_resolver.dart';
 
 void main() {
   setUpAll(_loadDeterministicGoldenFont);
+
+  testWidgets('release Hwando active strike at 960x540 landscape', (
+    tester,
+  ) async {
+    final fixture = await _pumpHwandoLandscapeFixture(tester);
+
+    expect(fixture.enemies, hasLength(3));
+    expect(
+      fixture.game.worldChildrenOfType<HwandoVfxComponent>(),
+      hasLength(1),
+    );
+    expect(find.byKey(const Key('hud-status')), findsOneWidget);
+
+    await expectLater(
+      find.byKey(const Key('game-surface')),
+      matchesGoldenFile('goldens/hwando_release_landscape_16_9.png'),
+    );
+  });
 
   testWidgets('balanced casual early combat at 390x844', (tester) async {
     final fixture = await _pumpCombatFixture(tester, late: false);
@@ -73,6 +92,114 @@ void main() {
       matchesGoldenFile('goldens/balanced_casual_late_390x844.png'),
     );
   });
+}
+
+Future<_CombatFixture> _pumpHwandoLandscapeFixture(WidgetTester tester) async {
+  tester.view.devicePixelRatio = 1;
+  tester.view.physicalSize = const Size(960, 540);
+  addTearDown(tester.view.reset);
+
+  final game = PixelSurvivorGame(
+    playerSlot: const PlayerSlot(index: 0, characterId: exorcistDosa),
+    onRunEnded: null,
+    random: Random(960540),
+    rewardRoll: () => .99,
+    bossRoll: () => .5,
+    screenShakeEnabled: false,
+    damageNumbersEnabled: false,
+  );
+  await tester.pumpWidget(
+    MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        useMaterial3: false,
+        splashFactory: NoSplash.splashFactory,
+        fontFamily: _goldenFontFamily,
+      ),
+      home: RepaintBoundary(
+        key: const Key('game-surface'),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            GameWidget(
+              game: game,
+              overlayBuilderMap: {
+                PixelSurvivorGame.levelUpOverlayId: (_, _) =>
+                    const SizedBox.shrink(),
+              },
+            ),
+            GameHud(source: game, onPause: () {}),
+          ],
+        ),
+      ),
+    ),
+  );
+  await tester.pump();
+  for (
+    var attempt = 0;
+    attempt < 120 && game.activePlayers.isEmpty;
+    attempt += 1
+  ) {
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 10)),
+    );
+    await tester.pump(const Duration(milliseconds: 16));
+  }
+  expect(game.activePlayers, hasLength(1));
+  game.pauseEngine();
+
+  await tester.runAsync(
+    () => Future.wait([
+      game.images.load(PlayerSpriteSheet.authoredAssetKey),
+      game.images.load('stages/joseon_courtyard_combat_1024x1824.png'),
+      game.images.load(EnemySpriteSheet.specs[bandit]!.assetKey),
+      for (final layer in AttackVisualRegistry.byId('hwando_slash').layers)
+        game.images.load(layer.assetKey),
+    ]),
+  );
+  game.resumeEngine();
+  await tester.pump(const Duration(milliseconds: 1));
+  game.pauseEngine();
+
+  final player = game.activePlayers.single;
+  final enemies = <EnemyComponent>[
+    game.debugSpawnEnemy(bandit, position: player.position + Vector2(46, -18)),
+    game.debugSpawnEnemy(bandit, position: player.position + Vector2(70, 0)),
+    game.debugSpawnEnemy(bandit, position: player.position + Vector2(104, 20)),
+  ];
+  game.resumeEngine();
+  await tester.pump(const Duration(milliseconds: 1));
+  game.pauseEngine();
+  for (var attempt = 0; attempt < 12; attempt += 1) {
+    await tester.pump(const Duration(milliseconds: 1));
+    if (player.animations != null &&
+        enemies.every((enemy) => enemy.animations != null)) {
+      break;
+    }
+  }
+
+  final attack = HwandoExecutor()
+      .tick(
+        HwandoTickInput(
+          dt: 0,
+          level: 1,
+          origin: player.position,
+          aimDirection: Vector2(1, 0),
+          damageMultiplier: 1,
+          sizeMultiplier: 1,
+        ),
+      )
+      .single;
+  final effect = _addHwandoVisual(game, attack);
+  game.processLifecycleEvents();
+  effect.update(.075);
+  await tester.pump();
+  game.pauseEngine();
+
+  expect(effect.phase, AttackPhase.active);
+  expect(enemies.every((enemy) => enemy.isMounted), isTrue);
+  expect(tester.takeException(), isNull);
+  return _CombatFixture(game: game, enemies: enemies);
 }
 
 const _goldenFontFamily = 'BalancedCasualGoldenTestFont';
@@ -370,6 +497,23 @@ void _addAttackVisual(PixelSurvivorGame game, AttackInstance attack) {
   game.addWorldComponent(
     CombatVisualFactory(images: images).createFromSpec(event, spec),
   );
+}
+
+HwandoVfxComponent _addHwandoVisual(
+  PixelSurvivorGame game,
+  AttackInstance attack,
+) {
+  final event = AttackVisualEvent.fromAttack(attack);
+  final spec = AttackVisualRegistry.byId(event.effectId);
+  final images = {
+    for (final layer in spec.layers)
+      layer.assetKey: game.images.fromCache(layer.assetKey),
+  };
+  final component =
+      CombatVisualFactory(images: images).createFromSpec(event, spec)
+          as HwandoVfxComponent;
+  game.addWorldComponent(component);
+  return component;
 }
 
 List<Vector2> _earlyEnemyPositions() => [

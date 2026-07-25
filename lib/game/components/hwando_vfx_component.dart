@@ -25,6 +25,7 @@ class HwandoVfxComponent extends PositionComponent {
                : event.presentationContract!.visualSector.radius * 2,
          ),
          anchor: Anchor.center,
+         angle: _facingAngleFor(event),
          priority: AttackPresentationPriority.attack,
        ) {
     _layers =
@@ -122,14 +123,11 @@ class HwandoVfxComponent extends PositionComponent {
         0,
         layer.sprites.length - 1,
       );
-      canvas.save();
-      if (_visual.rotateWithDirection) canvas.rotate(facingAngle);
       layer.sprites[frame].render(
         canvas,
-        position: Vector2.all(-visualRadius),
+        position: Vector2.zero(),
         size: Vector2.all(visualRadius * 2),
       );
-      canvas.restore();
     }
   }
 
@@ -168,6 +166,13 @@ class HwandoVfxComponent extends PositionComponent {
 }
 
 double _safeDuration(double value) => value.isFinite && value >= 0 ? value : 0;
+
+double _facingAngleFor(AttackVisualEvent event) {
+  if (!AttackVisualRegistry.byId(event.effectId).rotateWithDirection) return 0;
+  final direction =
+      event.presentationContract?.visualSector.direction ?? event.direction;
+  return math.atan2(direction.y, direction.x);
+}
 
 List<Sprite> _spritesFor(
   AttackVisualLayerSpec layer,

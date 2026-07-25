@@ -123,6 +123,9 @@ class VfxGalleryGame extends FlameGame {
   double _elapsed = 0;
   bool _ready = false;
   bool _disposed = false;
+  VfxGalleryStatus? _pendingStatus;
+  bool _statusPublishScheduled = false;
+  Vector2? _lastGallerySize;
 
   @override
   Future<void> onLoad() async {
@@ -145,8 +148,10 @@ class VfxGalleryGame extends FlameGame {
 
   @override
   void onGameResize(Vector2 size) {
+    final sizeChanged = _lastGallerySize != size;
+    _lastGallerySize = size.clone();
     super.onGameResize(size);
-    if (!_ready) return;
+    if (!_ready || !sizeChanged) return;
     _restartComponent(publishStatus: false);
     SchedulerBinding.instance.addPostFrameCallback((_) {
       if (_disposed) return;
@@ -184,10 +189,16 @@ class VfxGalleryGame extends FlameGame {
 
   void step() {
     setLooping(false);
-    final frames = AttackVisualRegistry.byId(
-      status.value.selectedEffectId,
-    ).layers.first.frameCount;
-    update(1 / frames / status.value.speed);
+    final visual = AttackVisualRegistry.byId(status.value.selectedEffectId);
+    final frames = visual.layers.fold<int>(
+      0,
+      (total, layer) => total + layer.frameCount,
+    );
+    final duration = _activeEvent?.duration ?? 1;
+    final stepSeconds = duration.isFinite && duration > 0
+        ? duration / frames
+        : 1 / frames;
+    update(stepSeconds / status.value.speed);
   }
 
   void setBackground(VfxGalleryBackground background) {
@@ -374,21 +385,48 @@ class VfxGalleryGame extends FlameGame {
   }
 
   void _publishFrame() {
-    final layer = AttackVisualRegistry.byId(
-      status.value.selectedEffectId,
-    ).layers.first;
-    const duration = 1.0;
-    final progress = (_elapsed / duration).clamp(0, 1).toDouble();
-    final frame = (progress * layer.frameCount).floor().clamp(
+    final visual = AttackVisualRegistry.byId(status.value.selectedEffectId);
+    final frameCount = visual.layers.fold<int>(
       0,
-      layer.frameCount - 1,
+      (total, layer) => total + layer.frameCount,
     );
+    final eventDuration = _activeEvent?.duration ?? 1;
+    final duration = eventDuration.isFinite && eventDuration > 0
+        ? eventDuration
+        : 1.0;
+    final progress = (_elapsed / duration).clamp(0, 1).toDouble();
+    final frame = (progress * frameCount).floor().clamp(0, frameCount - 1);
     _setStatus(status.value.copyWith(currentFrame: frame));
   }
 
   void _setStatus(VfxGalleryStatus next) {
     if (_disposed) return;
-    if (status.value != next) status.value = next;
+    if (status.value == next) return;
+    SchedulerBinding binding;
+    try {
+      binding = SchedulerBinding.instance;
+    } on FlutterError {
+      status.value = next;
+      return;
+    }
+    final phase = binding.schedulerPhase;
+    if (phase == SchedulerPhase.idle ||
+        phase == SchedulerPhase.postFrameCallbacks) {
+      status.value = next;
+      return;
+    }
+    _pendingStatus = next;
+    if (_statusPublishScheduled) return;
+    _statusPublishScheduled = true;
+    binding.addPostFrameCallback((_) {
+      _statusPublishScheduled = false;
+      if (_disposed) return;
+      final pending = _pendingStatus;
+      _pendingStatus = null;
+      if (pending != null && status.value != pending) {
+        status.value = pending;
+      }
+    });
   }
 
   int get _liveProductionComponentCount {

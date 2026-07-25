@@ -85,6 +85,7 @@ void main() {
       expect(component.visualRadius, 80);
       expect(component.size, Vector2.all(160));
       expect(component.facingAngle, closeTo(math.pi / 2, .0001));
+      expect(component.angle, closeTo(math.pi / 2, .0001));
 
       component.update(.06);
       expect(component.phase, AttackPhase.active);
@@ -118,6 +119,7 @@ void main() {
     );
 
     expect(component.facingAngle, closeTo(0, 1e-9));
+    expect(component.angle, closeTo(0, 1e-9));
     component.update(component.event.duration + .001);
     component.update(1);
 
