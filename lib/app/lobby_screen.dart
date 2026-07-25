@@ -513,7 +513,7 @@ class _LobbyScreenState extends State<LobbyScreen> with WidgetsBindingObserver {
                         ),
                         Positioned(
                           left: ultraWide ? null : 100,
-                          right: ultraWide ? 86 : null,
+                          right: ultraWide ? 118 : null,
                           bottom: ultraWide ? 202 : 174,
                           width: ultraWide ? 276 : 280,
                           height: ultraWide ? 78 : 80,

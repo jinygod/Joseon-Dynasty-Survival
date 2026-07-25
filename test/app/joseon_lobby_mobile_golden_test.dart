@@ -118,10 +118,21 @@ void main() {
             final deploy = tester.getRect(
               find.byKey(const Key('lobby-deploy')),
             );
+            final stagePlaque = tester.getRect(
+              find.byKey(const Key('lobby-stage-plaque')),
+            );
+            final stagePicker = tester.getRect(
+              find.byKey(const Key('lobby-stage')),
+            );
             expect(
               deploy.left,
               greaterThanOrEqualTo(size.width * .65),
               reason: 'ultra-wide staging must not cover the character',
+            );
+            expect(
+              stagePicker,
+              stagePlaque,
+              reason: 'the ultra-wide stage picker must match the visible plaque',
             );
           },
         );

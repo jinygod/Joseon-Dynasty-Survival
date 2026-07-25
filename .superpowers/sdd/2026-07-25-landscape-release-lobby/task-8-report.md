@@ -58,3 +58,12 @@ $env:PUB_CACHE='D:\FlutterPubCache'
 ## Status
 
 Approved visual baseline. All three final captures were inspected directly.
+
+## Review fix round 1
+
+The ultra-wide stage-picker listener was 32 logical pixels to the right of the
+centered plaque inside its 340px stage container. Its right anchor is now 118,
+which yields the same `Rect(776, 260, 1052, 338)` as the visible plaque at
+1170x540. The golden regression test asserts exact rectangle equality; the
+focused `joseon_lobby_mobile_golden_test.dart` and `lobby_screen_test.dart`
+run passed 18 tests without updating any golden image.
