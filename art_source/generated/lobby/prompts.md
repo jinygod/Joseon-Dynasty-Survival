@@ -27,7 +27,7 @@ Every asset below used the shared constraints: `Use case: stylized-concept; Asse
 - `icon_character_source.png`: single Joseon warrior head silhouette.
 - `icon_combat_source.png`: single crossed Korean swords emblem.
 - `icon_challenge_source.png`: single mountain challenge pennant.
-- `icon_growth_source.png`: single bamboo shoot and sprout growth silhouette; no talisman, words, letters, glyphs, or markings.
+- `icon_growth_source.png`: single bamboo shoot and sprout growth silhouette; no talisman, cloud decoration, lines, words, letters, glyphs, or markings.
 - `icon_weapon_source.png`: single curved Korean sword.
 - `icon_relic_source.png`: single glowing antique compass relic.
 - `icon_companion_source.png`: single small guardian spirit animal.
