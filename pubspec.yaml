@@ -63,6 +63,7 @@ flutter:
     - assets/images/player/exorcist_swordswoman_static_64.png
     - assets/images/player/exorcist_dosa_128.png
     - assets/images/characters/
+    - assets/images/characters/lobby/
     - assets/images/monsters/
     - assets/images/enemies/
     - assets/images/weapons/

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/app/joseon_ui_theme.dart';
+import 'package:pixel_survivor/app/lobby_battle_stage.dart';
+import 'package:pixel_survivor/app/lobby_scene.dart';
 import 'package:pixel_survivor/app/lobby_status_bar.dart';
+import 'package:pixel_survivor/game/content/stage_definitions.dart';
 
 void main() {
   testWidgets(
@@ -53,6 +56,67 @@ void main() {
         expect(size.width, greaterThanOrEqualTo(48));
         expect(size.height, greaterThanOrEqualTo(48));
       }
+    },
+  );
+
+  testWidgets(
+    'scene keeps one backdrop and character ahead of deployment controls',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: JoseonUiTheme.create(),
+          home: Scaffold(
+            body: SizedBox.expand(
+              child: LobbyScene(
+                characterId: 'rookie_constable',
+                foreground: LobbyBattleStage(
+                  characterId: 'rookie_constable',
+                  characterName: 'New constable',
+                  stage: stageDefinitions.first,
+                  bestSeconds: 75,
+                  launching: false,
+                  saving: false,
+                  onDeploy: () {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byKey(const Key('lobby-scene-background')), findsOneWidget);
+      expect(find.byKey(const Key('lobby-character-shadow')), findsOneWidget);
+      expect(find.byKey(const Key('lobby-character-art')), findsOneWidget);
+      expect(find.byKey(const Key('lobby-stage-plaque')), findsOneWidget);
+      expect(find.byKey(const Key('lobby-deploy')), findsOneWidget);
+      expect(
+        find.byKey(const Key('lobby-stage-background-image')),
+        findsNothing,
+      );
+
+      final stackChildren = tester
+          .widget<Stack>(find.byKey(const Key('lobby-scene-stack')))
+          .children;
+      expect(
+        stackChildren.indexWhere(
+          (child) => child.key == const Key('lobby-scene-background'),
+        ),
+        lessThan(
+          stackChildren.indexWhere(
+            (child) => child.key == const Key('lobby-character-art'),
+          ),
+        ),
+      );
+      expect(
+        stackChildren.indexWhere(
+          (child) => child.key == const Key('lobby-character-art'),
+        ),
+        lessThan(
+          stackChildren.indexWhere(
+            (child) => child.key == const Key('lobby-scene-foreground'),
+          ),
+        ),
+      );
     },
   );
 }
