@@ -4,7 +4,7 @@ Every asset below used the shared constraints: `Use case: stylized-concept; Asse
 
 - `night_palace_landscape_source.png`: 16:9 moonlit Joseon palace courtyard, layered roofline, lantern depth, and a clear empty center floor; subdued UI edges; no character.
 - `rookie_constable_source.png`: full-body chibi rookie constable in navy robe and black gat, short sword, centered on flat green chroma key.
-- `exorcist_dosa_source.png`: full-body chibi exorcist dosa in navy and ivory robes with talisman staff, centered on flat green chroma key.
+- `exorcist_dosa_source.png`: full-body chibi exorcist dosa in navy and ivory robes with a plain wooden staff and blank cloth knot ornaments; no talismans, seals, calligraphy, glyphs, letters, or markings, centered on flat green chroma key.
 - `mountain_hunter_source.png`: full-body chibi mountain hunter in straw hat with bow and quiver, centered on flat green chroma key.
 - `frame_profile_source.png`: horizontal aged-brass-and-ivory Joseon profile plaque with quiet parchment center and transparent outer corners.
 - `frame_resource_source.png`: compact dark navy resource slot with aged brass rim, quiet stretchable center, transparent outer corners.
@@ -22,12 +22,12 @@ Every asset below used the shared constraints: `Use case: stylized-concept; Asse
 - `icon_pass_source.png`: single ceremonial pass token.
 - `icon_package_source.png`: single wrapped supply bundle.
 - `icon_mail_source.png`: single wax-sealed letter.
-- `icon_compendium_source.png`: single open Korean bestiary book.
+- `icon_compendium_source.png`: single open picture book with only cloud and guardian-animal silhouettes; no words, letters, seals, glyphs, or markings.
 - `icon_records_source.png`: single bronze trophy cup.
 - `icon_character_source.png`: single Joseon warrior head silhouette.
 - `icon_combat_source.png`: single crossed Korean swords emblem.
 - `icon_challenge_source.png`: single mountain challenge pennant.
-- `icon_growth_source.png`: single sprouting talisman.
+- `icon_growth_source.png`: single bamboo shoot and sprout growth silhouette; no talisman, words, letters, glyphs, or markings.
 - `icon_weapon_source.png`: single curved Korean sword.
 - `icon_relic_source.png`: single glowing antique compass relic.
 - `icon_companion_source.png`: single small guardian spirit animal.
