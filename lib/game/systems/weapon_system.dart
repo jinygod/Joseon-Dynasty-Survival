@@ -463,7 +463,7 @@ class WeaponSystem {
           followUpIndex: shot.followUpIndex,
           isMasterLead: shot.isMasterLead,
           tier: combatVfxTierForLevel(level),
-          size: Vector2.all(8 * sizeMultiplier * shot.visualScale),
+          sizeMultiplier: sizeMultiplier * shot.visualScale,
         ),
       );
     }
@@ -631,7 +631,7 @@ class WeaponSystem {
           knockback: stats.knockback,
           laneIndex: laneIndex,
           tier: combatVfxTierForLevel(level),
-          size: Vector2.all(7 * sizeMultiplier),
+          sizeMultiplier: sizeMultiplier,
         ),
       );
     }
@@ -777,7 +777,7 @@ class WeaponSystem {
           knockback: stats.knockback,
           isMasterLead: level >= 6,
           tier: combatVfxTierForLevel(level),
-          size: Vector2.all((level >= 6 ? 18 : 10) * sizeMultiplier),
+          sizeMultiplier: (level >= 6 ? 1.8 : 1) * sizeMultiplier,
         ),
       );
     }
@@ -954,7 +954,7 @@ class WeaponSystem {
           laneIndex: index,
           isMasterLead: level >= 6 && index == stats.projectileCount ~/ 2,
           tier: combatVfxTierForLevel(level),
-          size: Vector2.all((level >= 6 ? 16 : 11) * sizeMultiplier),
+          sizeMultiplier: (level >= 6 ? 16 / 11 : 1) * sizeMultiplier,
         ),
       );
     }

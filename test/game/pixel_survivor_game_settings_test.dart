@@ -74,7 +74,7 @@ void main() {
         position: player.position + Vector2(10, 0),
       );
       final projectile = ProjectileComponent(
-        weaponId: hwandoSlash,
+        weaponId: gakgungShot,
         damage: 10,
         position: player.position + Vector2(8, 0),
         velocity: Vector2.zero(),
@@ -179,7 +179,7 @@ void main() {
       final game = await _loadGame();
       game.debugSpawnEnemy(plagueRatSwarm, position: Vector2(1800, 4000));
       final playerProjectile = ProjectileComponent(
-        weaponId: hwandoSlash,
+        weaponId: gakgungShot,
         damage: 1,
         position: Vector2(1024, 2400),
         velocity: Vector2.zero(),

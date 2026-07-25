@@ -856,20 +856,19 @@ void main() {
       expect(projectile.isExpired, isTrue);
     });
 
-    test('detects overlap with enemies using component sizes', () {
+    test('detects overlap with the inset visible projectile body', () {
       final projectile = ProjectileComponent(
         weaponId: gakgungShot,
         damage: 3,
         position: Vector2.zero(),
         velocity: Vector2.zero(),
-        size: Vector2.all(8),
       );
       final nearEnemy = EnemyComponent(
         enemyId: 'test_enemy',
         maxHealth: 10,
         moveSpeed: 0,
         damage: 1,
-        position: Vector2(12, 0),
+        position: Vector2(21, 0),
         size: Vector2.all(18),
       );
       final farEnemy = EnemyComponent(
@@ -877,7 +876,7 @@ void main() {
         maxHealth: 10,
         moveSpeed: 0,
         damage: 1,
-        position: Vector2(14, 0),
+        position: Vector2(22, 0),
         size: Vector2.all(18),
       );
 

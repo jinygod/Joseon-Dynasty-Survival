@@ -1839,7 +1839,7 @@ void main() {
       await game.add(enemy);
       await game.add(
         ProjectileComponent(
-          weaponId: talismanThrow,
+          weaponId: gakgungShot,
           damage: 50,
           position: enemy.position.clone(),
           velocity: Vector2.zero(),
@@ -1849,8 +1849,8 @@ void main() {
       game.update(0);
 
       final result = game.currentRunResult();
-      expect(result.weaponDamageTotals[talismanThrow], 5);
-      expect(result.weaponKillCounts[talismanThrow], 1);
+      expect(result.weaponDamageTotals[gakgungShot], 5);
+      expect(result.weaponKillCounts[gakgungShot], 1);
       expect(enemy.deathVisualComplete, isFalse);
     });
 

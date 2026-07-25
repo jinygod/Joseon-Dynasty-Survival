@@ -34,12 +34,13 @@ abstract final class ProjectileSweepGeometry {
 
     if (initialClosest.distanceToSquared(hurtCenter) <=
         expandedRadius * expandedRadius + _epsilon) {
+      final centerNormal = hurtCenter - previousCenter;
       return _contact(
         travelFraction: 0,
         projectilePoint: initialClosest,
         hurtCenter: hurtCenter,
         hurtRadius: hurtRadius,
-        fallbackNormal: facing,
+        fallbackNormal: centerNormal.length2 > _epsilon ? centerNormal : facing,
       );
     }
 
@@ -79,7 +80,9 @@ abstract final class ProjectileSweepGeometry {
   }) {
     final normal = hurtCenter - projectilePoint;
     if (normal.length2 <= _epsilon) {
-      normal.setFrom(fallbackNormal);
+      normal
+        ..setFrom(fallbackNormal)
+        ..normalize();
     } else {
       normal.normalize();
     }

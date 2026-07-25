@@ -53,6 +53,7 @@ import 'content/combat_visual_factory.dart';
 import 'content/enemy_definitions.dart';
 import 'content/ids.dart';
 import 'content/playtest_content_policy.dart';
+import 'content/projectile_presentation_spec.dart';
 import 'content/stage_definitions.dart';
 import 'content/stage_visual_spec.dart';
 import 'content/wave_definitions.dart';
@@ -477,6 +478,7 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
     _visualImages = loadVisualAssets
         ? await CombatAssetPreloader.loadWith([
             ...AttackVisualRegistry.requiredAssetKeys,
+            ...ProjectilePresentationSpecs.requiredAssetKeys,
             WeaponEffectAtlas.assetKey,
             CombatEffectAtlas.assetKey,
             for (final spec in stageVisualSpecs.values) ...[
@@ -1406,12 +1408,10 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
         continue;
       }
 
-      for (final enemy in enemies) {
-        if (!enemy.isDead &&
-            projectile.overlapsEnemy(enemy) &&
-            projectile.registerHit(enemy)) {
-          final direction = enemy.position - projectile.position;
-          if (direction.length2 > 0) direction.normalize();
+      for (final targetContact in projectile.contactsFor(enemies)) {
+        final enemy = targetContact.enemy;
+        if (projectile.registerHit(enemy)) {
+          final direction = targetContact.contact.normal;
           _applyDamageEvents([
             DamageEvent(
               target: enemy,
@@ -1419,6 +1419,7 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
               knockback: projectile.knockback,
               direction: direction,
               weaponId: projectile.weaponId,
+              contactPoint: targetContact.contact.point,
               traits: {
                 AttackTrait.projectile,
                 if (projectile.pierce > 0) AttackTrait.piercing,
@@ -1594,10 +1595,10 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
     }
     _projectileSlotsRemaining -= 1;
     if (projectile case final ProjectileComponent playerProjectile) {
-      playerProjectile.attachVisuals(
-        visualFactory: _combatVisualFactory,
-        legacyEffectImage: _visualImages[WeaponEffectAtlas.assetKey],
-      );
+      final image = _visualImages[playerProjectile.presentation.assetKey];
+      if (image != null) {
+        playerProjectile.attachVisualImage(image);
+      }
     }
     addWorldComponent(projectile);
   }

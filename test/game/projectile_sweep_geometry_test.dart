@@ -54,6 +54,21 @@ void main() {
     expect(contact!.travelFraction, 0);
   });
 
+  test('initial overlap normal points from projectile center to target', () {
+    final contact = ProjectileSweepGeometry.firstContact(
+      previousCenter: Vector2(5, 0),
+      currentCenter: Vector2(5, 0),
+      direction: Vector2.zero(),
+      hitBodySize: Vector2(18, 6),
+      hurtCenter: Vector2.zero(),
+      hurtRadius: 8,
+    );
+
+    expect(contact, isNotNull);
+    expect(contact!.normal.x, closeTo(-1, .0001));
+    expect(contact.normal.y, closeTo(0, .0001));
+  });
+
   test('contacts farther along the same sweep sort after nearer contacts', () {
     final near = contactAt(Vector2(30, 0));
     final far = contactAt(Vector2(70, 0));

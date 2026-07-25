@@ -21,7 +21,7 @@ void main() {
   );
 
   ProjectileComponent projectile() => ProjectileComponent(
-    weaponId: hwandoSlash,
+    weaponId: gakgungShot,
     damage: 1,
     position: Vector2.zero(),
     velocity: Vector2.zero(),
@@ -235,7 +235,7 @@ void main() {
     'friendly and hostile expiry unregisters before lifecycle processing',
     setUp: (game, _) async {
       expiringFriendly = ProjectileComponent(
-        weaponId: hwandoSlash,
+        weaponId: gakgungShot,
         damage: 1,
         position: Vector2(480, 270),
         velocity: Vector2.zero(),

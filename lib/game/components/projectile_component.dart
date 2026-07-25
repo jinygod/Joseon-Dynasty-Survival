@@ -4,15 +4,19 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 
 import '../combat/combat_vfx_primitives.dart';
-import 'enemy_component.dart';
+import '../combat/projectile_contact.dart';
+import '../combat/projectile_sweep_geometry.dart';
 import '../content/ids.dart';
-import '../combat/attack_spec.dart';
-import '../combat/attack_visual_event.dart';
-import '../content/combat_visual_factory.dart';
-import '../content/attack_visual_registry.dart';
-import '../content/weapon_definitions.dart';
-import '../content/weapon_effect_atlas.dart';
+import '../content/projectile_presentation_spec.dart';
 import '../content/weapon_visual_theme.dart';
+import 'enemy_component.dart';
+
+class ProjectileTargetContact {
+  const ProjectileTargetContact({required this.enemy, required this.contact});
+
+  final EnemyComponent enemy;
+  final ProjectileContact contact;
+}
 
 class ProjectileComponent extends PositionComponent {
   ProjectileComponent({
@@ -27,19 +31,21 @@ class ProjectileComponent extends PositionComponent {
     this.isMasterLead = false,
     this.laneIndex = 0,
     this.tier = CombatVfxTier.normal,
-    Vector2? size,
-    CombatVisualFactory? visualFactory,
-    Image? legacyEffectImage,
-  }) : _remainingHits = pierce + 1,
+    this.sizeMultiplier = 1,
+    Image? visualImage,
+  }) : presentation = ProjectilePresentationSpecs.forWeapon(weaponId),
+       _remainingHits = pierce + 1,
+       assert(sizeMultiplier > 0),
        super(
          position: position,
-         size: size ?? Vector2.all(8),
+         size:
+             ProjectilePresentationSpecs.forWeapon(weaponId).renderSize *
+             sizeMultiplier,
          anchor: Anchor.center,
        ) {
-    _effectImage = legacyEffectImage;
-    if (visualFactory != null && weaponId == singijeonVolley) {
-      _attachRegistryVisual(visualFactory);
-    }
+    _previousPosition = position.clone();
+    _visualImage = visualImage;
+    _spritePaint = Paint()..filterQuality = presentation.filterQuality;
   }
 
   final WeaponId weaponId;
@@ -52,75 +58,38 @@ class ProjectileComponent extends PositionComponent {
   final bool isMasterLead;
   final int laneIndex;
   final CombatVfxTier tier;
+  final double sizeMultiplier;
+  final ProjectilePresentationSpec presentation;
   final Set<EnemyComponent> _hitEnemies = {};
+
+  late final Vector2 _previousPosition;
   int _remainingHits;
   double _age = 0;
-  Image? _effectImage;
-  bool _usesRegistryVisual = false;
-  bool _hasRegistrySprite = false;
-  PositionComponent? _registryVisual;
+  Image? _visualImage;
+  late final Paint _spritePaint;
 
   bool get isExpired => _age >= lifetime;
   bool get isSpent => _remainingHits <= 0;
   int get remainingPierces => (_remainingHits - 1).clamp(0, pierce).toInt();
   CombatVfxTier get visualTier => tier;
   WeaponVfxFamily get vfxFamily => weaponVisualThemeFor(weaponId).family;
-  bool get usesRegistryVisual => _usesRegistryVisual;
+  Vector2 get previousPosition => _previousPosition.clone();
+  Vector2 get visualBodySize => presentation.bodySize * sizeMultiplier;
+  Vector2 get hitBodySize => presentation.hitBodySize * sizeMultiplier;
   bool get startsImageLoadOnMount => false;
 
-  /// The registry presentation delegate never resolves damage.
+  /// This presentation component never resolves damage while rendering.
   bool get ownsDamageResolution => false;
 
-  /// This outer gameplay component continues to resolve projectile hits.
+  /// The outer gameplay loop remains the only projectile damage owner.
   bool get gameplayOwnsDamageResolution => true;
-  Vector2? get registryVisualLocalPosition => _registryVisual?.position.clone();
-  Vector2? get registryVisualScale => _registryVisual?.scale.clone();
 
-  void attachVisuals({
-    required CombatVisualFactory visualFactory,
-    Image? legacyEffectImage,
-  }) {
-    _effectImage ??= legacyEffectImage;
-    if (weaponId == singijeonVolley && !_usesRegistryVisual) {
-      _attachRegistryVisual(visualFactory);
-    }
+  void attachVisualImage(Image image) {
+    _visualImage = image;
   }
 
-  void _attachRegistryVisual(CombatVisualFactory visualFactory) {
-    _usesRegistryVisual = true;
-    _hasRegistrySprite = AttackVisualRegistry.byId(
-      singijeonVolley,
-    ).layers.any((layer) => visualFactory.images.containsKey(layer.assetKey));
-    final visual =
-        visualFactory.create(
-            AttackVisualEvent.fromAttack(
-              AttackInstance(
-                spec: AttackSpec(
-                  id: singijeonVolley,
-                  shape: AttackShape.line,
-                  damage: 0,
-                  range: 0,
-                  angleRadians: 0,
-                  radius: 0,
-                  width: 0,
-                  windupSeconds: 0,
-                  activeSeconds: lifetime,
-                  lingerSeconds: 0,
-                  knockback: 0,
-                  slowFraction: 0,
-                  traits: const {},
-                  presentation: AttackPresentation.normal,
-                ),
-                origin: Vector2.zero(),
-                direction: velocity,
-                sequenceIndex: 0,
-              ),
-            ),
-          )
-          ..position = size / 2
-          ..scale = Vector2.all(28 / 128);
-    _registryVisual = visual;
-    add(visual);
+  void synchronizePreviousPosition() {
+    _previousPosition.setFrom(position);
   }
 
   bool registerHit(EnemyComponent enemy) {
@@ -132,15 +101,40 @@ class ProjectileComponent extends PositionComponent {
     return true;
   }
 
-  bool overlapsEnemy(EnemyComponent enemy) {
-    final hitRadius = (size.x + enemy.size.x) / 2;
-    return position.distanceToSquared(enemy.position) < hitRadius * hitRadius;
+  List<ProjectileTargetContact> contactsFor(Iterable<EnemyComponent> enemies) {
+    if (isExpired || isSpent) {
+      return const [];
+    }
+    final contacts = <ProjectileTargetContact>[];
+    for (final enemy in enemies) {
+      if (enemy.isDead || _hitEnemies.contains(enemy)) {
+        continue;
+      }
+      final contact = ProjectileSweepGeometry.firstContact(
+        previousCenter: _previousPosition,
+        currentCenter: position,
+        direction: velocity,
+        hitBodySize: hitBodySize,
+        hurtCenter: enemy.position,
+        hurtRadius: enemy.hurtRadius,
+      );
+      if (contact != null) {
+        contacts.add(ProjectileTargetContact(enemy: enemy, contact: contact));
+      }
+    }
+    contacts.sort(
+      (a, b) => a.contact.travelFraction.compareTo(b.contact.travelFraction),
+    );
+    return contacts;
   }
+
+  bool overlapsEnemy(EnemyComponent enemy) => contactsFor([enemy]).isNotEmpty;
 
   @override
   void update(double dt) {
     super.update(dt);
 
+    _previousPosition.setFrom(position);
     _age += dt;
     position.add(velocity * dt);
     if (isExpired || isSpent) {
@@ -152,39 +146,34 @@ class ProjectileComponent extends PositionComponent {
   void render(Canvas canvas) {
     super.render(canvas);
 
-    if (_hasRegistrySprite) return;
-
-    final image = _effectImage;
-    final row = WeaponEffectAtlas.rowForWeapon(weaponId);
-    if (image != null && row != null) {
-      final visualSize = Vector2(28, 28);
-      final center = Offset(size.x / 2, size.y / 2);
-      final facingAngle = math.atan2(velocity.y, velocity.x);
-      final sprite = WeaponEffectAtlas.sprite(
-        image,
-        row: row,
-        frame: ((_age / 0.08).floor()) % WeaponEffectAtlas.framesPerEffect,
-      );
-      canvas
-        ..save()
-        ..translate(center.dx, center.dy)
-        ..rotate(facingAngle);
-      sprite.render(
-        canvas,
-        position: Vector2(-visualSize.x / 2, -visualSize.y / 2),
-        size: visualSize,
-      );
-      canvas.restore();
+    final image = _visualImage;
+    if (image == null) {
       return;
     }
-
-    final paint = Paint()..color = const Color(0xfff2cc8f);
-    final outlinePaint = Paint()
-      ..color = const Color(0xff2f1b25)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-    final rect = Offset.zero & Size(size.x, size.y);
-    canvas.drawOval(rect, paint);
-    canvas.drawOval(rect, outlinePaint);
+    final frame =
+        ((_age / presentation.frameSeconds).floor()) % presentation.frameCount;
+    final sprite = Sprite(
+      image,
+      srcPosition: Vector2(
+        frame * presentation.frameSize,
+        presentation.atlasRow * presentation.frameSize,
+      ),
+      srcSize: Vector2.all(presentation.frameSize),
+    );
+    final center = Offset(size.x / 2, size.y / 2);
+    final facingAngle = presentation.rotateWithVelocity
+        ? math.atan2(velocity.y, velocity.x) + presentation.assetForwardAngle
+        : presentation.assetForwardAngle;
+    canvas
+      ..save()
+      ..translate(center.dx, center.dy)
+      ..rotate(facingAngle);
+    sprite.render(
+      canvas,
+      position: -size / 2,
+      size: size,
+      overridePaint: _spritePaint,
+    );
+    canvas.restore();
   }
 }
