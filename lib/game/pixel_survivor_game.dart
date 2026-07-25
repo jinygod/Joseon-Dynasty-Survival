@@ -34,6 +34,8 @@ import 'components/frost_field_component.dart';
 import 'components/five_color_ward_component.dart';
 import 'components/player_component.dart';
 import 'components/projectile_component.dart';
+import 'components/projectile_contact_vfx_component.dart';
+import 'components/projectile_geometry_debug_component.dart';
 import 'components/spirit_jade_component.dart';
 import 'components/talisman_presentation_component.dart';
 import 'components/ward_aura_component.dart';
@@ -479,6 +481,7 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
         ? await CombatAssetPreloader.loadWith([
             ...AttackVisualRegistry.requiredAssetKeys,
             ...ProjectilePresentationSpecs.requiredAssetKeys,
+            ProjectileContactVfxComponent.assetKey,
             WeaponEffectAtlas.assetKey,
             CombatEffectAtlas.assetKey,
             for (final spec in stageVisualSpecs.values) ...[
@@ -684,6 +687,7 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
     final activeVfx = mounted.where((component) {
       return component is RegistryVfxComponent ||
           component is HwandoVfxComponent ||
+          component is ProjectileContactVfxComponent ||
           component is CombatEffectComponent ||
           component is AttackEffectComponent;
     }).length;
@@ -1412,7 +1416,7 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
         final enemy = targetContact.enemy;
         if (projectile.registerHit(enemy)) {
           final direction = targetContact.contact.normal;
-          _applyDamageEvents([
+          final effectiveHitCount = _applyDamageEvents([
             DamageEvent(
               target: enemy,
               damage: projectile.damage,
@@ -1426,6 +1430,21 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
               },
             ),
           ]);
+          if (_worldDebugVisible && effectiveHitCount > 0) {
+            addWorldComponent(
+              ProjectileGeometryDebugComponent(
+                weaponId: projectile.weaponId,
+                previousCenter: projectile.previousPosition,
+                currentCenter: projectile.position,
+                direction: projectile.velocity,
+                visualBodySize: projectile.visualBodySize,
+                hitBodySize: projectile.hitBodySize,
+                hurtCenter: enemy.position,
+                hurtRadius: enemy.hurtRadius,
+                contact: targetContact.contact,
+              ),
+            );
+          }
           if (projectile.isSpent) {
             projectile.removeFromParent();
             break;
@@ -1739,6 +1758,11 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
           event.contactPoint != null &&
           effectiveDamage > 0) {
         _spawnHwandoContactEffect(event);
+      } else if (event.weaponId != null &&
+          ProjectilePresentationSpecs.byWeapon.containsKey(event.weaponId) &&
+          event.contactPoint != null &&
+          effectiveDamage > 0) {
+        _spawnProjectileContactEffect(event);
       } else {
         _spawnCombatEffect(
           event.isCritical ? CombatEffectKind.critical : CombatEffectKind.hit,
@@ -1841,6 +1865,41 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
               onExpired: onExpired,
             )
           : HwandoContactVfxComponent(
+              position: contactPoint,
+              direction: event.direction,
+              image: image,
+              onExpired: onExpired,
+            ),
+    );
+  }
+
+  void _spawnProjectileContactEffect(DamageEvent event) {
+    if (_combatEffectCount >= performanceBudget.maxCombatEffects) {
+      _rejectPopulation(GamePopulationKind.combatEffect, 1);
+      return;
+    }
+    final contactPoint = event.contactPoint;
+    if (contactPoint == null) return;
+    final image = _visualImages[ProjectileContactVfxComponent.assetKey];
+    if (image == null && loadVisualAssets) {
+      throw StateError(
+        'Missing preloaded projectile contact image: '
+        '${ProjectileContactVfxComponent.assetKey}',
+      );
+    }
+    _combatEffectCount += 1;
+    void onExpired() {
+      _combatEffectCount = max(0, _combatEffectCount - 1);
+    }
+
+    addWorldComponent(
+      image == null
+          ? ProjectileContactVfxComponent.withoutImageForTesting(
+              position: contactPoint,
+              direction: event.direction,
+              onExpired: onExpired,
+            )
+          : ProjectileContactVfxComponent(
               position: contactPoint,
               direction: event.direction,
               image: image,

@@ -7,7 +7,11 @@ import 'package:pixel_survivor/game/components/area_vfx_component.dart';
 import 'package:pixel_survivor/game/components/registry_vfx_component.dart';
 import 'package:pixel_survivor/game/components/combat_geometry_debug_component.dart';
 import 'package:pixel_survivor/game/components/hwando_vfx_component.dart';
+import 'package:pixel_survivor/game/components/projectile_component.dart';
+import 'package:pixel_survivor/game/components/projectile_contact_vfx_component.dart';
+import 'package:pixel_survivor/game/components/projectile_geometry_debug_component.dart';
 import 'package:pixel_survivor/game/combat/attack_timeline.dart';
+import 'package:pixel_survivor/game/content/projectile_presentation_spec.dart';
 import 'package:pixel_survivor/game/vfx_gallery_game.dart';
 
 void main() {
@@ -98,6 +102,34 @@ void main() {
   );
 
   test(
+    'gallery reviews every moving weapon with shared geometry toggles',
+    () async {
+      final game = VfxGalleryGame(loadVisualAssets: false);
+      game.onGameResize(Vector2(960, 540));
+      await game.onLoad();
+      game.processLifecycleEvents();
+      addTearDown(game.onDispose);
+
+      expect(game.effectIds, containsAll(VfxGalleryGame.projectileEffectIds));
+
+      for (final weaponId in VfxGalleryGame.projectileEffectIds) {
+        game.selectEffect(weaponId);
+        game.setShowVisualBounds(true);
+        game.setShowHitbox(true);
+        game.setShowHurtbox(true);
+        game.setShowContactPoint(true);
+        game.processLifecycleEvents();
+
+        expect(game.activeProductionComponent, isA<ProjectileComponent>());
+        expect(
+          game.children.whereType<ProjectileGeometryDebugComponent>(),
+          hasLength(1),
+        );
+      }
+    },
+  );
+
+  test(
     'gallery has eight normalized directions and reflects playback state',
     () async {
       final game = VfxGalleryGame(loadVisualAssets: false);
@@ -156,7 +188,13 @@ void main() {
 
       expect(
         loaded,
-        orderedEquals([...AttackVisualRegistry.requiredAssetKeys]..sort()),
+        orderedEquals(
+          [
+            ...AttackVisualRegistry.requiredAssetKeys,
+            ...ProjectilePresentationSpecs.requiredAssetKeys,
+            ProjectileContactVfxComponent.assetKey,
+          ].toSet().toList()..sort(),
+        ),
       );
       expect(
         game.factory.images.keys,

@@ -19,6 +19,7 @@ import 'package:pixel_survivor/game/components/five_color_ward_component.dart';
 import 'package:pixel_survivor/game/components/hwando_vfx_component.dart';
 import 'package:pixel_survivor/game/components/hwando_contact_vfx_component.dart';
 import 'package:pixel_survivor/game/components/projectile_component.dart';
+import 'package:pixel_survivor/game/components/projectile_contact_vfx_component.dart';
 import 'package:pixel_survivor/game/components/player_component.dart';
 import 'package:pixel_survivor/game/components/spirit_jade_component.dart';
 import 'package:pixel_survivor/game/components/stage_backdrop_component.dart';
@@ -1852,6 +1853,38 @@ void main() {
       expect(result.weaponDamageTotals[gakgungShot], 5);
       expect(result.weaponKillCounts[gakgungShot], 1);
       expect(enemy.deathVisualComplete, isFalse);
+    });
+
+    test('projectile hit effect mounts at the swept contact point', () async {
+      final game = newGame();
+      game.onGameResize(Vector2(960, 540));
+      await game.onLoad();
+      final enemy = EnemyComponent(
+        enemyId: 'projectile_contact_target',
+        maxHealth: 50,
+        moveSpeed: 0,
+        damage: 0,
+        position: Vector2(40, 40),
+        size: Vector2.all(18),
+      );
+      await game.add(enemy);
+      await game.add(
+        ProjectileComponent(
+          weaponId: gakgungShot,
+          damage: 5,
+          position: Vector2(10, 40),
+          velocity: Vector2(500, 0),
+        ),
+      );
+
+      game.update(.5);
+      game.processLifecycleEvents();
+
+      final impact = game
+          .worldChildrenOfType<ProjectileContactVfxComponent>()
+          .single;
+      expect(impact.position.x, lessThan(enemy.position.x));
+      expect(impact.position.y, closeTo(enemy.position.y, .001));
     });
 
     test(

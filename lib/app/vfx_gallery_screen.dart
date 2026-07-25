@@ -1,7 +1,6 @@
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 
-import '../game/content/attack_visual_registry.dart';
 import '../game/vfx_gallery_game.dart';
 
 class VfxGalleryScreen extends StatefulWidget {
@@ -42,7 +41,7 @@ class _VfxGalleryScreenState extends State<VfxGalleryScreen> {
                       DropdownButton<String>(
                         key: const Key('vfx-effect-selector'),
                         value: status.selectedEffectId,
-                        items: AttackVisualRegistry.effectIds
+                        items: _game.effectIds
                             .map(
                               (id) =>
                                   DropdownMenuItem(value: id, child: Text(id)),

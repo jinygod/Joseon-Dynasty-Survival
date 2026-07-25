@@ -10,11 +10,17 @@ import 'combat/attack_geometry.dart';
 import 'combat/attack_spec.dart';
 import 'combat/attack_timeline.dart';
 import 'combat/attack_visual_event.dart';
+import 'combat/projectile_sweep_geometry.dart';
 import 'components/combat_geometry_debug_component.dart';
 import 'components/hwando_vfx_component.dart';
+import 'components/projectile_component.dart';
+import 'components/projectile_contact_vfx_component.dart';
+import 'components/projectile_geometry_debug_component.dart';
 import 'content/attack_visual_registry.dart';
 import 'content/combat_asset_preloader.dart';
 import 'content/combat_visual_factory.dart';
+import 'content/projectile_presentation_spec.dart';
+import 'content/weapon_definitions.dart';
 
 enum VfxGalleryBackground { moonlit, plague, neutral }
 
@@ -83,6 +89,13 @@ class VfxGalleryStatus {
 }
 
 class VfxGalleryGame extends FlameGame {
+  static const projectileEffectIds = <String>[
+    gakgungShot,
+    singijeonVolley,
+    matchlockCannon,
+    hawkSummon,
+  ];
+
   VfxGalleryGame({
     Map<String, Image>? visualImages,
     this.loadVisualAssets = true,
@@ -114,11 +127,15 @@ class VfxGalleryGame extends FlameGame {
   final ValueNotifier<VfxGalleryStatus> status;
   late final CombatVisualFactory factory;
 
+  List<String> get effectIds => List.unmodifiable({
+    ...AttackVisualRegistry.effectIds,
+    ...projectileEffectIds,
+  });
   PositionComponent? get activeProductionComponent => _activeComponent;
 
   Map<String, Image> _images = const {};
   PositionComponent? _activeComponent;
-  CombatGeometryDebugComponent? _debugComponent;
+  PositionComponent? _debugComponent;
   AttackVisualEvent? _activeEvent;
   double _elapsed = 0;
   bool _ready = false;
@@ -133,10 +150,11 @@ class VfxGalleryGame extends FlameGame {
     _images =
         _injectedImages ??
         (loadVisualAssets
-            ? await CombatAssetPreloader.loadWith(
-                AttackVisualRegistry.requiredAssetKeys,
-                visualAssetLoader ?? images.load,
-              )
+            ? await CombatAssetPreloader.loadWith({
+                ...AttackVisualRegistry.requiredAssetKeys,
+                ...ProjectilePresentationSpecs.requiredAssetKeys,
+                ProjectileContactVfxComponent.assetKey,
+              }, visualAssetLoader ?? images.load)
             : const {});
     factory = CombatVisualFactory(
       images: _images,
@@ -168,7 +186,7 @@ class VfxGalleryGame extends FlameGame {
   };
 
   void selectEffect(String effectId) {
-    if (!AttackVisualRegistry.effectIds.contains(effectId)) return;
+    if (!effectIds.contains(effectId)) return;
     _setStatus(status.value.copyWith(selectedEffectId: effectId));
     _restartComponent();
   }
@@ -189,12 +207,16 @@ class VfxGalleryGame extends FlameGame {
 
   void step() {
     setLooping(false);
-    final visual = AttackVisualRegistry.byId(status.value.selectedEffectId);
-    final frames = visual.layers.fold<int>(
-      0,
-      (total, layer) => total + layer.frameCount,
-    );
-    final duration = _activeEvent?.duration ?? 1;
+    final selectedId = status.value.selectedEffectId;
+    final projectile = ProjectilePresentationSpecs.byWeapon[selectedId];
+    final frames =
+        projectile?.frameCount ??
+        AttackVisualRegistry.byId(
+          selectedId,
+        ).layers.fold<int>(0, (total, layer) => total + layer.frameCount);
+    final duration = projectile == null
+        ? (_activeEvent?.duration ?? 1)
+        : projectile.frameSeconds * projectile.frameCount;
     final stepSeconds = duration.isFinite && duration > 0
         ? duration / frames
         : 1 / frames;
@@ -246,9 +268,24 @@ class VfxGalleryGame extends FlameGame {
     _debugComponent?.removeFromParent();
     _debugComponent = null;
     _elapsed = 0;
-    final event = _eventForSelection();
-    _activeEvent = event;
-    final component = factory.create(event);
+    final weaponId = status.value.selectedEffectId;
+    final projectileSpec = ProjectilePresentationSpecs.byWeapon[weaponId];
+    late final PositionComponent component;
+    if (projectileSpec != null) {
+      _activeEvent = null;
+      component = ProjectileComponent(
+        weaponId: weaponId,
+        damage: 0,
+        position: size / 2,
+        velocity: _selectedDirection * 36,
+        lifetime: 2.2,
+        visualImage: _images[projectileSpec.assetKey],
+      );
+    } else {
+      final event = _eventForSelection();
+      _activeEvent = event;
+      component = factory.create(event);
+    }
     _activeComponent = component;
     add(component);
     _syncDebugComponent();
@@ -272,15 +309,26 @@ class VfxGalleryGame extends FlameGame {
         value.showHurtbox ||
         value.showContactPoint ||
         value.showAnchor;
+    if (!anyVisible) {
+      _debugComponent?.removeFromParent();
+      _debugComponent = null;
+      return;
+    }
+    final projectileSpec =
+        ProjectilePresentationSpecs.byWeapon[value.selectedEffectId];
+    if (projectileSpec != null) {
+      _syncProjectileDebug(projectileSpec, value);
+      return;
+    }
     final event = _activeEvent;
     final contract = event?.presentationContract;
-    if (!anyVisible || contract == null) {
+    if (contract == null) {
       _debugComponent?.removeFromParent();
       _debugComponent = null;
       return;
     }
     var debug = _debugComponent;
-    if (debug == null || debug.contract != contract) {
+    if (debug is! CombatGeometryDebugComponent || debug.contract != contract) {
       _debugComponent?.removeFromParent();
       final target =
           contract.visualSector.origin +
@@ -311,7 +359,10 @@ class VfxGalleryGame extends FlameGame {
   void _updateDebugTimeline() {
     final debug = _debugComponent;
     final component = _activeComponent;
-    if (debug == null || component is! HwandoVfxComponent) return;
+    if (debug is! CombatGeometryDebugComponent ||
+        component is! HwandoVfxComponent) {
+      return;
+    }
     debug.phase = component.phase;
     final timing = debug.contract.timing;
     final end = switch (component.phase) {
@@ -355,6 +406,54 @@ class VfxGalleryGame extends FlameGame {
     );
   }
 
+  Vector2 get _selectedDirection {
+    final angle = status.value.directionIndex * math.pi / 4;
+    return Vector2(math.cos(angle), math.sin(angle));
+  }
+
+  void _syncProjectileDebug(
+    ProjectilePresentationSpec spec,
+    VfxGalleryStatus value,
+  ) {
+    final direction = _selectedDirection;
+    final center = size / 2;
+    final previous = center - direction * 90;
+    final current = center + direction * 30;
+    final hurtCenter = center + direction * 10;
+    const hurtRadius = 13.0;
+    final contact = ProjectileSweepGeometry.firstContact(
+      previousCenter: previous,
+      currentCenter: current,
+      direction: direction,
+      hitBodySize: spec.hitBodySize,
+      hurtCenter: hurtCenter,
+      hurtRadius: hurtRadius,
+    );
+    if (contact == null) return;
+    _debugComponent?.removeFromParent();
+    final debug =
+        ProjectileGeometryDebugComponent(
+            weaponId: spec.weaponId,
+            previousCenter: previous,
+            currentCenter: current,
+            direction: direction,
+            visualBodySize: spec.bodySize,
+            hitBodySize: spec.hitBodySize,
+            hurtCenter: hurtCenter,
+            hurtRadius: hurtRadius,
+            contact: contact,
+            autoExpire: false,
+          )
+          ..showVisualBody = value.showVisualBounds
+          ..showHitBody = value.showHitbox
+          ..showSweep = value.showAnchor
+          ..showHurtbox = value.showHurtbox || value.showActorReference
+          ..showContact = value.showContactPoint
+          ..showWeaponId = true;
+    _debugComponent = debug;
+    add(debug);
+  }
+
   _GalleryGeometry _geometryFor(
     CombatVisualCategory category,
     String effectId,
@@ -385,12 +484,16 @@ class VfxGalleryGame extends FlameGame {
   }
 
   void _publishFrame() {
-    final visual = AttackVisualRegistry.byId(status.value.selectedEffectId);
-    final frameCount = visual.layers.fold<int>(
-      0,
-      (total, layer) => total + layer.frameCount,
-    );
-    final eventDuration = _activeEvent?.duration ?? 1;
+    final selectedId = status.value.selectedEffectId;
+    final projectile = ProjectilePresentationSpecs.byWeapon[selectedId];
+    final frameCount =
+        projectile?.frameCount ??
+        AttackVisualRegistry.byId(
+          selectedId,
+        ).layers.fold<int>(0, (total, layer) => total + layer.frameCount);
+    final eventDuration = projectile == null
+        ? (_activeEvent?.duration ?? 1)
+        : projectile.frameSeconds * projectile.frameCount;
     final duration = eventDuration.isFinite && eventDuration > 0
         ? eventDuration
         : 1.0;
