@@ -1828,9 +1828,10 @@ class PixelSurvivorGame extends FlameGame<CombatWorld>
       );
     }
     _combatEffectCount += 1;
-    final onExpired = () {
+    void onExpired() {
       _combatEffectCount = max(0, _combatEffectCount - 1);
-    };
+    }
+
     addWorldComponent(
       image == null
           ? HwandoContactVfxComponent.withoutImageForTesting(

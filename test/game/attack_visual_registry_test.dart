@@ -5,10 +5,10 @@ void main() {
   test('Hwando visual contracts declare layers and timing', () {
     final spec = AttackVisualRegistry.byId('hwando_slash');
 
-    expect(spec.status, AttackVisualStatus.generatedReview);
+    expect(spec.status, AttackVisualStatus.ready);
     expect(
       spec.layers.map((layer) => layer.id),
-      containsAll(['trail', 'impact']),
+      orderedEquals(['windup', 'strike', 'recovery']),
     );
     expect(spec.layers.every((layer) => layer.frameSize == 128), isTrue);
     expect(

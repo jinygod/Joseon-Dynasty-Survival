@@ -75,5 +75,57 @@ visual sector, 그 안쪽의 적색 hit sector, 아이보리 hurtbox, 자홍 con
 
 ## 최종 품질 게이트
 
-Task 9의 `flutter analyze`, 전체 `flutter test`, Android debug APK 결과와
-아티팩트 해시는 최종 실행 후 이 문서에 추가한다.
+2026-07-25에 다음 게이트를 실행했다.
+
+- `flutter analyze`: `No issues found!`
+- `flutter test`: 1,152개 통과, 실패 0
+- `flutter build apk --debug`: 성공
+- APK:
+  `build/app/outputs/flutter-apk/app-debug.apk`
+- APK 크기: 180,627,157 bytes
+- APK SHA-256:
+  `BA2E29F0C2561EE9CE6B9A7B311F37D34E9D20FC08E13B23FBD84143540763F5`
+
+첫 전체 테스트에서는 오래된 상태 계약과 5분 고정 시드 스냅샷 때문에
+4개가 실패했다. 승인된 환도 시트의 상태를 `ready`/`approved`로 갱신하고,
+컴포넌트 자체 회전을 적용하는 렌더 테스트가 `renderTree`를 사용하도록
+고쳤다. 5분 성능 스냅샷은 현재 결정론적 결과로 갱신했다. 이후 네 실패
+파일을 독립 실행해 25개가 통과했고, 전체 1,152개 테스트를 다시 실행해
+실패 0을 확인했다.
+
+## 고정 시드 5분 성능 비교
+
+| 항목 | 이전 기준 | 현재 측정 |
+| --- | ---: | ---: |
+| 평균 활성 적 | 26.662 | 28.365 |
+| 후반 평균 활성 적 | 49.440 | 53.934 |
+| 최대 활성 적 | 86 | 84 |
+| 최대 mounted component | 363 | 365 |
+| 최대 retained owner | 30 | 30 |
+| 최대 memory proxy | 383 | 391 |
+| 최대 투사체 | 19 | 23 |
+| 최대 데미지 숫자 | 24 | 22 |
+| 최대 전투 이펙트 | 27 | 25 |
+| 인구 예산 위반 샘플 | 0 | 0 |
+| 메모리 proxy 위반 샘플 | 0 | 0 |
+
+고정 dt 논리 FPS는 59.9988이었다. 이 테스트는 실제 기기 GPU FPS나 p95
+frame time을 대신하지 않으며, 구성요소 수와 시뮬레이션 예산 회귀를
+검출한다. 실제 Chrome 960x540 및 932x430 이동/교전에서는 눈에 보이는
+급락을 관찰하지 않았지만 정량 GPU 측정은 Android 기기에서 남아 있다.
+
+`flutter devices`에는 Chrome과 Edge만 있었고 Android 실기기나 AVD는
+없었다. `flutter emulators`도 사용 가능한 AVD가 없다고 보고했다. 따라서
+APK 생성과 해시 검증까지 완료했으며, 다음 항목은 Android 실기기 전용
+확인으로 남는다.
+
+최종 증분 APK 빌드에서는 `jni-1.0.0`의 CMake가 한글 Windows 사용자
+경로를 ANSI 문자열로 잘못 해석해 한 차례 실패했다. 사용자 전역 설정은
+변경하지 않고 해당 빌드 프로세스에만
+`PUB_CACHE=D:\CodexCaches\Pub`를 지정해 영문 경로에서 재빌드했으며 성공했다.
+
+- 준비/타격/회복의 체감 구분과 타격 전 선행 데미지 부재
+- 칼날과 적 교차점의 접촉 이펙트
+- 빠른 방향 변경 시 이미지와 hitbox의 동시 회전
+- 일시정지/레벨업 중 중복 데미지 부재
+- 밀집 다중 타격의 실제 GPU frame pacing, 진동, 효과음

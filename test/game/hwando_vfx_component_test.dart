@@ -69,7 +69,11 @@ void main() {
     'Hwando VFX follows authored phases and frozen visual geometry',
     () async {
       final images = await phaseImages();
-      addTearDown(() => images.values.forEach((image) => image.dispose()));
+      addTearDown(() {
+        for (final image in images.values) {
+          image.dispose();
+        }
+      });
       final upwardAttack = AttackInstance(
         spec: hwandoAttack.spec,
         origin: Vector2(10, 20),

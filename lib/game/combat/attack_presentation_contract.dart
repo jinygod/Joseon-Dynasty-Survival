@@ -44,7 +44,7 @@ class SectorGeometry {
 
 @immutable
 class AttackPresentationContract {
-  AttackPresentationContract._({
+  const AttackPresentationContract._({
     required this.effectId,
     required this.timing,
     required this.visualSector,

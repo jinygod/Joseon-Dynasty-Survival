@@ -30,7 +30,6 @@ import 'package:pixel_survivor/game/combat/attack_spec.dart';
 import 'package:pixel_survivor/game/content/augment_definitions.dart';
 import 'package:pixel_survivor/game/content/character_definitions.dart';
 import 'package:pixel_survivor/game/content/actor_visual_spec.dart';
-import 'package:pixel_survivor/game/content/combat_effect_atlas.dart';
 import 'package:pixel_survivor/game/content/ids.dart';
 import 'package:pixel_survivor/game/content/enemy_definitions.dart';
 import 'package:pixel_survivor/game/content/playtest_content_policy.dart';

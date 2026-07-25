@@ -236,15 +236,16 @@ Future<Uint8List> _renderBytes(AttackInstance instance) async {
   );
   final sheet = await sheetRecorder.endRecording().toImage(768, 128);
   final recorder = ui.PictureRecorder();
-  final canvas = ui.Canvas(recorder)..translate(100, 100);
+  final canvas = ui.Canvas(recorder);
   final event = AttackVisualEvent.fromAttack(instance);
-  HwandoVfxComponent(
+  final component = HwandoVfxComponent(
     event: event,
     images: {
       for (final layer in AttackVisualRegistry.byId(event.effectId).layers)
         layer.assetKey: sheet,
     },
-  ).render(canvas);
+  )..position = Vector2(100, 100);
+  component.renderTree(canvas);
   final image = await recorder.endRecording().toImage(200, 200);
   final data = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
   final bytes = Uint8List.fromList(data!.buffer.asUint8List());

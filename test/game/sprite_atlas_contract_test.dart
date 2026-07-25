@@ -6,14 +6,21 @@ import 'package:pixel_survivor/game/content/asset_catalog.dart';
 import 'package:pixel_survivor/game/content/sprite_atlas_contract.dart';
 
 void main() {
-  test('replaceable atlases are temporary and registered in AssetCatalog', () {
+  test('replaceable atlases declare review status and AssetCatalog path', () {
     expect(ReplaceableArtCatalog.atlases.length, greaterThanOrEqualTo(16));
 
     final runtimeAtlases = ReplaceableArtCatalog.atlases.where(
       (contract) => !missingEightVisualContracts.containsKey(contract.id),
     );
     for (final contract in runtimeAtlases) {
-      expect(contract.status, ArtAssetStatus.temporary, reason: contract.id);
+      final isApprovedReleaseHwando = contract.id.startsWith('hwando_release_');
+      expect(
+        contract.status,
+        isApprovedReleaseHwando
+            ? ArtAssetStatus.approved
+            : ArtAssetStatus.temporary,
+        reason: contract.id,
+      );
       expect(
         AssetCatalog.allPaths,
         contains(contract.runtimePath),
