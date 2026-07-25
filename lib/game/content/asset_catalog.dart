@@ -11,6 +11,10 @@ class AssetCatalog {
     ...stages.values,
     ...stagePresentation.values,
     ...lobby.values,
+    ...lobbyScene.values,
+    ...lobbyFrames.values,
+    ...lobbyIcons.values,
+    ...lobbyCharacters.values,
     ...player.values,
   ]);
 
@@ -152,6 +156,50 @@ class AssetCatalog {
   static const lobby = <String, String>{
     'government_office':
         'assets/images/stages/joseon_moonlit_lobby_1536x2730.png',
+  };
+
+  static const lobbyScene = <String, String>{
+    'night_palace_landscape':
+        'assets/images/stages/joseon_night_palace_landscape.png',
+    'character_shadow': 'assets/images/ui/lobby/character_shadow.png',
+  };
+
+  static const lobbyCharacters = <String, String>{
+    'rookie_constable': 'assets/images/characters/lobby/rookie_constable.png',
+    'exorcist_dosa': 'assets/images/characters/lobby/exorcist_dosa.png',
+    'mountain_hunter': 'assets/images/characters/lobby/mountain_hunter.png',
+  };
+
+  static const lobbyFrames = <String, String>{
+    'profile': 'assets/images/ui/lobby/frame_profile.png',
+    'resource': 'assets/images/ui/lobby/frame_resource.png',
+    'side_command': 'assets/images/ui/lobby/frame_side_command.png',
+    'stage_plaque': 'assets/images/ui/lobby/frame_stage_plaque.png',
+    'deploy': 'assets/images/ui/lobby/frame_deploy.png',
+    'quick_action': 'assets/images/ui/lobby/frame_quick_action.png',
+    'primary_navigation': 'assets/images/ui/lobby/frame_primary_navigation.png',
+    'feature_notice': 'assets/images/ui/lobby/frame_feature_notice.png',
+  };
+
+  static const lobbyIcons = <String, String>{
+    'coin': 'assets/images/ui/lobby/icon_coin.png',
+    'spirit_jade': 'assets/images/ui/lobby/icon_spirit_jade.png',
+    'settings': 'assets/images/ui/lobby/icon_settings.png',
+    'shop': 'assets/images/ui/lobby/icon_shop.png',
+    'mission': 'assets/images/ui/lobby/icon_mission.png',
+    'pass': 'assets/images/ui/lobby/icon_pass.png',
+    'package': 'assets/images/ui/lobby/icon_package.png',
+    'mail': 'assets/images/ui/lobby/icon_mail.png',
+    'compendium': 'assets/images/ui/lobby/icon_compendium.png',
+    'records': 'assets/images/ui/lobby/icon_records.png',
+    'character': 'assets/images/ui/lobby/icon_character.png',
+    'combat': 'assets/images/ui/lobby/icon_combat.png',
+    'challenge': 'assets/images/ui/lobby/icon_challenge.png',
+    'growth': 'assets/images/ui/lobby/icon_growth.png',
+    'weapon': 'assets/images/ui/lobby/icon_weapon.png',
+    'relic': 'assets/images/ui/lobby/icon_relic.png',
+    'companion': 'assets/images/ui/lobby/icon_companion.png',
+    'crafting': 'assets/images/ui/lobby/icon_crafting.png',
   };
 
   static const stagePresentation = <String, String>{
