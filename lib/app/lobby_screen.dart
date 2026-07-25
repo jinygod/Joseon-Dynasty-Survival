@@ -8,21 +8,22 @@ import '../backend/progress/progress_sync_controller.dart';
 import '../game/audio/audio_cue.dart';
 import '../game/audio/audio_settings_controller.dart';
 import '../game/audio/game_audio_service.dart';
-import '../game/content/asset_catalog.dart';
 import '../game/content/character_definitions.dart';
 import '../game/content/stage_definitions.dart';
 import '../game/models/player_slot.dart';
-import '../game/systems/tutorial_progress_repository.dart';
 import '../game/systems/playtest_session_repository.dart';
-import 'account_section.dart';
+import '../game/systems/tutorial_progress_repository.dart';
 import 'character_select_screen.dart';
 import 'compendium_screen.dart';
 import 'game_screen.dart';
 import 'lobby_battle_stage.dart';
 import 'lobby_controller.dart';
-import 'lobby_navigation_dock.dart';
-import 'lobby_top_command_bar.dart';
-import 'joseon_ui_theme.dart';
+import 'lobby_feature_notice.dart';
+import 'lobby_primary_navigation.dart';
+import 'lobby_quick_actions.dart';
+import 'lobby_scene.dart';
+import 'lobby_side_menu.dart';
+import 'lobby_status_bar.dart';
 import 'premium_shop_screen.dart';
 import 'records_screen.dart';
 import 'settings_screen.dart';
@@ -108,9 +109,8 @@ class _LobbyScreenState extends State<LobbyScreen> with WidgetsBindingObserver {
         builder: (pickerContext) => CharacterSelectScreen(
           initialCharacterId: widget.controller.state.selectedCharacterId,
           unlockedCharacterIds: widget.controller.state.unlockedCharacterIds,
-          onSelected: (characterId) {
-            unawaited(_saveCharacter(pickerContext, characterId));
-          },
+          onSelected: (characterId) =>
+              unawaited(_saveCharacter(pickerContext, characterId)),
         ),
       ),
     );
@@ -130,12 +130,16 @@ class _LobbyScreenState extends State<LobbyScreen> with WidgetsBindingObserver {
         builder: (pickerContext) => StageSelectScreen(
           initialStageId: widget.controller.state.selectedStageId,
           unlockedStageIds: widget.controller.state.unlockedStageIds,
-          onSelected: (stageId) {
-            unawaited(_saveStage(pickerContext, stageId));
-          },
+          onSelected: (stageId) =>
+              unawaited(_saveStage(pickerContext, stageId)),
         ),
       ),
     );
+  }
+
+  Future<void> _saveStage(BuildContext pickerContext, String stageId) async {
+    await widget.controller.selectStage(stageId);
+    if (pickerContext.mounted) Navigator.of(pickerContext).pop();
   }
 
   Future<void> _openSettings() async {
@@ -174,15 +178,9 @@ class _LobbyScreenState extends State<LobbyScreen> with WidgetsBindingObserver {
     );
   }
 
-  Future<void> _saveStage(BuildContext pickerContext, String stageId) async {
-    await widget.controller.selectStage(stageId);
-    if (pickerContext.mounted) Navigator.of(pickerContext).pop();
-  }
-
   Future<void> _deploy() async {
-    if (_launching || widget.controller.loading || widget.controller.saving) {
+    if (_launching || widget.controller.loading || widget.controller.saving)
       return;
-    }
     setState(() => _launching = true);
     final audio = widget.audioService;
     if (audio != null) unawaited(audio.play(AudioCue.uiConfirm));
@@ -221,190 +219,218 @@ class _LobbyScreenState extends State<LobbyScreen> with WidgetsBindingObserver {
 
   void _showRecoveryNotice(String notice) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(notice)));
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(notice)));
     });
   }
 
   Widget _premiumEntry() {
     final purchases = widget.purchaseController;
-    if (purchases != null) {
-      return AnimatedBuilder(
-        animation: purchases,
-        builder: (context, _) => ActionChip(
-          key: const Key('lobby-premium-shop'),
-          visualDensity: VisualDensity.compact,
-          label: Text(
-            purchases.state.walletStale
-                ? '금옥 --'
-                : '금옥 ${purchases.state.wallet?.balance ?? 0}',
-            style: const TextStyle(fontFamily: JoseonUiTheme.bodyFontFamily),
+    final retry = widget.onPurchaseInitializationRetry;
+    if (purchases == null && retry == null) return const SizedBox.shrink();
+    return AnimatedBuilder(
+      animation: purchases ?? widget.controller,
+      builder: (context, _) => Semantics(
+        button: true,
+        label: purchases == null ? '상점 다시 시도' : '상점',
+        child: GestureDetector(
+          key: Key(
+            purchases == null
+                ? 'lobby-premium-shop-retry'
+                : 'lobby-premium-shop',
           ),
-          onPressed: _openPremiumShop,
+          behavior: HitTestBehavior.opaque,
+          onTap: _openPremiumShop,
+          child: Center(
+            child: Text(
+              purchases == null
+                  ? '상점'
+                  : purchases.state.walletStale
+                  ? '금화 --'
+                  : '금화 ${purchases.state.wallet?.balance ?? 0}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ),
-      );
-    }
-    if (widget.onPurchaseInitializationRetry != null) {
-      return ActionChip(
-        key: const Key('lobby-premium-shop-retry'),
-        visualDensity: VisualDensity.compact,
-        label: const Text(
-          '금옥 재시도',
-          style: TextStyle(fontFamily: JoseonUiTheme.bodyFontFamily),
-        ),
-        onPressed: _openPremiumShop,
-      );
-    }
-    return const SizedBox.shrink();
+      ),
+    );
   }
 
+  Future<void> _openRecords() => Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      builder: (_) => RecordsScreen(state: widget.controller.state),
+    ),
+  );
+
   @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: widget.controller,
-      builder: (context, _) {
-        final notice = widget.controller.takeRecoveryNotice();
-        if (notice != null) _showRecoveryNotice(notice);
-        if (widget.controller.loading) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
-        final state = widget.controller.state;
-        final character = characterDefinitions.firstWhere(
-          (item) => item.id == state.selectedCharacterId,
-        );
-        final stage = stageDefinitions.firstWhere(
-          (item) => item.id == state.selectedStageId,
-        );
-        return Scaffold(
-          backgroundColor: const Color(0xff071527),
-          body: Stack(
-            fit: StackFit.expand,
-            children: [
-              Image.asset(
-                AssetCatalog.lobby['government_office']!,
-                key: const Key('lobby-background-image'),
-                fit: BoxFit.cover,
-                alignment: Alignment.topCenter,
-                filterQuality: FilterQuality.high,
-              ),
-              const DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    stops: [0, 0.42, 0.78, 1],
-                    colors: [
-                      Color(0x4d020916),
-                      Color(0x26020916),
-                      Color(0x73020916),
-                      Color(0xcc020916),
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: widget.controller,
+    builder: (context, _) {
+      final notice = widget.controller.takeRecoveryNotice();
+      if (notice != null) _showRecoveryNotice(notice);
+      if (widget.controller.loading) {
+        return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      }
+      final state = widget.controller.state;
+      final character = characterDefinitions.firstWhere(
+        (item) => item.id == state.selectedCharacterId,
+      );
+      final stage = stageDefinitions.firstWhere(
+        (item) => item.id == state.selectedStageId,
+      );
+      return Scaffold(
+        backgroundColor: const Color(0xff071527),
+        body: SafeArea(
+          child: LobbyScene(
+            characterId: character.id,
+            foreground: Stack(
+              fit: StackFit.expand,
+              children: [
+                Positioned(
+                  top: 8,
+                  left: 12,
+                  right: 12,
+                  child: KeyedSubtree(
+                    key: const Key('lobby-status-bar'),
+                    child: LobbyStatusBar(
+                      coin: state.wallet.coin,
+                      spiritJade: state.wallet.spiritJade,
+                      trainingRank: '훈련',
+                      premiumEntry: _premiumEntry(),
+                      onSettings: _openSettings,
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 70,
+                  bottom: 150,
+                  left: 4,
+                  width: 70,
+                  child: LobbySideMenu(
+                    axis: Axis.vertical,
+                    actions: [
+                      _noticeAction('mail', '우편', 'mail', LobbyFeature.mail),
+                      _noticeAction(
+                        'mission',
+                        '임무',
+                        'mission',
+                        LobbyFeature.mission,
+                      ),
+                      _noticeAction('pass', '패스', 'pass', LobbyFeature.pass),
+                      _noticeAction(
+                        'package',
+                        '보관함',
+                        'package',
+                        LobbyFeature.package,
+                      ),
                     ],
                   ),
                 ),
-              ),
-              SafeArea(
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
-                      child: KeyedSubtree(
-                        key: const Key('lobby-resource-bar'),
-                        child: LobbyTopCommandBar(
-                          coin: state.wallet.coin,
-                          spiritJade: state.wallet.spiritJade,
-                          premiumEntry: _premiumEntry(),
-                          onSettings: _openSettings,
-                        ),
+                Positioned(
+                  top: 70,
+                  bottom: 150,
+                  right: 4,
+                  width: 70,
+                  child: LobbySideMenu(
+                    axis: Axis.vertical,
+                    actions: [
+                      LobbyMenuAction(
+                        id: 'compendium',
+                        label: '도감',
+                        iconAsset: 'assets/images/ui/lobby/icon_compendium.png',
+                        onPressed: _openCompendium,
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    Expanded(
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          final battleStage = LobbyBattleStage(
-                            characterId: character.id,
-                            characterName: character.name,
-                            stage: stage,
-                            bestSeconds: state.bestSurvivalSeconds,
-                            launching: _launching,
-                            saving: widget.controller.saving,
-                            onDeploy: _deploy,
-                          );
-                          final usesWideStage = constraints.maxWidth > 600;
-                          return SingleChildScrollView(
-                            key: const Key('lobby-center-scroll'),
-                            padding: const EdgeInsets.fromLTRB(12, 0, 12, 14),
-                            child: ConstrainedBox(
-                              constraints: BoxConstraints(
-                                minHeight: constraints.maxHeight - 14,
-                              ),
-                              child: Center(
-                                child: ConstrainedBox(
-                                  constraints: const BoxConstraints(
-                                    maxWidth: 720,
-                                  ),
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      if (widget.accountController
-                                          case final account?) ...[
-                                        AccountSection(
-                                          controller: account,
-                                          syncLabel: widget
-                                              .progressSyncController
-                                              ?.status
-                                              .label,
-                                          onSyncNow: widget.controller.syncNow,
-                                          syncListenable:
-                                              widget.progressSyncController,
-                                        ),
-                                        const SizedBox(height: 10),
-                                      ],
-                                      if (usesWideStage)
-                                        SizedBox(
-                                          height: constraints.maxHeight - 14,
-                                          child: battleStage,
-                                        )
-                                      else
-                                        battleStage,
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        },
+                      LobbyMenuAction(
+                        id: 'records',
+                        label: '기록',
+                        iconAsset: 'assets/images/ui/lobby/icon_records.png',
+                        onPressed: _openRecords,
                       ),
-                    ),
-                    SizedBox(
-                      height: 93,
-                      child: KeyedSubtree(
-                        key: const Key('lobby-bottom-menu'),
-                        child: LobbyNavigationDock(
-                          key: const Key('lobby-navigation-dock'),
-                          onStagePressed: _openStagePicker,
-                          onCharacterPressed: _openCharacterPicker,
-                          onCompendiumPressed: _openCompendium,
-                          onRecordsPressed: () => Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => RecordsScreen(state: state),
-                            ),
-                          ),
-                          onTrainingPressed: _openTraining,
-                        ),
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+                Positioned(
+                  left: 52,
+                  right: 52,
+                  bottom: 150,
+                  child: Center(
+                    child: LobbyBattleStage(
+                      characterId: character.id,
+                      characterName: character.name,
+                      stage: stage,
+                      bestSeconds: state.bestSurvivalSeconds,
+                      launching: _launching,
+                      saving: widget.controller.saving,
+                      onDeploy: _deploy,
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 100,
+                  bottom: 174,
+                  width: 280,
+                  height: 80,
+                  child: Listener(
+                    key: const Key('lobby-stage'),
+                    behavior: HitTestBehavior.opaque,
+                    onPointerUp: (_) => unawaited(_openStagePicker()),
+                    child: const SizedBox.expand(),
+                  ),
+                ),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 82,
+                  height: 68,
+                  child: Center(
+                    child: LobbyQuickActions(
+                      onGrowth: _openTraining,
+                      onWeapon: () => _showFeature(LobbyFeature.ranking),
+                      onRelic: () => _showFeature(LobbyFeature.relic),
+                      onCompanion: () => _showFeature(LobbyFeature.companion),
+                      onCrafting: () => _showFeature(LobbyFeature.crafting),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  height: 82,
+                  child: Center(
+                    child: LobbyPrimaryNavigation(
+                      onLobby: () {},
+                      onCharacter: _openCharacterPicker,
+                      onCombat: _deploy,
+                      onChallenge: () => _showFeature(LobbyFeature.challenge),
+                      onShop: _openPremiumShop,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        );
-      },
-    );
+        ),
+      );
+    },
+  );
+
+  LobbyMenuAction _noticeAction(
+    String id,
+    String label,
+    String icon,
+    LobbyFeature feature,
+  ) => LobbyMenuAction(
+    id: id,
+    label: label,
+    iconAsset: 'assets/images/ui/lobby/icon_$icon.png',
+    onPressed: () => _showFeature(feature),
+  );
+
+  void _showFeature(LobbyFeature feature) {
+    unawaited(showLobbyFeatureNotice(context, feature));
   }
 }
