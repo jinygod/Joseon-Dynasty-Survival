@@ -48,3 +48,9 @@ path with the release `LobbyScreen` and `LobbyPrimaryNavigation` composition.
   overflow without changing stage behavior.
 - Added primary-combat routing and table-driven unavailable-feature notice
   coverage.
+
+## Review round 3
+
+- Added an integrated primary-shop regression using `lobby-primary-shop` and
+  asserting navigation to `PremiumShopScreen`; it does not substitute the
+  status-bar premium entry.

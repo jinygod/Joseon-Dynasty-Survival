@@ -6,6 +6,7 @@ import 'package:pixel_survivor/app/game_screen.dart';
 import 'package:pixel_survivor/app/lobby_controller.dart';
 import 'package:pixel_survivor/app/lobby_screen.dart';
 import 'package:pixel_survivor/app/records_screen.dart';
+import 'package:pixel_survivor/app/premium_shop_screen.dart';
 import 'package:pixel_survivor/app/settings_screen.dart';
 import 'package:pixel_survivor/app/stage_select_screen.dart';
 import 'package:pixel_survivor/app/training_screen.dart';
@@ -16,6 +17,12 @@ import 'package:pixel_survivor/game/content/character_definitions.dart';
 import 'package:pixel_survivor/game/content/stage_definitions.dart';
 import 'package:pixel_survivor/game/models/meta_progress.dart';
 import 'package:pixel_survivor/game/systems/save_system.dart';
+import 'package:pixel_survivor/backend/account/account_session.dart';
+import 'package:pixel_survivor/backend/economy/premium_wallet.dart';
+import 'package:pixel_survivor/backend/economy/purchase_controller.dart';
+import 'package:pixel_survivor/backend/economy/purchase_gateway.dart';
+import 'package:pixel_survivor/backend/economy/purchase_retry_store.dart';
+import 'package:pixel_survivor/backend/economy/supabase_economy_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -304,6 +311,37 @@ void main() {
     expect(find.byType(GameScreen), findsOneWidget);
   });
 
+  testWidgets('primary shop opens the premium shop screen', (tester) async {
+    final purchases = PurchaseController(
+      gateway: _ShopGateway(),
+      repository: _ShopWalletRepository(),
+      retryStore: _ShopRetryStore(),
+      sessionProvider: () => const AccountSession.signedOut(),
+      packageName: 'com.pixel.survivor.pixel_survivor',
+    );
+    await purchases.start();
+    final lobby = LobbyController(
+      store: _MemorySaveStore(SaveState.defaults()),
+    );
+    await lobby.load();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: LobbyScreen(
+          controller: lobby,
+          audioSettingsController: _audioController(),
+          purchaseController: purchases,
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('lobby-primary-shop')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.byType(PremiumShopScreen), findsOneWidget);
+    purchases.dispose();
+  });
+
   testWidgets('unavailable primary and side actions open their notices', (
     tester,
   ) async {
@@ -363,4 +401,47 @@ class _MemoryAudioStore implements AudioSettingsStore {
 
   @override
   Future<void> save(AudioSettings settings) async => value = settings;
+}
+
+class _ShopGateway implements PurchaseGateway {
+  @override
+  Stream<PurchaseUpdate> get updates => const Stream.empty();
+  @override
+  Future<bool> isAvailable() async => true;
+  @override
+  Future<List<PremiumProduct>> loadProducts(Set<String> productIds) async =>
+      const [];
+  @override
+  Future<void> purchase(
+    PremiumProduct product, {
+    required String applicationUserName,
+  }) async {}
+  @override
+  Future<void> recoverUnfinishedPurchases({
+    String? applicationUserName,
+  }) async {}
+  @override
+  Future<void> complete(PurchaseUpdate purchase) async {}
+}
+
+class _ShopWalletRepository implements EconomyRepository {
+  @override
+  Future<PremiumWallet> fetchWallet() async =>
+      PremiumWallet(balance: 0, debt: 0, version: 1);
+  @override
+  Future<PurchaseVerificationResult> verifyPurchase({
+    required String productId,
+    required String purchaseToken,
+    required String packageName,
+  }) async =>
+      const PurchaseVerificationResult(accepted: true, duplicate: false);
+}
+
+class _ShopRetryStore implements PurchaseRetryStore {
+  @override
+  Future<Set<PendingPurchase>> load() async => {};
+  @override
+  Future<void> put(PendingPurchase purchase) async {}
+  @override
+  Future<void> remove(String purchaseToken) async {}
 }
