@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pixel_survivor/app/joseon_ui_theme.dart';
 import 'package:pixel_survivor/app/lobby_status_bar.dart';
 
 void main() {
@@ -8,6 +9,7 @@ void main() {
     (tester) async {
       await tester.pumpWidget(
         MaterialApp(
+          theme: JoseonUiTheme.create(),
           home: Scaffold(
             body: SizedBox(
               width: 320,
