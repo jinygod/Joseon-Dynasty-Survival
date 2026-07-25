@@ -69,6 +69,40 @@ void main() {
     }
   });
 
+  testWidgets('640 landscape uses reachable compact horizontal command rails', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(640, 360);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    final lobby = LobbyController(
+      store: _MemorySaveStore(SaveState.defaults()),
+    );
+    await lobby.load();
+    await tester.pumpWidget(_lobbyApp(lobby));
+    await tester.pump();
+
+    expect(
+      find.byKey(const Key('lobby-side-menu-horizontal')),
+      findsNWidgets(2),
+    );
+    expect(find.byKey(const Key('lobby-side-menu-vertical')), findsNothing);
+    for (final key in const [
+      'lobby-side-mail',
+      'lobby-side-mission',
+      'lobby-side-pass',
+      'lobby-side-package',
+      'lobby-side-compendium',
+      'lobby-side-records',
+    ]) {
+      final rect = tester.getRect(find.byKey(Key(key)));
+      expect(rect.left, greaterThanOrEqualTo(0));
+      expect(rect.right, lessThanOrEqualTo(640));
+    }
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('lobby routes every implemented destination', (tester) async {
     final lobby = LobbyController(
       store: _MemorySaveStore(SaveState.defaults()),

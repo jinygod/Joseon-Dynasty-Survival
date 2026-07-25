@@ -29,3 +29,12 @@ expanded visual-branch contract.
 
 The expanded focused contract test also replaces the deleted navigation-dock
 path with the release `LobbyScreen` and `LobbyPrimaryNavigation` composition.
+
+## Review round 1
+
+- Restored permanent-account email visibility and a `sync-now` entry directly
+  in the raster lobby composition without reintroducing stock Material lobby
+  surfaces. Existing backend flow coverage verifies the production account,
+  wallet, shop, and retry paths.
+- Added the 640x360 compact-horizontal-rail regression: all six side commands
+  remain in bounds and no vertical rail is composed at that width.
