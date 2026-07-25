@@ -38,3 +38,13 @@ path with the release `LobbyScreen` and `LobbyPrimaryNavigation` composition.
   wallet, shop, and retry paths.
 - Added the 640x360 compact-horizontal-rail regression: all six side commands
   remain in bounds and no vertical rail is composed at that width.
+
+## Review round 2
+
+- Restored saved-training delivery, settings reset/stage persistence and
+  SnackBar round-trip coverage through the integrated release lobby.
+- Added a 390x844 2x-text reachability regression and scales the stage
+  composition down from its wide layout when constrained, avoiding plaque
+  overflow without changing stage behavior.
+- Added primary-combat routing and table-driven unavailable-feature notice
+  coverage.

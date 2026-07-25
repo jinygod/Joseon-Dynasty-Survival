@@ -284,259 +284,283 @@ class _LobbyScreenState extends State<LobbyScreen> with WidgetsBindingObserver {
       return Scaffold(
         backgroundColor: const Color(0xff071527),
         body: SafeArea(
-          child: LobbyScene(
-            characterId: character.id,
-            foreground: LayoutBuilder(
-              builder: (context, constraints) {
-                final compactRails = constraints.maxWidth <= 640;
-                final account = widget.accountController;
-                final railTop = account == null ? 70.0 : 112.0;
-                return Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Positioned(
-                      top: 8,
-                      left: 12,
-                      right: 12,
-                      child: KeyedSubtree(
-                        key: const Key('lobby-status-bar'),
-                        child: LobbyStatusBar(
-                          coin: state.wallet.coin,
-                          spiritJade: state.wallet.spiritJade,
-                          trainingRank: '훈련',
-                          premiumEntry: _premiumEntry(),
-                          onSettings: _openSettings,
-                        ),
-                      ),
-                    ),
-                    if (account != null)
-                      Positioned(
-                        top: 66,
-                        right: 82,
-                        width: 210,
-                        height: 40,
-                        child: ListenableBuilder(
-                          listenable: account,
-                          builder: (context, _) => Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  account.session.isPermanent
-                                      ? account.session.email!
-                                      : '손님 계정',
-                                  key: const Key('account-summary'),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(color: Colors.white),
-                                ),
-                              ),
-                              if (account.session.isPermanent)
-                                GestureDetector(
-                                  key: const Key('sync-now'),
-                                  behavior: HitTestBehavior.opaque,
-                                  onTap: () =>
-                                      unawaited(widget.controller.syncNow()),
-                                  child: const SizedBox(
-                                    width: 48,
-                                    height: 40,
-                                    child: Center(child: Text('동기화')),
-                                  ),
-                                ),
-                            ],
+          child: MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: TextScaler.noScaling),
+            child: LobbyScene(
+              characterId: character.id,
+              foreground: LayoutBuilder(
+                builder: (context, constraints) {
+                  final compactRails = constraints.maxWidth <= 640;
+                  final account = widget.accountController;
+                  final railTop = account == null ? 70.0 : 112.0;
+                  return MediaQuery(
+                    data: MediaQuery.of(
+                      context,
+                    ).copyWith(textScaler: TextScaler.noScaling),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Positioned(
+                          top: 8,
+                          left: 12,
+                          right: 12,
+                          child: KeyedSubtree(
+                            key: const Key('lobby-status-bar'),
+                            child: LobbyStatusBar(
+                              coin: state.wallet.coin,
+                              spiritJade: state.wallet.spiritJade,
+                              trainingRank: '훈련',
+                              premiumEntry: _premiumEntry(),
+                              onSettings: _openSettings,
+                            ),
                           ),
                         ),
-                      ),
-                    if (compactRails)
-                      Positioned(
-                        top: railTop,
-                        left: 0,
-                        right: 0,
-                        height: 68,
-                        child: Row(
-                          children: [
-                            SizedBox(
-                              width: 284,
-                              child: LobbySideMenu(
-                                axis: Axis.horizontal,
-                                actions: [
-                                  _noticeAction(
-                                    'mail',
-                                    '우편',
-                                    'mail',
-                                    LobbyFeature.mail,
+                        if (account != null)
+                          Positioned(
+                            top: 66,
+                            right: 82,
+                            width: 210,
+                            height: 40,
+                            child: ListenableBuilder(
+                              listenable: account,
+                              builder: (context, _) => Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      account.session.isPermanent
+                                          ? account.session.email!
+                                          : '손님 계정',
+                                      key: const Key('account-summary'),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                      ),
+                                    ),
                                   ),
-                                  _noticeAction(
-                                    'mission',
-                                    '임무',
-                                    'mission',
-                                    LobbyFeature.mission,
-                                  ),
-                                  _noticeAction(
-                                    'pass',
-                                    '패스',
-                                    'pass',
-                                    LobbyFeature.pass,
-                                  ),
-                                  _noticeAction(
-                                    'package',
-                                    '보관함',
-                                    'package',
-                                    LobbyFeature.package,
-                                  ),
+                                  if (account.session.isPermanent)
+                                    GestureDetector(
+                                      key: const Key('sync-now'),
+                                      behavior: HitTestBehavior.opaque,
+                                      onTap: () => unawaited(
+                                        widget.controller.syncNow(),
+                                      ),
+                                      child: const SizedBox(
+                                        width: 48,
+                                        height: 40,
+                                        child: Center(child: Text('동기화')),
+                                      ),
+                                    ),
                                 ],
                               ),
                             ),
-                            const Spacer(),
-                            SizedBox(
-                              width: 142,
-                              child: LobbySideMenu(
-                                axis: Axis.horizontal,
-                                actions: [
-                                  LobbyMenuAction(
-                                    id: 'compendium',
-                                    label: '도감',
-                                    iconAsset:
-                                        'assets/images/ui/lobby/icon_compendium.png',
-                                    onPressed: _openCompendium,
+                          ),
+                        if (compactRails)
+                          Positioned(
+                            top: railTop,
+                            left: 0,
+                            right: 0,
+                            height: 76,
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  flex: 2,
+                                  child: LobbySideMenu(
+                                    axis: Axis.horizontal,
+                                    actions: [
+                                      _noticeAction(
+                                        'mail',
+                                        '우편',
+                                        'mail',
+                                        LobbyFeature.mail,
+                                      ),
+                                      _noticeAction(
+                                        'mission',
+                                        '임무',
+                                        'mission',
+                                        LobbyFeature.mission,
+                                      ),
+                                      _noticeAction(
+                                        'pass',
+                                        '패스',
+                                        'pass',
+                                        LobbyFeature.pass,
+                                      ),
+                                      _noticeAction(
+                                        'package',
+                                        '보관함',
+                                        'package',
+                                        LobbyFeature.package,
+                                      ),
+                                    ],
                                   ),
-                                  LobbyMenuAction(
-                                    id: 'records',
-                                    label: '기록',
-                                    iconAsset:
-                                        'assets/images/ui/lobby/icon_records.png',
-                                    onPressed: _openRecords,
+                                ),
+                                Expanded(
+                                  child: LobbySideMenu(
+                                    axis: Axis.horizontal,
+                                    actions: [
+                                      LobbyMenuAction(
+                                        id: 'compendium',
+                                        label: '도감',
+                                        iconAsset:
+                                            'assets/images/ui/lobby/icon_compendium.png',
+                                        onPressed: _openCompendium,
+                                      ),
+                                      LobbyMenuAction(
+                                        id: 'records',
+                                        label: '기록',
+                                        iconAsset:
+                                            'assets/images/ui/lobby/icon_records.png',
+                                        onPressed: _openRecords,
+                                      ),
+                                    ],
                                   ),
-                                ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        if (!compactRails) ...[
+                          Positioned(
+                            top: railTop,
+                            bottom: 150,
+                            left: 4,
+                            width: 70,
+                            child: LobbySideMenu(
+                              axis: Axis.vertical,
+                              actions: [
+                                _noticeAction(
+                                  'mail',
+                                  '우편',
+                                  'mail',
+                                  LobbyFeature.mail,
+                                ),
+                                _noticeAction(
+                                  'mission',
+                                  '임무',
+                                  'mission',
+                                  LobbyFeature.mission,
+                                ),
+                                _noticeAction(
+                                  'pass',
+                                  '패스',
+                                  'pass',
+                                  LobbyFeature.pass,
+                                ),
+                                _noticeAction(
+                                  'package',
+                                  '보관함',
+                                  'package',
+                                  LobbyFeature.package,
+                                ),
+                              ],
+                            ),
+                          ),
+                          Positioned(
+                            top: railTop,
+                            bottom: 150,
+                            right: 4,
+                            width: 70,
+                            child: LobbySideMenu(
+                              axis: Axis.vertical,
+                              actions: [
+                                LobbyMenuAction(
+                                  id: 'compendium',
+                                  label: '도감',
+                                  iconAsset:
+                                      'assets/images/ui/lobby/icon_compendium.png',
+                                  onPressed: _openCompendium,
+                                ),
+                                LobbyMenuAction(
+                                  id: 'records',
+                                  label: '기록',
+                                  iconAsset:
+                                      'assets/images/ui/lobby/icon_records.png',
+                                  onPressed: _openRecords,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                        Positioned(
+                          left: 52,
+                          right: 52,
+                          bottom: 150,
+                          child: Center(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: SizedBox(
+                                width: 526,
+                                child: MediaQuery(
+                                  data: MediaQuery.of(
+                                    context,
+                                  ).copyWith(textScaler: TextScaler.noScaling),
+                                  child: LobbyBattleStage(
+                                    characterId: character.id,
+                                    characterName: character.name,
+                                    stage: stage,
+                                    bestSeconds: state.bestSurvivalSeconds,
+                                    launching: _launching,
+                                    saving: widget.controller.saving,
+                                    onDeploy: _deploy,
+                                  ),
+                                ),
                               ),
                             ),
-                          ],
+                          ),
                         ),
-                      ),
-                    if (!compactRails) ...[
-                      Positioned(
-                        top: railTop,
-                        bottom: 150,
-                        left: 4,
-                        width: 70,
-                        child: LobbySideMenu(
-                          axis: Axis.vertical,
-                          actions: [
-                            _noticeAction(
-                              'mail',
-                              '우편',
-                              'mail',
-                              LobbyFeature.mail,
-                            ),
-                            _noticeAction(
-                              'mission',
-                              '임무',
-                              'mission',
-                              LobbyFeature.mission,
-                            ),
-                            _noticeAction(
-                              'pass',
-                              '패스',
-                              'pass',
-                              LobbyFeature.pass,
-                            ),
-                            _noticeAction(
-                              'package',
-                              '보관함',
-                              'package',
-                              LobbyFeature.package,
-                            ),
-                          ],
+                        Positioned(
+                          left: 100,
+                          bottom: 174,
+                          width: 280,
+                          height: 80,
+                          child: Listener(
+                            key: const Key('lobby-stage'),
+                            behavior: HitTestBehavior.opaque,
+                            onPointerUp: (_) => unawaited(_openStagePicker()),
+                            child: const SizedBox.expand(),
+                          ),
                         ),
-                      ),
-                      Positioned(
-                        top: railTop,
-                        bottom: 150,
-                        right: 4,
-                        width: 70,
-                        child: LobbySideMenu(
-                          axis: Axis.vertical,
-                          actions: [
-                            LobbyMenuAction(
-                              id: 'compendium',
-                              label: '도감',
-                              iconAsset:
-                                  'assets/images/ui/lobby/icon_compendium.png',
-                              onPressed: _openCompendium,
+                        Positioned(
+                          left: 0,
+                          right: 0,
+                          bottom: 82,
+                          height: 68,
+                          child: Center(
+                            child: LobbyQuickActions(
+                              onGrowth: _openTraining,
+                              onWeapon: () =>
+                                  _showFeature(LobbyFeature.ranking),
+                              onRelic: () => _showFeature(LobbyFeature.relic),
+                              onCompanion: () =>
+                                  _showFeature(LobbyFeature.companion),
+                              onCrafting: () =>
+                                  _showFeature(LobbyFeature.crafting),
                             ),
-                            LobbyMenuAction(
-                              id: 'records',
-                              label: '기록',
-                              iconAsset:
-                                  'assets/images/ui/lobby/icon_records.png',
-                              onPressed: _openRecords,
+                          ),
+                        ),
+                        Positioned(
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          height: 82,
+                          child: Center(
+                            child: LobbyPrimaryNavigation(
+                              onLobby: () {},
+                              onCharacter: _openCharacterPicker,
+                              onCombat: _deploy,
+                              onChallenge: () =>
+                                  _showFeature(LobbyFeature.challenge),
+                              onShop: _openPremiumShop,
                             ),
-                          ],
+                          ),
                         ),
-                      ),
-                    ],
-                    Positioned(
-                      left: 52,
-                      right: 52,
-                      bottom: 150,
-                      child: Center(
-                        child: LobbyBattleStage(
-                          characterId: character.id,
-                          characterName: character.name,
-                          stage: stage,
-                          bestSeconds: state.bestSurvivalSeconds,
-                          launching: _launching,
-                          saving: widget.controller.saving,
-                          onDeploy: _deploy,
-                        ),
-                      ),
+                      ],
                     ),
-                    Positioned(
-                      left: 100,
-                      bottom: 174,
-                      width: 280,
-                      height: 80,
-                      child: Listener(
-                        key: const Key('lobby-stage'),
-                        behavior: HitTestBehavior.opaque,
-                        onPointerUp: (_) => unawaited(_openStagePicker()),
-                        child: const SizedBox.expand(),
-                      ),
-                    ),
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      bottom: 82,
-                      height: 68,
-                      child: Center(
-                        child: LobbyQuickActions(
-                          onGrowth: _openTraining,
-                          onWeapon: () => _showFeature(LobbyFeature.ranking),
-                          onRelic: () => _showFeature(LobbyFeature.relic),
-                          onCompanion: () =>
-                              _showFeature(LobbyFeature.companion),
-                          onCrafting: () => _showFeature(LobbyFeature.crafting),
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      height: 82,
-                      child: Center(
-                        child: LobbyPrimaryNavigation(
-                          onLobby: () {},
-                          onCharacter: _openCharacterPicker,
-                          onCombat: _deploy,
-                          onChallenge: () =>
-                              _showFeature(LobbyFeature.challenge),
-                          onShop: _openPremiumShop,
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              },
+                  );
+                },
+              ),
             ),
           ),
         ),

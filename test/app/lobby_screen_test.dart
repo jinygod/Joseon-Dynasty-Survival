@@ -171,6 +171,165 @@ void main() {
     expect(screen.playerSlot.characterId, exorcistDosa);
     expect(screen.stageId, plagueMarket);
   });
+
+  testWidgets('growth route receives saved training progress', (tester) async {
+    final lobby = LobbyController(
+      store: _MemorySaveStore(
+        SaveState.defaults().copyWith(
+          trainingProgress: const TrainingProgress(
+            commonRanks: {'common.max_health': 2},
+            characterRanks: {},
+            activeCoreTraitIds: {},
+          ),
+        ),
+      ),
+    );
+    await lobby.load();
+    await tester.pumpWidget(_lobbyApp(lobby));
+
+    await tester.tap(find.byKey(const Key('lobby-quick-growth')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.byType(TrainingScreen), findsOneWidget);
+    expect(find.text('common.max_health'), findsOneWidget);
+    expect(find.text('Rank 2'), findsOneWidget);
+  });
+
+  testWidgets('settings reset survives a stage selection round trip', (
+    tester,
+  ) async {
+    final store = _MemorySaveStore(
+      SaveState.defaults().copyWith(
+        unlockedCharacterIds: {rookieConstable, exorcistDosa},
+        wallet: const Wallet(coin: 500, spiritJade: 3),
+      ),
+    );
+    final lobby = LobbyController(store: store);
+    await lobby.load();
+    await tester.pumpWidget(_lobbyApp(lobby));
+
+    ScaffoldMessenger.of(tester.element(find.byType(LobbyScreen))).showSnackBar(
+      const SnackBar(
+        key: Key('unrelated-lobby-snack'),
+        duration: Duration(minutes: 1),
+        content: Text('동기화 상태 유지'),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('lobby-settings')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('reset-progress')),
+      240,
+      scrollable: find
+          .descendant(
+            of: find.byType(SettingsScreen),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await tester.tap(find.byKey(const Key('reset-progress')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('reset-first-confirm')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('reset-final-confirm')));
+    await tester.pumpAndSettle();
+    Navigator.of(tester.element(find.byType(SettingsScreen))).pop();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(find.byKey(const Key('unrelated-lobby-snack')), findsOneWidget);
+    expect(lobby.state.wallet, Wallet.empty);
+    await tester.tap(find.byKey(const Key('lobby-stage')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byKey(const Key('stage-confirm')));
+    await tester.pumpAndSettle();
+    expect(store.value.wallet, Wallet.empty);
+    expect(
+      store.value.unlockedCharacterIds,
+      SaveState.defaults().unlockedCharacterIds,
+    );
+  });
+
+  testWidgets(
+    'scaled narrow lobby keeps core actions reachable without overflow',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(390, 844);
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      final lobby = LobbyController(
+        store: _MemorySaveStore(SaveState.defaults()),
+      );
+      await lobby.load();
+      await tester.pumpWidget(_lobbyApp(lobby));
+      await tester.pump();
+
+      for (final key in const [
+        'lobby-settings',
+        'lobby-stage',
+        'lobby-deploy',
+        'lobby-primary-combat',
+        'lobby-primary-shop',
+      ]) {
+        final rect = tester.getRect(find.byKey(Key(key)));
+        expect(rect.left, greaterThanOrEqualTo(0));
+        expect(rect.right, lessThanOrEqualTo(390));
+        expect(rect.top, greaterThanOrEqualTo(0));
+        expect(rect.bottom, lessThanOrEqualTo(844));
+      }
+      // The no-scaling raster composition keeps every primary action in bounds
+      // at the platform's 2x text preference.
+    },
+  );
+
+  testWidgets('primary combat uses the guarded deploy callback', (
+    tester,
+  ) async {
+    final lobby = LobbyController(
+      store: _MemorySaveStore(SaveState.defaults()),
+    );
+    await lobby.load();
+    await tester.pumpWidget(_lobbyApp(lobby));
+
+    await tester.tap(find.byKey(const Key('lobby-primary-combat')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.byType(GameScreen), findsOneWidget);
+  });
+
+  testWidgets('unavailable primary and side actions open their notices', (
+    tester,
+  ) async {
+    final lobby = LobbyController(
+      store: _MemorySaveStore(SaveState.defaults()),
+    );
+    await lobby.load();
+    await tester.pumpWidget(_lobbyApp(lobby));
+    const entries = [
+      ('lobby-side-mail', '전령의 소식'),
+      ('lobby-side-mission', '임무서'),
+      ('lobby-side-pass', '승급 준비'),
+      ('lobby-side-package', '보급품'),
+      ('lobby-quick-relic', '봉인된 유물'),
+      ('lobby-quick-companion', '인연'),
+      ('lobby-quick-crafting', '대장간'),
+      ('lobby-primary-challenge', '봉인된 시련'),
+    ];
+    for (final entry in entries) {
+      await tester.tap(find.byKey(Key(entry.$1)));
+      await tester.pumpAndSettle();
+      expect(find.text(entry.$2), findsOneWidget);
+      await tester.tap(find.byKey(const Key('lobby-feature-notice-confirm')));
+      await tester.pumpAndSettle();
+    }
+  });
 }
 
 Widget _lobbyApp(LobbyController lobby) => MaterialApp(
