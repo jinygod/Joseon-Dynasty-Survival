@@ -92,6 +92,31 @@ void main() {
       }
     },
   );
+
+  test('release lobby rights records are fully reviewed provenance', () {
+    final lines = File('docs/assets/asset-rights-ledger.csv').readAsLinesSync();
+    final header = lines.first.split(',');
+    final sourceHash = header.indexOf('source_file_sha256');
+    final prompt = header.indexOf('prompt_path');
+    final edits = header.indexOf('human_edits');
+    final similarity = header.indexOf('similarity_reviewed');
+    final trademark = header.indexOf('trademark_reviewed');
+    final status = header.indexOf('status');
+    final reviewer = header.indexOf('reviewer');
+    final reviewedAt = header.indexOf('reviewed_at');
+    for (final line in lines.where((line) => line.startsWith('lobby_'))) {
+      final fields = line.split(',');
+      expect(fields[sourceHash], matches(RegExp(r'^[A-F0-9]{64}$')));
+      expect(fields[prompt], 'art_source/generated/lobby/prompts.md');
+      expect(fields[edits], contains('chroma-key'));
+      expect(fields[similarity], 'true');
+      expect(fields[trademark], 'true');
+      expect(fields[status], 'approved');
+      expect(fields[reviewer], isNotEmpty);
+      expect(fields[reviewedAt], isNotEmpty);
+      expect(fields.last, contains('runtime-sha256='));
+    }
+  });
 }
 
 int _readUint32(List<int> bytes, int offset) =>
