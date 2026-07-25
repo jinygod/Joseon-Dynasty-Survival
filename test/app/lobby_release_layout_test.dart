@@ -233,7 +233,7 @@ void main() {
     final taps = <String, int>{};
     const actions = [
       ('lobby', '\ub85c\ube44'),
-      ('character', '\uc601\uc6c5'),
+      ('character', '\uc778\ubb3c'),
       ('combat', '\uc804\ud22c'),
       ('challenge', '\ub3c4\uc804'),
       ('shop', '\uc0c1\uc810'),
@@ -280,6 +280,13 @@ void main() {
       greaterThan(
         tester.getSize(find.byKey(const Key('lobby-primary-character'))).height,
       ),
+    );
+    final activeFrame = tester.widget<Image>(
+      find.byKey(const Key('lobby-primary-lobby-active-frame')),
+    );
+    expect(
+      activeFrame.image,
+      AssetImage(AssetCatalog.lobbyFrames['quick_action']!),
     );
     semantics.dispose();
   });

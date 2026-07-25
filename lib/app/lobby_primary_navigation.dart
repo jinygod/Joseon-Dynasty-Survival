@@ -24,7 +24,7 @@ class LobbyPrimaryNavigation extends StatelessWidget {
   Widget build(BuildContext context) {
     const actions = [
       ('lobby', '\ub85c\ube44', 'compendium', true),
-      ('character', '\uc601\uc6c5', 'character', false),
+      ('character', '\uc778\ubb3c', 'character', false),
       ('combat', '\uc804\ud22c', 'combat', false),
       ('challenge', '\ub3c4\uc804', 'challenge', false),
       ('shop', '\uc0c1\uc810', 'shop', false),
@@ -86,7 +86,7 @@ class _PrimaryNavigationButton extends StatelessWidget {
         children: [
           if (selected)
             Image.asset(
-              AssetCatalog.lobbyFrames['primary_navigation']!,
+              AssetCatalog.lobbyFrames['quick_action']!,
               key: Key('lobby-primary-$id-active-frame'),
               fit: BoxFit.fill,
             ),
