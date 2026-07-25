@@ -179,8 +179,9 @@ class _LobbyScreenState extends State<LobbyScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _deploy() async {
-    if (_launching || widget.controller.loading || widget.controller.saving)
+    if (_launching || widget.controller.loading || widget.controller.saving) {
       return;
+    }
     setState(() => _launching = true);
     final audio = widget.audioService;
     if (audio != null) unawaited(audio.play(AudioCue.uiConfirm));
@@ -219,10 +220,11 @@ class _LobbyScreenState extends State<LobbyScreen> with WidgetsBindingObserver {
 
   void _showRecoveryNotice(String notice) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(notice)));
+      }
     });
   }
 

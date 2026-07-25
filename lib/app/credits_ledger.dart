@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/services.dart';
 
 typedef CreditsLedgerLoader = Future<CreditsLedger> Function();
@@ -27,11 +29,12 @@ class CreditsLedger {
   static Future<CreditsLedger> loadBundled() => fromAssetBundle(rootBundle);
 
   static Future<CreditsLedger> fromAssetBundle(AssetBundle bundle) async {
-    final csv = await Future.wait([
-      bundle.loadString('docs/assets/asset-rights-ledger.csv'),
-      bundle.loadString('docs/assets/audio-rights-ledger.csv'),
-    ]);
-    return CreditsLedger.fromCsv(assetCsv: csv[0], audioCsv: csv[1]);
+    final assetData = await bundle.load('docs/assets/asset-rights-ledger.csv');
+    final audioData = await bundle.load('docs/assets/audio-rights-ledger.csv');
+    return CreditsLedger.fromCsv(
+      assetCsv: utf8.decode(Uint8List.sublistView(assetData)),
+      audioCsv: utf8.decode(Uint8List.sublistView(audioData)),
+    );
   }
 
   factory CreditsLedger.fromCsv({

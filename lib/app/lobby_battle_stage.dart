@@ -165,12 +165,12 @@ class _DeployCommand extends StatelessWidget {
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(
+            style: const TextStyle(
               fontFamily: JoseonUiTheme.bodyFontFamily,
-              color: const Color(0xfffff1c4),
+              color: Color(0xfffff1c4),
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              shadows: const [Shadow(color: Color(0xff201108), blurRadius: 3)],
+              shadows: [Shadow(color: Color(0xff201108), blurRadius: 3)],
             ),
           ),
         ),

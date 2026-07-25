@@ -113,7 +113,10 @@ void main() {
           beforeCapture: (tester) async {
             if (size.width / size.height < 2) return;
             final character = tester.getRect(
-              find.byKey(const Key('lobby-character-art')),
+              find.descendant(
+                of: find.byKey(const Key('lobby-character-art')),
+                matching: find.byType(SizedBox),
+              ),
             );
             final deploy = tester.getRect(
               find.byKey(const Key('lobby-deploy')),
@@ -128,6 +131,16 @@ void main() {
               deploy.left,
               greaterThanOrEqualTo(size.width * .65),
               reason: 'ultra-wide staging must not cover the character',
+            );
+            expect(
+              deploy.overlaps(character),
+              isFalse,
+              reason: 'ultra-wide deploy control must not overlap the character',
+            );
+            expect(
+              stagePicker.overlaps(character),
+              isFalse,
+              reason: 'ultra-wide stage picker must not overlap the character',
             );
             expect(
               stagePicker,
