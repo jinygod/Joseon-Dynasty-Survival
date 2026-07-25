@@ -1,16 +1,16 @@
 # Release Lobby Verification Report
 
-**Verified source:** `a52ffe8f8045be8a40a13e17eae415e1139725df` on
+**Verified source:** `ae56a82770231b63e851edcbdfa44e4704801d66` on
 `codex/release-lobby`.
 
 ## Final gates
 
 | Check | Result | Evidence |
 | --- | --- | --- |
-| Static analysis | PASS | `flutter analyze` exited 0 in 20.682 s with no issues. |
-| Full test suite | PASS | `flutter test --reporter expanded` exited 0 in 70.671 s; 1,189 tests passed. Log: `.superpowers/sdd/2026-07-25-landscape-release-lobby/final-full-test-after-key-fix.log`. |
-| Web release build | PASS | `flutter build web --release` exited 0 in 62.779 s and produced `build/web`. |
-| Android debug APK | PASS | The production APK was built at `b5e1df7`; the only later source change is a test-key correction, so the previously verified APK remains applicable to the final production source. |
+| Static analysis | PASS | `flutter analyze` exited 0 with no issues. |
+| Full test suite | PASS | `flutter test --reporter compact` exited 0; 1,194 tests passed. |
+| Web release build | PASS | `flutter build web --release` exited 0 and produced `build/web`. |
+| Android debug APK | PASS | `flutter build apk --debug` exited 0 and produced the artifact recorded below. |
 
 ## Runtime visual review
 
@@ -25,6 +25,11 @@ The approved runtime captures were inspected at their native landscape viewports
 The review confirms readable status and rail labels, balanced landscape rails,
 and a prominent deploy action, raster-based framing/icons, and an in-world
 ornate unavailable-feature notice.
+
+The final reviewer findings were closed in one fix wave: the visible stage
+plaque now owns its exact hit target, weapon has dedicated notice copy, the
+profile uses raster character art instead of a stock Material icon, and the
+permanent-account sync target is at least 48x48.
 
 ## Route and notice coverage
 
@@ -47,10 +52,9 @@ verified lobby release result.
 
 - Path: `D:\CodexWorktrees\release-lobby\build\app\outputs\flutter-apk\app-debug.apk`
 - Size: `223017745` bytes
-- SHA-256: `2BA0073966C0D3BD900B556F763274C16C09BF61EA13F8AA86174C487554B79E`
+- SHA-256: `0785050CB8F65BF9ED8E02F7B1B0ABF6C19224A05E425CC2925E1617A7520D3F`
 
 ## Source and branch
 
-The verified source commit is `a52ffe8f8045be8a40a13e17eae415e1139725df`.
-The branch is `codex/release-lobby`; its HEAD was verified to equal that commit
-before this documentation commit.
+The verified source commit is `ae56a82770231b63e851edcbdfa44e4704801d66`.
+The branch is `codex/release-lobby`; this report update is documentation-only.
