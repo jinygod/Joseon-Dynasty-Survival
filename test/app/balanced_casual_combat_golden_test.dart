@@ -391,7 +391,7 @@ void _addReviewedCombatPresentation(PixelSurvivorGame game) {
       pierce: 99,
       isMasterLead: true,
       tier: CombatVfxTier.master,
-      size: Vector2.all(18),
+      sizeMultiplier: .75,
     ),
   );
   game.addWorldComponent(

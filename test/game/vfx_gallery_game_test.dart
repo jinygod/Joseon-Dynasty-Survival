@@ -185,17 +185,13 @@ void main() {
       await game.onLoad();
       game.processLifecycleEvents();
       addTearDown(game.onDispose);
+      final expectedAssetKeys = <String>{
+        ...AttackVisualRegistry.requiredAssetKeys,
+        ...ProjectilePresentationSpecs.requiredAssetKeys,
+        ProjectileContactVfxComponent.assetKey,
+      }.toList()..sort();
 
-      expect(
-        loaded,
-        orderedEquals(
-          [
-            ...AttackVisualRegistry.requiredAssetKeys,
-            ...ProjectilePresentationSpecs.requiredAssetKeys,
-            ProjectileContactVfxComponent.assetKey,
-          ].toSet().toList()..sort(),
-        ),
-      );
+      expect(loaded, orderedEquals(expectedAssetKeys));
       expect(
         game.factory.images.keys,
         containsAll(AttackVisualRegistry.requiredAssetKeys),
