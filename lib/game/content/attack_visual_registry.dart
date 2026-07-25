@@ -412,7 +412,7 @@ abstract final class AttackVisualRegistry {
     'singijeon_volley': AttackVisualSpec(
       effectId: 'singijeon_volley',
       category: CombatVisualCategory.projectile,
-      status: AttackVisualStatus.generatedReview,
+      status: AttackVisualStatus.ready,
       layers: _singijeonVolleyLayers,
       rotateWithDirection: true,
     ),

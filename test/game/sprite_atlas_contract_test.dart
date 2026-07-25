@@ -13,10 +13,17 @@ void main() {
       (contract) => !missingEightVisualContracts.containsKey(contract.id),
     );
     for (final contract in runtimeAtlases) {
-      final isApprovedReleaseHwando = contract.id.startsWith('hwando_release_');
+      final isApprovedReleaseAsset =
+          contract.id.startsWith('hwando_release_') ||
+          const {
+            'singijeon_128',
+            'matchlock_shot_128',
+            'hawk_flight_128',
+            'projectile_contact_128',
+          }.contains(contract.id);
       expect(
         contract.status,
-        isApprovedReleaseHwando
+        isApprovedReleaseAsset
             ? ArtAssetStatus.approved
             : ArtAssetStatus.temporary,
         reason: contract.id,

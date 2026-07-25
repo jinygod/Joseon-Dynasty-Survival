@@ -125,6 +125,11 @@ class AssetCatalog {
     'sealing_slash_128': 'assets/images/vfx/player/sealing_slash_128.png',
     'wind_thunder_fan_128': 'assets/images/vfx/player/wind_thunder_fan_128.png',
     'singijeon_128': 'assets/images/projectiles/player/singijeon_128.png',
+    'matchlock_shot_128':
+        'assets/images/projectiles/player/matchlock_shot_128.png',
+    'hawk_flight_128': 'assets/images/projectiles/player/hawk_flight_128.png',
+    'projectile_contact_128':
+        'assets/images/vfx/player/projectile_contact_128.png',
     'jangseung_ward_128': 'assets/images/zones/player/jangseung_ward_128.png',
     'frost_field_128': 'assets/images/zones/player/frost_field_128.png',
     'talisman_attachment_128':

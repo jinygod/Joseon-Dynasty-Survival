@@ -54,7 +54,7 @@ const playerVisualContracts = <PlayerVisualContract>[
     layerId: 'effect',
     assetKey: 'projectiles/player/singijeon_128.png',
     frameCount: 4,
-    sourcePath: 'art_source/generated/player_vfx/singijeon_source.png',
+    sourcePath: 'art_source/generated/projectiles/singijeon_source.png',
   ),
   PlayerVisualContract(
     id: 'jangseung_ward',
@@ -127,8 +127,8 @@ const sourceSha256ByPath = <String, String>{
       '8489F18F29D0FFA7718740F913F357F27F360D38D71B2F6FAB688E6C4252249C',
   'art_source/generated/player_vfx/wind_thunder_fan_source.png':
       'FD13655DFE576C3C5A288F3428A44B128ECD9958C7F8DA7823ACCD4B36815298',
-  'art_source/generated/player_vfx/singijeon_source.png':
-      'D74B7E0ADC1FCC4B3C6591C0905A92D446EF132D09876A33FFAA29BF4062492B',
+  'art_source/generated/projectiles/singijeon_source.png':
+      '0445B64464948ECC6D51118B0C6BC7FA437F15DD644A70D501EDCAF06BB669C7',
   'art_source/generated/player_vfx/jangseung_ward_source.png':
       '06FA239621BE14DA3D39D27E94DCF607EFD05333C2758B523F03F98BD7636321',
   'art_source/generated/player_vfx/frost_field_source.png':
@@ -149,7 +149,7 @@ const runtimeSha256ByPath = <String, String>{
   'assets/images/vfx/player/wind_thunder_fan_128.png':
       '5F5D263BCC3FEF8C78C950D3F195A69C45B5C080C0EB7F09D83C68F90EAB4629',
   'assets/images/projectiles/player/singijeon_128.png':
-      '70F35C0E4AC6C959CF2913E1F6A8DB8DBECD4BBA1565F1FCADA4329A64F3931E',
+      '3D3CF46819168C4310DEF3D1774A3D99DE4A5258E04D36805C6F26406725BBBB',
   'assets/images/zones/player/jangseung_ward_128.png':
       'A98D7D872B8B76DA921353DB26D942D0675947E6956D66F82E2A9EC0EDC0F733',
   'assets/images/zones/player/frost_field_128.png':
@@ -179,8 +179,7 @@ void main() {
 
   test('player catalog names the actual bundled player sheets', () {
     expect(AssetCatalog.player, {
-      'rookie_constable_player':
-          'assets/images/player/exorcist_dosa_128.png',
+      'rookie_constable_player': 'assets/images/player/exorcist_dosa_128.png',
       'exorcist_dosa_atlas': 'assets/images/player/exorcist_dosa_128.png',
     });
     for (final path in AssetCatalog.player.values.toSet()) {
@@ -218,7 +217,9 @@ void main() {
       expect(spec.category, expected.category, reason: expected.id);
       expect(
         spec.status,
-        AttackVisualStatus.generatedReview,
+        expected.id == 'singijeon_volley'
+            ? AttackVisualStatus.ready
+            : AttackVisualStatus.generatedReview,
         reason: expected.id,
       );
       expect(spec.rotateWithDirection, expected.rotates, reason: expected.id);
@@ -318,8 +319,22 @@ void main() {
           row['notes'],
           contains('runtime-sha256=${runtimeSha256ByPath[runtimePath]}'),
         );
-        expect(row['notes'], contains('runtime owner=AttackVisualRegistry'));
-        expect(row['notes'], contains('runtime status=temporary'));
+        expect(
+          row['notes'],
+          contains(
+            expected.id == 'singijeon_volley'
+                ? 'runtime owner=ProjectilePresentationSpecs'
+                : 'runtime owner=AttackVisualRegistry',
+          ),
+        );
+        expect(
+          row['notes'],
+          contains(
+            expected.id == 'singijeon_volley'
+                ? 'runtime status=approved'
+                : 'runtime status=temporary',
+          ),
+        );
       }
     },
   );
