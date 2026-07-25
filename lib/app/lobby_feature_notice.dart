@@ -147,7 +147,7 @@ class _LobbyFeatureNotice extends StatelessWidget {
                         child: Container(
                           alignment: Alignment.center,
                           width: 112,
-                          height: 40,
+                          height: 52,
                           decoration: BoxDecoration(
                             color: const Color(0xff3b2718),
                             border: Border.all(color: const Color(0xffc7a65a)),

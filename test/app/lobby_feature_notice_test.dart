@@ -37,6 +37,11 @@ void main() {
     expect(find.text('대장간'), findsOneWidget);
     expect(find.text('대장간의 화로를 달구고 있습니다.'), findsOneWidget);
     expect(find.byKey(const Key('lobby-feature-notice')), findsOneWidget);
+    final confirmSize = tester.getSize(
+      find.byKey(const Key('lobby-feature-notice-confirm')),
+    );
+    expect(confirmSize.width, greaterThanOrEqualTo(48));
+    expect(confirmSize.height, greaterThanOrEqualTo(48));
 
     await tester.tap(find.byKey(const Key('lobby-feature-notice-confirm')));
     await tester.pumpAndSettle();
