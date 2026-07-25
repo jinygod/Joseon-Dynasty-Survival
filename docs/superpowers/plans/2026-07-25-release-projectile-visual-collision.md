@@ -431,21 +431,27 @@ test('returns swept contacts in travel order', () {
   expect(contacts.map((item) => item.enemy.position.x), [25, 75]);
 });
 
-test('render source contains no geometric release fallback', () {
-  final source = File('lib/game/components/projectile_component.dart')
-      .readAsStringSync();
-  expect(source, isNot(contains('drawOval')));
-  expect(source, isNot(contains('drawCircle')));
-  expect(source, isNot(contains('drawRect')));
+test('missing projectile art prevents combat from starting', () async {
+  final game = PixelSurvivorGame(
+    visualAssetLoader: (key) async {
+      if (key == 'projectiles/player/hawk_flight_128.png') {
+        throw StateError('missing $key');
+      }
+      return onePixelImage;
+    },
+  );
+  await expectLater(game.onLoad(), throwsStateError);
 });
 
 test('resume does not sweep the paused interval twice', () {
   final projectile = projectileAt(Vector2.zero(), velocity: Vector2(100, 0));
   projectile.update(.1);
+  final enemyOnlyInOldSweep = enemyAt(Vector2(-15, 0));
+  expect(projectile.contactsFor([enemyOnlyInOldSweep]), isNotEmpty);
   final beforePause = projectile.position.clone();
   projectile.synchronizePreviousPosition();
   expect(projectile.previousPosition, beforePause);
-  expect(projectile.contactsFor([enemyAt(Vector2(5, 0))]), isEmpty);
+  expect(projectile.contactsFor([enemyOnlyInOldSweep]), isEmpty);
 });
 ```
 
@@ -455,8 +461,8 @@ test('resume does not sweep the paused interval twice', () {
 D:\FlutterSdk\bin\flutter.bat test test/game/projectile_component_test.dart test/game/weapon_system_test.dart
 ```
 
-Expected: FAIL because previous position, sorted contacts, and sprite-only
-rendering do not exist.
+Expected: FAIL because previous position, sorted contacts, pause
+synchronization, and mandatory projectile preloading do not exist.
 
 - [ ] **Step 3: Replace component geometry and rendering**
 
@@ -496,7 +502,9 @@ List<ProjectileTargetContact> contactsFor(
 - [ ] **Step 4: Integrate preloading and ordered damage**
 
 Add `ProjectilePresentationSpecs.requiredAssetKeys` and the contact sheet to
-the one-time preloader. Attach the exact image in `_admitProjectile`.
+the one-time preloader. A loader failure propagates from `onLoad`; it never
+falls back to a geometric renderer. Attach the exact image in
+`_admitProjectile`.
 `_applyProjectileHits` loops over `projectile.contactsFor(enemies)`, calls
 `registerHit`, and creates `DamageEvent(contactPoint: contact.point)` with
 knockback from the projectile direction. Stop at exhausted pierce.
