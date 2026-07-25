@@ -52,7 +52,7 @@ void main() {
         ),
       );
 
-      await tester.tap(find.byKey(const Key('lobby-character')));
+      await tester.tap(find.byKey(const Key('lobby-primary-character')));
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('character-confirm')), findsOneWidget);
       await tester.tap(find.byKey(const Key('character-confirm')));
