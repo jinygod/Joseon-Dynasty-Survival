@@ -80,6 +80,7 @@ flutter:
     - assets/images/tiles/
     - assets/images/props/
     - assets/images/ui/
+    - assets/images/ui/lobby/
     - assets/audio/music/
     - assets/audio/sfx/
     - assets/audio/ui/
