@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_survivor/app/premium_shop_screen.dart';
 import 'package:pixel_survivor/app/premium_wallet_badge.dart';
+import 'package:pixel_survivor/app/joseon_ui_theme.dart';
 import 'package:pixel_survivor/backend/account/account_session.dart';
 import 'package:pixel_survivor/backend/economy/premium_wallet.dart';
 import 'package:pixel_survivor/backend/economy/purchase_controller.dart';
@@ -20,7 +21,7 @@ void main() {
     await controller.start();
 
     await tester.pumpWidget(
-      MaterialApp(home: PremiumShopScreen(controller: controller)),
+      shopTestApp(home: PremiumShopScreen(controller: controller)),
     );
 
     expect(find.text('금옥 100'), findsOneWidget);
@@ -40,7 +41,7 @@ void main() {
     );
     await controller.start();
     await tester.pumpWidget(
-      MaterialApp(
+      shopTestApp(
         home: PremiumShopScreen(
           controller: controller,
           onAccountLinkRequired: () => prompts += 1,
@@ -64,7 +65,7 @@ void main() {
     final controller = shopController(gateway: gateway, repository: repository);
     await controller.start();
     await tester.pumpWidget(
-      MaterialApp(home: PremiumShopScreen(controller: controller)),
+      shopTestApp(home: PremiumShopScreen(controller: controller)),
     );
 
     expect(find.text('금옥 —'), findsOneWidget);
@@ -104,7 +105,7 @@ void main() {
     final gateway = ShopGateway()..available = false;
     final controller = shopController(gateway: gateway);
     await tester.pumpWidget(
-      MaterialApp(home: PremiumShopScreen(controller: controller)),
+      shopTestApp(home: PremiumShopScreen(controller: controller)),
     );
     expect(find.text('상점 불러오는 중'), findsOneWidget);
 
@@ -133,7 +134,7 @@ void main() {
     final controller = shopController(gateway: gateway);
     await controller.start();
     await tester.pumpWidget(
-      MaterialApp(home: PremiumShopScreen(controller: controller)),
+      shopTestApp(home: PremiumShopScreen(controller: controller)),
     );
     final button = find.byKey(const Key('premium-buy-royal_jade_small'));
     await tester.tap(button);
@@ -148,7 +149,7 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      MaterialApp(
+      shopTestApp(
         home: Scaffold(
           body: PremiumWalletBadge(
             wallet: PremiumWallet(balance: 99, debt: 0, version: 1),
@@ -164,6 +165,9 @@ void main() {
     );
   });
 }
+
+Widget shopTestApp({required Widget home}) =>
+    MaterialApp(theme: JoseonUiTheme.create(), home: home);
 
 PurchaseController shopController({
   required ShopGateway gateway,
